@@ -64,26 +64,26 @@ export default function PacksPage() {
             {packs.length === 0 ? 'No pack conversions yet.' : 'No packs match your search.'}
           </p>
         ) : (
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-[11px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Pack Item</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Pack Group</th>
-                <th className="text-right px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Units/Pack</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Unit Name</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Converts To</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Single Item Group</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Pack Item</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Pack Group</th>
+                <th className="text-right px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Units/Pack</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Unit Name</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Converts To</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Single Item Group</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => (
-                <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-900 font-medium">{p.pack_name}</td>
-                  <td className="px-3 py-2 text-gray-600">{p.pack_group || '—'}</td>
-                  <td className="px-3 py-2 text-gray-900 text-right font-medium">{p.units_per_pack}</td>
-                  <td className="px-3 py-2 text-gray-600">{p.unit_name || '—'}</td>
-                  <td className="px-3 py-2 text-gray-900 font-medium">{p.single_item_name}</td>
-                  <td className="px-3 py-2 text-gray-600">{p.single_item_group || '—'}</td>
+                <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50 text-[11px] font-bold leading-tight">
+                  <td className="px-3 py-0 text-gray-900 font-medium">{p.pack_name}</td>
+                  <td className="px-3 py-0 text-gray-600">{p.pack_group || '—'}</td>
+                  <td className="px-3 py-0 text-gray-900 text-right font-medium">{p.units_per_pack}</td>
+                  <td className="px-3 py-0 text-gray-600">{p.unit_name || '—'}</td>
+                  <td className="px-3 py-0 text-gray-900 font-medium">{p.single_item_name}</td>
+                  <td className="px-3 py-0 text-gray-600">{p.single_item_group || '—'}</td>
                 </tr>
               ))}
             </tbody>

@@ -155,11 +155,11 @@ export default function AliasEditorPage() {
         <table className="w-full border-collapse text-[9px]">
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
-              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Canonical</th>
-              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Group</th>
-              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300">Alias</th>
-              <th className="px-1.5 py-1 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Type</th>
-              <th className="px-1.5 py-1 text-right font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Actions</th>
+              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Canonical</th>
+              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Group</th>
+              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300">Alias</th>
+              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Type</th>
+              <th className="px-1.5 py-0.5 text-right font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -170,11 +170,11 @@ export default function AliasEditorPage() {
             ) : (
               tableRows.map((row, idx) => (
                 <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                  <td className="px-1.5 py-0.5 text-gray-900 font-semibold truncate max-w-[200px]">{row.canonical_name}</td>
-                  <td className="px-1.5 py-0.5 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
-                  <td className="px-1.5 py-0.5 text-gray-700 truncate max-w-[250px]">{row.alias_name}</td>
-                  <td className="px-1.5 py-0.5 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
-                  <td className="px-1.5 py-0.5 text-right whitespace-nowrap">
+                  <td className="px-1.5 py-0 text-gray-900 font-semibold truncate max-w-[200px]">{row.canonical_name}</td>
+                  <td className="px-1.5 py-0 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
+                  <td className="px-1.5 py-0 text-gray-700 truncate max-w-[250px]">{row.alias_name}</td>
+                  <td className="px-1.5 py-0 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
+                  <td className="px-1.5 py-0 text-right whitespace-nowrap">
                     {row.alias_id && (
                       <>
                         <button onClick={() => { setMovingAlias({ id: row.alias_id!, name: row.alias_name, fromItemId: row.item_id }); setMoveSearch('') }}

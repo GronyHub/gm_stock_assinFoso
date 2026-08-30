@@ -180,24 +180,24 @@ export default function MatchesWidePage() {
             {matches.length === 0 ? 'No matches yet. Add one above.' : 'No matches match your search.'}
           </p>
         ) : (
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-[11px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Service</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Service Group</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Goods</th>
-                <th className="text-left px-3 py-2 font-semibold text-gray-600 border-b border-gray-300">Goods Group</th>
-                <th className="text-center px-3 py-2 font-semibold text-gray-600 border-b border-gray-300 w-10">Action</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Service</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Service Group</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Goods</th>
+                <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Goods Group</th>
+                <th className="text-center px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300 w-10">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(m => (
-                <tr key={m.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-3 py-2 text-gray-900 font-medium">{m.service_name}</td>
-                  <td className="px-3 py-2 text-gray-600">{m.service_group || '—'}</td>
-                  <td className="px-3 py-2 text-gray-900 font-medium">{m.goods_name}</td>
-                  <td className="px-3 py-2 text-gray-600">{m.goods_group || '—'}</td>
-                  <td className="px-3 py-2 text-center">
+                <tr key={m.id} className="border-b border-gray-200 hover:bg-gray-50 text-[11px] font-bold leading-tight">
+                  <td className="px-3 py-0 text-gray-900 font-medium">{m.service_name}</td>
+                  <td className="px-3 py-0 text-gray-600">{m.service_group || '—'}</td>
+                  <td className="px-3 py-0 text-gray-900 font-medium">{m.goods_name}</td>
+                  <td className="px-3 py-0 text-gray-600">{m.goods_group || '—'}</td>
+                  <td className="px-3 py-0 text-center">
                     <button onClick={() => removeMatch(m.id)} disabled={deletingId === m.id}
                       className="text-red-500 hover:text-red-700 font-bold text-sm transition disabled:opacity-40">
                       {deletingId === m.id ? '…' : '×'}

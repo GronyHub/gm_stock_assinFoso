@@ -187,28 +187,28 @@ export default function LossesPage() {
                 <p className="text-center text-gray-400 py-10">No activity found for this item.</p>
               ) : (
                 <div className="overflow-x-auto -mx-4 px-4">
-                  <table className="w-full text-xs min-w-[580px]">
+                  <table className="w-full text-[11px] min-w-[580px]">
                     <thead>
-                      <tr className="text-left text-gray-400 border-b border-gray-100">
-                        <th className="pb-2 font-medium pr-3">Date</th>
-                        <th className="pb-2 font-medium text-right pr-3">Count</th>
-                        <th className="pb-2 font-medium text-right pr-3">WIC Sales</th>
-                        <th className="pb-2 font-medium text-right pr-3">GMC Sales</th>
-                        <th className="pb-2 font-medium text-right pr-3">Bills In</th>
-                        <th className="pb-2 font-medium text-right pr-3">Expected</th>
-                        <th className="pb-2 font-medium text-right">Loss / Gain</th>
+                      <tr className="text-left text-gray-400 border-b border-gray-100 text-[10px]">
+                        <th className="pb-0.5 font-medium pr-3">Date</th>
+                        <th className="pb-0.5 font-medium text-right pr-3">Count</th>
+                        <th className="pb-0.5 font-medium text-right pr-3">WIC Sales</th>
+                        <th className="pb-0.5 font-medium text-right pr-3">GMC Sales</th>
+                        <th className="pb-0.5 font-medium text-right pr-3">Bills In</th>
+                        <th className="pb-0.5 font-medium text-right pr-3">Expected</th>
+                        <th className="pb-0.5 font-medium text-right">Loss / Gain</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {rows.map((row, i) => (
-                        <tr key={i} className={row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}>
-                          <td className="py-2 pr-3 text-gray-600 whitespace-nowrap">{fmtDate(row.date)}</td>
-                          <td className="py-2 pr-3 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
-                          <td className="py-2 pr-3 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
-                          <td className="py-2 pr-3 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
-                          <td className="py-2 pr-3 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
-                          <td className="py-2 pr-3 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
-                          <td className="py-2 text-right font-semibold">
+                        <tr key={i} className={`text-[11px] font-bold leading-tight ${row.loss !== null && row.loss > 0.001 ? 'bg-red-50' : ''}`}>
+                          <td className="py-0 pr-3 text-gray-600 whitespace-nowrap">{fmtDate(row.date)}</td>
+                          <td className="py-0 pr-3 text-right font-semibold text-gray-900">{fmtQ(row.qty_counted)}</td>
+                          <td className="py-0 pr-3 text-right text-gray-600">{fmtQ(row.wic_qty)}</td>
+                          <td className="py-0 pr-3 text-right text-gray-600">{fmtQ(row.gmc_qty)}</td>
+                          <td className="py-0 pr-3 text-right text-blue-600">{fmtQ(row.bills_qty)}</td>
+                          <td className="py-0 pr-3 text-right text-gray-400">{fmtN(row.expected_soh)}</td>
+                          <td className="py-0 text-right font-semibold">
                             {row.loss === null ? (
                               <span className="text-gray-300">—</span>
                             ) : row.loss > 0.001 ? (

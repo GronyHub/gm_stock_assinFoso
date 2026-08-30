@@ -60,15 +60,15 @@ function CountRow({ item, onSaved }: { item: DailyItem; onSaved: (id: number) =>
 
   return (
     <tr className="border-b border-gray-100 last:border-0">
-      <td className="px-1.5 py-1 min-w-0">
+      <td className="px-1.5 py-0 min-w-0">
         <p className="text-[10px] text-gray-900 font-semibold leading-tight truncate max-w-[110px]">{item.item_name}</p>
         {item.cf_group && <p className="text-[9px] text-gray-400 leading-tight truncate">{item.cf_group}</p>}
       </td>
-      <td className="px-1 py-1 text-center text-[10px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
-      <td className="px-1 py-1">
+      <td className="px-1 py-0 text-center text-[10px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
+      <td className="px-1 py-0">
         <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-full whitespace-nowrap ${badgeClass}`}>{badgeLabel}</span>
       </td>
-      <td className="px-1 py-1">
+      <td className="px-1 py-0">
         <div className="flex items-center gap-1">
           <button onClick={() => submit(soh)} disabled={saving}
             className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[9px] font-semibold rounded px-1.5 py-1 whitespace-nowrap transition">
@@ -197,20 +197,20 @@ function CountsHistoryPageInner() {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">BY</th>
+                <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
+                <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ITEM</th>
+                <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">QTY</th>
+                <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">BY</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(r => (
                 <tr key={r.id} onClick={() => jumpTo(r)}
                   className={`cursor-pointer border-b border-gray-100 transition ${selectedId === r.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(r.count_date)}</td>
-                  <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[80px]">{r.item_name}</td>
-                  <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{Number(r.quantity_counted)}</td>
-                  <td className="px-0.5 py-0.5 text-right text-blue-500">{r.counted_by ?? '—'}</td>
+                  <td className="px-0.5 py-0 text-gray-700 whitespace-nowrap">{fmtShort(r.count_date)}</td>
+                  <td className="px-0.5 py-0 text-gray-900 truncate max-w-[80px]">{r.item_name}</td>
+                  <td className="px-0.5 py-0 text-right font-semibold text-gray-900">{Number(r.quantity_counted)}</td>
+                  <td className="px-0.5 py-0 text-right text-blue-500">{r.counted_by ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -310,10 +310,10 @@ function CountsHistoryPageInner() {
               <table className="w-full border-collapse text-[10px]">
                 <thead className="sticky top-0 bg-gray-100 z-10">
                   <tr>
-                    <th className="text-left px-1.5 py-1 font-semibold text-gray-500 border-b border-gray-200">Item</th>
-                    <th className="text-center px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">SOH</th>
-                    <th className="px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">Status</th>
-                    <th className="px-1 py-1 font-semibold text-gray-500 border-b border-gray-200">Count</th>
+                    <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Item</th>
+                    <th className="text-center px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">SOH</th>
+                    <th className="px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Status</th>
+                    <th className="px-1 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Count</th>
                   </tr>
                 </thead>
                 <tbody>
