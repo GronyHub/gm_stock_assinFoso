@@ -866,7 +866,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
