@@ -4098,36 +4098,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  // Sales tab filter bar
+  // Sales tab filter bar (Laws & Tasks only)
   function renderSalesFiltersBar() {
     return (
       <div className="w-full flex items-center gap-2 px-2 py-1 bg-gray-100 border-b border-gray-200 flex-wrap">
         <select
-          value={liveSalesViolationFilter || ''}
+          value=""
           onChange={e => {
             const v = e.target.value
-            if (!v || v === 'all') {
-              setLiveSalesViolationFilter(null)
-            } else if (v === 'help:laws') {
+            if (v === 'help:laws') {
               setLiveSalesShowLawsTasksModal(true)
-            } else {
-              setLiveSalesViolationFilter(v as any)
             }
           }}
-          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
         >
           <option value="">Filter</option>
-          <optgroup label="Violations">
-            <option value="all">All</option>
-            <option value="no_cash">No Cash</option>
-            <option value="missing_days">Missing Days</option>
-            <option value="dup_receipt">Dup Receipt</option>
-            <option value="high_wnw">High WNW</option>
-            <option value="no_attachment">No Attachment</option>
-          </optgroup>
-          <optgroup label="Help">
-            <option value="help:laws">⚖️ Laws & Tasks</option>
-          </optgroup>
+          <option value="help:laws">⚖️ Laws & Tasks</option>
         </select>
       </div>
     )
@@ -5808,6 +5794,38 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ?
                   </button>
                 </div>
+              </div>
+              {/* Sales Violation Filter Radio Buttons */}
+              <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={!liveSalesViolationFilter} onChange={() => setLiveSalesViolationFilter(null)} className="cursor-pointer w-3 h-3" />
+                  <span>All</span>
+                </label>
+                <span className="text-gray-400 px-1">·</span>
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_cash'} onChange={() => setLiveSalesViolationFilter('no_cash')} className="cursor-pointer w-3 h-3" />
+                  <span>No Cash</span>
+                </label>
+                <span className="text-gray-400 px-1">·</span>
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'missing_days'} onChange={() => setLiveSalesViolationFilter('missing_days')} className="cursor-pointer w-3 h-3" />
+                  <span>Missing Days</span>
+                </label>
+                <span className="text-gray-400 px-1">·</span>
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'dup_receipt'} onChange={() => setLiveSalesViolationFilter('dup_receipt')} className="cursor-pointer w-3 h-3" />
+                  <span>Dup Receipt</span>
+                </label>
+                <span className="text-gray-400 px-1">·</span>
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'high_wnw'} onChange={() => setLiveSalesViolationFilter('high_wnw')} className="cursor-pointer w-3 h-3" />
+                  <span>High WNW</span>
+                </label>
+                <span className="text-gray-400 px-1">·</span>
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
+                  <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_attachment'} onChange={() => setLiveSalesViolationFilter('no_attachment')} className="cursor-pointer w-3 h-3" />
+                  <span>No Attachment</span>
+                </label>
               </div>
               {renderSalesFiltersBar()}
               {liveSalesShowAnalytics ? (
