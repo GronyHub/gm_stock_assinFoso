@@ -681,7 +681,7 @@ function SalesTab({
         </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
+            <th className="text-left px-1 py-0.5 text-[10px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
             {/* CC/WNW are real columns (not text docked inside the ITEM
                 header) so the header label and every row's value share the
                 same table column and can't drift out of alignment. Only the
@@ -689,8 +689,8 @@ function SalesTab({
             {colPrefs.shownColumns.map(c => (
               <th key={c.key}
                 className={c.key === 'cc' || c.key === 'wnw'
-                  ? 'text-left px-1 py-1 pl-3 text-[11px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
-                  : 'text-right px-1 py-1 text-[11px] font-bold text-gray-500 border-b border-gray-200'}>
+                  ? 'text-left px-1 py-0.5 pl-3 text-[10px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
+                  : 'text-right px-1 py-0.5 text-[10px] font-bold text-gray-500 border-b border-gray-200'}>
                 {c.label}
               </th>
             ))}
@@ -875,9 +875,9 @@ function SalesTab({
                   with the CC/WNW header labels the way a hand-flexed group can.
                   QTY/SP stay blank, and the invoice figure lands under TOTAL
                   like the line rows below. */}
-              <td className={`sticky left-0 z-[5] bg-inherit overflow-hidden ${isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'}`}>
-                <span className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                  <span className={`font-extrabold shrink-0 ${isDayHead ? 'text-white text-base' : 'text-gray-600 text-sm'}`}>
+              <td className={`sticky left-0 z-[5] bg-inherit overflow-hidden ${isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'}`}>
+                <span className="flex items-center gap-1 min-w-0 flex-wrap">
+                  <span className={`font-extrabold shrink-0 ${isDayHead ? 'text-white text-xs' : 'text-gray-600 text-[11px]'}`}>
                     {fmtShort(r.receipt_date)}
                   </span>
                   {/* Jumps straight into editingId === r.id below -- no menu
@@ -900,7 +900,7 @@ function SalesTab({
                   {/* truncate (not whitespace-nowrap on the whole span) so a
                       long customer name ellipsizes within its fixed-width
                       column instead of overflowing into CC next door. */}
-                  <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-base' : 'text-gray-700 text-sm'}`}>
+                  <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[11px]'}`}>
                     {fmtCust(r.customer_name)}
                   </span>
                   {/* Shows only once the form's actually attached, so a
@@ -920,28 +920,28 @@ function SalesTab({
               </td>
               {colPrefs.shownColumns.map(c => {
                 if (c.key === 'cc') return (
-                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-blue-100 text-base' : 'px-1 py-1 text-gray-500 text-sm'}`}>
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-blue-100 text-xs' : 'px-1 py-0 text-gray-500 text-[11px]'}`}>
                     {!itemNameMatch && fmt(r.cash_counted)}
                   </td>
                 )
                 if (c.key === 'wnw') return (
-                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-2 text-base' : 'px-1 py-1 text-sm'} ${wnwColor(r.wnw, isDayHead)}`}>
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-xs' : 'px-1 py-0 text-[11px]'} ${wnwColor(r.wnw, isDayHead)}`}>
                     {!itemNameMatch && fmt(r.wnw)}
                   </td>
                 )
                 if (c.key === 'total') return (
-                  <td key={c.key} className={`px-1 py-1 text-right font-extrabold ${isDayHead ? 'text-white text-base' : 'text-gray-900 text-sm'}`}>
+                  <td key={c.key} className={`px-1 py-0.5 text-right font-extrabold ${isDayHead ? 'text-white text-xs' : 'text-gray-900 text-[11px]'}`}>
                     {!itemNameMatch && fmt(r.invoice_amount)}
                   </td>
                 )
-                return <td key={c.key} className={isDayHead ? 'px-1.5 py-2' : 'px-1 py-1'} />
+                return <td key={c.key} className={isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'} />
               })}
             </tr>
             {editingRow}
             {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
-                className={`border-b border-gray-100 text-[13px] font-bold ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
-                <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-1 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
+                className={`border-b border-gray-100 text-[11px] font-bold leading-tight ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
+                <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-0 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
                       <button type="button" onClick={() => setViewingItemId(line.item_id!)} className="text-blue-600 hover:underline">
@@ -952,15 +952,15 @@ function SalesTab({
                 </td>
                 {lineItemTrailingColumns.map(c => {
                   if (c.key === 'qty') return (
-                    <td key={c.key} className="px-1 py-1 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
+                    <td key={c.key} className="px-1 py-0 text-right text-gray-700 align-top">{line ? (line.quantity ? parseFloat(line.quantity) : '—') : ''}</td>
                   )
                   if (c.key === 'sp') return (
-                    <td key={c.key} className="px-1 py-1 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
+                    <td key={c.key} className="px-1 py-0 text-right text-gray-700 align-top">{line ? fmt(line.item_price) : ''}</td>
                   )
                   if (c.key === 'total') return (
-                    <td key={c.key} className="px-1 py-1 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
+                    <td key={c.key} className="px-1 py-0 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
                   )
-                  return <td key={c.key} className="px-1 py-1 align-top" />
+                  return <td key={c.key} className="px-1 py-0 align-top" />
                 })}
               </tr>
             ))}
