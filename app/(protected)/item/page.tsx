@@ -6066,7 +6066,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 (() => {
                   const violation = getViolationDescription(liveSaleViolationFilter)
                   return violation ? (
-                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
+                    <div className="bg-white border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
                       <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
                       <p className="text-blue-800 mb-3">{violation.description}</p>
                       <div className="text-blue-900">
