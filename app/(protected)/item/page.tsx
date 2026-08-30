@@ -6058,30 +6058,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Violation Description Panel */}
-            {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
-              (() => {
-                const violation = getViolationDescription(liveSaleViolationFilter)
-                return violation ? (
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
-                    <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
-                    <p className="text-blue-800 mb-3">{violation.description}</p>
-                    <div className="text-blue-900">
-                      <p className="font-semibold mb-2">How to fix:</p>
-                      <ol className="list-decimal list-inside space-y-1">
-                        {violation.steps.map((step, i) => (
-                          <li key={i} className="text-blue-800 text-xs">{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  </div>
-                ) : null
-              })()
-            )}
-
             {/* Items Grid - 2 Columns */}
             {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && liveCountDisplayFilter === 'all' && !liveShowCountFullPage && (
             <div className="flex-1 overflow-y-auto">
+              {/* Violation Description Panel - scrolls with items */}
+              {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
+                (() => {
+                  const violation = getViolationDescription(liveSaleViolationFilter)
+                  return violation ? (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
+                      <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
+                      <p className="text-blue-800 mb-3">{violation.description}</p>
+                      <div className="text-blue-900">
+                        <p className="font-semibold mb-2">How to fix:</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          {violation.steps.map((step, i) => (
+                            <li key={i} className="text-blue-800 text-xs">{step}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  ) : null
+                })()
+              )}
+
               {liveItemsLoading ? (
                 <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
               ) : liveCatalogueItems.length === 0 ? (
