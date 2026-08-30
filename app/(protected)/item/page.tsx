@@ -6284,7 +6284,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         >
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
-                              <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
+                              <span className="truncate">⚠ {due.label} {overdue ? 'OVERDUE' : ''}</span>
                             </div>
                           )}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'lossGain' && (() => {
@@ -6344,6 +6344,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   <span className="font-semibold text-gray-900">
                                     {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
                                   </span>
+                                  {due && (
+                                    <>
+                                      <span className="text-gray-400"> · </span>
+                                      <span className={`font-semibold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>{due.label} {overdue ? 'overdue' : 'due'}</span>
+                                    </>
+                                  )}
                                   {item.count_interval && (
                                     <>
                                       <span className="text-gray-400"> · </span>
