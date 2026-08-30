@@ -3125,6 +3125,8 @@ function ItemHubPageInner() {
       count_status: item => {
         const d = liveCountStatus.get(item.id)
         if (!d) return 0
+        // Items never counted (days_overdue is null) get highest priority
+        if (d.days_overdue === null) return 2000
         const days = d.days_overdue ?? 0
         return (d.level === 'overdue' ? 1000 : 0) + days
       },
