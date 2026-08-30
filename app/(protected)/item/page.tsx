@@ -6411,19 +6411,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 )}
                               </>
                             )}
-                            {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'lossGain' && liveSaleViolationFilter !== 'countDue' && (() => {
-                              const hist = liveSaleHistoryByItemId.get(item.id)
-                              if (!hist) return null
-                              return (
-                                <p className="text-[8px] text-gray-500 leading-tight">
-                                  <span>1st {fmtShortSaleDate(hist.firstSaleDate)}</span>
-                                  <span className="text-gray-400"> · </span>
-                                  <span>Last {fmtShortSaleDate(hist.lastSaleDate)} ({daysSince(hist.lastSaleDate)}d ago)</span>
-                                  <span className="text-gray-400"> · </span>
-                                  <span>Avg {hist.avgMonthlyQty}/mo</span>
-                                </p>
-                              )
-                            })()}
                           </div>
                           {count > 0 && (
                             <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
