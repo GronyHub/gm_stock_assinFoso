@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
-import { fmtTime } from '@/lib/fmtDate'
+import { fmtDate, fmtTime } from '@/lib/fmtDate'
 import { trimZeros } from '@/lib/fmtNumber'
 import { formatGapMins } from '@/lib/fmtGap'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
@@ -2233,6 +2233,21 @@ function ItemHubPageInner() {
     }
     for (const it of liveOverdueItems) {
       map.set(it.item_id, { level: 'overdue', label: `${it.days_overdue ?? '?'}d` })
+    }
+    return map
+  }, [liveDailyItems, liveGmcWeeklyItems, liveOverdueItems])
+
+  // Map of item_id to last_count_date for items due for counting
+  const liveLastCountDateByItemId = useMemo(() => {
+    const map = new Map<number, string | null>()
+    for (const it of liveDailyItems) {
+      map.set(it.item_id, it.last_count_date)
+    }
+    for (const it of liveGmcWeeklyItems) {
+      map.set(it.item_id, it.last_count_date)
+    }
+    for (const it of liveOverdueItems) {
+      map.set(it.item_id, it.last_count_date)
     }
     return map
   }, [liveDailyItems, liveGmcWeeklyItems, liveOverdueItems])
@@ -6319,60 +6334,76 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             )
                           })()}
                           <div className="px-1 py-0.5 flex flex-col">
-                            <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
-                              {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
-                            </div>
-                            {liveSaleViolationFilter === 'noViolations' ? (
-                              <p className="text-[9px] text-gray-600 leading-tight">
-                                <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                                {item.product_type !== 'service' && (
-                                  <>
-                                    <span className="text-gray-400"> · </span>
-                                    <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
-                                    <span className="text-gray-400"> · </span>
-                                    <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                  </>
-                                )}
-                              </p>
+                            {liveSaleViolationFilter === 'countDue' ? (
+                              <>
+                                <div className={`text-[11px] font-semibold leading-tight truncate text-left`}>
+                                  {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left text-blue-600`)}
+                                </div>
+                                <p className="text-[9px] text-gray-600 leading-tight mt-0.5">
+                                  <span>Last date counted: </span>
+                                  <span className="font-semibold text-gray-900">
+                                    {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
+                                  </span>
+                                </p>
+                              </>
                             ) : (
-                              <p className="text-[9px] text-gray-600 leading-tight">
-                                <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                                <span className="text-gray-400"> · </span>
-                                {item.product_type !== 'service' && (
-                                  <>
-                                    <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
-                                    <span className="text-gray-400"> · </span>
-                                  </>
-                                )}
-                                {item.product_type !== 'service' && (
-                                  <>
-                                    <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                    {item.count_interval && liveSaleViolationFilter !== 'lossGain' && (
+                              <>
+                                <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                                  {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
+                                </div>
+                                {liveSaleViolationFilter === 'noViolations' ? (
+                                  <p className="text-[9px] text-gray-600 leading-tight">
+                                    <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
+                                    {item.product_type !== 'service' && (
                                       <>
                                         <span className="text-gray-400"> · </span>
-                                        <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                        <span className="text-gray-400"> · </span>
+                                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                                       </>
                                     )}
-                                    {liveSaleViolationFilter !== 'lossGain' && (
-                                      <span className="text-gray-400"> · </span>
-                                    )}
-                                  </>
-                                )}
-                                {item.product_type !== 'service' && liveSaleViolationFilter !== 'lossGain' && (
-                                  <>
-                                    <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
-                                  </>
-                                )}
-                                {item.gmc_type && liveSaleViolationFilter !== 'lossGain' && (
-                                  <>
+                                  </p>
+                                ) : (
+                                  <p className="text-[9px] text-gray-600 leading-tight">
+                                    <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                                     <span className="text-gray-400"> · </span>
-                                    <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
-                                      {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
-                                      {item.converts_to_name && ` → ${item.converts_to_name}`}
-                                    </span>
-                                  </>
+                                    {item.product_type !== 'service' && (
+                                      <>
+                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                        <span className="text-gray-400"> · </span>
+                                      </>
+                                    )}
+                                    {item.product_type !== 'service' && (
+                                      <>
+                                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                        {item.count_interval && liveSaleViolationFilter !== 'lossGain' && (
+                                          <>
+                                            <span className="text-gray-400"> · </span>
+                                            <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
+                                          </>
+                                        )}
+                                        {liveSaleViolationFilter !== 'lossGain' && (
+                                          <span className="text-gray-400"> · </span>
+                                        )}
+                                      </>
+                                    )}
+                                    {item.product_type !== 'service' && liveSaleViolationFilter !== 'lossGain' && (
+                                      <>
+                                        <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                                      </>
+                                    )}
+                                    {item.gmc_type && liveSaleViolationFilter !== 'lossGain' && (
+                                      <>
+                                        <span className="text-gray-400"> · </span>
+                                        <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                          {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
+                                          {item.converts_to_name && ` → ${item.converts_to_name}`}
+                                        </span>
+                                      </>
+                                    )}
+                                  </p>
                                 )}
-                              </p>
+                              </>
                             )}
                             {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'lossGain' && (() => {
                               const hist = liveSaleHistoryByItemId.get(item.id)
