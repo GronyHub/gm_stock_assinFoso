@@ -6340,7 +6340,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left text-blue-600`)}
                                 </div>
                                 <p className="text-[9px] text-gray-600 leading-tight mt-0.5">
-                                  <span>Last date counted: </span>
+                                  <span>Last ctd: </span>
                                   <span className="font-semibold text-gray-900">
                                     {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
                                   </span>
