@@ -859,8 +859,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains' | 'unsettled'>('all')
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2536,6 +2535,18 @@ function ItemHubPageInner() {
   const liveVcpJumpCount = liveVcpJumpDatesByItemId.size
   const liveEmptyRowCount = liveEmptyRowCountByItemId.size
 
+  // Items with any loss or gain records needing trade-off resolution
+  const liveItemsWithLossOrGainIds = useMemo(() => {
+    const ids = new Set<number | null>()
+    for (const rec of liveCountRecords) {
+      if (rec.kind === 'loss' || rec.kind === 'gain') {
+        ids.add(rec.item_id)
+      }
+    }
+    return ids
+  }, [liveCountRecords])
+  const liveItemsWithLossOrGainCount = liveItemsWithLossOrGainIds.size
+
   // Fetch taps
   useEffect(() => {
     fetch('/api/sales/live-taps')
@@ -2925,40 +2936,6 @@ function ItemHubPageInner() {
     return map
   }, [liveItemsWithTradeOffs])
 
-  // Items with unsettled trade-offs (where net is not zero)
-  const liveItemsWithUnsettledNet = useMemo(() => {
-    const unsettledItemIds = new Set<number | null>()
-
-    // Add items where trade-off net is not zero (unbalanced)
-    for (const t of liveItemsWithTradeOffs) {
-      if (t.net !== 0) {
-        unsettledItemIds.add(t.itemId)
-      }
-    }
-
-    // Also add items with only loss or only gain (no matching opposite)
-    const byItemId = new Map<number | null, { hasLoss: boolean; hasGain: boolean }>()
-    for (const rec of liveCountRecords) {
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        if (!byItemId.has(rec.item_id)) {
-          byItemId.set(rec.item_id, { hasLoss: false, hasGain: false })
-        }
-        const entry = byItemId.get(rec.item_id)!
-        if (rec.kind === 'loss') entry.hasLoss = true
-        else entry.hasGain = true
-      }
-    }
-
-    // Add items that have only loss or only gain (not both)
-    for (const [itemId, entry] of byItemId.entries()) {
-      if ((entry.hasLoss && !entry.hasGain) || (!entry.hasLoss && entry.hasGain)) {
-        unsettledItemIds.add(itemId)
-      }
-    }
-
-    return unsettledItemIds
-  }, [liveItemsWithTradeOffs, liveCountRecords])
-
   const liveCountsByDate = useMemo(() => {
     const q = liveEmbeddedSearch.trim().toLowerCase()
     const filtered = liveCountRecords.filter(rec => {
@@ -2982,20 +2959,16 @@ function ItemHubPageInner() {
   const liveSaleCountRecords = useMemo(() => {
     const q = liveEmbeddedSearch.trim().toLowerCase()
 
-    // Filter records by selected filter and search
+    // Filter records by Loss/Gain violation and search
     const filtered = liveCountRecords.filter(rec => {
-      const isNoLoss = rec.kind !== 'loss' && rec.kind !== 'gain'
-      const isLoss = rec.kind === 'loss'
-      const isGain = rec.kind === 'gain'
+      // Only show loss/gain records when lossGain violation is active
+      if (liveSaleViolationFilter === 'lossGain') {
+        if (rec.kind !== 'loss' && rec.kind !== 'gain') return false
+      } else {
+        // Otherwise show all counted records (no loss/gain)
+        if (rec.kind === 'loss' || rec.kind === 'gain') return false
+      }
 
-      let matchesFilter = false
-      if (liveCountDisplayFilter === 'all') matchesFilter = true
-      else if (liveCountDisplayFilter === 'counted' && isNoLoss) matchesFilter = true
-      else if (liveCountDisplayFilter === 'loss' && isLoss) matchesFilter = true
-      else if (liveCountDisplayFilter === 'gains' && isGain) matchesFilter = true
-      else if (liveCountDisplayFilter === 'unsettled' && (isLoss || isGain) && liveItemsWithUnsettledNet.has(rec.item_id)) matchesFilter = true
-
-      if (!matchesFilter) return false
       if (q && !rec.item_name.toLowerCase().includes(q)) return false
       return true
     })
@@ -3031,30 +3004,7 @@ function ItemHubPageInner() {
 
     // Sort by count_date descending (newest first)
     return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
-  }, [liveCountRecords, liveCountDisplayFilter, liveEmbeddedSearch, liveItemsWithUnsettledNet])
-
-  // Count how many corrections (trade-offs) are needed for each filter type
-  const liveCountTradeOffCounts = useMemo(() => {
-    let lossCount = 0
-    let gainCount = 0
-
-    for (const rec of liveCountRecords) {
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        const targetKind = rec.kind === 'loss' ? 'gain' : 'loss'
-        const opposite = liveCountRecords.find(other =>
-          other.item_id === rec.item_id &&
-          other.id !== rec.id &&
-          other.kind === targetKind
-        )
-        if (opposite) {
-          if (rec.kind === 'loss') lossCount++
-          else gainCount++
-        }
-      }
-    }
-
-    return { lossCount, gainCount }
-  }, [liveCountRecords])
+  }, [liveCountRecords, liveSaleViolationFilter, liveEmbeddedSearch])
 
   // Identify items with trade-off opportunities and calculate their net position
   type ItemTradeOff = {
@@ -3123,17 +3073,14 @@ function ItemHubPageInner() {
 
     // Filter to violation items based on selected violation filter
     let itemsToSort = liveCatalogueItems
-    if (liveSaleViolationFilter === 'tradeOff') {
-      const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
-      itemsToSort = liveCatalogueItems.filter(item => tradeOffItemIds.has(item.id))
+    if (liveSaleViolationFilter === 'lossGain') {
+      itemsToSort = liveCatalogueItems.filter(item => liveItemsWithLossOrGainIds.has(item.id))
     } else if (liveSaleViolationFilter === 'duplicates') {
       itemsToSort = liveCatalogueItems.filter(item => liveDuplicateItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'unlinked') {
       itemsToSort = liveCatalogueItems.filter(item => liveUnlinkedNamedIds.has(item.id))
     } else if (liveSaleViolationFilter === 'service') {
       itemsToSort = liveCatalogueItems.filter(item => liveServiceViolationIdSet.has(item.id))
-    } else if (liveSaleViolationFilter === 'gains') {
-      itemsToSort = liveCatalogueItems.filter(item => liveGainCountByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'soldBelowCost') {
       itemsToSort = liveCatalogueItems.filter(item => liveSoldBelowCostDatesByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'vcpJump') {
@@ -5059,8 +5006,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'tradeOff'} onChange={() => { setLiveSaleViolationFilter('tradeOff'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Trade Off{liveItemsWithTradeOffs.length > 0 && ` (${liveItemsWithTradeOffs.length})`}</span>
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <span>Loss/Gain{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
                   </label>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
@@ -5076,11 +5023,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Service ({liveServiceViolationCount})</span>
-                  </label></>)}
-                  {liveGainCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'gains'} onChange={() => { setLiveSaleViolationFilter('gains'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>Gains ({liveGainCount})</span>
                   </label></>)}
                   {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
@@ -5723,25 +5665,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {liveShowCountFullPage && liveMode === 'sale' && liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>Count Records & Trade-Off Suggestions</span>
-                    <div className="flex gap-1 ml-4">
-                      {['all', 'counted', 'loss', 'gains', 'unsettled'].map(f => (
-                        <button
-                          key={f}
-                          type="button"
-                          onClick={() => setLiveCountDisplayFilter(f as typeof liveCountDisplayFilter)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition ${
-                            liveCountDisplayFilter === f
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
-                        >
-                          {f === 'all' ? 'All' : f === 'counted' ? 'Counted' : f === 'loss' ? 'Loss' : f === 'gains' ? 'Gains' : 'Unsettled'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <span>Count Records & Trade-Off Suggestions</span>
                   <button
                     type="button"
                     onClick={() => setLiveShowCountFullPage(false)}
@@ -6072,7 +5996,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Items Grid - 2 Columns */}
-            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && liveCountDisplayFilter === 'all' && !liveShowCountFullPage && (
+            {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && !liveShowCountFullPage && (
             <div className="flex-1 overflow-y-auto">
               {/* Violation Description Panel - scrolls with items */}
               {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
@@ -6136,12 +6060,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <span className="truncate">⚠ COUNT NOW · {due.label} {overdue ? 'OVERDUE' : ''}</span>
                             </div>
                           )}
-                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'tradeOff' && (() => {
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'lossGain' && (() => {
                             let filteredFlags = flags
                             if (liveSaleViolationFilter === 'duplicates') filteredFlags = flags.filter(f => f.label.includes('DUPLICATE'))
                             else if (liveSaleViolationFilter === 'unlinked') filteredFlags = flags.filter(f => f.label.includes('UNLINKED'))
                             else if (liveSaleViolationFilter === 'service') filteredFlags = flags.filter(f => f.label.includes('SERVICE'))
-                            else if (liveSaleViolationFilter === 'gains') filteredFlags = flags.filter(f => f.label.includes('STOCK GAIN'))
                             else if (liveSaleViolationFilter === 'soldBelowCost') filteredFlags = flags.filter(f => f.label.includes('SOLD BELOW COST'))
                             else if (liveSaleViolationFilter === 'vcpJump') filteredFlags = flags.filter(f => f.label.includes('VCP JUMP'))
                             else if (liveSaleViolationFilter === 'emptyRow') filteredFlags = flags.filter(f => f.label.includes('EMPTY DATA'))
@@ -6169,7 +6092,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               ) : null
                             })
                           })()}
-                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'tradeOff' && liveTradeOffByItemId.has(item.id) && (() => {
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'lossGain' && liveTradeOffByItemId.has(item.id) && (() => {
                             const tradeOff = liveTradeOffByItemId.get(item.id)!
                             return (
                               <div className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${tradeOff.net > 0 ? 'bg-red-600' : 'bg-amber-600'}`}>
