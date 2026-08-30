@@ -860,7 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
-  const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<Set<'loss' | 'gain' | 'ok'>>(new Set(['loss', 'gain', 'ok']))
+  const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -5700,42 +5700,40 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span className="text-[9px] font-semibold text-gray-600">Filter:</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
                     <input
-                      type="checkbox"
-                      checked={liveCountsRecordStatusFilter.has('loss')}
-                      onChange={() => {
-                        const newFilter = new Set(liveCountsRecordStatusFilter)
-                        if (newFilter.has('loss')) newFilter.delete('loss')
-                        else newFilter.add('loss')
-                        setLiveCountsRecordStatusFilter(newFilter)
-                      }}
+                      type="radio"
+                      name="liveCountsRecordStatusFilter"
+                      checked={liveCountsRecordStatusFilter === 'all'}
+                      onChange={() => setLiveCountsRecordStatusFilter('all')}
+                      className="cursor-pointer"
+                    />
+                    All
+                  </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
+                    <input
+                      type="radio"
+                      name="liveCountsRecordStatusFilter"
+                      checked={liveCountsRecordStatusFilter === 'loss'}
+                      onChange={() => setLiveCountsRecordStatusFilter('loss')}
                       className="cursor-pointer"
                     />
                     📉 Loss
                   </label>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
                     <input
-                      type="checkbox"
-                      checked={liveCountsRecordStatusFilter.has('gain')}
-                      onChange={() => {
-                        const newFilter = new Set(liveCountsRecordStatusFilter)
-                        if (newFilter.has('gain')) newFilter.delete('gain')
-                        else newFilter.add('gain')
-                        setLiveCountsRecordStatusFilter(newFilter)
-                      }}
+                      type="radio"
+                      name="liveCountsRecordStatusFilter"
+                      checked={liveCountsRecordStatusFilter === 'gain'}
+                      onChange={() => setLiveCountsRecordStatusFilter('gain')}
                       className="cursor-pointer"
                     />
                     🚩 Gain
                   </label>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
                     <input
-                      type="checkbox"
-                      checked={liveCountsRecordStatusFilter.has('ok')}
-                      onChange={() => {
-                        const newFilter = new Set(liveCountsRecordStatusFilter)
-                        if (newFilter.has('ok')) newFilter.delete('ok')
-                        else newFilter.add('ok')
-                        setLiveCountsRecordStatusFilter(newFilter)
-                      }}
+                      type="radio"
+                      name="liveCountsRecordStatusFilter"
+                      checked={liveCountsRecordStatusFilter === 'ok'}
+                      onChange={() => setLiveCountsRecordStatusFilter('ok')}
                       className="cursor-pointer"
                     />
                     ✓ OK
@@ -5760,7 +5758,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       const isLoss = (recAny.loss_qty ?? 0) > 0
                       const isGain = (recAny.gain_qty ?? 0) > 0
                       const status = isLoss ? 'loss' : isGain ? 'gain' : 'ok'
-                      return liveCountsRecordStatusFilter.has(status)
+                      return liveCountsRecordStatusFilter === 'all' || liveCountsRecordStatusFilter === status
                     }).map((rec) => {
                       const recAny = rec as any
                       const isLoss = (recAny.loss_qty ?? 0) > 0
