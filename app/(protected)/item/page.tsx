@@ -5723,7 +5723,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {liveShowCountFullPage && liveMode === 'sale' && liveSaleCountRecords.length > 0 && (
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10 flex items-center justify-between">
-                  <span>Count Records & Trade-Off Suggestions</span>
+                  <div className="flex items-center gap-2">
+                    <span>Count Records & Trade-Off Suggestions</span>
+                    <div className="flex gap-1 ml-4">
+                      {['all', 'counted', 'loss', 'gains', 'unsettled'].map(f => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setLiveCountDisplayFilter(f as typeof liveCountDisplayFilter)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold transition ${
+                            liveCountDisplayFilter === f
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          {f === 'all' ? 'All' : f === 'counted' ? 'Counted' : f === 'loss' ? 'Loss' : f === 'gains' ? 'Gains' : 'Unsettled'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setLiveShowCountFullPage(false)}
