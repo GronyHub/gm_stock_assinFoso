@@ -5180,6 +5180,45 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
+                </div>
+              )}
+              {/* Sales Violation Filters - Radio Buttons */}
+              {showControls && lossView === 'sales' && (
+                <div className="w-full flex items-center gap-1.5 px-1.5 py-0.5 bg-white border-b border-gray-200 text-gray-600 flex-wrap">
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={!liveSalesViolationFilter} onChange={() => setLiveSalesViolationFilter(null)} className="cursor-pointer w-3 h-3" />
+                    <span>All</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_cash'} onChange={() => setLiveSalesViolationFilter('no_cash')} className="cursor-pointer w-3 h-3" />
+                    <span>No Cash</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'missing_days'} onChange={() => setLiveSalesViolationFilter('missing_days')} className="cursor-pointer w-3 h-3" />
+                    <span>Missing Days</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'dup_receipt'} onChange={() => setLiveSalesViolationFilter('dup_receipt')} className="cursor-pointer w-3 h-3" />
+                    <span>Dup Receipt</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'high_wnw'} onChange={() => setLiveSalesViolationFilter('high_wnw')} className="cursor-pointer w-3 h-3" />
+                    <span>High WNW</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveSalesViolation" checked={liveSalesViolationFilter === 'no_attachment'} onChange={() => setLiveSalesViolationFilter('no_attachment')} className="cursor-pointer w-3 h-3" />
+                    <span>No Attachment</span>
+                  </label>
+                </div>
+              )}
+              {/* Rest of filter row for non-sales views */}
+              {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && lossView !== 'sales' && (
+                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
