@@ -829,58 +829,51 @@ function SalesTab({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-    <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button onClick={() => setShowHistory(true)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
-          History
-        </button>
-        <label title="Show only the date bars, hiding each receipt's item lines"
-          className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-          <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
-            className="w-3 h-3 accent-blue-600" />
-          Bars Only
-        </label>
-        <label title="Show Walk-In receipts" className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-          <input type="checkbox" checked={showW} onChange={() => setShowW(w => !w)}
-            className="w-3 h-3 accent-blue-600" />
-          W
-        </label>
-        <label title="Show Grony Multimedia receipts" className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-          <input type="checkbox" checked={showG} onChange={() => setShowG(g => !g)}
-            className="w-3 h-3 accent-blue-600" />
-          G
-        </label>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <button onClick={() => setShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition">
-          📎+
-        </button>
-        <ColumnsPickerButton prefs={colPrefs} />
-      </div>
-    </div>
-    {/* Own row, separate from the toggles above -- narrows the list by
-        month/year independently of the W/G/search filters, which still
-        apply within whatever this narrows down to. */}
-    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-      <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
+    <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0 flex-nowrap overflow-x-auto">
+      <button onClick={() => setShowHistory(true)}
+        className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+        History
+      </button>
+      <label title="Show only the date bars, hiding each receipt's item lines"
+        className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
+        <input type="checkbox" checked={barsOnly} onChange={() => setBarsOnly(b => !b)}
+          className="w-3 h-3 accent-blue-600" />
+        Bars Only
+      </label>
+      <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
+        <input type="checkbox" checked={showW} onChange={() => setShowW(w => !w)}
+          className="w-3 h-3 accent-blue-600" />
+        W
+      </label>
+      <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
+        <input type="checkbox" checked={showG} onChange={() => setShowG(g => !g)}
+          className="w-3 h-3 accent-blue-600" />
+        G
+      </label>
+      <div className="shrink-0 border-l border-gray-300 h-4" />
+      <span className="shrink-0 text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
       <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
-        className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+        className="shrink-0 text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
         <option value="">All Months</option>
         {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
       </select>
       <select value={yearFilter ?? ''} onChange={e => setYearFilter(e.target.value ? Number(e.target.value) : null)}
-        className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
+        className="shrink-0 text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">
         <option value="">All Years</option>
         {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
       {(monthFilter !== null || yearFilter !== null) && (
         <button onClick={() => { setMonthFilter(null); setYearFilter(null) }}
-          className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+          className="shrink-0 text-[9px] font-semibold text-blue-600 hover:text-blue-700">
           Clear
         </button>
       )}
+      <div className="flex-1" />
+      <button onClick={() => setShowBulkAttach(true)} title="Bulk-attach a folder of form photos/scans, matched by date"
+        className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition">
+        📎+
+      </button>
+      <ColumnsPickerButton prefs={colPrefs} />
     </div>
 
     {/* overflow-auto (not just -y) so this single element handles both
