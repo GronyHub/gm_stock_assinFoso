@@ -174,20 +174,20 @@ export default function ExpensesPage() {
           <table className="w-full border-collapse text-[10px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
-                <th className="text-left px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">SOURCE</th>
-                <th className="text-right px-0.5 py-1 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
+                <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">DATE</th>
+                <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ACCOUNT</th>
+                <th className="text-left px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">SOURCE</th>
+                <th className="text-right px-0.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">AMT</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(e => (
                 <tr key={e.id} onClick={() => { setSelected(e); setShowForm(false) }}
                   className={`cursor-pointer border-b border-gray-100 transition ${selected?.id === e.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0.5 text-gray-700 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
-                  <td className="px-0.5 py-0.5 text-gray-900 truncate max-w-[80px]">{e.expense_account}</td>
-                  <td className="px-0.5 py-0.5 text-gray-400 truncate max-w-[60px]">{e.source_sheet ?? e.source ?? '—'}</td>
-                  <td className="px-0.5 py-0.5 text-right font-semibold text-gray-900">{e.amount_hidden ? '🔒' : fmt(e.amount)}</td>
+                  <td className="px-0.5 py-0 text-gray-700 whitespace-nowrap">{fmtShort(e.expense_date)}</td>
+                  <td className="px-0.5 py-0 text-gray-900 truncate max-w-[80px]">{e.expense_account}</td>
+                  <td className="px-0.5 py-0 text-gray-400 truncate max-w-[60px]">{e.source_sheet ?? e.source ?? '—'}</td>
+                  <td className="px-0.5 py-0 text-right font-semibold text-gray-900">{e.amount_hidden ? '🔒' : fmt(e.amount)}</td>
                 </tr>
               ))}
             </tbody>

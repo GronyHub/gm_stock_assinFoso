@@ -42,24 +42,24 @@ function LongShiftsTable({ rows }: { rows: (RecentRow & { mins: number })[] }) {
   if (rows.length === 0) return <p className="text-center text-gray-400 py-6">Nothing over {FLAG_HOURS} hours.</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+      <table className="w-full text-[11px]">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="text-left px-3 py-2 text-xs text-gray-500 font-semibold">Date</th>
-            <th className="text-left px-3 py-2 text-xs text-gray-500 font-semibold">Staff</th>
-            <th className="text-center px-2 py-2 text-xs text-green-600 font-semibold">In</th>
-            <th className="text-center px-2 py-2 text-xs text-orange-500 font-semibold">Out</th>
-            <th className="text-right px-3 py-2 text-xs text-red-600 font-semibold">Total</th>
+            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
+            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Staff</th>
+            <th className="text-center px-2 py-0.5 text-[10px] text-green-600 font-semibold">In</th>
+            <th className="text-center px-2 py-0.5 text-[10px] text-orange-500 font-semibold">Out</th>
+            <th className="text-right px-3 py-0.5 text-[10px] text-red-600 font-semibold">Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((r, i) => (
             <tr key={r.id ?? i} className="hover:bg-gray-50">
-              <td className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(r.work_date)}</td>
-              <td className="px-3 py-2.5 font-medium capitalize text-gray-900">{r.staff_name}</td>
-              <td className="px-2 py-2.5 text-center text-green-700">{r.actual_in}</td>
-              <td className="px-2 py-2.5 text-center text-orange-600">{r.actual_out}</td>
-              <td className="px-3 py-2.5 text-right font-bold text-red-600">{minsToHrs(r.mins)}</td>
+              <td className="px-3 py-0 text-gray-700 whitespace-nowrap">{fmtDate(r.work_date)}</td>
+              <td className="px-3 py-0 font-medium capitalize text-gray-900">{r.staff_name}</td>
+              <td className="px-2 py-0 text-center text-green-700">{r.actual_in}</td>
+              <td className="px-2 py-0 text-center text-orange-600">{r.actual_out}</td>
+              <td className="px-3 py-0 text-right font-bold text-red-600">{minsToHrs(r.mins)}</td>
             </tr>
           ))}
         </tbody>
@@ -72,22 +72,22 @@ function TimesTable({ rows, emptyText }: { rows: RecentRow[]; emptyText: string 
   if (rows.length === 0) return <p className="text-center text-gray-400 py-6">{emptyText}</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+      <table className="w-full text-[11px]">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="text-left px-3 py-2 text-xs text-gray-500 font-semibold">Date</th>
-            <th className="text-left px-3 py-2 text-xs text-gray-500 font-semibold">Staff</th>
-            <th className="text-center px-2 py-2 text-xs text-green-600 font-semibold">In</th>
-            <th className="text-center px-2 py-2 text-xs text-orange-500 font-semibold">Out</th>
+            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
+            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Staff</th>
+            <th className="text-center px-2 py-0.5 text-[10px] text-green-600 font-semibold">In</th>
+            <th className="text-center px-2 py-0.5 text-[10px] text-orange-500 font-semibold">Out</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {rows.map((r, i) => (
             <tr key={r.id ?? i} className="hover:bg-gray-50">
-              <td className="px-3 py-2.5 text-gray-700 whitespace-nowrap">{fmtDate(r.work_date)}</td>
-              <td className="px-3 py-2.5 font-medium capitalize text-gray-900">{r.staff_name}</td>
-              <td className="px-2 py-2.5 text-center text-green-700">{r.actual_in ?? <span className="text-gray-300">—</span>}</td>
-              <td className="px-2 py-2.5 text-center text-orange-600">{r.actual_out ?? <span className="text-gray-300">—</span>}</td>
+              <td className="px-3 py-0 text-gray-700 whitespace-nowrap">{fmtDate(r.work_date)}</td>
+              <td className="px-3 py-0 font-medium capitalize text-gray-900">{r.staff_name}</td>
+              <td className="px-2 py-0 text-center text-green-700">{r.actual_in ?? <span className="text-gray-300">—</span>}</td>
+              <td className="px-2 py-0 text-center text-orange-600">{r.actual_out ?? <span className="text-gray-300">—</span>}</td>
             </tr>
           ))}
         </tbody>

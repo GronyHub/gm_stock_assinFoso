@@ -491,34 +491,34 @@ function StaffTimesPageInner() {
             {isAdmin ? (
               /* Admin flat list with edit/delete per row */
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full text-xs">
+                <table className="w-full text-[11px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="text-left px-3 py-2 text-gray-500 font-semibold">Date</th>
-                      <th className="text-left px-3 py-2 text-gray-500 font-semibold">Staff</th>
-                      <th className="text-center px-2 py-2 text-green-600 font-semibold">In</th>
-                      <th className="text-center px-2 py-2 text-orange-500 font-semibold">Out</th>
-                      <th className="text-left px-2 py-2 text-gray-400 font-semibold">By</th>
-                      <th className="px-2 py-2" />
+                      <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
+                      <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Staff</th>
+                      <th className="text-center px-2 py-0.5 text-[10px] text-green-600 font-semibold">In</th>
+                      <th className="text-center px-2 py-0.5 text-[10px] text-orange-500 font-semibold">Out</th>
+                      <th className="text-left px-2 py-0.5 text-[10px] text-gray-400 font-semibold">By</th>
+                      <th className="px-2 py-0.5" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {all.map(r => (
                       <>
                         <tr key={r.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(r.work_date)}</td>
-                          <td className="px-3 py-2 font-medium capitalize text-gray-900">{r.staff_name}</td>
-                          <td className="px-2 py-2 text-center text-green-700">{r.actual_in ?? <span className="text-gray-300">—</span>}</td>
-                          <td className="px-2 py-2 text-center text-orange-600">{r.actual_out ?? <span className="text-gray-300">—</span>}</td>
-                          <td className="px-2 py-2 text-gray-400">{r.entered_by ?? '—'}</td>
-                          <td className="px-2 py-2">
+                          <td className="px-3 py-0 text-gray-600 whitespace-nowrap">{fmtDate(r.work_date)}</td>
+                          <td className="px-3 py-0 font-medium capitalize text-gray-900">{r.staff_name}</td>
+                          <td className="px-2 py-0 text-center text-green-700">{r.actual_in ?? <span className="text-gray-300">—</span>}</td>
+                          <td className="px-2 py-0 text-center text-orange-600">{r.actual_out ?? <span className="text-gray-300">—</span>}</td>
+                          <td className="px-2 py-0 text-gray-400">{r.entered_by ?? '—'}</td>
+                          <td className="px-2 py-0">
                             <div className="flex gap-1 justify-end">
                               <button onClick={() => { setEditRow(r); setEditIn(r.actual_in ?? ''); setEditOut(r.actual_out ?? '') }}
-                                className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs font-semibold hover:bg-blue-100">
+                                className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-semibold hover:bg-blue-100">
                                 Edit
                               </button>
                               <button onClick={() => deleteRow(r)}
-                                className="text-red-500 bg-red-50 px-2 py-0.5 rounded text-xs font-semibold hover:bg-red-100">
+                                className="text-red-500 bg-red-50 px-2 py-0.5 rounded text-[10px] font-semibold hover:bg-red-100">
                                 Del
                               </button>
                             </div>
@@ -526,7 +526,7 @@ function StaffTimesPageInner() {
                         </tr>
                         {editRow?.id === r.id && (
                           <tr key={`edit-${r.id}`} className="bg-blue-50/60 border-b border-blue-200">
-                            <td colSpan={6} className="px-3 py-2">
+                            <td colSpan={6} className="px-3 py-1">
                               <div className="flex items-end gap-2 flex-wrap">
                                 <div>
                                   <p className="text-xs text-gray-400 mb-0.5">Time In</p>
@@ -562,20 +562,20 @@ function StaffTimesPageInner() {
             ) : (
               /* Non-admin grouped grid view */
               <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-                <table className="w-full text-xs min-w-[520px]">
+                <table className="w-full text-[11px] min-w-[520px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="text-left px-3 py-2 text-gray-500 font-semibold">Date</th>
+                      <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
                       {STAFF.map(s => (
-                        <th key={s} colSpan={2} className="text-center px-2 py-2 text-gray-500 font-semibold capitalize">{s}</th>
+                        <th key={s} colSpan={2} className="text-center px-2 py-0.5 text-[10px] text-gray-500 font-semibold capitalize">{s}</th>
                       ))}
                     </tr>
                     <tr className="border-b border-gray-100">
-                      <th className="px-3 py-1" />
+                      <th className="px-3 py-0.5" />
                       {STAFF.map(s => (
                         <>
-                          <th key={s + 'i'} className="text-center px-1 py-1 text-green-600 font-medium">In</th>
-                          <th key={s + 'o'} className="text-center px-1 py-1 text-orange-500 font-medium">Out</th>
+                          <th key={s + 'i'} className="text-center px-1 py-0.5 text-[10px] text-green-600 font-medium">In</th>
+                          <th key={s + 'o'} className="text-center px-1 py-0.5 text-[10px] text-orange-500 font-medium">Out</th>
                         </>
                       ))}
                     </tr>
@@ -583,11 +583,11 @@ function StaffTimesPageInner() {
                   <tbody className="divide-y divide-gray-100">
                     {grouped.map(([date, map]) => (
                       <tr key={date} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{fmtDate(date)}</td>
+                        <td className="px-3 py-0 text-gray-600 whitespace-nowrap">{fmtDate(date)}</td>
                         {STAFF.map(s => (
                           <>
-                            <td key={s + 'i'} className="text-center px-1 py-2 text-green-700">{map[s]?.in ?? <span className="text-gray-200">—</span>}</td>
-                            <td key={s + 'o'} className="text-center px-1 py-2 text-orange-600">{map[s]?.out ?? <span className="text-gray-200">—</span>}</td>
+                            <td key={s + 'i'} className="text-center px-1 py-0 text-green-700">{map[s]?.in ?? <span className="text-gray-200">—</span>}</td>
+                            <td key={s + 'o'} className="text-center px-1 py-0 text-orange-600">{map[s]?.out ?? <span className="text-gray-200">—</span>}</td>
                           </>
                         ))}
                       </tr>

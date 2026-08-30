@@ -517,7 +517,7 @@ export default function ReceiptsPage() {
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No receipts found.</p>
         ) : (
-          <table className="border-collapse text-xs" style={{
+          <table className="border-collapse text-[11px]" style={{
             tableLayout: 'fixed',
             width: colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, RECEIPTS_COL_DEFAULTS[c.key] ?? 100), 0),
           }}>
@@ -541,7 +541,7 @@ export default function ReceiptsPage() {
                   {colPrefs.shownColumns.map(col => {
                     const meta = RECEIPT_COL_BY_KEY.get(col.key)!
                     return (
-                      <td key={col.key} className={`px-3 py-2 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                      <td key={col.key} className={`px-3 py-0 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
                         {meta.render(r)}
                       </td>
                     )

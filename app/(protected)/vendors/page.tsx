@@ -415,7 +415,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No vendors found.</p>
         ) : (
-          <table className="border-collapse text-xs" style={{
+          <table className="border-collapse text-[11px]" style={{
             tableLayout: 'fixed',
             width: colPrefs.getWidth('name', VENDORS_COL_DEFAULTS.name)
               + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, VENDORS_COL_DEFAULTS[c.key] ?? 100), 0),
@@ -439,7 +439,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
               {filtered.map((v, i) => (
                 <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingVendor(false) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-2 font-semibold text-gray-900 truncate">
+                  <td className="px-3 py-0 font-semibold text-gray-900 truncate">
                     {v.is_internal && (
                       <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
                     )}
@@ -448,7 +448,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
                   {colPrefs.shownColumns.map(col => {
                     const meta = VENDOR_COL_BY_KEY.get(col.key)!
                     return (
-                      <td key={col.key} className={`px-3 py-2 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                      <td key={col.key} className={`px-3 py-0 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
                         {meta.render(v)}
                       </td>
                     )

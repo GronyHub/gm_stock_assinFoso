@@ -507,9 +507,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
           </colgroup>
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
+              <th className="text-left px-1.5 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
               {staffList.map(s => (
-                <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold capitalize">{s}</th>
+                <th key={s} className="text-center px-0.5 py-0.5 text-[10px] text-gray-500 font-semibold capitalize">{s}</th>
               ))}
             </tr>
           </thead>
@@ -525,7 +525,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                 <Fragment key={date}>
                   {isMonthStart && (
                     <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                      <td className="px-1.5 py-2 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
+                      <td className="px-1.5 py-0.5 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
                       {staffList.map(s => {
                         const mins = allRecords
                           .filter(r => r.staff_name === s && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
@@ -535,7 +535,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                             return sum + (tout >= tin ? tout - tin : (tout + 1440) - tin)
                           }, 0)
                         return (
-                          <td key={s} className="text-center px-0.5 py-2 text-[10px] font-bold text-gray-700">
+                          <td key={s} className="text-center px-0.5 py-0.5 text-[10px] font-bold text-gray-700">
                             {mins ? minsToHrs(mins) : '—'}
                           </td>
                         )
@@ -543,7 +543,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                     </tr>
                   )}
                   <tr className="hover:bg-gray-50">
-                    <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
+                    <td className="px-1.5 py-0 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
                     {staffList.map(s => {
                       const record = allRecords.find(r => r.staff_name === s && r.work_date === date)
                       const cellData = map[s]
@@ -563,7 +563,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                         </div>
                       )
                       return (
-                        <td key={s} className="px-0.5 py-1 text-center">
+                        <td key={s} className="px-0.5 py-0 text-center">
                           {isEditing ? (
                             <div className="flex flex-col gap-0.5">
                               <input value={adminEditIn} onChange={e => setAdminEditIn(e.target.value)}

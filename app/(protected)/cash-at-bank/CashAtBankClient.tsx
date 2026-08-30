@@ -102,20 +102,20 @@ function CashAtBankClientInner({ rows }: { rows: Row[] }) {
 
           {/* Desktop: full table */}
           <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
+            <table className="w-full text-[11px]">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-xs uppercase">
-                  <th className="px-3 py-3 text-left font-semibold">Date</th>
-                  <th className="px-3 py-3 text-right font-semibold">Cash Counted</th>
-                  <th className="px-3 py-3 text-right font-semibold">GP In</th>
-                  <th className="px-3 py-3 text-right font-semibold">Debtors</th>
-                  <th className="px-3 py-3 text-right font-semibold">Bills</th>
-                  <th className="px-3 py-3 text-right font-semibold">Expenses</th>
-                  <th className="px-3 py-3 text-right font-semibold">GP Out</th>
-                  <th className="px-3 py-3 text-right font-semibold">Daily Net</th>
-                  <th className="px-3 py-3 text-right font-semibold text-gray-700">Running Total</th>
-                  <th className="px-3 py-3 text-right font-semibold text-blue-600">Confirmed</th>
-                  <th className="px-3 py-3 text-right font-semibold text-red-500">Deficit</th>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-[10px] uppercase">
+                  <th className="px-3 py-0.5 text-left font-semibold">Date</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">Cash Counted</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">GP In</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">Debtors</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">Bills</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">Expenses</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">GP Out</th>
+                  <th className="px-3 py-0.5 text-right font-semibold">Daily Net</th>
+                  <th className="px-3 py-0.5 text-right font-semibold text-gray-700">Running Total</th>
+                  <th className="px-3 py-0.5 text-right font-semibold text-blue-600">Confirmed</th>
+                  <th className="px-3 py-0.5 text-right font-semibold text-red-500">Deficit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -124,19 +124,19 @@ function CashAtBankClientInner({ rows }: { rows: Row[] }) {
                   return (
                     <tr key={r.entry_date}
                       className={hasConfirm ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-                      <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
-                      <td className="px-3 py-2 text-right text-gray-700">{nz(r.cash_counted) || '—'}</td>
-                      <td className="px-3 py-2 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
-                      <td className="px-3 py-2 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
-                      <td className="px-3 py-2 text-right text-red-500">{nz(r.bills)}</td>
-                      <td className="px-3 py-2 text-right text-red-500">{nz(r.expenses)}</td>
-                      <td className="px-3 py-2 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
-                      <td className={`px-3 py-2 text-right font-medium ${Number(r.daily_net) >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
+                      <td className="px-3 py-0 text-gray-700 whitespace-nowrap">{fmtDate(String(r.entry_date).slice(0,10))}</td>
+                      <td className="px-3 py-0 text-right text-gray-700">{nz(r.cash_counted) || '—'}</td>
+                      <td className="px-3 py-0 text-right text-green-600">{nz(r.grony_personal_cash_in)}</td>
+                      <td className="px-3 py-0 text-right text-green-600">{nz(r.debtors_cash_in)}</td>
+                      <td className="px-3 py-0 text-right text-red-500">{nz(r.bills)}</td>
+                      <td className="px-3 py-0 text-right text-red-500">{nz(r.expenses)}</td>
+                      <td className="px-3 py-0 text-right text-orange-500">{nz(r.grony_personal_expenses)}</td>
+                      <td className={`px-3 py-0 text-right font-medium ${Number(r.daily_net) >= 0 ? 'text-gray-800' : 'text-red-500'}`}>
                         {n(r.daily_net)}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold text-gray-900">{n(r.running_cash_at_bank)}</td>
-                      <td className="px-3 py-2 text-right text-blue-600 font-medium">{hasConfirm ? n(r.cab_total) : ''}</td>
-                      <td className={`px-3 py-2 text-right font-medium ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      <td className="px-3 py-0 text-right font-bold text-gray-900">{n(r.running_cash_at_bank)}</td>
+                      <td className="px-3 py-0 text-right text-blue-600 font-medium">{hasConfirm ? n(r.cab_total) : ''}</td>
+                      <td className={`px-3 py-0 text-right font-medium ${r.deficit != null && Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
                         {r.deficit != null ? n(r.deficit) : ''}
                       </td>
                     </tr>
