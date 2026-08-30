@@ -823,6 +823,8 @@ function ItemHubPageInner() {
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [liveShowLawsTasksModal, setLiveShowLawsTasksModal] = useState(false)
+  const [liveSalesShowLawsTasksModal, setLiveSalesShowLawsTasksModal] = useState(false)
+  const [liveBillsShowLawsTasksModal, setLiveBillsShowLawsTasksModal] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -5777,47 +5779,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span>No Attachment</span>
                 </label>
               </div>
-              {/* Laws and Tasks Filter Checkboxes */}
-              <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="checkbox" checked={salesLaws.activeFilters.has('L')} onChange={() => salesLaws.toggleFilter('L')} className="cursor-pointer w-3 h-3 rounded" title="Show only laws & flags" />
-                  <span>Laws (L)</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="checkbox" checked={salesLaws.activeFilters.has('T')} onChange={() => salesLaws.toggleFilter('T')} className="cursor-pointer w-3 h-3 rounded" title="Show only tasks" />
-                  <span>Tasks (T)</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="checkbox" checked={salesLaws.activeFilters.has('G')} onChange={() => salesLaws.toggleFilter('G')} className="cursor-pointer w-3 h-3 rounded" title="Group shortcuts" />
-                  <span>Groups (G)</span>
-                </label>
-                <span className="text-gray-400 px-1">·</span>
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                  <input type="checkbox" checked={salesLaws.hideZeroFlags} onChange={e => salesLaws.setHideZeroFlags(e.target.checked)} className="cursor-pointer w-3 h-3 rounded" title="Hide 0-count flags" />
-                  <span>Hide Zero (0)</span>
-                </label>
+              {/* Laws and Tasks Filter Button */}
+              <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setLiveSalesShowLawsTasksModal(true)}
+                  className="inline-flex items-center gap-2 px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                  title="Filter and manage laws & tasks"
+                >
+                  ⚖️ Laws & Tasks
+                </button>
               </div>
-              {salesLaws.show && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
-                  <PageLawsList
-                    scopeKey="Sales"
-                    isItemsLaws={true}
-                    onChange={salesLaws.bumpRefresh}
-                    flags={liveSalesViolationTypes.map((v: ViolationType) => ({
-                      key: v.key, label: v.label, description: v.description,
-                      count: violationCounts[v.key] ?? 0,
-                      onViewClick: () => setLiveSalesViolationFilter(f => f === v.key ? null : v.key),
-                    }))}
-                    openForm={salesLaws.openForm}
-                    setOpenForm={salesLaws.setOpenForm}
-                    hideZeroFlags={salesLaws.hideZeroFlags}
-                    setHideZeroFlags={salesLaws.setHideZeroFlags}
-                    activeFilters={salesLaws.activeFilters}
-                  />
-                </div>
-              )}
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
               ) : (
@@ -5881,47 +5853,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                 </div>
               </div>
-              {/* Bills Laws and Tasks Filter Checkboxes */}
+              {/* Bills Laws and Tasks Filter Button */}
               {!liveBillsAddingNew && (
-                <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200 flex-wrap">
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                    <input type="checkbox" checked={billsLaws.activeFilters.has('L')} onChange={() => billsLaws.toggleFilter('L')} className="cursor-pointer w-3 h-3 rounded" title="Show only laws & flags" />
-                    <span>Laws (L)</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                    <input type="checkbox" checked={billsLaws.activeFilters.has('T')} onChange={() => billsLaws.toggleFilter('T')} className="cursor-pointer w-3 h-3 rounded" title="Show only tasks" />
-                    <span>Tasks (T)</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                    <input type="checkbox" checked={billsLaws.activeFilters.has('G')} onChange={() => billsLaws.toggleFilter('G')} className="cursor-pointer w-3 h-3 rounded" title="Group shortcuts" />
-                    <span>Groups (G)</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-xs">
-                    <input type="checkbox" checked={billsLaws.hideZeroFlags} onChange={e => billsLaws.setHideZeroFlags(e.target.checked)} className="cursor-pointer w-3 h-3 rounded" title="Hide 0-count flags" />
-                    <span>Hide Zero (0)</span>
-                  </label>
-                </div>
-              )}
-              {!liveBillsAddingNew && billsLaws.show && (
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 overflow-auto max-h-48">
-                  <PageLawsList
-                    scopeKey="Bills"
-                    isItemsLaws={true}
-                    onChange={billsLaws.bumpRefresh}
-                    flags={liveBillsViolationTypes.map((v: ViolationType) => ({
-                      key: v.key, label: v.label, description: v.description,
-                      count: violationCounts[v.key] ?? 0,
-                      onViewClick: () => setLiveBillsViolationFilter(f => f === v.key ? null : v.key),
-                    }))}
-                    openForm={billsLaws.openForm}
-                    setOpenForm={billsLaws.setOpenForm}
-                    hideZeroFlags={billsLaws.hideZeroFlags}
-                    setHideZeroFlags={billsLaws.setHideZeroFlags}
-                    activeFilters={billsLaws.activeFilters}
-                  />
+                <div className="w-full flex items-center gap-1.5 px-4 py-2 bg-white border-b border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setLiveBillsShowLawsTasksModal(true)}
+                    className="inline-flex items-center gap-2 px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                    title="Filter and manage laws & tasks"
+                  >
+                    ⚖️ Laws & Tasks
+                  </button>
                 </div>
               )}
               {liveBillsAddingNew ? (
@@ -7493,6 +7435,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
           <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} />
+          <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} />
+          <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} />
 
           {liveSortOrderModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
