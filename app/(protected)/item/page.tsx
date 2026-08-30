@@ -840,15 +840,17 @@ function ItemHubPageInner() {
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(rawLiveBillsViolation ?? null)
   const rawLiveSaleFilter = searchParams.get('liveSaleFilter')
-  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null =
+  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null =
     rawLiveSaleFilter === 'loss' ? { kind: 'loss' } :
     rawLiveSaleFilter === 'gain' ? { kind: 'gain' } :
     rawLiveSaleFilter === 'count_0' ? { kind: 'count_0' } :
     rawLiveSaleFilter === 'count_1' ? { kind: 'count_1' } :
+    rawLiveSaleFilter === 'loss_by_date' ? { kind: 'loss_by_date' } :
+    rawLiveSaleFilter === 'loss_by_items' ? { kind: 'loss_by_items' } :
     rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
     rawLiveSaleFilter?.startsWith('flag:') ? { kind: 'flag', key: rawLiveSaleFilter.slice(5) } :
     null
-  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -2682,6 +2684,7 @@ function ItemHubPageInner() {
     const gainCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
     const countZeroSoh = baseFiltered.filter(it => Number(it.soh) === 0).length
     const countOneSoh = baseFiltered.filter(it => Number(it.soh) === 1).length
+    const lossRecordsCount = liveCountRecords.filter(rec => rec.kind === 'loss').length
 
     const negativeStockCount = baseFiltered.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
     const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
@@ -2711,6 +2714,8 @@ function ItemHubPageInner() {
       { key: 'gain', label: '🔺 Gain', count: gainCount },
       { key: 'count_0', label: 'Count of 0', count: countZeroSoh },
       { key: 'count_1', label: 'Count of 1', count: countOneSoh },
+      { key: 'loss_by_date', label: 'Loss by Date', count: lossRecordsCount },
+      { key: 'loss_by_items', label: 'Loss by Items', count: lossRecordsCount },
       ...intervalFlags,
       { key: 'flag_negative_stock', label: '⚠ Negative Stock', count: negativeStockCount },
       { key: 'flag_duplicate', label: '⚠ Duplicate Item', count: duplicateCount },
@@ -2720,7 +2725,7 @@ function ItemHubPageInner() {
       { key: 'flag_missing_cost_price', label: '⚠ No/Zero Cost Price (Goods)', count: missingCostPriceCount },
       { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
-  }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
+  }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveCountRecords])
 
   // Filter and sort items based on current view and product type
   const liveCatalogueItems = useMemo(() => {
@@ -2972,6 +2977,42 @@ function ItemHubPageInner() {
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
   }, [liveCountRecords, liveCountRecordFilter, liveEmbeddedSearch])
+
+  // Loss records organized by item name for "Loss by Items" view
+  const liveLossesByItem = useMemo(() => {
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+    const losses = liveCountRecords.filter(rec => {
+      if (rec.kind !== 'loss') return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+    const groups = new Map<string, typeof liveCountRecords>()
+    for (const rec of losses) {
+      const itemName = rec.item_name
+      if (!groups.has(itemName)) groups.set(itemName, [])
+      groups.get(itemName)!.push(rec)
+    }
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([itemName, recs]) => [itemName, recs.sort((a, b) => new Date(b.count_date).getTime() - new Date(a.count_date).getTime())] as const)
+  }, [liveCountRecords, liveEmbeddedSearch])
+
+  // Loss records organized by date for "Loss by Date" view
+  const liveLossesByDate = useMemo(() => {
+    const q = liveEmbeddedSearch.trim().toLowerCase()
+    const losses = liveCountRecords.filter(rec => {
+      if (rec.kind !== 'loss') return false
+      if (q && !rec.item_name.toLowerCase().includes(q)) return false
+      return true
+    })
+    const groups = new Map<string, typeof liveCountRecords>()
+    for (const rec of losses) {
+      const date = rec.count_date.slice(0, 10)
+      if (!groups.has(date)) groups.set(date, [])
+      groups.get(date)!.push(rec)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
+  }, [liveCountRecords, liveEmbeddedSearch])
 
   // Sale mode count records display - shows individual records with trade-off matching
   // Each record shows when it was counted, item, status, and whether it can be offset
@@ -4020,7 +4061,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
             } else {
               setLiveCurrentView(null)
-              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
+              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' | 'loss_by_date' | 'loss_by_items' })
             }
           }}
           className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
@@ -4197,6 +4238,198 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         </div>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function renderLossesByDateTable() {
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
+    return (
+      <div className="flex-1 overflow-auto">
+        {liveLossesByDate.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            {liveCountRecords.length === 0 ? 'No counts recorded' : 'No losses found'}
+          </p>
+        ) : (
+          <div className="inline-block min-w-full">
+            <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Exp</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Loss</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
+            </div>
+            {liveLossesByDate.map(([date, dateRecs]) => (
+              <div key={date}>
+                <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
+                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-red-700">
+                    {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} losses
+                  </div>
+                </div>
+                {dateRecs.map(rec => (
+                  <div key={rec.id}>
+                    <div className={`group grid ${COUNT_RECORDS_GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
+                      <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
+                        <p className="text-xs font-semibold truncate">{renderClickableItemName(rec.item_name, 'text-gray-900')}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-600 truncate">{rec.cf_group ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{rec.expected != null ? fmtN(rec.expected) : '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-bold text-red-600">
+                          -{fmtN(Math.abs(rec.loss_qty ?? 0))}
+                        </p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{fmtTime(rec.counted_at) || '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-blue-600 font-medium truncate">{rec.counted_by ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 truncate">{rec.source ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <div className="flex gap-1 justify-end whitespace-nowrap">
+                          {rec.counted_at && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveEditingCountId(rec.id)
+                                setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
+                              }}
+                              title="Edit time"
+                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
+                            >
+                              🕐
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
+                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
+                          >
+                            {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function renderLossesByItemsTable() {
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
+    return (
+      <div className="flex-1 overflow-auto">
+        {liveLossesByItem.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            {liveCountRecords.length === 0 ? 'No counts recorded' : 'No losses found'}
+          </p>
+        ) : (
+          <div className="inline-block min-w-full">
+            <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Exp</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Loss</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
+            </div>
+            {liveLossesByItem.map(([itemName, itemRecs]) => (
+              <div key={itemName}>
+                <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
+                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-red-700">
+                    {itemName} · {itemRecs.length} losses
+                  </div>
+                </div>
+                {itemRecs.map(rec => (
+                  <div key={rec.id}>
+                    <div className={`group grid ${COUNT_RECORDS_GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
+                      <div className="sticky left-0 z-[1] bg-white group-hover:bg-gray-50 px-2 py-1">
+                        <p className="text-xs font-semibold truncate">{renderClickableItemName(rec.item_name, 'text-gray-900')}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-600 truncate">{rec.cf_group ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-semibold text-gray-900">{Number(rec.quantity_counted)}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{rec.expected != null ? fmtN(rec.expected) : '—'}</p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs font-bold text-red-600">
+                          -{fmtN(Math.abs(rec.loss_qty ?? 0))}
+                        </p>
+                      </div>
+                      <div className="px-2 py-1 text-center">
+                        <p className="text-xs text-gray-500">{fmtTime(rec.counted_at) || '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-blue-600 font-medium truncate">{rec.counted_by ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 truncate">{rec.source ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
+                      </div>
+                      <div className="px-2 py-1">
+                        <div className="flex gap-1 justify-end whitespace-nowrap">
+                          {rec.counted_at && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveEditingCountId(rec.id)
+                                setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
+                              }}
+                              title="Edit time"
+                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
+                            >
+                              🕐
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
+                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
+                          >
+                            {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -5081,7 +5314,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       } else {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
-                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
+                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' | 'loss_by_date' | 'loss_by_items' })
                       }
                     }}
                     className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 flex-1 min-w-0`}
@@ -6229,38 +6462,44 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Items Grid - 2 Columns */}
+            {/* Items Grid or Loss Tables */}
             {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && !liveShowCountFullPage && (
-            <div className="flex-1 overflow-y-auto">
-              {/* Violation Description Panel - scrolls with items */}
-              {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
-                (() => {
-                  const violation = getViolationDescription(liveSaleViolationFilter)
-                  return violation ? (
-                    <div className="bg-white border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
-                      <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
-                      <p className="text-blue-800 mb-3">{violation.description}</p>
-                      <div className="text-blue-900">
-                        <p className="font-semibold mb-2">How to fix:</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          {violation.steps.map((step, i) => (
-                            <li key={i} className="text-blue-800 text-xs">{step}</li>
-                          ))}
-                        </ol>
-                      </div>
-                    </div>
-                  ) : null
-                })()
-              )}
-
-              {liveItemsLoading ? (
-                <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
-              ) : liveCatalogueItems.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">
-                  {liveCurrentView ? 'No items in this view' : 'No items found'}
-                </p>
+            <>
+              {liveSaleFilter?.kind === 'loss_by_date' ? (
+                renderLossesByDateTable()
+              ) : liveSaleFilter?.kind === 'loss_by_items' ? (
+                renderLossesByItemsTable()
               ) : (
-                <div className="grid grid-cols-3 gap-0 p-0">
+              <div className="flex-1 overflow-y-auto">
+                {/* Violation Description Panel - scrolls with items */}
+                {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
+                  (() => {
+                    const violation = getViolationDescription(liveSaleViolationFilter)
+                    return violation ? (
+                      <div className="bg-white border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
+                        <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
+                        <p className="text-blue-800 mb-3">{violation.description}</p>
+                        <div className="text-blue-900">
+                          <p className="font-semibold mb-2">How to fix:</p>
+                          <ol className="list-decimal list-inside space-y-1">
+                            {violation.steps.map((step, i) => (
+                              <li key={i} className="text-blue-800 text-xs">{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      </div>
+                    ) : null
+                  })()
+                )}
+
+                {liveItemsLoading ? (
+                  <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
+                ) : liveCatalogueItems.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-8">
+                    {liveCurrentView ? 'No items in this view' : 'No items found'}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-0 p-0">
                   {liveSortedCatalogueItems.map((item, idx) => {
                     const count = liveSalesCounts.get(item.id) ?? 0
                     const due = liveCountStatus.get(item.id)
@@ -6435,9 +6674,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </Fragment>
                     )
                   })}
-                </div>
+                  </div>
+                )}
+              </div>
               )}
-            </div>
+            </>
             )}
 
             {/* Modal */}
