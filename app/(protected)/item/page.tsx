@@ -4254,7 +4254,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   }
 
   function renderLossesByDateTable() {
-    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)]'
     return (
       <div className="flex-1 overflow-auto">
         {liveLossesByDate.length === 0 ? (
@@ -4273,12 +4273,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
             </div>
             {liveLossesByDate.map(([date, dateRecs]) => (
               <div key={date}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
-                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-red-700">
+                  <div className="col-span-9 px-2 py-1 text-[10px] font-semibold text-red-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} losses
                   </div>
                 </div>
@@ -4314,30 +4313,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <div className="px-2 py-1">
                         <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
                       </div>
-                      <div className="px-2 py-1">
-                        <div className="flex gap-1 justify-end whitespace-nowrap">
-                          {rec.counted_at && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveEditingCountId(rec.id)
-                                setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
-                              }}
-                              title="Edit time"
-                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
-                            >
-                              🕐
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
-                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
-                          >
-                            {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
-                          </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -4350,7 +4325,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   }
 
   function renderLossesByItemsTable() {
-    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)_5.5rem]'
+    const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)]'
     return (
       <div className="flex-1 overflow-auto">
         {liveLossesByItem.length === 0 ? (
@@ -4369,12 +4344,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
             </div>
             {liveLossesByItem.map(([itemName, itemRecs]) => (
               <div key={itemName}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
-                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-red-700">
+                  <div className="col-span-9 px-2 py-1 text-[10px] font-semibold text-red-700">
                     {itemName} · {itemRecs.length} losses
                   </div>
                 </div>
@@ -4409,30 +4383,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </div>
                       <div className="px-2 py-1">
                         <p className="text-xs text-gray-500 italic truncate">{rec.notes ?? '—'}</p>
-                      </div>
-                      <div className="px-2 py-1">
-                        <div className="flex gap-1 justify-end whitespace-nowrap">
-                          {rec.counted_at && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveEditingCountId(rec.id)
-                                setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
-                              }}
-                              title="Edit time"
-                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
-                            >
-                              🕐
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
-                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
-                          >
-                            {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </div>
