@@ -504,7 +504,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -850,18 +850,22 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveCountView = searchParams.get('liveCountView')
-  const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null =
+  const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
     rawLiveCountView === 'history' ? { kind: 'history' } :
+    rawLiveCountView === 'intervals' ? { kind: 'intervals' } :
     rawLiveCountView?.startsWith('interval:') ? { kind: 'interval', label: rawLiveCountView.slice(9) } :
     { kind: 'records' }
-  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | null>(initialLiveCountView)
+  const [liveCountView, setLiveCountView] = useState<{ kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null>(initialLiveCountView)
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
+  const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
+  const [liveEditingItemIntervalDays, setLiveEditingItemIntervalDays] = useState<string>('')
+  const [liveEditingItemIntervalSaving, setLiveEditingItemIntervalSaving] = useState(false)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
   const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
@@ -4181,6 +4185,110 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  function renderCountIntervalsView() {
+    const intervalGroups = liveCountIntervalFlags.map(flag => ({
+      label: flag.label,
+      count: flag.count,
+      items: liveAllItems.filter(i => i.count_interval === flag.label).sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    }))
+
+    return (
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="px-3 py-2 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10 border-b border-gray-200">
+          Count Intervals — Items grouped by their counting schedule
+        </div>
+        <div className="flex-1 overflow-auto">
+          {intervalGroups.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No counting intervals</p>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {intervalGroups.map(group => (
+                <div key={group.label} className="bg-white">
+                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">{group.label} ({group.count})</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {group.items.map(item => (
+                      <div key={item.id} className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition group">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
+                          <p className="text-[10px] text-gray-500">ID: {item.id}</p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2 shrink-0">
+                          {liveEditingItemIntervalId === item.id ? (
+                            <>
+                              <input
+                                type="number"
+                                min="1"
+                                value={liveEditingItemIntervalDays}
+                                onChange={e => setLiveEditingItemIntervalDays(e.target.value)}
+                                placeholder="Days"
+                                className="w-16 px-2 py-1 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLiveEditingItemIntervalSaving(true)
+                                  fetch('/api/items/' + item.id, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ count_cadence_days: liveEditingItemIntervalDays ? Number(liveEditingItemIntervalDays) : null })
+                                  }).then(async (res) => {
+                                    setLiveEditingItemIntervalSaving(false)
+                                    if (res.ok) {
+                                      setLiveEditingItemIntervalId(null)
+                                      setLiveEditingItemIntervalDays('')
+                                      window.location.reload()
+                                    } else {
+                                      alert('Failed to update interval')
+                                    }
+                                  }).catch(e => {
+                                    setLiveEditingItemIntervalSaving(false)
+                                    alert('Error: ' + e.message)
+                                  })
+                                }}
+                                disabled={liveEditingItemIntervalSaving}
+                                className="px-2 py-1 text-[10px] font-bold text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLiveEditingItemIntervalId(null)
+                                  setLiveEditingItemIntervalDays('')
+                                }}
+                                className="px-2 py-1 text-[10px] font-bold text-gray-600 hover:bg-gray-200 rounded"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveEditingItemIntervalId(item.id)
+                                setLiveEditingItemIntervalDays(item.count_cadence_days ? String(item.count_cadence_days) : '')
+                              }}
+                              className="px-2 py-1 text-[10px] font-bold text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition"
+                              title="Edit counting interval"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   function getViolationDescription(filterType: typeof liveSaleViolationFilter) {
     const descriptions: Record<string, { title: string; description: string; steps: string[] }> = {
       all: {
@@ -5680,10 +5788,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
 
             {/* Count Records Inline Display - Full Height */}
-            {liveShowCountFullPage && liveMode === 'sale' && liveSaleCountRecords.length > 0 && (
+            {liveShowCountFullPage && liveMode === 'sale' && liveSaleCountRecords.length > 0 && (!liveCountView || liveCountView?.kind === 'records') && (
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10 flex items-center justify-between">
-                  <span>Count Records & Trade-Off Suggestions</span>
+                  <span>Count</span>
                   <button
                     type="button"
                     onClick={() => setLiveShowCountFullPage(false)}
@@ -5692,7 +5800,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ✕
                   </button>
                 </div>
-                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-7 z-9 flex gap-1 flex-wrap items-center">
+                <div className="px-2 py-1 bg-white border-b border-gray-200 sticky top-7 z-9 flex gap-2 items-center">
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveCountView"
+                      checked={liveCountView?.kind === 'records' || (liveCountView === null || liveCountView === undefined)}
+                      onChange={() => setLiveCountView({ kind: 'records' })}
+                      className="cursor-pointer"
+                    />
+                    <span>Records</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveCountView"
+                      checked={(liveCountView as any)?.kind === 'history'}
+                      onChange={() => setLiveCountView({ kind: 'history' })}
+                      className="cursor-pointer"
+                    />
+                    <span>History</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveCountView"
+                      checked={(liveCountView as any)?.kind === 'intervals'}
+                      onChange={() => setLiveCountView({ kind: 'intervals' })}
+                      className="cursor-pointer"
+                    />
+                    <span>Intervals</span>
+                  </label>
+                </div>
+                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-[50px] z-9 flex gap-1 flex-wrap items-center" style={(liveCountView as any)?.kind === 'intervals' ? { display: 'none' } : undefined}>
                   <span className="text-[9px] font-semibold text-gray-600">Filter:</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
                     <input
@@ -5836,6 +5976,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {/* Count Intervals View */}
+            {liveShowCountFullPage && liveMode === 'sale' && liveCountView?.kind === 'intervals' && (
+              renderCountIntervalsView()
             )}
 
             {saleModeShowAnalytics ? (
