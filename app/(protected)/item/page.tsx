@@ -124,10 +124,10 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // CHView is unioned in too even though C&H is its own separate top-level
 // tab, not part of the Grony Cash merge -- it just reuses this same shared
 // state/pane machinery rather than needing its own parallel copy.
-type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendors' | 'customers' | 'dailySummary'
+type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'customers' | 'dailySummary'
   | 'purchaseOrders' | 'services'
   // Cust. Receipts and New Customer folded into Customers' own tabs (same
-  // treatment Sales/Bills/Loss by Date got inside Live Sale) -- see
+  // treatment Sales/Bills/Loss by Date/Expenses got inside Live Sale) -- see
   // jumpToCustomersTab, since neither is a real LossView any more.
   // Same reasoning as 'newCustomer' used to be above -- Expense Orders was a
   // showOrders toggle living inside ExpensesTab itself, invisible to
@@ -135,7 +135,7 @@ type LossView = 'home' | 'items' | 'sales' | 'expenses' | 'pl' | 'cab' | 'vendor
   // the current view (hardcoded active={false} forever) and its own
   // Notes/Tasks/Laws scope had to be computed conditionally inside
   // ExpensesTab. Its own real LossView instead, rendered as its own
-  // content block below, same as Expenses' own.
+  // content block below.
   | 'expenseOrders'
   // Settings' own non-navigation row (View Portal As) becomes a real content
   // destination too now that Settings is its own side-by-side pane instead
@@ -193,7 +193,7 @@ const CH_VIEW_KEYS = new Set<LossView>(CH_ITEMS.map(i => i.key))
 // standalone Grony Manage/Staff top menus) now land here too, on each
 // area's own former default view, since both folded into this same tab.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
-  pl: 'pl', expenses: 'expenses', cab: 'cab', dailySummary: 'dailySummary', data: 'items',
+  pl: 'pl', cab: 'cab', dailySummary: 'dailySummary', data: 'items',
   manage: 'audio', staff: 'staffPayslips',
 }
 
@@ -245,14 +245,14 @@ const REPORT_VIEWS = new Set<LossView>([
 // /api/pane-groups and ReorderListsPanel.tsx, where an owner-level account
 // can move any row into any section (existing or freshly typed) or back
 // out, and effectiveCashItems() below merges those overrides in at render
-// time. Properties (nested under Expenses) and New Customer (nested under
-// Customers) stay their own sub-rows, not separate CASH_ITEMS entries --
-// they're already reachable right under their parent row, which is itself
-// inside these same sections.
+// time. New Customer (nested under Customers) stays its own sub-row, not a
+// separate CASH_ITEMS entry -- it's already reachable right under its
+// parent row, which is itself inside these same sections. Expenses moved
+// off this pane entirely -- it's a liveMode tab now, same as Sales/Bills
+// (see the tab switcher and jumpToLiveSaleTab).
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
   { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
-  { key: 'expenses', label: 'Expenses', icon: '💳' },
   { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
@@ -702,10 +702,14 @@ function ItemHubPageInner() {
   const searchParams = useSearchParams()
   const rawInitialTab = searchParams.get('tab')
   const oldTabView = rawInitialTab ? OLD_TAB_TO_VIEW[rawInitialTab] : undefined
-  // 'losses' (the old standalone Loss Feed tab) and the old pl/expenses/cab/
-  // data/manage/staff top-level tabs (all folded into Grony Cash by now)
-  // still land somewhere sensible instead of silently falling back to Today.
-  const initialTab = (rawInitialTab === 'losses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
+  // 'losses' (the old standalone Loss Feed tab) and the old pl/cab/data/
+  // manage/staff top-level tabs (all folded into Grony Cash by now) still
+  // land somewhere sensible instead of silently falling back to Today.
+  // 'expenses' used to be its own top-level tab too, then a LossView of its
+  // own; now it's a liveMode tab like Sales/Bills, so it's handled the same
+  // way 'losses' already is -- lands on 'loss', finished via the mount
+  // effect below (jumpToLiveSaleTab isn't defined yet this early).
+  const initialTab = (rawInitialTab === 'losses' || rawInitialTab === 'expenses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
   // A fresh login lands on a bare /item with no ?tab= at all -- that used to
   // default to Today, whose own pane is intentionally empty (same treatment
   // as UK/C&H), so the very first thing anyone saw was a near-blank screen.
@@ -733,7 +737,7 @@ function ItemHubPageInner() {
   // searchParams effect below -- that one re-runs right after mount and
   // would otherwise snap this straight back to 'items'.
   const [lossView, setLossView]         = useState<LossView>(
-    rawInitialTab === 'losses' ? 'sales'
+    rawInitialTab === 'losses' || rawInitialTab === 'expenses' ? 'sales'
       : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'sales')
   )
   const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
@@ -835,9 +839,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -886,10 +890,10 @@ function ItemHubPageInner() {
   // Live Sale's own tabs). Seq is a plain incrementing counter so the same
   // tab can be jumped to twice in a row and still fire.
   const [liveSaleJumpSeq, setLiveSaleJumpSeq] = useState(0)
-  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'log'>('sale')
+  const [liveSaleJumpTab, setLiveSaleJumpTab] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>('sale')
   const [liveSaleJumpViolation, setLiveSaleJumpViolation] = useState<string | null>(null)
   const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
-  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'log', violation: string | null = null, search: string | null = null) {
+  function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'log' | 'expenses', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
     setLiveSaleJumpTab(tab)
     setLiveSaleJumpViolation(violation)
@@ -907,11 +911,12 @@ function ItemHubPageInner() {
     setCustomersJumpTab(tab)
     setCustomersJumpSeq(s => s + 1)
   }
-  // Finishes the old ?tab=losses deep link (see the lossView initializer
-  // above) -- can't call jumpToLiveSaleTab directly from that initializer
-  // since it isn't defined yet that early in the component.
+  // Finishes the old ?tab=losses/?tab=expenses deep links (see the lossView
+  // initializer above) -- can't call jumpToLiveSaleTab directly from that
+  // initializer since it isn't defined yet that early in the component.
   useEffect(() => {
     if (rawInitialTab === 'losses') jumpToLiveSaleTab('sale')
+    else if (rawInitialTab === 'expenses') jumpToLiveSaleTab('expenses')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1437,22 +1442,23 @@ function ItemHubPageInner() {
   }
 
   // The "+" shortcut menu (see AddShortcutButton) -- jumps straight to a
-  // "create new" flow wherever it already lives. Item/Expenses reuse the
-  // existing addForm mechanism (pickLossView resets it, so set it after);
-  // Sales/Bills land on Live Sale's own Sales/Bills tab instead now (New
-  // Sale is gone -- Sale mode's own tap-a-sale flow is the replacement;
-  // Bills' "+ New Bill" is one click away on its tab rather than opening
-  // pre-expanded); the rest reopen via a per-target signal since their
-  // forms are local component state with no addForm equivalent. Staff Time
-  // lands on Team Times, not a per-person page -- Personal has no Times row
-  // of its own anymore (see Team Times' own history), but TimesTab's admin
-  // "add entry" form works the same regardless of whose page it's opened from.
+  // "create new" flow wherever it already lives. Item reuses the existing
+  // addForm mechanism (pickLossView resets it, so set it after);
+  // Sales/Bills/Expenses land on Live Sale's own tab instead now (New Sale
+  // is gone -- Sale mode's own tap-a-sale flow is the replacement; Bills'/
+  // Expenses' "+ New Bill"/"+ New Expense" is one click away on its own tab
+  // rather than opening pre-expanded); the rest reopen via a per-target
+  // signal since their forms are local component state with no addForm
+  // equivalent. Staff Time lands on Team Times, not a per-person page --
+  // Personal has no Times row of its own anymore (see Team Times' own
+  // history), but TimesTab's admin "add entry" form works the same
+  // regardless of whose page it's opened from.
   function handleShortcut(key: ShortcutKey) {
     switch (key) {
       case 'sale':       jumpToLiveSaleTab('sale'); break
       case 'bill':       jumpToLiveSaleTab('bills'); break
       case 'item':       pickLossView('items');     setAddForm('item'); break
-      case 'expense':    pickLossView('expenses');  setAddForm('expense'); break
+      case 'expense':    jumpToLiveSaleTab('expenses'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
       case 'customer':   jumpToCustomersTab('new'); break
       case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
@@ -2181,8 +2187,12 @@ function ItemHubPageInner() {
   // tap-to-sell mode already covers) -- it always relied on its own tab
   // rendering NewBillForm as a sibling, so that comes along with it.
   const [liveBillsAddingNew, setLiveBillsAddingNew] = useState(false)
+  // Expenses has no internal "add new" of its own either -- same pattern as
+  // Bills, reusing the standalone /expenses/new form as a sibling.
+  const [liveExpensesAddingNew, setLiveExpensesAddingNew] = useState(false)
   const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
   const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
+  const [liveExpensesShowAnalytics, setLiveExpensesShowAnalytics] = useState(false)
   // Sales tab's own History/Bars Only/W/G controls -- owned here (not inside
   // SalesTab) so they can render alongside the violation-filter radios in
   // this component's own header row instead of a second row of their own.
@@ -4001,6 +4011,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => { setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
       </div>
     )
   }
@@ -4982,9 +4993,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                     active={paneActive(cashItemActive(v.key))} divider
                     badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + countsFlagsCount + lossByDateFlagsCount)
-                      : v.key === 'items' ? itemsFlagsCount
+                      // Expenses moved off its own CASH_ITEMS row onto the Items
+                      // row's badge -- 'items' is the real, reachable entry point
+                      // into the Sale/Log/Sales/Bills/Expenses tab switcher now
+                      // (there's no CASH_ITEMS row with key 'sales' any more), so
+                      // that's where its flag count needs to actually show up.
+                      : v.key === 'items' ? (itemsFlagsCount + expensesFlagsCount)
                       : v.key === 'cab' ? cabFlagsCount
-                      : v.key === 'expenses' ? expensesFlagsCount
                       : v.key === 'customers' ? customersFlagsCount
                       : v.key === 'vendors' ? vendorsFlagsCount
                       : undefined}
@@ -6011,6 +6026,75 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 overflow-auto">
                   <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter}
                     jumpToBillId={jumpToBillId} onJumpDone={() => setJumpToBillId(null)} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Expenses tab -- moved here from its own sidebar destination
+              (Grony Cash's left pane), same "own liveMode tab" treatment
+              Sales/Bills already got. ExpensesTab itself has no "add new" of
+              its own either, same as Bills, reusing /expenses/new as a
+              sibling. */}
+          {liveMode === 'expenses' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between gap-2 flex-wrap">
+                <h2 className="text-sm font-bold text-gray-900">Expenses</h2>
+                <div className="flex items-center gap-2">
+                  {!liveExpensesAddingNew && (
+                    <input
+                      type="text"
+                      value={liveEmbeddedSearch}
+                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                      placeholder="Search…"
+                      className="text-xs px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+                    />
+                  )}
+                  <button type="button" onClick={() => setLiveExpensesAddingNew(a => !a)}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveExpensesAddingNew ? 'bg-red-600 text-white' : 'bg-green-600 text-white hover:bg-green-500'}`}>
+                    {liveExpensesAddingNew ? 'Cancel' : '+ New Expense'}
+                  </button>
+                  {!liveExpensesAddingNew && (
+                    <button type="button" onClick={() => setLiveExpensesShowAnalytics(a => !a)}
+                      title="Analytics"
+                      className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${liveExpensesShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                      📊
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                    🔍
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveHelpModalOpen(true)}
+                    className="w-8 h-8 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 font-semibold text-sm flex items-center justify-center transition"
+                    title="Help"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+              {liveExpensesAddingNew ? (
+                <div className="px-4 flex-1 overflow-auto">
+                  <NewExpenseForm onSuccess={() => setLiveExpensesAddingNew(false)} />
+                </div>
+              ) : liveExpensesShowAnalytics ? (
+                <div className="px-3 pt-3 flex-1 overflow-auto"><ExpensesAnalyticsSection /></div>
+              ) : (
+                <div className="flex-1 overflow-auto">
+                  <ExpensesTab search={liveEmbeddedSearch} onFlagCountChange={setExpensesFlagsCount} />
                 </div>
               )}
             </div>
@@ -7607,7 +7691,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
         </> ) : null}
-        {addForm === 'expense' && outerTab === 'loss' && lossView === 'expenses' && <div className="px-4"><NewExpenseForm onSuccess={() => setAddForm(null)} /></div>}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
@@ -7724,12 +7807,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <TodayContent />
             </div>
           </TabErrorBoundary>
-        )}
-        {!showAnalytics && addForm !== 'expense' && outerTab === 'loss' && lossView === 'expenses' && (
-          <ExpensesTab search={search} onFlagCountChange={setExpensesFlagsCount} />
-        )}
-        {showAnalytics && outerTab === 'loss' && lossView === 'expenses' && (
-          <TabErrorBoundary><div className="px-3 pt-3"><ExpensesAnalyticsSection /></div></TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'expenseOrders' && (
           <TabErrorBoundary>
