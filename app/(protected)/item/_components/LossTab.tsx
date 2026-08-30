@@ -1595,12 +1595,22 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
-                        {matchingTradeOffs.map(rec => (
-                          <div key={rec.id} className="block">
-                            {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
-                            {' '}{fmtQ(rec.quantity_counted)}
-                          </div>
-                        ))}
+                        {matchingTradeOffs.map(rec => {
+                          const recAny = rec as any
+                          const suggestion = recAny.tradeOffSuggestion
+                          return (
+                            <div key={rec.id} className="block" title={suggestion}>
+                              {suggestion ? (
+                                <span className="text-blue-600 hover:underline cursor-help">{suggestion}</span>
+                              ) : (
+                                <>
+                                  {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
+                                  {' '}{fmtQ(rec.quantity_counted)}
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     ) : <span className="text-gray-300">—</span>}
                   </td>}
@@ -1714,12 +1724,22 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
-                        {matchingTradeOffs.map(rec => (
-                          <div key={rec.id} className="block">
-                            {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
-                            {' '}{fmtQ(rec.quantity_counted)}
-                          </div>
-                        ))}
+                        {matchingTradeOffs.map(rec => {
+                          const recAny = rec as any
+                          const suggestion = recAny.tradeOffSuggestion
+                          return (
+                            <div key={rec.id} className="block" title={suggestion}>
+                              {suggestion ? (
+                                <span className="text-blue-600 hover:underline cursor-help">{suggestion}</span>
+                              ) : (
+                                <>
+                                  {rec.kind && <span className={rec.kind === 'loss' ? 'text-red-600' : 'text-green-600'}>{rec.kind.toUpperCase()}</span>}
+                                  {' '}{fmtQ(rec.quantity_counted)}
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     ) : <span className="text-gray-300">—</span>}
                   </td>}

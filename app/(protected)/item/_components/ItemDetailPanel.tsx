@@ -123,6 +123,40 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   const item = rows.find(r => r.item_id === itemId)
 
+  // Enrich count records with trade-off suggestions
+  const countRecordsWithTradeOffs = useMemo(() =>
+    countRecords.map(rec => {
+      const recAny = rec as any
+      const isLoss = (recAny.loss_qty ?? 0) > 0
+      const isGain = (recAny.gain_qty ?? 0) > 0
+
+      if (isLoss || isGain) {
+        const targetKind = isLoss ? 'gain' : 'loss'
+        const opposite = countRecords.find(other =>
+          other.item_id === rec.item_id &&
+          other.id !== rec.id &&
+          (targetKind === 'gain' ? (other as any).gain_qty > 0 : (other as any).loss_qty > 0)
+        )
+
+        if (opposite) {
+          const oppositeAny = opposite as any
+          const oppositeQty = Math.abs(oppositeAny.gain_qty ?? oppositeAny.loss_qty ?? 0)
+          const oppositeDate = opposite.count_date.slice(0, 10)
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const [year, month, day] = oppositeDate.split('-')
+          const formattedDate = `${day} ${monthNames[parseInt(month) - 1]}, ${year}`
+
+          return {
+            ...rec,
+            tradeOffSuggestion: `Trade this ${isLoss ? 'loss' : 'gain'} with the ${Math.round(oppositeQty)} ${targetKind}${oppositeQty !== 1 ? 's' : ''} from ${formattedDate}`
+          }
+        }
+      }
+
+      return rec
+    })
+  , [countRecords])
+
   const groupNames = useMemo(() =>
     Array.from(new Set(rows.map(r => r.cf_group ?? 'Ungrouped'))).sort()
   , [rows])
@@ -233,7 +267,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         </div>
       )}
       <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
-        tradeOffRecords={countRecords}
+        tradeOffRecords={countRecordsWithTradeOffs}
         currentAliases={aliasRecords[item.item_id] ?? []}
         currentMatches={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
         candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
