@@ -840,17 +840,21 @@ function ItemHubPageInner() {
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
   const [liveBillsViolationFilter, setLiveBillsViolationFilter] = useState<string | null>(rawLiveBillsViolation ?? null)
   const rawLiveSaleFilter = searchParams.get('liveSaleFilter')
-  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null =
+  const initialLiveSaleFilter: { kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null =
     rawLiveSaleFilter === 'loss' ? { kind: 'loss' } :
     rawLiveSaleFilter === 'gain' ? { kind: 'gain' } :
     rawLiveSaleFilter === 'count_0' ? { kind: 'count_0' } :
     rawLiveSaleFilter === 'count_1' ? { kind: 'count_1' } :
-    rawLiveSaleFilter === 'loss_by_date' ? { kind: 'loss_by_date' } :
-    rawLiveSaleFilter === 'loss_by_items' ? { kind: 'loss_by_items' } :
     rawLiveSaleFilter?.startsWith('interval:') ? { kind: 'interval', label: rawLiveSaleFilter.slice(9) } :
     rawLiveSaleFilter?.startsWith('flag:') ? { kind: 'flag', key: rawLiveSaleFilter.slice(5) } :
     null
-  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null>(initialLiveSaleFilter)
+  const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
+  const rawLiveSaleView = searchParams.get('liveSaleView')
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null =
+    rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
+    rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
+    null
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -1519,6 +1523,10 @@ function ItemHubPageInner() {
       const filterValue = liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind
       params.set('liveSaleFilter', filterValue)
     } else params.delete('liveSaleFilter')
+    if (liveSaleView && liveSaleView.kind !== 'grid') {
+      const saleViewValue = liveSaleView.kind
+      params.set('liveSaleView', saleViewValue)
+    } else params.delete('liveSaleView')
     if (liveCountView && liveCountView.kind !== 'records') {
       const countViewValue = liveCountView.kind === 'interval' ? `interval:${liveCountView.label}` : liveCountView.kind
       params.set('liveCountView', countViewValue)
@@ -1531,7 +1539,7 @@ function ItemHubPageInner() {
     if (target === current) return
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveCountView, liveEmbeddedSearch, sidePaneHidden])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveSaleView, liveCountView, liveEmbeddedSearch, sidePaneHidden])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -2684,7 +2692,6 @@ function ItemHubPageInner() {
     const gainCount = baseFiltered.filter(it => (liveLossByItemId.get(it.id)?.gainCount ?? 0) > 0).length
     const countZeroSoh = baseFiltered.filter(it => Number(it.soh) === 0).length
     const countOneSoh = baseFiltered.filter(it => Number(it.soh) === 1).length
-    const lossRecordsCount = liveCountRecords.filter(rec => rec.kind === 'loss').length
 
     const negativeStockCount = baseFiltered.filter(it => it.product_type !== 'service' && Number(it.soh) < 0).length
     const duplicateCount = baseFiltered.filter(it => liveDuplicateItemIds.has(it.id)).length
@@ -2714,8 +2721,6 @@ function ItemHubPageInner() {
       { key: 'gain', label: '🔺 Gain', count: gainCount },
       { key: 'count_0', label: 'Count of 0', count: countZeroSoh },
       { key: 'count_1', label: 'Count of 1', count: countOneSoh },
-      { key: 'loss_by_date', label: 'Loss by Date', count: lossRecordsCount },
-      { key: 'loss_by_items', label: 'Loss by Items', count: lossRecordsCount },
       ...intervalFlags,
       { key: 'flag_negative_stock', label: '⚠ Negative Stock', count: negativeStockCount },
       { key: 'flag_duplicate', label: '⚠ Duplicate Item', count: duplicateCount },
@@ -2725,7 +2730,7 @@ function ItemHubPageInner() {
       { key: 'flag_missing_cost_price', label: '⚠ No/Zero Cost Price (Goods)', count: missingCostPriceCount },
       { key: 'flag_missing_group', label: '⚠ Missing Group', count: missingGroupCount },
     ]
-  }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveCountRecords])
+  }, [liveAllItems, liveLossByItemId, liveProductTypeFilter, liveGroupFilter, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds])
 
   // Filter and sort items based on current view and product type
   const liveCatalogueItems = useMemo(() => {
@@ -4061,7 +4066,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               else if (viewKey === 'gmcPacks') setLiveCurrentView({ kind: 'gmcPacks' as const })
             } else {
               setLiveCurrentView(null)
-              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' | 'loss_by_date' | 'loss_by_items' })
+              setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
             }
           }}
           className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
@@ -5314,7 +5319,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       } else {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
-                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' | 'loss_by_date' | 'loss_by_items' })
+                        setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
                       }
                     }}
                     className={`${COMPACT_SELECT_CLS} border-gray-300 bg-white text-gray-900 flex-1 min-w-0`}
@@ -5428,6 +5433,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
+                </div>
+              )}
+              {/* Sale view mode toggle: Grid / Loss by Date / Loss by Items */}
+              {showControls && liveMode === 'sale' && (
+                <div className="px-2 py-1 bg-white border-b border-gray-200 flex gap-2 items-center">
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveSaleView"
+                      checked={!liveSaleView || liveSaleView?.kind === 'grid'}
+                      onChange={() => setLiveSaleView(null)}
+                      className="cursor-pointer"
+                    />
+                    <span>Grid</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveSaleView"
+                      checked={liveSaleView?.kind === 'loss_by_date'}
+                      onChange={() => setLiveSaleView({ kind: 'loss_by_date' })}
+                      className="cursor-pointer"
+                    />
+                    <span>Loss by Date</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
+                    <input
+                      type="radio"
+                      name="liveSaleView"
+                      checked={liveSaleView?.kind === 'loss_by_items'}
+                      onChange={() => setLiveSaleView({ kind: 'loss_by_items' })}
+                      className="cursor-pointer"
+                    />
+                    <span>Loss by Items</span>
+                  </label>
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus. */}
@@ -6465,9 +6505,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Items Grid or Loss Tables */}
             {liveCurrentView?.kind !== 'aliasWide' && liveCurrentView?.kind !== 'serviceMatches' && liveCurrentView?.kind !== 'newItem' && liveCurrentView?.kind !== 'dailySummary' && liveCurrentView?.kind !== 'gmcPacks' && !liveShowCountFullPage && (
             <>
-              {liveSaleFilter?.kind === 'loss_by_date' ? (
+              {liveSaleView?.kind === 'loss_by_date' ? (
                 renderLossesByDateTable()
-              ) : liveSaleFilter?.kind === 'loss_by_items' ? (
+              ) : liveSaleView?.kind === 'loss_by_items' ? (
                 renderLossesByItemsTable()
               ) : (
               <div className="flex-1 overflow-y-auto">
