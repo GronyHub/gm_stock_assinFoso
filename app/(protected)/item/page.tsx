@@ -860,7 +860,7 @@ function ItemHubPageInner() {
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
   const [liveCountDisplayFilter, setLiveCountDisplayFilter] = useState<'all' | 'counted' | 'loss' | 'gains'>('all')
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'acpGtSp' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'tradeOff' | 'duplicates' | 'unlinked' | 'service' | 'gains' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const rawSidePaneHidden = searchParams.get('sidebarHidden')
   const initialSidePaneHidden = rawSidePaneHidden === '1'
@@ -2493,26 +2493,6 @@ function ItemHubPageInner() {
     for (const dates of m.values()) dates.sort()
     return m
   }, [globalFlags])
-  // Distinct-item count behind that map, scoped to items still in the live
-  // catalogue (a merged-away item's old violation shouldn't inflate this) --
-  // shown as "ACP > SP: N items" in Sale mode's own header.
-  const liveAcpGtSpCount = useMemo(() => {
-    const liveIds = new Set(liveAllItems.map(i => i.id))
-    let count = 0
-    for (const id of liveSoldBelowCostDatesByItemId.keys()) {
-      if (liveIds.has(id)) count++
-    }
-    return count
-  }, [liveAllItems, liveSoldBelowCostDatesByItemId])
-
-  const liveAcpGtSpItemIds = useMemo(() => {
-    const liveIds = new Set(liveAllItems.map(i => i.id))
-    const result = new Set<number>()
-    for (const id of liveSoldBelowCostDatesByItemId.keys()) {
-      if (liveIds.has(id)) result.add(id)
-    }
-    return result
-  }, [liveAllItems, liveSoldBelowCostDatesByItemId])
   // Item id -> every bill date where that item's VCP jumped 20%+ from its
   // own previous bill -- sourced from /api/flags' vcpJumps (same threshold
   // as Item 360's own VCP jump badge, see LossTab.tsx's computeVcpJumps).
@@ -3112,8 +3092,6 @@ function ItemHubPageInner() {
     if (liveSaleViolationFilter === 'tradeOff') {
       const tradeOffItemIds = new Set(liveItemsWithTradeOffs.map(t => t.itemId))
       itemsToSort = liveCatalogueItems.filter(item => tradeOffItemIds.has(item.id))
-    } else if (liveSaleViolationFilter === 'acpGtSp') {
-      itemsToSort = liveCatalogueItems.filter(item => liveAcpGtSpItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'duplicates') {
       itemsToSort = liveCatalogueItems.filter(item => liveDuplicateItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'unlinked') {
@@ -3162,7 +3140,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveItemsWithTradeOffs, liveAcpGtSpItemIds, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveItemsWithTradeOffs, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -3930,7 +3908,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // (every countable item has a known cadence and stock_counts rows are
   // dated, so total/doneToday are both real), labeled "Flags" since "Count"
   // alone reads as a page name rather than a task. Sale mode gets its own
-  // always-on "ACP > SP" violation count instead (see liveAcpGtSpCount) --
+  // always-on "Sold Below Cost" violation count instead (see liveSoldBelowCostDatesByItemId) --
   // the one item-level violation that's meant to be visible right on Live
   // Sale's own header rather than buried in a Flags dropdown. Log/Sales/
   // Bills have no such total (their violations are open-ended backlogs, not
@@ -4251,18 +4229,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           '4. If the amounts match, manually offset them in the appropriate records',
           '5. Update the loss/gain entries to mark them as reconciled',
           '6. The trade-off indicator will clear once both sides are resolved'
-        ]
-      },
-      acpGtSp: {
-        title: '📈 ACP > SP',
-        description: 'Items where the Average Cost Price (ACP) is higher than the current Selling Price, indicating a potential loss-making item.',
-        steps: [
-          '1. Open the item to review pricing details',
-          '2. Check the "Item 360" view for ACP and SP trends',
-          '3. Decide whether to: (a) increase selling price, or (b) use up stock and discontinue',
-          '4. If raising price: edit the item\'s selling price',
-          '5. If discontinuing: complete sales of remaining stock',
-          '6. For future purchases, ensure selling price is set above cost'
         ]
       },
       duplicates: {
@@ -5051,11 +5017,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'tradeOff'} onChange={() => { setLiveSaleViolationFilter('tradeOff'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
                     <span>Trade Off{liveItemsWithTradeOffs.length > 0 && ` (${liveItemsWithTradeOffs.length})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'acpGtSp'} onChange={() => { setLiveSaleViolationFilter('acpGtSp'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
-                    <span>ACP &gt; SP{liveAcpGtSpCount > 0 && ` (${liveAcpGtSpCount})`}</span>
                   </label>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap">
@@ -6132,7 +6093,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             else if (liveSaleViolationFilter === 'soldBelowCost') filteredFlags = flags.filter(f => f.label.includes('SOLD BELOW COST'))
                             else if (liveSaleViolationFilter === 'vcpJump') filteredFlags = flags.filter(f => f.label.includes('VCP JUMP'))
                             else if (liveSaleViolationFilter === 'emptyRow') filteredFlags = flags.filter(f => f.label.includes('EMPTY DATA'))
-                            else if (liveSaleViolationFilter === 'acpGtSp') filteredFlags = flags.filter(f => f.label.includes('ACP > SP'))
                             else if (liveSaleViolationFilter !== 'withViolations') filteredFlags = []
                             return filteredFlags.map((f, i) => {
                               let displayLabel = f.label
@@ -6143,7 +6103,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 else if (f.label.includes('SERVICE')) displayLabel = ''
                                 else if (f.label.includes('NEGATIVE STOCK')) displayLabel = ''
                                 else if (f.label.includes('STOCK GAIN:')) displayLabel = f.label.replace('🔺 STOCK GAIN: ', '')
-                                else if (f.label.includes('ACP > SP')) displayLabel = ''
                                 else if (f.label.includes('SOLD BELOW COST')) displayLabel = f.label.replace('⚠ SOLD BELOW COST (history): ', '')
                                 else if (f.label.includes('VCP JUMP')) displayLabel = f.label.replace('⚠ VCP JUMP (history): ', '')
                                 else if (f.label.includes('MISSING SELLING PRICE')) displayLabel = ''
