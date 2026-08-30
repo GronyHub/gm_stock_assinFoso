@@ -2,11 +2,8 @@
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
 import AccountsManager from './AccountsManager'
-import { useLawsPanel } from './useLawsPanel'
-import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnPrefs } from './columnPrefs'
+import { ResizableTh, ColResizeHandle, type ColumnPrefs } from './columnPrefs'
 import { type ColKey, COLUMNS as EXPENSE_COLUMNS } from './expensesTabColumns'
 
 type Expense = {
@@ -723,11 +720,13 @@ type ExpensesFlag = 'similar' | 'bundled' | 'no_vendor' | 'properties_no_locatio
 type Props = {
   search: string
   onFlagCountChange?: (n: number) => void
-  // History and the four flag filters moved up to the parent's own header
-  // row (so they render alongside New Expense in one mutually-exclusive
-  // radio group there) -- same lift-up treatment Sales/Bills already got.
-  // Optional (defaulting to no-ops below) for any bare embed with no header
-  // row of its own to host these controls in.
+  // History, the four flag filters, groupBy, property filters, and colPrefs
+  // all moved up to the parent's own header row (so every one of them
+  // renders as part of one mutually-exclusive radio group there, replacing
+  // the old embedded Laws & Tasks panel's `flags` list) -- same lift-up
+  // treatment Sales/Bills already got. Optional (defaulting to no-ops/
+  // local fallbacks below) for any bare embed with no header row of its
+  // own to host these controls in.
   showHistory?: boolean
   setShowHistory?: (v: boolean | ((prev: boolean) => boolean)) => void
   activeFlag?: ExpensesFlag | null
@@ -737,6 +736,27 @@ type Props = {
   // (these aren't in the shared /api/flags -- they're computed locally
   // from this component's own expenses list).
   onFlagCountsChange?: (counts: Record<ExpensesFlag, number>) => void
+  groupBy?: 'none' | 'account' | 'vendor'
+  setGroupBy?: (v: 'none' | 'account' | 'vendor' | ((prev: 'none' | 'account' | 'vendor') => 'none' | 'account' | 'vendor')) => void
+  showProperties?: boolean
+  setShowProperties?: (v: boolean) => void
+  showNonProperties?: boolean
+  setShowNonProperties?: (v: boolean) => void
+  propertyAvailabilityFilter?: 'all' | 'available' | 'not_available'
+  setPropertyAvailabilityFilter?: (v: 'all' | 'available' | 'not_available') => void
+  propertyTypeFilter?: string | null
+  setPropertyTypeFilter?: (v: string | null) => void
+  // Reports the nine view-button counts (all/by-account/by-vendor/property
+  // views) back up so the parent's radio labels can show live counts.
+  onViewCountsChange?: (counts: {
+    all_expenses: number; by_account: number; by_vendor: number
+    show_properties: number; show_non_properties: number
+    prop_available: number; prop_not_available: number
+    printers: number; computers: number
+  }) => void
+  colPrefs: ColumnPrefs<ColKey>
+  showAccountsManager?: boolean
+  setShowAccountsManager?: (v: boolean) => void
 }
 
 type PropTab = 'all' | 'available' | 'away'
@@ -744,13 +764,18 @@ type PropTab = 'all' | 'available' | 'away'
 export default function ExpensesTab({
   search, onFlagCountChange,
   showHistory = false, setShowHistory = () => {}, activeFlag = null, setActiveFlag = () => {}, onFlagCountsChange,
+  groupBy = 'none', setGroupBy = () => {},
+  showProperties = true, setShowProperties = () => {},
+  showNonProperties = true, setShowNonProperties = () => {},
+  propertyAvailabilityFilter = 'all', setPropertyAvailabilityFilter = () => {},
+  propertyTypeFilter = null, setPropertyTypeFilter = () => {},
+  onViewCountsChange,
+  colPrefs,
+  showAccountsManager = false, setShowAccountsManager = () => {},
 }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [groupBy, setGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
-  const [showAccountsManager, setShowAccountsManager] = useState(false)
-  const lawsPanel = useLawsPanel('showExpensesLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -760,13 +785,6 @@ export default function ExpensesTab({
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [accountFilter, setAccountFilter] = useState<string | null>(null)
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
-  // Independent of the All/Props/At Shop/Away tabs -- unchecking either one
-  // drops that side of the is_property split from the list.
-  const [showProperties, setShowProperties] = useState(true)
-  const [showNonProperties, setShowNonProperties] = useState(true)
-  const [propertyAvailabilityFilter, setPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
-  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null)
-  const [customViewNames, setCustomViewNames] = useState<Record<string, string>>({})
   const [itemsByType, setItemsByType] = useState<Record<string, { id: number; name: string }[]>>({})
   const [relatedItems, setRelatedItems] = useState<Array<{ id: number; name: string }>>([])
   const [relatedItemsError, setRelatedItemsError] = useState<string | null>(null)
@@ -778,19 +796,6 @@ export default function ExpensesTab({
   const [editingAccountName, setEditingAccountName] = useState('')
   const [accountError, setAccountError] = useState<string | null>(null)
   const [accountSaving, setAccountSaving] = useState(false)
-
-  // Create a unique key for column preferences based on the current view/flag
-  const getPrefsKey = () => {
-    if (activeFlag) return `expensesTable_flag_${activeFlag}`
-    if (groupBy !== 'none') return `expensesTable_groupBy_${groupBy}`
-    if (propertyAvailabilityFilter !== 'all') return `expensesTable_propFilter_${propertyAvailabilityFilter}`
-    if (propertyTypeFilter) return `expensesTable_propType_${propertyTypeFilter}`
-    if (showProperties && !showNonProperties) return 'expensesTable_propertiesOnly'
-    if (!showProperties && showNonProperties) return 'expensesTable_nonPropertiesOnly'
-    return 'expensesTable_all'
-  }
-
-  const colPrefs = useColumnPrefs<ColKey>(getPrefsKey(), EXPENSE_COLUMNS)
 
   function loadExpenses() {
     fetch('/api/expenses')
@@ -815,20 +820,8 @@ export default function ExpensesTab({
       })
   }
 
-  function saveCustomViewName(viewKey: string, customLabel: string) {
-    setCustomViewNames(prev => ({ ...prev, [viewKey]: customLabel }))
-    fetch('/api/rename-view', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ viewKey, customLabel }),
-    }).catch(() => {})
-  }
-
   useEffect(() => {
     loadExpenses()
-    fetch('/api/rename-view')
-      .then(r => r.ok ? r.json() : {})
-      .then(d => setCustomViewNames(d))
-      .catch(() => {})
     fetchRelatedItems()
   }, [])
   usePolling(loadExpenses, 120000, editId === null)
@@ -883,24 +876,23 @@ export default function ExpensesTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flagCounts, onFlagCountChange])
 
-  // activeFlag/showHistory are now selected from the parent's own
-  // mutually-exclusive radio row (alongside New Expense) -- when one of
-  // them turns on from outside, clear this component's own internal
-  // view-switching state (groupBy/property filters/account+vendor
-  // filters) the same way picking a flag used to reset them when this was
-  // all one local click handler.
+  // Reports the nine view-button counts up so item/page.tsx's radio labels
+  // can show live counts, same idea as flagCounts above.
   useEffect(() => {
-    if (activeFlag || showHistory) {
-      setGroupBy('none')
-      setPropertyAvailabilityFilter('all')
-      setShowProperties(true)
-      setShowNonProperties(true)
-      setPropertyTypeFilter(null)
-      setAccountFilter(null)
-      setVendorFilter(null)
-    }
+    onViewCountsChange?.(viewCounts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFlag, showHistory])
+  }, [viewCounts, onViewCountsChange])
+
+  // activeFlag/showHistory/groupBy/property filters are all now selected
+  // from the parent's own mutually-exclusive radio row -- whenever the
+  // active view changes, clear this component's own local account/vendor
+  // column-filter dropdowns the same way picking a new view used to reset
+  // them when this was all one local click handler.
+  useEffect(() => {
+    setAccountFilter(null)
+    setVendorFilter(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFlag, showHistory, groupBy, showProperties, showNonProperties, propertyAvailabilityFilter, propertyTypeFilter])
 
   const filtered = useMemo(() => {
     let list = expenses
@@ -1237,60 +1229,8 @@ export default function ExpensesTab({
 
   const activeViewHeading = getActiveViewHeading()
 
-  const viewButtons: { key: string; letter: string; label: string; description: string; active: boolean; count: number; onChange: () => void }[] = [
-    { key: 'all_expenses', letter: '∑', label: 'All Expenses', description: 'View all expenses without any filters or grouping — returns to the default view.', active: isAllExpenses, count: viewCounts.all_expenses, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'by_account', letter: 'A', label: 'By Account', description: 'Group expenses by their account category to see totals and records for each account.', active: groupBy === 'account', count: viewCounts.by_account, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'account' ? 'none' : 'account') } },
-    { key: 'by_vendor', letter: 'V', label: 'By Vendor', description: 'Group expenses by vendor to see total spending and records for each supplier.', active: groupBy === 'vendor', count: viewCounts.by_vendor, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setAccountFilter(null); setVendorFilter(null); setGroupBy(g => g === 'vendor' ? 'none' : 'vendor') } },
-    { key: 'show_properties', letter: 'P', label: 'All Properties', description: 'View only expenses marked as properties/equipment.', active: showProperties && !showNonProperties, count: viewCounts.show_properties, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(true); setShowNonProperties(false); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'show_non_properties', letter: 'N', label: 'Non-Properties', description: 'View only regular expenses (non-property expenditures).', active: !showProperties && showNonProperties, count: viewCounts.show_non_properties, onChange: () => { setActiveFlag(null); setShowHistory(false); setPropertyAvailabilityFilter('all'); setGroupBy('none'); setPropertyTypeFilter(null); setShowProperties(false); setShowNonProperties(true); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'prop_available', letter: 'A', label: 'Properties Available', description: 'View only properties currently at a Grony shop location (marked as available).', active: propertyAvailabilityFilter === 'available', count: viewCounts.prop_available, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('available'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'prop_not_available', letter: 'U', label: 'Properties Not Available', description: 'View only properties that are currently away from shop (spoilt, stolen, or at Grony\'s house).', active: propertyAvailabilityFilter === 'not_available', count: viewCounts.prop_not_available, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyTypeFilter(null); setPropertyAvailabilityFilter('not_available'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'printers', letter: 'M', label: 'Printers', description: 'View only printers and printer-related expenses.', active: propertyTypeFilter === 'Printer', count: viewCounts.printers, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Printer'); setAccountFilter(null); setVendorFilter(null) } },
-    { key: 'computers', letter: 'C', label: 'Computers', description: 'View only computers and computer-related expenses.', active: propertyTypeFilter === 'Computer', count: viewCounts.computers, onChange: () => { setActiveFlag(null); setShowHistory(false); setGroupBy('none'); setShowProperties(true); setShowNonProperties(true); setPropertyAvailabilityFilter('all'); setPropertyTypeFilter('Computer'); setAccountFilter(null); setVendorFilter(null) } },
-  ]
-
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex flex-nowrap items-center gap-1.5 px-2 pt-2 pb-2">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        {/* Column picker stays here (not lifted to item/page.tsx like Sales/
-            Bills') -- its storage key depends on activeFlag/groupBy/property
-            filters, several of which are local-only state that doesn't make
-            sense to lift, so colPrefs has to stay co-located with them.
-            Radio-styled (no icon) to match the header row above it. */}
-        <div className="ml-auto flex items-center gap-2.5">
-          <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-            <input type="radio" checked={showAccountsManager} onClick={() => setShowAccountsManager(true)} onChange={() => {}}
-              className="cursor-pointer w-2.5 h-2.5" />
-            Accounts
-          </label>
-          <ColumnsPickerButton prefs={colPrefs} radioStyle />
-        </div>
-      </div>
-      {lawsPanel.show && (
-        <div className="px-2 min-h-0 max-h-[40vh] overflow-y-auto border border-gray-200 rounded-xl bg-white">
-            <PageLawsList
-              scopeKey="Expenses"
-              isItemsLaws={true}
-              onChange={lawsPanel.bumpRefresh}
-              flags={viewButtons.map(({ key, label, description, count, onChange, active }) => ({
-                key, label, description, count, active,
-                onViewClick: onChange,
-              }))}
-              customViewNames={customViewNames}
-              onSaveViewName={saveCustomViewName}
-              openForm={lawsPanel.openForm}
-              setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags}
-              setHideZeroFlags={lawsPanel.setHideZeroFlags}
-              activeFilters={lawsPanel.activeFilters}
-            />
-        </div>
-      )}
-
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
         // "added expense": "account · ₵200 on 2024-01-15"
         const dateMatch = log.details?.match(/on (\d{4}-\d{2}-\d{2})/)

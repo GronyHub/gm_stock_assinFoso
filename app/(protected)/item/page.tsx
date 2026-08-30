@@ -47,6 +47,7 @@ import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
 import { COLUMNS as BILLS_COLUMNS, type ColKey as BillsColKey } from './_components/billsTabColumns'
+import { COLUMNS as EXPENSES_COLUMNS, type ColKey as ExpensesColKey } from './_components/expensesTabColumns'
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
@@ -2105,6 +2106,7 @@ function ItemHubPageInner() {
   // (liveSaleLaws, declared above).
   const salesLaws = useLawsPanel('showSalesLaws')
   const billsLaws = useLawsPanel('showBillsLaws')
+  const expensesLaws = useLawsPanel('showExpensesLaws')
 
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
   // as a second grid mode) was removed once Sale mode grew its own pinned
@@ -2236,17 +2238,26 @@ function ItemHubPageInner() {
   const [liveBillsAvailableVendors, setLiveBillsAvailableVendors] = useState<string[]>([])
   const [liveBillsAvailableYears, setLiveBillsAvailableYears] = useState<number[]>([])
   const liveBillsColPrefs = useColumnPrefs<BillsColKey>('billsTab', BILLS_COLUMNS)
-  // Expenses tab's own History/flag-violation state -- same lift-up
-  // treatment as Sales/Bills, so they render in one mutually-exclusive
-  // radio row alongside New Expense. colPrefs stays inside ExpensesTab
-  // itself (not lifted) -- its storage key depends on several other
-  // ExpensesTab-local view states (groupBy, property filters) that aren't
-  // being lifted, so colPrefs has to stay co-located with them.
+  // Expenses tab's own History/flag-violation/groupBy/property-filter/
+  // colPrefs state -- same lift-up treatment as Sales/Bills, so every one
+  // of its view buttons (previously the embedded Laws & Tasks panel's
+  // `flags` list) renders as one mutually-exclusive radio row here instead.
   const [liveExpensesShowHistory, setLiveExpensesShowHistory] = useState(false)
   const [liveExpensesActiveFlag, setLiveExpensesActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
   const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location', number>>({
     similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0,
   })
+  const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
+  const [liveExpensesShowProperties, setLiveExpensesShowProperties] = useState(true)
+  const [liveExpensesShowNonProperties, setLiveExpensesShowNonProperties] = useState(true)
+  const [liveExpensesPropertyAvailabilityFilter, setLiveExpensesPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
+  const [liveExpensesPropertyTypeFilter, setLiveExpensesPropertyTypeFilter] = useState<string | null>(null)
+  const [liveExpensesViewCounts, setLiveExpensesViewCounts] = useState({
+    all_expenses: 0, by_account: 0, by_vendor: 0, show_properties: 0, show_non_properties: 0,
+    prop_available: 0, prop_not_available: 0, printers: 0, computers: 0,
+  })
+  const [liveExpensesShowAccountsManager, setLiveExpensesShowAccountsManager] = useState(false)
+  const [liveExpensesShowLawsTasksModal, setLiveExpensesShowLawsTasksModal] = useState(false)
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -2345,19 +2356,50 @@ function ItemHubPageInner() {
   }
 
   // Same treatment for Expenses: All/New Expense/History/the four flag
-  // violations as one mutually-exclusive radio group. No Bars Only
-  // equivalent -- Expenses' list has no day-bar/item-line grouping like
-  // Sales/Bills' receipts do.
+  // violations, plus every view the old embedded Laws & Tasks panel's
+  // `flags` list used to offer (By Account/By Vendor/All Properties/
+  // Non-Properties/Properties Available/Properties Not Available/
+  // Printers/Computers) -- all one mutually-exclusive radio group now. No
+  // Bars Only equivalent -- Expenses' list has no day-bar/item-line
+  // grouping like Sales/Bills' receipts do.
   const EXPENSES_FLAG_KEYS = ['similar', 'bundled', 'no_vendor', 'properties_no_location'] as const
   const liveExpensesRadioValue = liveExpensesShowHistory ? 'history'
     : liveExpensesAddingNew ? 'new_expense'
     : liveExpensesActiveFlag ? liveExpensesActiveFlag
+    : liveExpensesGroupBy === 'account' ? 'by_account'
+    : liveExpensesGroupBy === 'vendor' ? 'by_vendor'
+    : (liveExpensesShowProperties && !liveExpensesShowNonProperties) ? 'all_properties'
+    : (!liveExpensesShowProperties && liveExpensesShowNonProperties) ? 'non_properties'
+    : liveExpensesPropertyAvailabilityFilter === 'available' ? 'properties_available'
+    : liveExpensesPropertyAvailabilityFilter === 'not_available' ? 'properties_not_available'
+    : liveExpensesPropertyTypeFilter === 'Printer' ? 'printers'
+    : liveExpensesPropertyTypeFilter === 'Computer' ? 'computers'
     : 'all'
   function selectLiveExpensesRadio(value: string) {
     setLiveExpensesShowHistory(value === 'history')
     setLiveExpensesAddingNew(value === 'new_expense')
     setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
+    setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : 'none')
+    setLiveExpensesShowProperties(value !== 'non_properties')
+    setLiveExpensesShowNonProperties(value !== 'all_properties')
+    setLiveExpensesPropertyAvailabilityFilter(value === 'properties_available' ? 'available' : value === 'properties_not_available' ? 'not_available' : 'all')
+    setLiveExpensesPropertyTypeFilter(value === 'printers' ? 'Printer' : value === 'computers' ? 'Computer' : null)
   }
+  // Mirrors ExpensesTab's old local getPrefsKey() -- same key scheme, now
+  // derived from the radio value that owns all its inputs.
+  function getExpensesPrefsKey(radioValue: string): string {
+    if ((EXPENSES_FLAG_KEYS as readonly string[]).includes(radioValue)) return `expensesTable_flag_${radioValue}`
+    if (radioValue === 'by_account') return 'expensesTable_groupBy_account'
+    if (radioValue === 'by_vendor') return 'expensesTable_groupBy_vendor'
+    if (radioValue === 'all_properties') return 'expensesTable_propertiesOnly'
+    if (radioValue === 'non_properties') return 'expensesTable_nonPropertiesOnly'
+    if (radioValue === 'properties_available') return 'expensesTable_propFilter_available'
+    if (radioValue === 'properties_not_available') return 'expensesTable_propFilter_not_available'
+    if (radioValue === 'printers') return 'expensesTable_propType_Printer'
+    if (radioValue === 'computers') return 'expensesTable_propType_Computer'
+    return 'expensesTable_all'
+  }
+  const liveExpensesColPrefs = useColumnPrefs<ExpensesColKey>(getExpensesPrefsKey(liveExpensesRadioValue), EXPENSES_COLUMNS)
 
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
@@ -6191,15 +6233,29 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Analytics
                 </label>
                 <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveExpensesShowAccountsManager} onClick={() => setLiveExpensesShowAccountsManager(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Accounts
+                </label>
+                <ColumnsPickerButton prefs={liveExpensesColPrefs} radioStyle />
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <input type="radio" checked={liveExpensesShowLawsTasksModal} onClick={() => setLiveExpensesShowLawsTasksModal(true)} onChange={() => {}}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Laws & Tasks
+                </label>
+                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
                   Help
                 </label>
               </div>
-              {/* Rows 2-3: one mutually-exclusive radio group -- All/New Expense/
-                  History (black) first, then the four flag violations (red, with
-                  live counts, sorted by count descending). No Bars Only here --
-                  Expenses has no day-bar/item-line grouping like Sales/Bills. */}
+              {/* Rows 2-4: one mutually-exclusive radio group -- All/New Expense/
+                  History (black) first, then the eight view buttons that used
+                  to only be reachable through the embedded Laws & Tasks panel's
+                  `flags` list (By Account/By Vendor/property views), then the
+                  four flag violations (red, with live counts, sorted by count
+                  descending). No Bars Only here -- Expenses has no day-bar/
+                  item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
@@ -6215,6 +6271,24 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
                 </label>
+              </div>
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
+                {[
+                  { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account },
+                  { key: 'by_vendor', label: 'By Vendor', count: liveExpensesViewCounts.by_vendor },
+                  { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties },
+                  { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties },
+                  { key: 'properties_available', label: 'Properties Available', count: liveExpensesViewCounts.prop_available },
+                  { key: 'properties_not_available', label: 'Properties Not Available', count: liveExpensesViewCounts.prop_not_available },
+                  { key: 'printers', label: 'Printers', count: liveExpensesViewCounts.printers },
+                  { key: 'computers', label: 'Computers', count: liveExpensesViewCounts.computers },
+                ].map(v => (
+                  <label key={v.key} className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                    <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)}
+                      className="cursor-pointer w-2.5 h-2.5" />
+                    {v.label} ({v.count})
+                  </label>
+                ))}
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
@@ -6243,7 +6317,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <ExpensesTab search={liveEmbeddedSearch} onFlagCountChange={setExpensesFlagsCount}
                     showHistory={liveExpensesShowHistory} setShowHistory={setLiveExpensesShowHistory}
                     activeFlag={liveExpensesActiveFlag} setActiveFlag={setLiveExpensesActiveFlag}
-                    onFlagCountsChange={setLiveExpensesFlagCounts} />
+                    onFlagCountsChange={setLiveExpensesFlagCounts}
+                    groupBy={liveExpensesGroupBy} setGroupBy={setLiveExpensesGroupBy}
+                    showProperties={liveExpensesShowProperties} setShowProperties={setLiveExpensesShowProperties}
+                    showNonProperties={liveExpensesShowNonProperties} setShowNonProperties={setLiveExpensesShowNonProperties}
+                    propertyAvailabilityFilter={liveExpensesPropertyAvailabilityFilter} setPropertyAvailabilityFilter={setLiveExpensesPropertyAvailabilityFilter}
+                    propertyTypeFilter={liveExpensesPropertyTypeFilter} setPropertyTypeFilter={setLiveExpensesPropertyTypeFilter}
+                    onViewCountsChange={setLiveExpensesViewCounts}
+                    colPrefs={liveExpensesColPrefs}
+                    showAccountsManager={liveExpensesShowAccountsManager} setShowAccountsManager={setLiveExpensesShowAccountsManager} />
                 </div>
               )}
             </div>
@@ -7805,6 +7887,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} scopeKey="Items" />
           <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} scopeKey="Sales" />
           <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} scopeKey="Bills" />
+          <LawsTasksModal isOpen={liveExpensesShowLawsTasksModal} onClose={() => setLiveExpensesShowLawsTasksModal(false)} lawsPanel={expensesLaws} scopeKey="Expenses" />
 
           {liveSortOrderModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
