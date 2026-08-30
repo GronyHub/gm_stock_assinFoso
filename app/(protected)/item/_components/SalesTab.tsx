@@ -188,6 +188,12 @@ function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) =
   )
 }
 
+// setState-style setter -- lets a parent-owned boolean be flipped with the
+// same `setX(v => !v)` calls this component already used when the state
+// was its own, instead of rewriting every call site to know the current
+// value itself.
+type BoolSetter = (v: boolean | ((prev: boolean) => boolean)) => void
+
 type Props = {
   items: Item[]
   groupFilter: string | null
@@ -196,28 +202,34 @@ type Props = {
   jumpToDate?: string | null
   jumpToItemName?: string | null
   onJumpDone?: () => void
+  // History/Bars Only/W/G moved up to the parent's own violation-filter row
+  // (so they render alongside it, not a second row) -- this component just
+  // takes them as controlled props now instead of owning the state itself.
+  // Optional (defaulting to no-ops below) for TaskViewPanel's bare embed,
+  // which has no header row of its own to host these controls in.
+  showHistory?: boolean
+  setShowHistory?: BoolSetter
+  barsOnly?: boolean
+  setBarsOnly?: BoolSetter
+  showW?: boolean
+  setShowW?: BoolSetter
+  showG?: boolean
+  setShowG?: BoolSetter
 }
 
 function SalesTab({
   items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
+  showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
+  showW = true, setShowW = () => {}, showG = true, setShowG = () => {},
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
-  // Collapses every receipt down to just its header bar (date/customer/CC/
-  // Inv/WNW) -- the item lines beneath stay hidden until toggled back on,
-  // so a long list of days can be scanned at a glance.
-  const [barsOnly, setBarsOnly] = useState(false)
   // Under Bars Only, clicking a bar reveals just that receipt's item lines
   // (a second click hides them again) without leaving the collapsed view --
   // the pencil icon still opens the full edit form.
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
-  // Show/hide Walk-In (W) and Grony Multimedia (G) receipts independently --
-  // unchecking one drops every bar of that customer type from the list.
-  const [showW, setShowW] = useState(true)
-  const [showG, setShowG] = useState(true)
   // Narrows the list to one month/year (either alone, or combined) --
   // independent of the text search box above, which still searches within
   // whatever this narrows down to.
@@ -653,27 +665,6 @@ function SalesTab({
   return (
     <div className="flex flex-col h-full min-h-0">
     <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0 flex-nowrap overflow-x-auto">
-      <button onClick={() => setShowHistory(true)}
-        className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
-        History
-      </button>
-      <label title={violationReceiptIds !== null ? 'Always on while a violation filter is active' : "Show only the date bars, hiding each receipt's item lines"}
-        className={`shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 select-none ${violationReceiptIds !== null ? 'opacity-50' : 'cursor-pointer'}`}>
-        <input type="checkbox" checked={effectiveBarsOnly} disabled={violationReceiptIds !== null} onChange={() => setBarsOnly(b => !b)}
-          className="w-3 h-3 accent-blue-600" />
-        Bars Only
-      </label>
-      <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
-        <input type="checkbox" checked={showW} onChange={() => setShowW(w => !w)}
-          className="w-3 h-3 accent-blue-600" />
-        W
-      </label>
-      <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1 cursor-pointer select-none">
-        <input type="checkbox" checked={showG} onChange={() => setShowG(g => !g)}
-          className="w-3 h-3 accent-blue-600" />
-        G
-      </label>
-      <div className="shrink-0 border-l border-gray-300 h-4" />
       <span className="shrink-0 text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
       <select value={monthFilter ?? ''} onChange={e => setMonthFilter(e.target.value ? Number(e.target.value) : null)}
         className="shrink-0 text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 outline-none">

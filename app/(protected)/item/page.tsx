@@ -2173,6 +2173,13 @@ function ItemHubPageInner() {
   const [liveBillsAddingNew, setLiveBillsAddingNew] = useState(false)
   const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
   const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
+  // Sales tab's own History/Bars Only/W/G controls -- owned here (not inside
+  // SalesTab) so they can render alongside the violation-filter radios in
+  // this component's own header row instead of a second row of their own.
+  const [liveSalesShowHistory, setLiveSalesShowHistory] = useState(false)
+  const [liveSalesBarsOnly, setLiveSalesBarsOnly] = useState(false)
+  const [liveSalesShowW, setLiveSalesShowW] = useState(true)
+  const [liveSalesShowG, setLiveSalesShowG] = useState(true)
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -2228,6 +2235,12 @@ function ItemHubPageInner() {
     () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, selling_price: i.selling_price })),
     [liveAllItems]
   )
+
+  // These three violation filters narrow the Sales list down to just the
+  // affected receipts' bars (see SalesTab's own violationReceiptIds), which
+  // only makes sense with Bars Only forced on -- there's no separate fix
+  // list to browse anymore, so item lines would just be noise.
+  const liveSalesForcedBarsOnly = liveSalesViolationFilter === 'no_cash' || liveSalesViolationFilter === 'high_wnw' || liveSalesViolationFilter === 'no_attachment'
 
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
@@ -5821,6 +5834,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </label>
                   </Fragment>
                 ))}
+                <div className="shrink-0 border-l border-gray-300 h-3 mx-0.5" />
+                <button type="button" onClick={() => setLiveSalesShowHistory(true)}
+                  className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+                  History
+                </button>
+                <label title={liveSalesForcedBarsOnly ? 'Always on while a violation filter is active' : "Show only the date bars, hiding each receipt's item lines"}
+                  className={`shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 select-none ${liveSalesForcedBarsOnly ? 'opacity-50' : 'cursor-pointer'}`}>
+                  <input type="checkbox" checked={liveSalesBarsOnly || liveSalesForcedBarsOnly} disabled={liveSalesForcedBarsOnly}
+                    onChange={() => setLiveSalesBarsOnly(b => !b)} className="w-2.5 h-2.5 accent-blue-600" />
+                  Bars Only
+                </label>
+                <label title="Show Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={liveSalesShowW} onChange={() => setLiveSalesShowW(w => !w)} className="w-2.5 h-2.5 accent-blue-600" />
+                  W
+                </label>
+                <label title="Show Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={liveSalesShowG} onChange={() => setLiveSalesShowG(g => !g)} className="w-2.5 h-2.5 accent-blue-600" />
+                  G
+                </label>
               </div>
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
@@ -5829,7 +5861,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
                     violation={liveSalesViolationFilter}
                     jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }} />
+                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+                    showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
+                    barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
+                    showW={liveSalesShowW} setShowW={setLiveSalesShowW}
+                    showG={liveSalesShowG} setShowG={setLiveSalesShowG} />
                 </div>
               )}
             </div>
