@@ -866,7 +866,7 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations'>('all')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems'>('all')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -5378,94 +5378,68 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   {/* View-only filters (black) */}
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>All(V)</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>All(NV)</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
                   </label>
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss/Gain/TradeOff{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Duplicates ({liveDuplicateCount})</span>
                   </label></>)}
                   {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'soldBelowCost'} onChange={() => { setLiveSaleViolationFilter('soldBelowCost'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'soldBelowCost'} onChange={() => { setLiveSaleViolationFilter('soldBelowCost'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Sold Below Cost ({liveSoldBelowCostCount})</span>
                   </label></>)}
                   {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Service ({liveServiceViolationCount})</span>
                   </label></>)}
                   {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Unlinked ({liveUnlinkedCount})</span>
                   </label></>)}
                   {liveVcpJumpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'vcpJump'} onChange={() => { setLiveSaleViolationFilter('vcpJump'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'vcpJump'} onChange={() => { setLiveSaleViolationFilter('vcpJump'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>VCP Jump ({liveVcpJumpCount})</span>
                   </label></>)}
                   {liveEmptyRowCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
-                </div>
-              )}
-              {/* Sale view mode toggle: Grid / Loss by Date / Loss by Items */}
-              {showControls && liveMode === 'sale' && (
-                <div className="px-2 py-1 bg-white border-b border-gray-200 flex gap-2 items-center">
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveSaleView"
-                      checked={!liveSaleView || liveSaleView?.kind === 'grid'}
-                      onChange={() => setLiveSaleView(null)}
-                      className="cursor-pointer"
-                    />
-                    <span>Grid</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveSaleView"
-                      checked={liveSaleView?.kind === 'loss_by_date'}
-                      onChange={() => setLiveSaleView({ kind: 'loss_by_date' })}
-                      className="cursor-pointer"
-                    />
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbydate'} onChange={() => { setLiveSaleViolationFilter('lossbydate'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_date' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Date</span>
                   </label>
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveSaleView"
-                      checked={liveSaleView?.kind === 'loss_by_items'}
-                      onChange={() => setLiveSaleView({ kind: 'loss_by_items' })}
-                      className="cursor-pointer"
-                    />
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
                 </div>
