@@ -2401,6 +2401,36 @@ function ItemHubPageInner() {
   }
   const liveExpensesColPrefs = useColumnPrefs<ExpensesColKey>(getExpensesPrefsKey(liveExpensesRadioValue), EXPENSES_COLUMNS)
 
+  // All/All Properties/Non-Properties/the four flag violations used to be
+  // three separate rows (one nearly empty, since "All" had no company).
+  // Flattened into one list and split across exactly two rows instead, so
+  // every row fills up with flex-1 items before spilling to the next --
+  // color/weight is driven by `variant`, not which row an item lands on.
+  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'prop' | 'flag' }[] = [
+    { key: 'all', label: 'All', count: null, variant: 'all' },
+    { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'prop' },
+    { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'prop' },
+    ...([
+      { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar },
+      { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled },
+      { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor },
+      { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location },
+    ].sort((a, b) => b.count - a.count).map(f => ({ ...f, variant: 'flag' as const }))),
+  ]
+  const liveExpensesRadioRow1 = liveExpensesMainRadios.slice(0, 5)
+  const liveExpensesRadioRow2 = liveExpensesMainRadios.slice(5)
+  function renderLiveExpensesRadio(v: typeof liveExpensesMainRadios[number]) {
+    return (
+      <label key={v.key}
+        className={`flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap select-none text-[9px] ${
+          v.variant === 'flag' ? 'text-red-600' : v.variant === 'prop' ? 'font-semibold text-gray-600' : 'text-gray-700'
+        }`}>
+        <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
+        <span>{v.label}{v.count !== null ? ` (${v.count})` : ''}</span>
+      </label>
+    )
+  }
+
   // Merges the 3 due-count queues into one per-item lookup for Count
   // mode's grid badges -- daily/7-day GMC items are "due", 15-day items
   // are "overdue" (a stronger color); an item in none of the 3 just isn't
@@ -6271,46 +6301,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
                 <ColumnsPickerButton prefs={liveExpensesColPrefs} radioStyle />
               </div>
-              {/* Rows 2-4: one mutually-exclusive radio group -- All (black)
-                  first, then All Properties/Non-Properties, then the four
-                  flag violations (red, with live counts, sorted by count
-                  descending). Everything else -- New Expense/History/By
-                  Account/By Vendor/property availability+type splits/
-                  Analytics/Accounts/Laws & Tasks/Help -- moved into the
-                  Filter dropdown above; Columns keeps its own control since
-                  it's a distinct widget. No Bars Only here -- Expenses has
-                  no day-bar/item-line grouping like Sales/Bills. */}
+              {/* Two rows -- one mutually-exclusive radio group -- holding
+                  All/All Properties/Non-Properties/the four flag violations
+                  (color/weight per item, not per row; see
+                  liveExpensesMainRadios above), each row filled with flex-1
+                  items before spilling to the next instead of one nearly-
+                  empty row per category. Everything else -- New Expense/
+                  History/By Account/By Vendor/property availability+type
+                  splits/Analytics/Accounts/Laws & Tasks/Help -- moved into
+                  the Filter dropdown above; Columns keeps its own control
+                  since it's a distinct widget. No Bars Only here -- Expenses
+                  has no day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5">
-                <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[9px]">
-                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
-                  <span>All</span>
-                </label>
-              </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5">
-                {[
-                  { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties },
-                  { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties },
-                ].map(v => (
-                  <label key={v.key} className="flex-1 flex items-center justify-center gap-0.5 text-[9px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                    <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)}
-                      className="cursor-pointer w-2.5 h-2.5" />
-                    {v.label} ({v.count})
-                  </label>
-                ))}
-              </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1">
-                {[
-                  { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar },
-                  { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled },
-                  { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor },
-                  { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location },
-                ].sort((a, b) => b.count - a.count).map((v, i) => (
+                {liveExpensesRadioRow1.map((v, i) => (
                   <Fragment key={v.key}>
                     {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-                    <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[9px]">
-                      <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
-                      <span>{v.label} ({v.count})</span>
-                    </label>
+                    {renderLiveExpensesRadio(v)}
+                  </Fragment>
+                ))}
+              </div>
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1.5">
+                {liveExpensesRadioRow2.map((v, i) => (
+                  <Fragment key={v.key}>
+                    {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+                    {renderLiveExpensesRadio(v)}
                   </Fragment>
                 ))}
               </div>
