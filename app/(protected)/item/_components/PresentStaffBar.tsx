@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { parseTimeMins } from '@/lib/staffTimes'
 import StaffTimeDetailModal from './StaffTimeDetailModal'
 
-type StaffRow = { staff_name: string; actual_in: string; worked_seconds: number }
+type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; worked_seconds: number }
 
 // "2hr 10min" / "45min" / "3hr" -- deliberately "hr"/"min" rather than
 // lib/fmtDuration.ts's "2h 30m" (that one's shared with the Log tab's Time
@@ -17,15 +17,13 @@ function fmtHrMin(totalMinutes: number): string {
   return `${m}min`
 }
 
-// Sits right above the mode-switch tabs: every staff member currently
-// clocked in (actual_in set, no actual_out yet today), shown as
-// "Joe(2hr/5hr 10min)" -- worked time over total time since clock-in.
-// Worked time comes from /api/staff-times/worked-today, which sums today's
-// announcements' estimated_duration_seconds (real for live sale taps, a
-// flat 1 minute for a stock count or a violation fix, zero for anything
-// else); total time is just now minus their own actual_in. Polls for new
-// activity/clock changes and ticks its own clock independently so the
-// total keeps moving between polls.
+// Sits right above the mode-switch tabs: shows staff who have clocked in
+// today, both currently clocked in and clocked out, displaying
+// "Joe(2hr/5hr 10min)" for clocked-in and "Jane (out)(1hr/3hr)" for
+// clocked-out. Worked time comes from /api/staff-times/worked-today, which
+// sums today's announcements' estimated_duration_seconds; total time is
+// from clock-in to now (or to clock-out time if already logged out). Polls
+// for new activity/clock changes and ticks its own clock every 30 seconds.
 export default function PresentStaffBar() {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
@@ -58,12 +56,16 @@ export default function PresentStaffBar() {
         <span className="font-semibold text-gray-400 shrink-0">Present</span>
         {staff.map(s => {
           const inMins = parseTimeMins(s.actual_in)
-          const totalMins = inMins != null ? Math.max(0, nowMins - inMins) : null
+          const isLoggedOut = s.actual_out != null
+          const totalMins = isLoggedOut
+            ? (outMins => outMins != null && inMins != null ? outMins - inMins : null)(parseTimeMins(s.actual_out))
+            : (inMins != null ? Math.max(0, nowMins - inMins) : null)
           const workedMins = s.worked_seconds / 60
           return (
             <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
-              title="View time details" className="whitespace-nowrap hover:underline">
+              title="View time details" className={`whitespace-nowrap hover:underline ${isLoggedOut ? 'opacity-60' : ''}`}>
               <span className="font-semibold text-gray-700">{s.staff_name}</span>
+              {isLoggedOut && <span className="text-gray-400"> (out)</span>}
               {totalMins != null && (
                 <span className="text-gray-400">({fmtHrMin(workedMins)}/{fmtHrMin(totalMins)})</span>
               )}

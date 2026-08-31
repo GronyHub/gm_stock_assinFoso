@@ -5537,6 +5537,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
+          {/* Staff time bar -- appears above the tab switcher */}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
+            <PresentStaffBar />
+          )}
+
           {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView
               'items' -- the sidebar row -- and 'sales', the same screen's
               default landing view) -- every other lossView (Vendors,
@@ -5544,7 +5549,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               switcher, so it no longer shows there. */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
             <div className="shrink-0 bg-white border-b border-gray-200">
-              <PresentStaffBar />
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
                   centered in the row even when the right-side controls

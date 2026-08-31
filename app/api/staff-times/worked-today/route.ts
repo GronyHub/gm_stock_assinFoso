@@ -4,13 +4,14 @@ import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 export const dynamic = 'force-dynamic'
 
-// Backs the "present staff" banner above the mode-switch tabs: who's
-// currently clocked in (actual_in set, actual_out not yet set today) and
-// how much of that time was actually spent on recorded work -- summed from
-// today's announcements' estimated_duration_seconds (real for live sale
-// taps, a flat minute for counts/violation fixes per FLAT_MINUTE_ACTIONS
-// above, zero for everything else, e.g. a bill/expense entered by hand with
-// no timed estimate).
+// Backs the "present staff" banner above the mode-switch tabs: shows staff
+// who have clocked in today (actual_in set), both currently clocked in
+// (actual_out null) and clocked out (actual_out set), along with how much
+// of that time was actually spent on recorded work -- summed from today's
+// announcements' estimated_duration_seconds (real for live sale taps, a flat
+// minute for counts/violation fixes per FLAT_MINUTE_ACTIONS, zero for
+// everything else, e.g. a bill/expense entered by hand with no timed
+// estimate). Clocked-out staff are shown with reduced opacity and "(out)".
 export async function GET() {
   const { error } = await requireAuth()
   if (error) return error
@@ -20,11 +21,11 @@ export async function GET() {
 
     const [present, activity] = await Promise.all([
       sql`
-        SELECT staff_name, actual_in
+        SELECT staff_name, actual_in, actual_out
         FROM staff_times
         WHERE work_date = ${today} AND staff_name <> '__shop_open__'
-          AND actual_in IS NOT NULL AND actual_out IS NULL
-        ORDER BY staff_name
+          AND actual_in IS NOT NULL
+        ORDER BY actual_out ASC NULLS FIRST, staff_name
       `,
       sql`
         SELECT author, category, estimated_duration_seconds
@@ -48,9 +49,10 @@ export async function GET() {
       workedSeconds[key] = (workedSeconds[key] ?? 0) + seconds
     }
 
-    const staff = (present as { staff_name: string; actual_in: string }[]).map(r => ({
+    const staff = (present as { staff_name: string; actual_in: string; actual_out: string | null }[]).map(r => ({
       staff_name: r.staff_name,
       actual_in: r.actual_in,
+      actual_out: r.actual_out,
       worked_seconds: workedSeconds[r.staff_name.toLowerCase()] ?? 0,
     }))
 
