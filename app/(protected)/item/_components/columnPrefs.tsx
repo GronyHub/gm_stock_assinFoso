@@ -218,15 +218,35 @@ export type ExtraToggle = { key: string; label: string; active: boolean; onToggl
 // group rather than more columns. The trigger button itself picks up an
 // accent color whenever one of them is on, so that's visible without
 // opening the panel.
-export function ColumnsPickerButton<K extends string>({ prefs, dark = false, extraToggles, radioStyle = false }: {
+export function ColumnsPickerButton<K extends string>({
+  prefs, dark = false, extraToggles, radioStyle = false, open: controlledOpen, onOpenChange, hideTrigger = false,
+}: {
   prefs: ColumnPrefs<K>; dark?: boolean; extraToggles?: ExtraToggle[]
   // Renders the trigger as a radio + text label instead of the icon button --
   // for callers (Sales tab) that put this alongside a row of other radios and
   // want it to match visually. Opt-in, defaults to the icon button everywhere
   // else so this doesn't change any other caller's look.
   radioStyle?: boolean
+  // Optional controlled-open pair -- lets an external trigger (e.g. a
+  // "Columns" option inside a <select>) open this same panel without this
+  // component rendering its own radio/icon trigger. Uncontrolled (owns its
+  // own open/closed state) when omitted, so every existing caller is
+  // unaffected.
+  open?: boolean
+  onOpenChange?: (v: boolean) => void
+  // Skips rendering the trigger element entirely -- pair with the
+  // controlled `open`/`onOpenChange` above for a caller that opens this
+  // panel from elsewhere and doesn't want a second, redundant trigger shown.
+  hideTrigger?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = (next: boolean | ((prev: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(open) : next
+    if (isControlled) onOpenChange?.(value)
+    else setInternalOpen(value)
+  }
   const [renamingCol, setRenamingCol] = useState<K | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -238,13 +258,14 @@ export function ColumnsPickerButton<K extends string>({ prefs, dark = false, ext
     }
     document.addEventListener('mousedown', onOut)
     return () => document.removeEventListener('mousedown', onOut)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const anyExtraActive = !!extraToggles?.some(t => t.active)
 
   return (
     <div className="relative shrink-0" ref={ref}>
-      {radioStyle ? (
+      {hideTrigger ? null : radioStyle ? (
         <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
           <input type="radio" checked={open || anyExtraActive} onClick={() => setOpen(o => !o)} onChange={() => {}}
             className="cursor-pointer w-2.5 h-2.5" />

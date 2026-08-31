@@ -2258,6 +2258,11 @@ function ItemHubPageInner() {
   })
   const [liveExpensesShowAccountsManager, setLiveExpensesShowAccountsManager] = useState(false)
   const [liveExpensesShowLawsTasksModal, setLiveExpensesShowLawsTasksModal] = useState(false)
+  // Columns moved into the Filter dropdown (see renderExpensesFiltersBar) --
+  // this just tracks whether that panel is open, since ColumnsPickerButton
+  // no longer renders its own trigger for Expenses (hideTrigger + controlled
+  // open/onOpenChange instead).
+  const [liveExpensesColumnsOpen, setLiveExpensesColumnsOpen] = useState(false)
   // Sale mode's own Analytics toggle -- named distinctly from the generic
   // "live" prefix (source collision: this file's live-prefix convention
   // would otherwise turn the original `liveShowAnalytics` into a name that
@@ -4340,15 +4345,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  // Expenses' Filter dropdown -- houses everything except Columns (which
-  // stays its own control since it's a distinct widget, not a single
-  // click/select action) and the radios kept standalone (All Expenses/All
-  // Properties/Non-Properties and the four flag violations). Two kinds of
-  // options share this one select: persistent views that plug straight
-  // into the same liveExpensesRadioValue mutex (New Expense/History/By
-  // Account/By Vendor/property splits -- shown as "selected" when active),
-  // and momentary triggers (Analytics/Accounts/Laws & Tasks/Help) that just
-  // fire their own setter, same as Sales/Bills' "Laws & Tasks" option.
+  // Expenses' Filter dropdown -- houses everything except the radios kept
+  // standalone (All Expenses/All Properties/Non-Properties and the four
+  // flag violations). Three kinds of options share this one select:
+  // persistent views that plug straight into the same liveExpensesRadioValue
+  // mutex (New Expense/History/By Account/By Vendor/property splits -- shown
+  // as "selected" when active), momentary triggers (Analytics/Accounts/
+  // Laws & Tasks/Help) that just fire their own setter, and "columns" which
+  // opens ColumnsPickerButton's panel via its controlled open/onOpenChange
+  // (that component renders with hideTrigger, right below this select, so
+  // its floating panel still anchors somewhere sensible without a second
+  // visible trigger of its own).
   const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_account', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
@@ -4358,6 +4365,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           const v = e.target.value
           if (v === 'analytics') { setLiveExpensesShowAnalytics(a => !a); return }
           if (v === 'accounts') { setLiveExpensesShowAccountsManager(true); return }
+          if (v === 'columns') { setLiveExpensesColumnsOpen(true); return }
           if (v === 'help:laws') { setLiveExpensesShowLawsTasksModal(true); return }
           if (v === 'help:guide') { setLiveHelpModalOpen(true); return }
           selectLiveExpensesRadio(v || 'all')
@@ -4375,6 +4383,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <option value="computers">Computers ({liveExpensesViewCounts.computers})</option>
         <option value="analytics">Analytics</option>
         <option value="accounts">Accounts</option>
+        <option value="columns">Columns</option>
         <option value="help:laws">⚖️ Laws &amp; Tasks</option>
         <option value="help:guide">❓ Help</option>
       </select>
@@ -5442,6 +5451,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                         ]} />
                     )}
+                    {/* One shared Global Search trigger for the whole Sale/
+                        Log/Sales/Bills/Expenses family, replacing the
+                        separate 🔍 button each of those used to render in
+                        its own header -- lives once, right here, next to
+                        the tab switcher itself. */}
+                    {lossView === 'sales' && (
+                      <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
+                        className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
+                        🔍
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -5687,19 +5707,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus, and on
                   Sales/Bills (they render their own title+search+analytics+help row
-                  inside their own liveMode block instead). */}
+                  inside their own liveMode block instead). Global Search's own 🔍
+                  now lives once, next to the tab switcher above, not repeated here. */}
               {showControls && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="px-2 py-1 border-b border-green-700">
-                  <div className="flex items-center gap-2 justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => setGlobalSearchOpen(true)} title="Search"
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-sm border-2 border-transparent text-white opacity-70 hover:opacity-100 transition shrink-0">
-                        🔍
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                   </div>
                 </div>
               )}
@@ -6042,10 +6055,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
                 {renderSalesFiltersBar()}
-                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                  🔍
-                </button>
                 <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveSalesShowAnalytics} onClick={() => setLiveSalesShowAnalytics(a => !a)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -6187,10 +6196,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
                 {renderBillsFiltersBar()}
-                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                  🔍
-                </button>
                 <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveBillsShowAnalytics} onClick={() => setLiveBillsShowAnalytics(a => !a)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -6286,32 +6291,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
-                <input
-                  type="text"
-                  value={liveEmbeddedSearch}
-                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                  placeholder="Search…"
-                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
-                />
-                {renderExpensesFiltersBar()}
-                <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                  className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                  🔍
-                </button>
-                <ColumnsPickerButton prefs={liveExpensesColPrefs} radioStyle />
-              </div>
               {/* Two rows -- one mutually-exclusive radio group -- holding
                   All/All Properties/Non-Properties/the four flag violations
                   (color/weight per item, not per row; see
                   liveExpensesMainRadios above), each row filled with flex-1
                   items before spilling to the next instead of one nearly-
-                  empty row per category. Everything else -- New Expense/
-                  History/By Account/By Vendor/property availability+type
-                  splits/Analytics/Accounts/Laws & Tasks/Help -- moved into
-                  the Filter dropdown above; Columns keeps its own control
-                  since it's a distinct widget. No Bars Only here -- Expenses
-                  has no day-bar/item-line grouping like Sales/Bills. */}
+                  empty row per category. Search/Filter/Columns share the
+                  second row, to the right of its two radios (Global Search
+                  now lives once, next to the tab switcher above). Columns
+                  itself opens via a "Columns" option inside the Filter
+                  select -- ColumnsPickerButton renders here with
+                  hideTrigger, purely so its floating panel has somewhere to
+                  anchor. Everything else -- New Expense/History/By Account/
+                  By Vendor/property availability+type splits/Analytics/
+                  Accounts/Laws & Tasks/Help -- also lives in that same
+                  Filter dropdown. No Bars Only here -- Expenses has no
+                  day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5">
                 {liveExpensesRadioRow1.map((v, i) => (
                   <Fragment key={v.key}>
@@ -6327,6 +6322,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     {renderLiveExpensesRadio(v)}
                   </Fragment>
                 ))}
+                <input
+                  type="text"
+                  value={liveEmbeddedSearch}
+                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20 shrink-0"
+                />
+                {renderExpensesFiltersBar()}
+                <ColumnsPickerButton prefs={liveExpensesColPrefs} hideTrigger open={liveExpensesColumnsOpen} onOpenChange={setLiveExpensesColumnsOpen} />
               </div>
               {liveExpensesAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
