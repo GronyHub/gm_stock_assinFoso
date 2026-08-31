@@ -1,10 +1,9 @@
 'use client'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
 import { formatDuration } from '@/lib/fmtDuration'
-import { formatGapMins } from '@/lib/fmtGap'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
@@ -17,9 +16,9 @@ type Announcement = {
   reply_to_author?: string | null
   reply_to_body?: string | null
   // Estimated time the activity itself took -- only set for activity types
-  // that can actually compute one (currently just live sale taps, see
-  // /api/sales/live-tap). Null everywhere else until that type gets its own
-  // rule (see lib/logger.ts's own comment on this column).
+  // that can actually compute one (currently live sale taps and a flat
+  // amount for bills/expenses -- see lib/logger.ts's own comment on this
+  // column and /api/sales/live-tap for the goods/services rule).
   estimated_duration_seconds?: number | null
   // The raw logActivity action string (e.g. "counted stock") -- feeds
   // effectiveDurationSeconds' flat-minute fallback for the Total column,
@@ -27,68 +26,40 @@ type Announcement = {
   category?: string | null
 }
 
-function fmtAnnTime(iso: string) {
-  try {
-    const d = new Date(iso)
-    const now = new Date()
-    const diffMs = now.getTime() - d.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    const diffHrs = Math.floor(diffMins / 60)
-    if (diffHrs < 24) return `${diffHrs}h ago`
-    const diffDays = Math.floor(diffHrs / 24)
-    if (diffDays < 2) return `${diffDays}d ago`
-    // Older than 2 days: show the day and date it was posted instead of a
-    // relative count, e.g. "Mon, 7 Jul" (year added if it wasn't this year).
-    return d.toLocaleDateString('en-GB', {
-      weekday: 'short', day: 'numeric', month: 'short',
-      year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    })
-  } catch { return '' }
-}
-
-function dayKey(iso: string) {
-  return new Date(iso).toDateString()
-}
-
-// Per-day, per-staff total of effectiveDurationSeconds -- backs the Total
-// column below. Grouped by calendar day (not just "today") so this stays
-// correct as older days load in via "load more", same effectiveDurationSeconds
-// rule /api/staff-times/worked-today applies server-side for the
-// present-staff banner, so the two always agree.
-function computeDailyTotals(list: Announcement[]): Record<string, Record<string, number>> {
-  const totals: Record<string, Record<string, number>> = {}
-  for (const p of list) {
-    const day = dayKey(p.created_at)
-    const seconds = effectiveDurationSeconds(p.category, p.estimated_duration_seconds)
-    if (!totals[day]) totals[day] = {}
-    totals[day][p.author] = (totals[day][p.author] ?? 0) + seconds
-  }
-  return totals
-}
-
-// `list` is newest-first (same convention as Live Sale's Log mode dateTaps),
-// so the previous chronological entry relative to index i is at i+1. No
-// gap for the day's oldest loaded entry -- unlike the Log mode's Gap column,
-// this has no "since shop opening" fallback to reach for, since most
-// activity types have nothing resembling shop hours.
-function gapMinsFor(list: Announcement[], i: number): number | null {
-  const prev = list[i + 1]
-  if (!prev || dayKey(prev.created_at) !== dayKey(list[i].created_at)) return null
-  return (new Date(list[i].created_at).getTime() - new Date(prev.created_at).getTime()) / 60000
-}
-
-function dayLabel(iso: string) {
+// Ghana/this app's own clock is GMT year-round (see live-tap's own
+// "Ghana is UTC+0" comment) -- an absolute clock time only means the same
+// thing to everyone reading it if it's read off the UTC parts of the
+// timestamp rather than whatever timezone the viewer's own device happens
+// to be set to.
+function fmtClockTime(iso: string): string {
   const d = new Date(iso)
+  let h = d.getUTCHours()
+  const m = d.getUTCMinutes()
+  const ap = h >= 12 ? 'pm' : 'am'
+  h = h % 12
+  if (h === 0) h = 12
+  return `${h}:${String(m).padStart(2, '0')}${ap}`
+}
+
+// GMT calendar date (YYYY-MM-DD) -- both the day-header grouping below and
+// /api/announcements/daily-totals' own ?date= param key off this, so a
+// post never gets grouped into a different day than the one its Total
+// column total was actually computed for.
+function dayKey(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
+function dayLabel(iso: string): string {
+  const day = dayKey(iso)
   const now = new Date()
-  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000)
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
+  const today = now.toISOString().slice(0, 10)
+  const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10)
+  if (day === today) return 'Today'
+  if (day === yesterday) return 'Yesterday'
+  const d = new Date(iso)
   return d.toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short',
-    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    day: 'numeric', month: 'short', timeZone: 'UTC',
+    year: d.getUTCFullYear() !== now.getUTCFullYear() ? 'numeric' : undefined,
   })
 }
 
@@ -125,33 +96,20 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
   )
 }
 
-// Gap (time since the previous activity) and Dur (that activity's own
-// estimated duration, when known) -- same two figures Live Sale's Log mode
-// used to show per sale line, generalized to every activity type here.
-function ActivityMeta({ gapMins, durationSeconds }: { gapMins: number | null; durationSeconds?: number | null }) {
-  if (gapMins == null && !durationSeconds) return null
-  return (
-    <>
-      {gapMins != null && <span className="text-gray-400"> · Gap {formatGapMins(gapMins)}</span>}
-      {!!durationSeconds && <span className="text-gray-400"> · Dur {formatDuration(durationSeconds)}</span>}
-    </>
-  )
-}
-
-// Number of columns the shared <table> header declares -- Staff/Time/Gap/
-// Dur/Total/Activity -- kept as one constant so the colSpan on date-header
-// and rich-post rows can't silently drift out of sync with the header.
-const FEED_COLUMNS = 6
+// Number of columns the shared <table> header declares -- Time/Activity/
+// Staff/Duration/Total -- kept as one constant so the colSpan on
+// date-header and rich-post rows can't silently drift out of sync with
+// the header.
+const FEED_COLUMNS = 5
 
 // One feed row (or two, when a date header precedes it). Returns <tr>s
 // directly (no wrapping element) so every row -- auto-logged or a rich
 // historical post with media/a reply -- lives in the same <table>, sharing
 // one header and one scroll region instead of each row scrolling
 // independently.
-function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, onDelete }: {
+function PostRow({ p, showDateHeader, staffDayTotalSeconds, canDelete, onDelete }: {
   p: Announcement
   showDateHeader: boolean
-  gapMins: number | null
   staffDayTotalSeconds: number
   canDelete: boolean
   onDelete: (id: number) => void
@@ -170,19 +128,18 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
         </tr>
       )}
       {isAutoLogged ? (
-        // Auto-logged activity row -- Staff/Time/Gap/Dur/Total/Activity
+        // Auto-logged activity row -- Time/Activity/Staff/Duration/Total
         // each get their own aligned column (same idea as Live Sale's Log
         // mode table). Activity stays single-line (whitespace-nowrap, not
         // wrapped or truncated) -- the shared table wrapper scrolls
         // horizontally when it's long, same trade-off Live Sale's Log mode
         // makes for its Item column.
         <tr className="hover:bg-gray-50">
-          <td className="pl-3 pr-2 py-1 font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</td>
-          <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</td>
-          <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? formatGapMins(gapMins) : '—'}</td>
+          <td className="pl-3 pr-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{fmtClockTime(p.created_at)}</td>
+          <td className="px-2 py-1 text-gray-800 text-[11px] whitespace-nowrap">{p.body}</td>
+          <td className="px-2 py-1 font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</td>
           <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
-          <td className="px-2 py-1 text-gray-500 font-semibold text-[10px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
-          <td className="px-2 pr-3 py-1 text-gray-800 text-[11px] whitespace-nowrap">{p.body}</td>
+          <td className="px-2 pr-3 py-1 text-gray-500 font-semibold text-[10px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
         </tr>
       ) : (
         <tr>
@@ -192,8 +149,8 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
                 <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] text-gray-400">
-                    {fmtAnnTime(p.created_at)}
-                    <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
+                    {fmtClockTime(p.created_at)}
+                    {!!durationSeconds && <span className="text-gray-400"> · Dur {formatDuration(durationSeconds)}</span>}
                   </span>
                   {canDelete && (
                     <button onClick={() => onDelete(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
@@ -222,16 +179,35 @@ function AnnouncementsPanel() {
   const canDelete = ['owner', 'manager'].includes(role)
 
   const [posts, setPosts] = useState<Announcement[]>([])
-  const dailyTotals = useMemo(() => computeDailyTotals(posts), [posts])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
 
   const PAGE_SIZE = 30
 
+  // Per-day, per-staff total of effectiveDurationSeconds, straight from
+  // /api/announcements/daily-totals rather than summed from `posts` itself
+  // -- `posts` is only ever a paginated window (the latest 30, or however
+  // much "load more" has pulled in), so summing it directly under-counted
+  // a busy staff member's day until every one of today's announcements
+  // happened to have been scrolled into view. Keyed by dayKey (GMT date).
+  const [dailyTotals, setDailyTotals] = useState<Record<string, Record<string, number>>>({})
+
+  async function loadDailyTotal(day: string) {
+    try {
+      const res = await fetch(`/api/announcements/daily-totals?date=${day}`)
+      if (!res.ok) return
+      const d = await res.json()
+      if (d && typeof d === 'object' && !Array.isArray(d)) {
+        setDailyTotals(prev => ({ ...prev, [day]: d }))
+      }
+    } catch {}
+  }
+
   // Merges rather than replaces, so posts loaded further back via "Load older"
   // don't get wiped out by the next 15s poll (which only ever asks for the
   // latest page) -- that was why older announcements used to disappear.
   function load() {
+    loadDailyTotal(new Date().toISOString().slice(0, 10))
     fetch('/api/announcements')
       .then(r => r.json())
       .then((d: Announcement[]) => {
@@ -263,6 +239,7 @@ function AnnouncementsPanel() {
           const older = d.filter(p => !existingIds.has(p.id))
           return [...prev, ...older]
         })
+        for (const day of new Set(d.map(p => dayKey(p.created_at)))) loadDailyTotal(day)
         if (d.length < PAGE_SIZE) setHasMore(false)
       } else {
         setHasMore(false)
@@ -311,19 +288,17 @@ function AnnouncementsPanel() {
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
-                <th className="text-left pl-3 pr-2 py-1 whitespace-nowrap">Staff</th>
-                <th className="text-left px-2 py-1 whitespace-nowrap">Time</th>
-                <th className="text-left px-2 py-1 whitespace-nowrap">Gap</th>
-                <th className="text-left px-2 py-1 whitespace-nowrap">Dur</th>
-                <th className="text-left px-2 py-1 whitespace-nowrap">Total</th>
-                <th className="text-left px-2 pr-3 py-1">Activity</th>
+                <th className="text-left pl-3 pr-2 py-1 whitespace-nowrap">Time</th>
+                <th className="text-left px-2 py-1">Activity</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Staff</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Duration</th>
+                <th className="text-left px-2 pr-3 py-1 whitespace-nowrap">Total</th>
               </tr>
             </thead>
             <tbody>
               {posts.map((p, i) => (
                 <PostRow key={p.id} p={p}
                   showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
-                  gapMins={gapMinsFor(posts, i)}
                   staffDayTotalSeconds={dailyTotals[dayKey(p.created_at)]?.[p.author] ?? 0}
                   canDelete={canDelete} onDelete={removePost} />
               ))}

@@ -201,9 +201,14 @@ export async function POST(req: NextRequest) {
     // Same estimate Live Sale's Log mode used to show in its own Dur column
     // (item's Time/unit x Qty) -- now recorded on the Home feed's post
     // instead, since that's meant to cover every activity's duration, not
-    // just sales.
+    // just sales. A Good is a flat 1 minute per sale regardless of quantity
+    // (Time/unit isn't a meaningful concept for most goods -- tapping out an
+    // envelope or a cable is roughly the same handling time whether it's
+    // one or ten), not scaled the way a service's per-unit time is.
     const unitTimeSeconds = item.unit_time_seconds != null ? Number(item.unit_time_seconds) : null
-    const estimatedDurationSeconds = unitTimeSeconds != null ? unitTimeSeconds * qty : undefined
+    const estimatedDurationSeconds = item.product_type === 'goods'
+      ? 60
+      : (unitTimeSeconds != null ? unitTimeSeconds * qty : undefined)
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
