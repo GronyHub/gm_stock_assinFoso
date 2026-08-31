@@ -208,6 +208,7 @@ export async function POST(req: NextRequest) {
     const estimatedDurationSeconds = item.product_type === 'goods'
       ? 60 * qty
       : (unitTimeSeconds != null ? unitTimeSeconds * qty : undefined)
+    console.log('[live-tap] Duration calc:', { itemId: item.id, itemName: item.canonical_name, productType: item.product_type, qty, unitTimeSeconds, estimatedDurationSeconds })
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
