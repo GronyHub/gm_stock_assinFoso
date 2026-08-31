@@ -41,6 +41,7 @@ import { useViolations } from './_components/useViolations'
 import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
+import PresentStaffBar from './_components/PresentStaffBar'
 import AssignWidget from './_components/AssignWidget'
 import LawsToggleBar from './_components/LawsToggleBar'
 import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
@@ -4261,12 +4262,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // row up top instead.
   function renderModeToggleRow() {
     return (<>
-      {liveExpanded && (
+      {liveExpanded && (<>
+        <PresentStaffBar />
         <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
           {liveMode === 'sale' && renderModeProgressSummary(false, false)}
           {renderModeToggle(false)}
         </div>
-      )}
+      </>)}
     </>)
   }
 
