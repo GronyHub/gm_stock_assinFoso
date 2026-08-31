@@ -116,6 +116,13 @@ type TableProps = {
   onDeleteCancel: () => void
   onMigrated: (id: number) => void
   colPrefs: ColumnPrefs<ColKey>
+  // The frozen Account column is redundant once every row in this table is
+  // already filtered to one account (the By Account grouped view) -- the
+  // group's own header bar already says which account it is. Swaps that
+  // column to a plain "Description" column (no filter dropdown, since
+  // filtering by account while already grouped by it does nothing) instead
+  // of repeating the same account name on every single row.
+  hideAccount?: boolean
   hideVendor?: boolean
   hidePropertyColumns?: boolean
   accounts: string[]
@@ -299,7 +306,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideVendor, hidePropertyColumns,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
@@ -364,16 +371,29 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           >
             Date Bought
           </ResizableTh>
-          <FilterHeaderCell
-            label="Account"
-            options={accounts}
-            value={accountFilter}
-            onChange={onAccountFilter}
-            onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)}
-            onResetWidth={() => colPrefs.resetWidth('account')}
-            sticky
-            stickyLeftPx={dateWidth}
-          />
+          {hideAccount ? (
+            <ResizableTh
+              onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)}
+              onReset={() => colPrefs.resetWidth('account')}
+              className="sticky z-20 bg-gray-50"
+              style={{ left: dateWidth }}
+              paddingClassName="px-1 py-0.5"
+              wrapLabel
+            >
+              Description
+            </ResizableTh>
+          ) : (
+            <FilterHeaderCell
+              label="Account"
+              options={accounts}
+              value={accountFilter}
+              onChange={onAccountFilter}
+              onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)}
+              onResetWidth={() => colPrefs.resetWidth('account')}
+              sticky
+              stickyLeftPx={dateWidth}
+            />
+          )}
           <ResizableTh align="right" wrapLabel paddingClassName="px-1 py-0.5" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
@@ -388,9 +408,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
                   just folds the description into what the frozen Account
-                  column shows, so the account reads as its own full name. */}
+                  column shows, so the account reads as its own full name.
+                  hideAccount (the By Account grouped view, where every row's
+                  account already matches the group's own header) drops the
+                  now-redundant account name and shows just the description. */}
               <td className={`${TD} sticky z-10 text-gray-900 font-semibold break-words border-r bg-inherit`} style={{ left: dateWidth }}>
-                {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
+                {hideAccount ? (e.description ?? '—') : e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
               </td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {visibleKeys.map(k => bodyCellFor(k, e))}
@@ -1271,6 +1294,7 @@ export default function ExpensesTab({
                   </div>
                   <div className="[&>div]:rounded-t-none">
                     <ExpenseTable rows={rows} {...tableProps}
+                      hideAccount={groupBy === 'account'}
                       hideVendor={groupBy === 'vendor'}
                       hidePropertyColumns={!showProperties && showNonProperties} />
                   </div>

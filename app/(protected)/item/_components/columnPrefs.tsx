@@ -181,7 +181,7 @@ export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: num
 // per table. Actual sizing comes from the table's own <colgroup> (matching
 // widths via the same ColumnPrefs.getWidth calls) -- this component is
 // purely presentational.
-export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', wrapLabel = false, paddingClassName = 'px-2.5 py-2', children }: {
+export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', wrapLabel = false, paddingClassName = 'px-2.5 py-2', style, children }: {
   onResize: (deltaPx: number) => void
   onReset: () => void
   align?: 'left' | 'center' | 'right'
@@ -198,11 +198,14 @@ export function ResizableTh({ onResize, onReset, align = 'left', noDivider = fal
   // caller that wants tighter cells (e.g. Expenses) overrides through this
   // instead. Defaults to today's spacing for every existing caller.
   paddingClassName?: string
+  // For a frozen column that isn't the very first one -- needs a dynamic
+  // `left` offset (in px) that a static Tailwind class can't express.
+  style?: React.CSSProperties
   children?: React.ReactNode
 }) {
   const alignCls = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
   return (
-    <th className={`relative overflow-hidden ${paddingClassName} font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
+    <th style={style} className={`relative overflow-hidden ${paddingClassName} font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
       <span className={wrapLabel ? 'block break-words' : 'block truncate'}>{children}</span>
       <ColResizeHandle onResize={onResize} onReset={onReset} />
     </th>
