@@ -60,6 +60,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Block any line priced at or below the item's own cost (ACP -- VCP
+    // plus its share of shared bill expenses, kept in sync by
+    // lib/vcpSync.ts -- falls back to plain VCP when no ACP has been
+    // computed yet), same rule /api/sales/live-tap enforces for a Live Sale
+    // tap. A brand-new item (no itemId yet, or no cost recorded) has
+    // nothing to check against and is left alone.
+    if (hasLines) {
+      const itemIds = lines.map((l: any) => l.itemId).filter((id: any) => id != null).map(Number)
+      if (itemIds.length > 0) {
+        const costRows = await sql`
+          SELECT id, COALESCE(adjusted_cost_price, purchase_rate, 0) AS cost_price, canonical_name
+          FROM items WHERE id = ANY(${itemIds})
+        ` as { id: number; cost_price: string; canonical_name: string }[]
+        const costById = new Map(costRows.map(r => [r.id, { cost: Number(r.cost_price) || 0, name: r.canonical_name }]))
+        for (const l of lines) {
+          if (!l.itemId) continue
+          const info = costById.get(Number(l.itemId))
+          if (!info || info.cost <= 0) continue
+          const price = Number(l.price) || 0
+          if (price <= info.cost) {
+            return badRequest(`Selling price (₵${price.toFixed(2)}) must be above cost price (₵${info.cost.toFixed(2)}) for ${info.name}.`)
+          }
+        }
+      }
+    }
+
     const [existingReceipt] = await sql`
       SELECT id, receipt_number FROM sales_receipts
       WHERE receipt_date::date = ${date}

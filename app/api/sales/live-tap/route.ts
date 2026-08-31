@@ -43,7 +43,11 @@ export async function POST(req: NextRequest) {
     await ensureLiveSaleTapsTable()
     console.log('[live-tap] Table ensured')
 
-    const [item] = await sql`SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id, unit_time_seconds FROM items WHERE id = ${Number(itemId)}`
+    const [item] = await sql`
+      SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id, unit_time_seconds,
+             COALESCE(adjusted_cost_price, purchase_rate, 0) AS cost_price
+      FROM items WHERE id = ${Number(itemId)}
+    `
     console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
 
@@ -65,6 +69,18 @@ export async function POST(req: NextRequest) {
 
     const price = customPrice ? Number(customPrice) : (Number(item.selling_rate) || 0)
     if (price <= 0) return badRequest('Invalid price')
+
+    // Cost price (ACP -- VCP plus this item's own share of shared bill
+    // expenses, kept in sync by lib/vcpSync.ts -- falls back to plain VCP
+    // when no ACP has been computed yet) is the "true" current cost, same
+    // figure the cost>=selling violation check reads. A price at or below
+    // it is never a real sale, only a data-entry mistake, so it's blocked
+    // outright rather than just flagged after the fact.
+    const costPrice = Number(item.cost_price) || 0
+    if (costPrice > 0 && price <= costPrice) {
+      return badRequest(`Selling price (₵${price.toFixed(2)}) must be above cost price (₵${costPrice.toFixed(2)}) for ${item.canonical_name}.`)
+    }
+
     const lineAmount = price * qty
 
     const customerName = isGMC ? 'Grony Multimedia as Customer' : null

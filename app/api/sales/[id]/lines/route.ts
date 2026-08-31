@@ -51,6 +51,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
+    // Block a line priced at or below the item's own cost (ACP -- VCP plus
+    // its share of shared bill expenses, kept in sync by lib/vcpSync.ts --
+    // falls back to plain VCP when no ACP has been computed yet), same
+    // rule /api/sales/live-tap and /api/sales/receipt enforce. Only checked
+    // for lines that already point at a real item -- a brand-new typed-in
+    // item has no cost recorded yet, so there's nothing to check against.
+    {
+      const itemIds = lines.map((l: any) => l.itemId).filter((id: any) => id != null).map(Number)
+      if (itemIds.length > 0) {
+        const costRows = await sql`
+          SELECT id, COALESCE(adjusted_cost_price, purchase_rate, 0) AS cost_price, canonical_name
+          FROM items WHERE id = ANY(${itemIds})
+        ` as { id: number; cost_price: string; canonical_name: string }[]
+        const costById = new Map(costRows.map(r => [r.id, { cost: Number(r.cost_price) || 0, name: r.canonical_name }]))
+        for (const line of lines) {
+          if (!line.itemId) continue
+          const info = costById.get(Number(line.itemId))
+          if (!info || info.cost <= 0) continue
+          const price = parseFloat(line.item_price) || 0
+          if (price <= info.cost) {
+            return badRequest(`Selling price (₵${price.toFixed(2)}) must be above cost price (₵${info.cost.toFixed(2)}) for ${info.name}.`)
+          }
+        }
+      }
+    }
+
     const keepIds: number[] = []
 
     for (const line of lines) {
