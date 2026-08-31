@@ -2432,6 +2432,8 @@ function ItemHubPageInner() {
   const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'view' | 'flag'; description?: string }[] = [
     { key: 'all', label: 'All', count: null, variant: 'all' },
     { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account, variant: 'view' },
+    { key: 'by_vendor', label: 'By Vendor', count: liveExpensesViewCounts.by_vendor, variant: 'view' },
+    { key: 'by_property_type', label: 'By Property Type', count: liveExpensesViewCounts.by_property_type, variant: 'view' },
     { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'view' },
     { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'view' },
     ...([
@@ -4365,17 +4367,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   }
 
   // Expenses' Filter dropdown -- houses everything except the radios kept
-  // standalone (All Expenses/All Properties/Non-Properties and the four
-  // flag violations). Three kinds of options share this one select:
-  // persistent views that plug straight into the same liveExpensesRadioValue
-  // mutex (New Expense/History/By Account/By Vendor/property splits -- shown
-  // as "selected" when active), momentary triggers (Analytics/Accounts/
-  // Laws & Tasks/Help) that just fire their own setter, and "columns" which
-  // opens ColumnsPickerButton's panel via its controlled open/onOpenChange
-  // (that component renders with hideTrigger, right below this select, so
-  // its floating panel still anchors somewhere sensible without a second
-  // visible trigger of its own).
-  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_vendor', 'by_property_type', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  // standalone (All Expenses/By Account/By Vendor/By Property Type/All
+  // Properties/Non-Properties and the four flag violations). Three kinds of
+  // options share this one select: persistent views that plug straight into
+  // the same liveExpensesRadioValue mutex (New Expense/History/property
+  // splits -- shown as "selected" when active), momentary triggers
+  // (Analytics/Accounts/Laws & Tasks/Help) that just fire their own setter,
+  // and "columns" which opens ColumnsPickerButton's panel via its
+  // controlled open/onOpenChange (that component renders with hideTrigger,
+  // right below this select, so its floating panel still anchors somewhere
+  // sensible without a second visible trigger of its own).
+  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
       <select
@@ -4394,8 +4396,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <option value="">Filter</option>
         <option value="new_expense">+ New Expense</option>
         <option value="history">History</option>
-        <option value="by_vendor">By Vendor ({liveExpensesViewCounts.by_vendor})</option>
-        <option value="by_property_type">By Property Type ({liveExpensesViewCounts.by_property_type})</option>
         <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
         <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
         <option value="printers">Printers ({liveExpensesViewCounts.printers})</option>
