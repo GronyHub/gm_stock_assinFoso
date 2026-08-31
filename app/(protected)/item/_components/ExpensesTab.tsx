@@ -164,9 +164,13 @@ const PROPERTY_TYPES = ['Printer', 'Computer', 'Banners', 'Seating', 'Tables', '
 // Clicking the header opens a dropdown of every distinct value in that
 // column -- picking one filters the table down to just that value; "All"
 // clears it. The header itself turns blue while a filter is active.
-function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWidth, sticky }: {
+function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWidth, sticky, stickyLeftPx }: {
   label: string; options: string[]; value: string | null; onChange: (v: string | null) => void
   onResize: (deltaPx: number) => void; onResetWidth: () => void; sticky?: boolean
+  // Frozen columns further right than the very first one (Account sits
+  // after Date) need their own dynamic left offset -- Tailwind's `left-0`
+  // only covers the first, so this one is set inline instead.
+  stickyLeftPx?: number
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLTableCellElement>(null)
@@ -179,10 +183,11 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const stickyClass = sticky ? 'sticky left-0 z-20 bg-gray-50' : ''
+  const stickyClass = sticky ? 'sticky z-20 bg-gray-50' : ''
 
   return (
-    <th className={`${TH} relative overflow-hidden border-r ${stickyClass}`} ref={ref}>
+    <th className={`${TH} relative overflow-hidden border-r ${stickyClass}`}
+      style={sticky ? { left: stickyLeftPx ?? 0 } : undefined} ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
         <span className="truncate max-w-[80px]">{value ?? label}</span>
@@ -307,6 +312,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     return <ResizableTh key={key} noDivider={isLast} onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
+    if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
     if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
     if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
@@ -328,25 +334,30 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
-  const accountWidth = colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account)
-  const groupWidth = colPrefs.getWidth('group', EXPENSES_COL_DEFAULTS.group)
   const dateWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date)
+  const accountWidth = colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account)
   const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
-  const tableWidth = accountWidth + groupWidth + dateWidth + amtWidth
+  const tableWidth = dateWidth + accountWidth + amtWidth
     + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
     <table className="border-collapse text-[11px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
-        <col style={{ width: accountWidth }} />
-        <col style={{ width: groupWidth }} />
         <col style={{ width: dateWidth }} />
+        <col style={{ width: accountWidth }} />
         <col style={{ width: amtWidth }} />
         {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
       </colgroup>
       <thead className="sticky top-0 z-10">
         <tr className="bg-gray-50">
+          <ResizableTh
+            onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)}
+            onReset={() => colPrefs.resetWidth('date')}
+            className="sticky left-0 z-20 bg-gray-50"
+          >
+            Date Bought
+          </ResizableTh>
           <FilterHeaderCell
             label="Account"
             options={accounts}
@@ -355,9 +366,8 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             onResize={d => colPrefs.resizeWidth('account', d, EXPENSES_COL_DEFAULTS.account)}
             onResetWidth={() => colPrefs.resetWidth('account')}
             sticky
+            stickyLeftPx={dateWidth}
           />
-          <ResizableTh onResize={d => colPrefs.resizeWidth('group', d, EXPENSES_COL_DEFAULTS.group)} onReset={() => colPrefs.resetWidth('group')}>Group</ResizableTh>
-          <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date Bought</ResizableTh>
           <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
@@ -368,15 +378,14 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
               className={`transition-colors text-[11px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+              <td className={`${TD} sticky left-0 z-10 text-gray-600 whitespace-nowrap bg-inherit`}>{fmtShort(e.expense_date)}</td>
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
                   just folds the description into what the frozen Account
                   column shows, so the account reads as its own full name. */}
-              <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>
+              <td className={`${TD} sticky z-10 text-gray-900 font-semibold truncate border-r bg-inherit`} style={{ left: dateWidth }}>
                 {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
               </td>
-              <td className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
-              <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {visibleKeys.map(k => bodyCellFor(k, e))}
             </tr>
