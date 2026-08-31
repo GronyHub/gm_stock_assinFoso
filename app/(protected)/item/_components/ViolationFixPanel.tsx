@@ -30,7 +30,7 @@ const ITEMS_TYPES = new Set([
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
 ])
 const SALES_TYPES = new Set(['no_cash', 'missing_days', 'cost_price', 'dup_receipt', 'no_attachment', 'high_wnw'])
-const BILLS_TYPES = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'])
+const BILLS_TYPES = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense'])
 const COUNTS_TYPES = new Set(['daily', '7day', '15day'])
 
 type Props = {

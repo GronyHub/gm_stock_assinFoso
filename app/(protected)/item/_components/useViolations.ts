@@ -34,6 +34,7 @@ export const SHORT_LABEL: Record<string, string> = {
   no_items_bills: 'Bills With No Item List',
   bill_total_mismatch: 'Bills With Total Mismatch',
   bill_no_attachment: 'Bills Missing Attachment',
+  bill_no_expense: 'Bills Missing Expense',
   high_wnw: 'WNW Over ₵200',
   daily: 'Daily Counts',
   '7day': '7-Day Counts',
@@ -67,7 +68,7 @@ const ALL_ERROR_TYPES = [
   'neg_soh', 'no_sp', 'no_cp', 'no_group', 'duplicates', 'not_in_inventory',
   'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts',
   'unlinked_named', 'service_violation', 'gains', 'daily', '7day', '15day',
-  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'high_wnw',
+  'no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'high_wnw',
   'unchecked_cab', 'no_staff_times', 'no_advert', 'jingle_overdue', 'equipment_check_overdue',
   'shirt_not_worn', 'shirt_overdue',
 ]
@@ -106,7 +107,7 @@ export const SUBMENU_HOME: Record<string, string> = {
   daily: 'Counts', '7day': 'Counts', '15day': 'Counts',
   gains: 'Counts',
   no_cash: 'Sales', missing_days: 'Sales', cost_price: 'Sales', dup_receipt: 'Sales', no_attachment: 'Sales',
-  no_vendor: 'Bills', no_items_bills: 'Bills', bill_total_mismatch: 'Bills', bill_no_attachment: 'Bills',
+  no_vendor: 'Bills', no_items_bills: 'Bills', bill_total_mismatch: 'Bills', bill_no_attachment: 'Bills', bill_no_expense: 'Bills',
   high_wnw: 'Sales',
   unchecked_cab: 'CAB',
   no_staff_times: 'Team',
@@ -252,6 +253,11 @@ export function useViolations(counts?: Record<string, number>) {
       type: 'bill_no_attachment',
       label: 'bill' + (flags.billNoAttachment.length !== 1 ? 's' : '') + ' with no receipt attached',
       count: flags.billNoAttachment.length, days: oldestDays(flags.billNoAttachment, 'bill_date'),
+    })
+    if (flags.billNoExpense?.length) list.push({
+      type: 'bill_no_expense',
+      label: 'bill' + (flags.billNoExpense.length !== 1 ? 's' : '') + ' with no corresponding expense',
+      count: flags.billNoExpense.length, days: oldestDays(flags.billNoExpense, 'bill_date'),
     })
     if (flags.highWnw?.length) list.push({
       type: 'high_wnw',

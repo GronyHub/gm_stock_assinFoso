@@ -75,7 +75,7 @@ function fmt(val: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'])
+const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense'])
 
 type NoVendorRow = { id: number; bill_number: string; bill_date: string; total: string }
 type NoItemsRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
@@ -383,7 +383,7 @@ function BillsTab({
   // there's nothing to distinguish "not fetched yet" from "fetching".
   const [flags, setFlags] = useState<{
     noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[]
-    billTotalMismatch: MismatchRow[]; billNoAttachment: NoAttachmentRow[]
+    billTotalMismatch: MismatchRow[]; billNoAttachment: NoAttachmentRow[]; billNoExpense: NoAttachmentRow[]
   } | null>(null)
 
   useEffect(() => {
@@ -782,6 +782,35 @@ function BillsTab({
                 <NoAttachmentFix key={b.id} b={b} onFixed={id =>
                   setFlags(f => f ? { ...f, billNoAttachment: f.billNoAttachment.filter(x => x.id !== id) } : f)
                 } />
+              ))}
+            </div>
+          ))}
+      </div>
+    )
+  }
+
+  if (violation === 'bill_no_expense') {
+    const rows = flags?.billNoExpense ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no corresponding expense`}
+        </p>
+        <p className="text-[9px] text-gray-400 px-2 mb-2">
+          No bill_expenses row (bank charges, transport, etc.) has been migrated onto this bill from the Expenses tab -- there is no fix form here since that migration happens from the Expenses side; this is a review list.
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a corresponding expense.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(b => (
+                <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                    <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
+                </div>
               ))}
             </div>
           ))}

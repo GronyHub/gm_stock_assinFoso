@@ -399,6 +399,10 @@ export const ERROR_VIOLATIONS: { key: string; label: string; category: ErrorCate
     description: 'This bill has no receipt or scan attached, so there is nothing to check its entered details against later. Attach a photo or scan of the actual receipt.',
   },
   {
+    key: 'bill_no_expense', label: 'No Expense', category: 'bills',
+    description: "No bill_expenses row (bank charges, transport, delivery, etc.) has ever been migrated onto this bill from the Expenses tab. Migrate to Bill from the Expenses side if this bill should share one, or ignore if it genuinely has no extra costs.",
+  },
+  {
     key: 'unchecked_cab', label: 'Unchecked CAB', category: 'cab',
     description: 'A week has passed without anyone confirming the Cash at Bank entry, so nobody has verified that the bank balance matches what the shop expects. Review that week and confirm it.',
   },
@@ -433,7 +437,7 @@ const VIOLATION_HOME: Partial<Record<string, LossView | 'sales' | 'bills' | 'cou
   // above), so this now jumps there instead.
   gains: 'count',
   no_cash: 'sales', missing_days: 'sales', dup_receipt: 'sales', no_attachment: 'sales', high_wnw: 'sales',
-  no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills',
+  no_vendor: 'bills', no_items_bills: 'bills', bill_total_mismatch: 'bills', bill_no_attachment: 'bills', bill_no_expense: 'bills',
   unchecked_cab: 'cab',
 }
 
@@ -487,6 +491,7 @@ const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'no_items_bills', letter: 'I', label: 'No Item List' },
   { key: 'bill_total_mismatch', letter: 'T', label: 'Total Mismatch' },
   { key: 'bill_no_attachment', letter: 'A', label: 'No Attachment' },
+  { key: 'bill_no_expense', letter: 'E', label: 'No Expense' },
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
@@ -1245,6 +1250,7 @@ function ItemHubPageInner() {
       no_items_bills: f?.noItemsBills?.length ?? 0,
       bill_total_mismatch: f?.billTotalMismatch?.length ?? 0,
       bill_no_attachment: f?.billNoAttachment?.length ?? 0,
+      bill_no_expense: f?.billNoExpense?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
@@ -1271,7 +1277,7 @@ function ItemHubPageInner() {
     'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ]) + nameConflictsCount
-  const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment'])
+  const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
@@ -2366,7 +2372,7 @@ function ItemHubPageInner() {
     : liveBillsViolationFilter ? liveBillsViolationFilter
     : 'all'
   function selectLiveBillsRadio(value: string) {
-    const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment']
+    const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense']
     setLiveBillsShowHistory(value === 'history')
     setLiveBillsAddingNew(value === 'new_bill')
     setLiveBillsBarsOnly(value === 'bars_only')
@@ -6272,6 +6278,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   { key: 'no_items_bills', label: 'No Item List', count: globalFlags?.noItemsBills?.length ?? 0 },
                   { key: 'bill_total_mismatch', label: 'Total Mismatch', count: globalFlags?.billTotalMismatch?.length ?? 0 },
                   { key: 'bill_no_attachment', label: 'No Attachment', count: globalFlags?.billNoAttachment?.length ?? 0 },
+                  { key: 'bill_no_expense', label: 'No Expense', count: globalFlags?.billNoExpense?.length ?? 0 },
                 ].sort((a, b) => b.count - a.count).map((v, i) => (
                   <Fragment key={v.key}>
                     {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}

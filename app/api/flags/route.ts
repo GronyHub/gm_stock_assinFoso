@@ -138,6 +138,7 @@ export async function GET() {
     noItemsBills,
     billTotalMismatch,
     billNoAttachment,
+    billNoExpense,
     highWnw,
   ] = await Promise.all([
 
@@ -442,6 +443,25 @@ export async function GET() {
       ORDER BY bill_date DESC
     `),
 
+    // 12e. Bills with no corresponding bill_expenses row -- bill_expenses.
+    // bill_id only ever points at one representative row for a whole
+    // (bill_date, vendor_name) group (BillsTab.tsx groups several `bills`
+    // rows -- one per line item -- into one visual bill the same way), so
+    // this checks whether ANY row in b's own group has a linked expense,
+    // not just b.id itself directly.
+    safeQuery(() => sql`
+      SELECT b.id, b.bill_number, b.vendor_name, b.bill_date::text AS bill_date, b.total
+      FROM bills b
+      WHERE b.source IS DISTINCT FROM 'live_sale'
+        AND NOT EXISTS (
+          SELECT 1 FROM bill_expenses be
+          JOIN bills rep ON rep.id = be.bill_id
+          WHERE rep.bill_date = b.bill_date
+            AND COALESCE(rep.vendor_name, '') = COALESCE(b.vendor_name, '')
+        )
+      ORDER BY b.bill_date DESC
+    `),
+
     // 13. Receipts where cash counted exceeds the recorded total by more
     // than ₵200 -- an unusually large excess worth a second look (recount,
     // or a sale that never got itemized).
@@ -544,6 +564,6 @@ export async function GET() {
     noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
-    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, highWnw,
+    shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
   })
 }
