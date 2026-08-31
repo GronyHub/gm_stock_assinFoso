@@ -2424,10 +2424,11 @@ function ItemHubPageInner() {
   // Flattened into one list and split across exactly two rows instead, so
   // every row fills up with flex-1 items before spilling to the next --
   // color/weight is driven by `variant`, not which row an item lands on.
-  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'prop' | 'flag'; description?: string }[] = [
+  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'view' | 'flag'; description?: string }[] = [
     { key: 'all', label: 'All', count: null, variant: 'all' },
-    { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'prop' },
-    { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'prop' },
+    { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account, variant: 'view' },
+    { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'view' },
+    { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'view' },
     ...([
       { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar, description: 'Account names within a couple letters of another account -- likely the same account entered two different ways.' },
       { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled, description: 'Description mentions "and"/"etc" or has a comma -- likely covers more than one item bundled into one expense.' },
@@ -2441,7 +2442,7 @@ function ItemHubPageInner() {
     return (
       <label key={v.key} title={v.description}
         className={`flex-1 min-w-0 flex items-center justify-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] text-center ${
-          v.variant === 'flag' ? 'text-red-600' : v.variant === 'prop' ? 'font-semibold text-gray-600' : 'text-gray-700'
+          v.variant === 'flag' ? 'text-red-600' : v.variant === 'view' ? 'font-semibold text-gray-600' : 'text-gray-700'
         }`}>
         <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
         <span className="break-words">{v.label}{v.count !== null ? ` (${v.count})` : ''}</span>
@@ -4369,7 +4370,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // (that component renders with hideTrigger, right below this select, so
   // its floating panel still anchors somewhere sensible without a second
   // visible trigger of its own).
-  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_account', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
       <select
@@ -4388,7 +4389,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <option value="">Filter</option>
         <option value="new_expense">+ New Expense</option>
         <option value="history">History</option>
-        <option value="by_account">By Account ({liveExpensesViewCounts.by_account})</option>
         <option value="by_vendor">By Vendor ({liveExpensesViewCounts.by_vendor})</option>
         <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
         <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
