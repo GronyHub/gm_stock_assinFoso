@@ -132,6 +132,10 @@ type TableProps = {
   // Redundant once every row is already grouped down to one property type
   // (the By Property Type grouped view) -- same reasoning as hideVendor.
   hidePropertyType?: boolean
+  // Same reasoning again for the By Related Property grouped view -- every
+  // row in a group already matches that group's own property, so the
+  // Related Property column would just repeat the group's own header.
+  hideRelatedProperty?: boolean
   hidePropertyColumns?: boolean
   accounts: string[]
   vendors: string[]
@@ -314,7 +318,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
 }
 
 function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyType, hidePropertyColumns,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyType, hideRelatedProperty, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
@@ -323,6 +327,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'vendor' && hideVendor)
     && !(k === 'property_type' && hidePropertyType)
+    && !(k === 'related_property' && hideRelatedProperty)
     && !(hidePropertyColumns && propertyColKeys.includes(k)))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
@@ -793,8 +798,8 @@ type Props = {
   // (these aren't in the shared /api/flags -- they're computed locally
   // from this component's own expenses list).
   onFlagCountsChange?: (counts: Record<ExpensesFlag, number>) => void
-  groupBy?: 'none' | 'account' | 'vendor' | 'property_type'
-  setGroupBy?: (v: 'none' | 'account' | 'vendor' | 'property_type' | ((prev: 'none' | 'account' | 'vendor' | 'property_type') => 'none' | 'account' | 'vendor' | 'property_type')) => void
+  groupBy?: 'none' | 'account' | 'vendor' | 'property_type' | 'related_property'
+  setGroupBy?: (v: 'none' | 'account' | 'vendor' | 'property_type' | 'related_property' | ((prev: 'none' | 'account' | 'vendor' | 'property_type' | 'related_property') => 'none' | 'account' | 'vendor' | 'property_type' | 'related_property')) => void
   showProperties?: boolean
   setShowProperties?: (v: boolean) => void
   showNonProperties?: boolean
@@ -804,10 +809,10 @@ type Props = {
   propertyTypeFilter?: string | null
   setPropertyTypeFilter?: (v: string | null) => void
   // Reports the view-button counts (all/by-account/by-vendor/by-property-
-  // type/property views) back up so the parent's radio labels can show
-  // live counts.
+  // type/by-related-property/property views) back up so the parent's radio
+  // labels can show live counts.
   onViewCountsChange?: (counts: {
-    all_expenses: number; by_account: number; by_vendor: number; by_property_type: number
+    all_expenses: number; by_account: number; by_vendor: number; by_property_type: number; by_related_property: number
     show_properties: number; show_non_properties: number
     prop_available: number; prop_not_available: number
     printers: number; computers: number
@@ -937,6 +942,9 @@ export default function ExpensesTab({
     // those, same as show_properties -- not the full expenses.length like
     // by_account/by_vendor, which don't narrow anything.
     by_property_type: expenses.filter(e => e.is_property).length,
+    // Same narrowing idea -- grouping by related property only makes sense
+    // for expenses actually marked as related to one.
+    by_related_property: expenses.filter(e => e.is_related_expense && e.related_to_property_id != null).length,
     show_properties: expenses.filter(e => e.is_property).length,
     show_non_properties: expenses.filter(e => !e.is_property).length,
     prop_available: expenses.filter(e => e.is_property && e.availability === 'available').length,
@@ -999,14 +1007,19 @@ export default function ExpensesTab({
     if (groupBy === 'none') return []
     const map = new Map<string, Expense[]>()
     for (const e of filtered) {
+      // By Related Property only makes sense for expenses actually marked
+      // related to one -- skip the rest rather than lumping them into a
+      // meaningless "not related" bucket.
+      if (groupBy === 'related_property' && !(e.is_related_expense && e.related_to_property_id != null)) continue
       const key = groupBy === 'account' ? (e.expense_account || 'Uncategorised')
         : groupBy === 'vendor' ? (e.vendor_name || 'No Vendor')
-        : (e.property_type || 'Uncategorised')
+        : groupBy === 'property_type' ? (e.property_type || 'Uncategorised')
+        : (relatedItems.find(p => p.id === e.related_to_property_id)?.name || 'Unknown Property')
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(e)
     }
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [filtered, groupBy])
+  }, [filtered, groupBy, relatedItems])
 
   const properties = useMemo(() => expenses.filter(e => e.is_property), [expenses])
   const propertiesWithoutLocation = useMemo(() =>
@@ -1327,6 +1340,7 @@ export default function ExpensesTab({
                 hideAccount={groupBy === 'account'}
                 hideVendor={groupBy === 'vendor'}
                 hidePropertyType={groupBy === 'property_type'}
+                hideRelatedProperty={groupBy === 'related_property'}
                 hidePropertyColumns={!showProperties && showNonProperties} />
         ) : (
           <>

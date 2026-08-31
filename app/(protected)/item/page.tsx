@@ -2252,13 +2252,13 @@ function ItemHubPageInner() {
   const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location', number>>({
     similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0,
   })
-  const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor' | 'property_type'>('none')
+  const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor' | 'property_type' | 'related_property'>('none')
   const [liveExpensesShowProperties, setLiveExpensesShowProperties] = useState(true)
   const [liveExpensesShowNonProperties, setLiveExpensesShowNonProperties] = useState(true)
   const [liveExpensesPropertyAvailabilityFilter, setLiveExpensesPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const [liveExpensesPropertyTypeFilter, setLiveExpensesPropertyTypeFilter] = useState<string | null>(null)
   const [liveExpensesViewCounts, setLiveExpensesViewCounts] = useState({
-    all_expenses: 0, by_account: 0, by_vendor: 0, by_property_type: 0, show_properties: 0, show_non_properties: 0,
+    all_expenses: 0, by_account: 0, by_vendor: 0, by_property_type: 0, by_related_property: 0, show_properties: 0, show_non_properties: 0,
     prop_available: 0, prop_not_available: 0, printers: 0, computers: 0,
   })
   // Account/Type toolbar filters -- Account is genuine expenses data
@@ -2387,6 +2387,7 @@ function ItemHubPageInner() {
     : liveExpensesGroupBy === 'account' ? 'by_account'
     : liveExpensesGroupBy === 'vendor' ? 'by_vendor'
     : liveExpensesGroupBy === 'property_type' ? 'by_property_type'
+    : liveExpensesGroupBy === 'related_property' ? 'by_related_property'
     : (liveExpensesShowProperties && !liveExpensesShowNonProperties) ? 'all_properties'
     : (!liveExpensesShowProperties && liveExpensesShowNonProperties) ? 'non_properties'
     : liveExpensesPropertyAvailabilityFilter === 'available' ? 'properties_available'
@@ -2398,7 +2399,7 @@ function ItemHubPageInner() {
     setLiveExpensesShowHistory(value === 'history')
     setLiveExpensesAddingNew(value === 'new_expense')
     setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
-    setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : value === 'by_property_type' ? 'property_type' : 'none')
+    setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : value === 'by_property_type' ? 'property_type' : value === 'by_related_property' ? 'related_property' : 'none')
     // By Property Type only makes sense scoped to property expenses (non-
     // properties have no property_type at all), same narrowing All
     // Properties already does -- so it gets the same showNonProperties:false.
@@ -2414,6 +2415,7 @@ function ItemHubPageInner() {
     if (radioValue === 'by_account') return 'expensesTable_groupBy_account'
     if (radioValue === 'by_vendor') return 'expensesTable_groupBy_vendor'
     if (radioValue === 'by_property_type') return 'expensesTable_groupBy_propertyType'
+    if (radioValue === 'by_related_property') return 'expensesTable_groupBy_relatedProperty'
     if (radioValue === 'all_properties') return 'expensesTable_propertiesOnly'
     if (radioValue === 'non_properties') return 'expensesTable_nonPropertiesOnly'
     if (radioValue === 'properties_available') return 'expensesTable_propFilter_available'
@@ -2434,6 +2436,7 @@ function ItemHubPageInner() {
     { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account, variant: 'view' },
     { key: 'by_vendor', label: 'By Vendor', count: liveExpensesViewCounts.by_vendor, variant: 'view' },
     { key: 'by_property_type', label: 'By Property Type', count: liveExpensesViewCounts.by_property_type, variant: 'view' },
+    { key: 'by_related_property', label: 'By Related Property', count: liveExpensesViewCounts.by_related_property, variant: 'view' },
     { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'view' },
     { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'view' },
     ...([
