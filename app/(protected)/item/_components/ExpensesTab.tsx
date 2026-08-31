@@ -87,7 +87,7 @@ function looksBundled(description: string | null): boolean {
   return /[,&]|\band\b|\betc\b/i.test(description)
 }
 
-const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[9px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-0'
 
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
@@ -342,7 +342,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-    <table className="border-collapse text-[11px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
+    <table className="border-collapse text-[9px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
       <colgroup>
         <col style={{ width: dateWidth }} />
         <col style={{ width: accountWidth }} />
@@ -378,7 +378,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           <Fragment key={e.id}>
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
-              className={`transition-colors text-[11px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+              className={`transition-colors text-[9px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
               <td className={`${TD} sticky left-0 z-10 text-gray-600 break-words bg-inherit`}>{fmtShort(e.expense_date)}</td>
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
