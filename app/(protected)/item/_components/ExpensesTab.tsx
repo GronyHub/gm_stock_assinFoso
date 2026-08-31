@@ -87,8 +87,8 @@ function looksBundled(description: string | null): boolean {
   return /[,&]|\band\b|\betc\b/i.test(description)
 }
 
-const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[9px] uppercase tracking-wide border-b border-gray-200'
-const TD = 'px-3 py-0'
+const TH = 'text-left px-1 py-0.5 font-bold text-gray-400 text-[9px] uppercase tracking-wide border-b border-gray-200'
+const TD = 'px-1 py-0'
 
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   date: 92, amt: 90, account: 260, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
@@ -309,7 +309,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     const onResize = (d: number) => colPrefs.resizeWidth(key, d, EXPENSES_COL_DEFAULTS[key] ?? 100)
     const onReset = () => colPrefs.resetWidth(key)
     if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} onResize={onResize} onResetWidth={onReset} />
-    return <ResizableTh key={key} noDivider={isLast} wrapLabel onResize={onResize} onReset={onReset}>{label}</ResizableTh>
+    return <ResizableTh key={key} noDivider={isLast} wrapLabel paddingClassName="px-1 py-0.5" onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 break-words`}>{e.expense_group ?? '—'}</td>
@@ -354,6 +354,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)}
             onReset={() => colPrefs.resetWidth('date')}
             className="sticky left-0 z-20 bg-gray-50"
+            paddingClassName="pl-0 pr-1 py-0.5"
             wrapLabel
           >
             Date Bought
@@ -368,7 +369,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             sticky
             stickyLeftPx={dateWidth}
           />
-          <ResizableTh align="right" wrapLabel onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
+          <ResizableTh align="right" wrapLabel paddingClassName="px-1 py-0.5" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
       </thead>
@@ -378,7 +379,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
               className={`transition-colors text-[9px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
-              <td className={`${TD} sticky left-0 z-10 text-gray-600 break-words bg-inherit`}>{fmtShort(e.expense_date)}</td>
+              <td className="pl-0 pr-1 py-0 sticky left-0 z-10 text-gray-600 break-words bg-inherit">{fmtShort(e.expense_date)}</td>
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
                   just folds the description into what the frozen Account

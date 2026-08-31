@@ -181,7 +181,7 @@ export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: num
 // per table. Actual sizing comes from the table's own <colgroup> (matching
 // widths via the same ColumnPrefs.getWidth calls) -- this component is
 // purely presentational.
-export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', wrapLabel = false, children }: {
+export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', wrapLabel = false, paddingClassName = 'px-2.5 py-2', children }: {
   onResize: (deltaPx: number) => void
   onReset: () => void
   align?: 'left' | 'center' | 'right'
@@ -191,11 +191,18 @@ export function ResizableTh({ onResize, onReset, align = 'left', noDivider = fal
   // of truncating it with an ellipsis. Off by default so every existing
   // caller keeps its current truncate-on-resize behavior.
   wrapLabel?: boolean
+  // Replaces (not merges with) the default px-2.5/py-2 padding -- a plain
+  // `className` add-on can't reliably win against this component's own
+  // hardcoded padding classes (Tailwind's generated stylesheet order, not
+  // class-attribute order, decides which same-property utility wins), so a
+  // caller that wants tighter cells (e.g. Expenses) overrides through this
+  // instead. Defaults to today's spacing for every existing caller.
+  paddingClassName?: string
   children?: React.ReactNode
 }) {
   const alignCls = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
   return (
-    <th className={`relative overflow-hidden px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
+    <th className={`relative overflow-hidden ${paddingClassName} font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
       <span className={wrapLabel ? 'block break-words' : 'block truncate'}>{children}</span>
       <ColResizeHandle onResize={onResize} onReset={onReset} />
     </th>
