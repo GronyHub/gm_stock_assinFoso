@@ -11,6 +11,11 @@ const ensureSchema = once(async () => {
   // needs no stored column -- the Home feed derives it from consecutive
   // rows' created_at.
   await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER`.catch(() => {})
+  // Points at the row in whatever table actually recorded this activity's
+  // full detail (currently only live_sale_taps.id, for category='live sale
+  // tap') -- lets the Home feed join back to the real Item/Qty/SP/SOH
+  // instead of only having the body text's own summary of them.
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS source_id INTEGER`.catch(() => {})
 })
 
 
@@ -27,7 +32,7 @@ const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set([
 // Notified to owner-level (Grony/Joe) only, never broadcast to all staff.
 const OWNER_ONLY_ACTIONS = new Set(['started viewing portal as', 'stopped viewing portal as'])
 
-export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number) {
+export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number, sourceId?: number) {
   try {
     await sql`
       INSERT INTO activity_logs (staff_name, action, details)
@@ -46,8 +51,8 @@ export async function logActivity(staffName: string, action: string, details?: s
       // Manually-typed posts (see /api/announcements POST) leave this null.
       await ensureSchema()
       await sql`
-        INSERT INTO announcements (body, author, media_urls, category, estimated_duration_seconds)
-        VALUES (${body}, ${staffName}, '[]'::jsonb, ${action}, ${estimatedDurationSeconds ?? null})
+        INSERT INTO announcements (body, author, media_urls, category, estimated_duration_seconds, source_id)
+        VALUES (${body}, ${staffName}, '[]'::jsonb, ${action}, ${estimatedDurationSeconds ?? null}, ${sourceId ?? null})
       `
     } catch (e) {
       // don't let this break the main action either

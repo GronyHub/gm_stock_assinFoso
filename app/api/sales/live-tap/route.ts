@@ -201,15 +201,14 @@ export async function POST(req: NextRequest) {
     // Same estimate Live Sale's Log mode used to show in its own Dur column
     // (item's Time/unit x Qty) -- now recorded on the Home feed's post
     // instead, since that's meant to cover every activity's duration, not
-    // just sales. A Good is a flat 1 minute per sale regardless of quantity
-    // (Time/unit isn't a meaningful concept for most goods -- tapping out an
-    // envelope or a cable is roughly the same handling time whether it's
-    // one or ten), not scaled the way a service's per-unit time is.
+    // just sales. A Good is 1 minute per unit sold (same "x Qty" scaling a
+    // service's own Time/unit gets), not a flat amount regardless of how
+    // many were sold.
     const unitTimeSeconds = item.unit_time_seconds != null ? Number(item.unit_time_seconds) : null
     const estimatedDurationSeconds = item.product_type === 'goods'
-      ? 60
+      ? 60 * qty
       : (unitTimeSeconds != null ? unitTimeSeconds * qty : undefined)
-    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds)
+    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
     return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName })

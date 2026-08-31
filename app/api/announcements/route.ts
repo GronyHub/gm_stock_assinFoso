@@ -22,6 +22,12 @@ const ensureDurationColumn = once(async () => {
   await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS estimated_duration_seconds INTEGER`.catch(() => {})
 })
 
+// See lib/logger.ts's own copy -- links a 'live sale tap' row back to its
+// full live_sale_taps record for the Home feed's Item/Qty/SP/SOH columns.
+const ensureSourceIdColumn = once(async () => {
+  await sql`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS source_id INTEGER`.catch(() => {})
+})
+
 // Cursor-paginated: ?before=<ISO timestamp> fetches the next 30 older than
 // that. Without it, returns the latest 30. The client merges pages instead
 // of replacing, so older announcements stay loaded once fetched.
@@ -36,18 +42,30 @@ export async function GET(req: NextRequest) {
     await initializeDatabase()
     await ensureCategoryColumn()
     await ensureDurationColumn()
+    await ensureSourceIdColumn()
     const before = req.nextUrl.searchParams.get('before')
     const q = req.nextUrl.searchParams.get('q')
     const category = req.nextUrl.searchParams.get('category')
     const from = req.nextUrl.searchParams.get('from')
     const to = req.nextUrl.searchParams.get('to')
 
+    // Same Item/Qty/SP/SOH columns Live Sale's Log mode shows, joined back
+    // in here via source_id rather than parsed out of the body text --
+    // null for every activity type besides a live sale tap. Cost price is
+    // read the same way the sell-below-cost block does (ACP, falling back
+    // to VCP), not Log mode's own service-aware GMC-conversion cost calc --
+    // close enough for a display column, not worth duplicating that
+    // client-side logic server-side.
     const rows = await sql`
       SELECT
         a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id, a.estimated_duration_seconds, a.category,
-        r.author AS reply_to_author, r.body AS reply_to_body
+        r.author AS reply_to_author, r.body AS reply_to_body,
+        t.item_name AS tap_item_name, t.quantity AS tap_quantity, t.price AS tap_price, t.soh AS tap_soh,
+        COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) AS tap_cost_price
       FROM announcements a
       LEFT JOIN announcements r ON r.id = a.reply_to_id
+      LEFT JOIN live_sale_taps t ON t.id = a.source_id AND a.category = 'live sale tap'
+      LEFT JOIN items i ON i.id = t.item_id
       WHERE (${before}::timestamptz IS NULL OR a.created_at < ${before}::timestamptz)
         AND (${q}::text IS NULL OR a.body ILIKE '%' || ${q} || '%' OR a.author ILIKE '%' || ${q} || '%')
         AND (${category}::text IS NULL OR a.category = ${category})

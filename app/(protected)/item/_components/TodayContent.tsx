@@ -4,8 +4,15 @@ import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
 import { formatDuration } from '@/lib/fmtDuration'
+import { formatGapMins } from '@/lib/fmtGap'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
 import { fmtClockTime } from '@/lib/clockTime'
+
+function fmt(val: string | number | null | undefined): string {
+  if (val == null) return '—'
+  const n = typeof val === 'number' ? val : parseFloat(val)
+  return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 // Read-only feed -- composing (message/media/voice/reply/search) was
@@ -25,6 +32,14 @@ type Announcement = {
   // effectiveDurationSeconds' flat-minute fallback for the Total column,
   // same as /api/staff-times/worked-today's own worked-time sum.
   category?: string | null
+  // Item/Qty/SP/SOH -- the same columns Live Sale's Log mode shows, joined
+  // back from live_sale_taps via source_id (see /api/announcements' own
+  // comment). Null for every activity type besides a live sale tap.
+  tap_item_name?: string | null
+  tap_quantity?: string | number | null
+  tap_price?: string | number | null
+  tap_soh?: string | number | null
+  tap_cost_price?: string | number | null
 }
 
 // GMT calendar date (YYYY-MM-DD) -- both the day-header grouping below and
@@ -33,6 +48,17 @@ type Announcement = {
 // column total was actually computed for.
 function dayKey(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10)
+}
+
+// `list` is newest-first, so the previous chronological entry relative to
+// index i is at i+1. No gap for the day's oldest loaded entry -- unlike
+// Live Sale's Log mode Gap column, this has no "since shop opening"
+// fallback to reach for, since most activity types have nothing resembling
+// shop hours.
+function gapMinsFor(list: Announcement[], i: number): number | null {
+  const prev = list[i + 1]
+  if (!prev || dayKey(prev.created_at) !== dayKey(list[i].created_at)) return null
+  return (new Date(list[i].created_at).getTime() - new Date(prev.created_at).getTime()) / 60000
 }
 
 function dayLabel(iso: string): string {
@@ -83,25 +109,30 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
 }
 
 // Number of columns the shared <table> header declares -- Time/Activity/
-// Staff/Duration/Total -- kept as one constant so the colSpan on
-// date-header and rich-post rows can't silently drift out of sync with
-// the header.
-const FEED_COLUMNS = 5
+// Item/Qty/SP/CP/PF/SOH/Gap/Staff/Duration/Total -- kept as one constant
+// so the colSpan on date-header and rich-post rows can't silently drift
+// out of sync with the header.
+const FEED_COLUMNS = 12
 
 // One feed row (or two, when a date header precedes it). Returns <tr>s
 // directly (no wrapping element) so every row -- auto-logged or a rich
 // historical post with media/a reply -- lives in the same <table>, sharing
 // one header and one scroll region instead of each row scrolling
 // independently.
-function PostRow({ p, showDateHeader, staffDayTotalSeconds, canDelete, onDelete }: {
+function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, onDelete }: {
   p: Announcement
   showDateHeader: boolean
+  gapMins: number | null
   staffDayTotalSeconds: number
   canDelete: boolean
   onDelete: (id: number) => void
 }) {
   const isAutoLogged = (p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60
   const durationSeconds = effectiveDurationSeconds(p.category, p.estimated_duration_seconds)
+  const isSale = p.tap_item_name != null
+  const sp = isSale ? Number(p.tap_price) || 0 : 0
+  const cp = isSale ? Number(p.tap_cost_price) || 0 : 0
+  const pf = isSale ? (sp - cp) * (Number(p.tap_quantity) || 0) : 0
   return (
     <>
       {showDateHeader && (
@@ -114,15 +145,24 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, canDelete, onDelete 
         </tr>
       )}
       {isAutoLogged ? (
-        // Auto-logged activity row -- Time/Activity/Staff/Duration/Total
-        // each get their own aligned column (same idea as Live Sale's Log
-        // mode table). Activity stays single-line (whitespace-nowrap, not
-        // wrapped or truncated) -- the shared table wrapper scrolls
-        // horizontally when it's long, same trade-off Live Sale's Log mode
-        // makes for its Item column.
+        // Auto-logged activity row -- Time/Activity/Item/Qty/SP/CP/PF/SOH/
+        // Gap/Staff/Duration/Total each get their own aligned column (same
+        // idea, and largely the same columns, as Live Sale's Log mode
+        // table -- Item/Qty/SP/CP/PF/SOH only ever populate for a live sale
+        // tap, '—' for every other activity type). Activity stays
+        // single-line (whitespace-nowrap, not wrapped or truncated) -- the
+        // shared table wrapper scrolls horizontally when it's long, same
+        // trade-off Log mode makes for its own Item column.
         <tr className="hover:bg-gray-50">
           <td className="pl-2 pr-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{fmtClockTime(p.created_at)}</td>
           <td className="px-1 py-0.5 text-gray-800 text-[8px] whitespace-nowrap">{p.body}</td>
+          <td className="px-1 py-0.5 text-gray-700 text-[8px] whitespace-nowrap">{p.tap_item_name ?? '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(p.tap_quantity) : '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(sp) : '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(cp) : '—'}</td>
+          <td className={`px-1 py-0.5 text-[7px] whitespace-nowrap text-right ${isSale && pf < 0 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{isSale ? fmt(pf) : '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(p.tap_soh) : '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{gapMins != null ? formatGapMins(gapMins) : '—'}</td>
           <td className="px-1 py-0.5 font-semibold text-gray-700 capitalize whitespace-nowrap text-[8px]">{p.author}</td>
           <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
           <td className="px-1 pr-2 py-0.5 text-gray-500 font-semibold text-[7px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
@@ -281,6 +321,13 @@ function AnnouncementsPanel() {
               <tr className="text-[7px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
                 <th className="text-left pl-2 pr-1 py-0.5 whitespace-nowrap">Time</th>
                 <th className="text-left px-1 py-0.5">Activity</th>
+                <th className="text-left px-1 py-0.5 whitespace-nowrap">Item</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">Qty</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">SP</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">CP</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">PF</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">SOH</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap" title="Time since the previous logged activity">Gap</th>
                 <th className="text-left px-1 py-0.5 whitespace-nowrap">Staff</th>
                 <th className="text-left px-1 py-0.5 whitespace-nowrap">Duration</th>
                 <th className="text-left px-1 pr-2 py-0.5 whitespace-nowrap">Total</th>
@@ -290,6 +337,7 @@ function AnnouncementsPanel() {
               {posts.map((p, i) => (
                 <PostRow key={p.id} p={p}
                   showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
+                  gapMins={gapMinsFor(posts, i)}
                   staffDayTotalSeconds={runningTotals[p.id] ?? 0}
                   canDelete={canDelete} onDelete={removePost} />
               ))}
