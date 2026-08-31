@@ -12,7 +12,8 @@ import type { ColumnDef } from './columnPrefs'
 // now syncs from -- see lib/vcpSync.ts). sharedExpenses/adjustedCost are
 // computed, not stored (see BillsTab's groupedList); newSp is the one
 // editable cell here, and writes straight to the item's live selling price.
-export type ColKey = 'quantity' | 'unitPrice' | 'sharedExpenses' | 'adjustedCost' | 'itemTotal' | 'newSp'
+// currentCost/costDiff show the item's current cost price vs the bill cost.
+export type ColKey = 'quantity' | 'unitPrice' | 'sharedExpenses' | 'adjustedCost' | 'itemTotal' | 'newSp' | 'currentCost' | 'costDiff'
 
 export const COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'quantity',       label: 'QTY' },
@@ -20,5 +21,7 @@ export const COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'sharedExpenses', label: 'Shared Exp' },
   { key: 'adjustedCost',   label: 'ACP' },
   { key: 'itemTotal',      label: 'TOTAL' },
+  { key: 'currentCost',    label: 'Current Cost' },
+  { key: 'costDiff',       label: 'Cost Δ' },
   { key: 'newSp',          label: 'New SP' },
 ]

@@ -9,10 +9,10 @@ import { type ColKey, COLUMNS } from './billsTabColumns'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import ItemDetailModal from './ItemDetailModal'
 
-type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null }
+type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null; cost_price?: string | number | null }
 
 const BILLS_COL_DEFAULTS: Record<string, number> = {
-  item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, newSp: 110,
+  item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, currentCost: 100, costDiff: 80, newSp: 110,
 }
 
 type BillExpense = { id: number; bill_id: number; description: string | null; amount: string }
@@ -349,6 +349,8 @@ type Props = {
   setMonthFilter?: (v: number | null) => void
   yearFilter?: number | null
   setYearFilter?: (v: number | null) => void
+  gmcFilter?: boolean
+  gmcItemIds?: Set<number>
   colPrefs: ColumnPrefs<ColKey>
   onAvailableVendorsChange?: (vendors: string[]) => void
   onAvailableYearsChange?: (years: number[]) => void
@@ -358,7 +360,7 @@ function BillsTab({
   items, groupFilter, search, violation = null, jumpToBillId, onJumpDone,
   showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
   vendorFilter = null, setVendorFilter = () => {}, monthFilter = null, setMonthFilter = () => {},
-  yearFilter = null, setYearFilter = () => {}, colPrefs, onAvailableVendorsChange, onAvailableYearsChange,
+  yearFilter = null, setYearFilter = () => {}, gmcFilter = false, gmcItemIds = new Set(), colPrefs, onAvailableVendorsChange, onAvailableYearsChange,
 }: Props) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
@@ -561,6 +563,9 @@ function BillsTab({
         return true
       })
     }
+    if (gmcFilter && gmcItemIds.size > 0) {
+      list = list.filter(r => r.itemId !== null && gmcItemIds.has(r.itemId))
+    }
     if (search) {
       const q = search.toLowerCase()
       list = list.filter(r =>
@@ -570,7 +575,7 @@ function BillsTab({
       )
     }
     return list
-  }, [flatRows, groupItemNames, vendorFilter, monthFilter, yearFilter, search])
+  }, [flatRows, groupItemNames, vendorFilter, monthFilter, yearFilter, gmcFilter, gmcItemIds, search])
 
   // Per-group (date, vendor) total quantity and "representative" bill id --
   // computed from the full, unfiltered flatRows same as vendorDayTotals, so
@@ -1010,6 +1015,22 @@ function BillsTab({
                         if (c.key === 'itemTotal') return (
                           <td key={c.key} className="px-1 py-0 text-right font-semibold text-gray-900 truncate">{fmt(row.itemTotal)}</td>
                         )
+                        if (c.key === 'currentCost') return (
+                          <td key={c.key} className="px-1 py-0 text-right text-blue-600 truncate">
+                            {row.itemId ? (fmt(String(itemsById.get(row.itemId)?.cost_price ?? ''))) : '—'}
+                          </td>
+                        )
+                        if (c.key === 'costDiff') {
+                          const billCost = parseFloat(row.unitPrice) || 0
+                          const currentCost = row.itemId ? (parseFloat(String(itemsById.get(row.itemId)?.cost_price ?? 0)) || 0) : 0
+                          const diff = currentCost - billCost
+                          const color = diff > 0.01 ? 'text-red-600' : diff < -0.01 ? 'text-green-600' : 'text-gray-500'
+                          return (
+                            <td key={c.key} className={`px-1 py-0 text-right ${color} truncate`}>
+                              {Math.abs(diff) > 0.001 ? fmt(diff.toFixed(2)) : '—'}
+                            </td>
+                          )
+                        }
                         return (
                           <td key={c.key} className="px-1 py-0" onClick={e => e.stopPropagation()}>
                             <NewSpCell itemId={row.itemId}

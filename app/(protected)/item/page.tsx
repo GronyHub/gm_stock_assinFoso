@@ -2278,6 +2278,7 @@ function ItemHubPageInner() {
   const [liveBillsVendorFilter, setLiveBillsVendorFilter] = useState<string | null>(null)
   const [liveBillsMonthFilter, setLiveBillsMonthFilter] = useState<number | null>(null)
   const [liveBillsYearFilter, setLiveBillsYearFilter] = useState<number | null>(null)
+  const [liveBillsGmcFilter, setLiveBillsGmcFilter] = useState(false)
   const [liveBillsAvailableVendors, setLiveBillsAvailableVendors] = useState<string[]>([])
   const [liveBillsAvailableYears, setLiveBillsAvailableYears] = useState<number[]>([])
   const liveBillsColPrefs = useColumnPrefs<BillsColKey>('billsTab', BILLS_COLUMNS)
@@ -2366,7 +2367,7 @@ function ItemHubPageInner() {
   // else, so this is just a field-name adapter, not a different data
   // source (same trick countsTabItems used to use for CountsTab).
   const liveSalesBillsItems = useMemo(
-    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, selling_price: i.selling_price })),
+    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, selling_price: i.selling_price, cost_price: i.cost_price })),
     [liveAllItems]
   )
 
@@ -6374,6 +6375,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   Purchase Orders
                 </label>
+                <span className="text-gray-300 text-[10px] mx-1">·</span>
+                <label title="Show only bills containing GMC items" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={liveBillsGmcFilter} onChange={() => setLiveBillsGmcFilter(!liveBillsGmcFilter)}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  GMC Only
+                </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
@@ -6409,6 +6416,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     vendorFilter={liveBillsVendorFilter} setVendorFilter={setLiveBillsVendorFilter}
                     monthFilter={liveBillsMonthFilter} setMonthFilter={setLiveBillsMonthFilter}
                     yearFilter={liveBillsYearFilter} setYearFilter={setLiveBillsYearFilter}
+                    gmcFilter={liveBillsGmcFilter} gmcItemIds={liveGmcItemIds}
                     colPrefs={liveBillsColPrefs}
                     onAvailableVendorsChange={setLiveBillsAvailableVendors}
                     onAvailableYearsChange={setLiveBillsAvailableYears} />
