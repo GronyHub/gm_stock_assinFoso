@@ -60,7 +60,9 @@ export async function POST(req: NextRequest) {
         id, display_name, company_name, email, phone, location, status, payment_terms_label, is_internal, notes
     `
 
-    await logActivity(enteredBy, 'added vendor', vendor.display_name)
+    // 10 minutes flat -- a "typing" action, same convention as the other
+    // manual-entry forms (bills, expenses, purchase orders, customers).
+    await logActivity(enteredBy, 'added vendor', vendor.display_name, 600)
     return success({
       ...vendor,
       bill_count: 0, bill_total: '0', outstanding: '0', payment_count: 0, amount_paid: '0',

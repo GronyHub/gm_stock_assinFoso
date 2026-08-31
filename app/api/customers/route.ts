@@ -83,7 +83,9 @@ export async function POST(req: NextRequest) {
         whatsapp_group_added, last_visited::text AS last_visited, service_goods, created_at::text AS created_at
     `
 
-    await logActivity(enteredBy, 'added customer', customer.display_name)
+    // 10 minutes flat -- a "typing" action, same convention as the other
+    // manual-entry forms (bills, expenses, purchase orders, vendors).
+    await logActivity(enteredBy, 'added customer', customer.display_name, 600)
     return success({
       ...customer,
       receipt_count: 0, receipt_total: '0', receipt_balance: '0',

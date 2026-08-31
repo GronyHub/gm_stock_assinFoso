@@ -64,7 +64,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!customer) return notFound()
 
     const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
-    await logActivity(actor, 'edited customer', customer.display_name)
+    // 10 minutes flat, same "typing" convention as 'added customer'.
+    await logActivity(actor, 'edited customer', customer.display_name, 600)
     return success(customer)
   } catch (e) {
     return handleError('customer PATCH', e)

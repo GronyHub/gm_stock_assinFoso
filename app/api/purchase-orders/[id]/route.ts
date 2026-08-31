@@ -112,8 +112,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!row) return notFound()
 
     const actor = getActorName(session)
+    // A plain status change (Send/Cancel button) isn't "typing" -- no
+    // duration. Editing lines is real manual entry, same 10-minute
+    // convention as the other typing-heavy forms.
     if (status) await logActivity(actor, 'updated purchase order', `${row.po_number} → ${status}`)
-    else if (lines) await logActivity(actor, 'edited purchase order', row.po_number)
+    else if (lines) await logActivity(actor, 'edited purchase order', row.po_number, 600)
     return success(row)
   } catch (e) {
     return handleError('purchase-order PATCH', e)

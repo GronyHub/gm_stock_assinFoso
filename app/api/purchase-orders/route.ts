@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
         `
       )
     )
-    await logActivity(createdBy, 'created purchase order', `${poNumber}${vendorName ? ` from ${vendorName}` : ''}`)
+    // 10 minutes flat -- a "typing" action (entering PO lines by hand), same
+    // treatment every other manual-entry form gets (bills, expenses, vendors,
+    // customers).
+    await logActivity(createdBy, 'created purchase order', `${poNumber}${vendorName ? ` from ${vendorName}` : ''}`, 600)
     return success({ ok: true, id: po.id, poNumber })
   } catch (e) {
     return handleError('purchase-orders POST', e)

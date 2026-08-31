@@ -105,9 +105,10 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     }
 
     const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
-    // 30s flat, same as 'added expense' -- see app/api/expenses/route.ts's
-    // own comment on why these don't get a computed duration.
-    await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date), 30)
+    // 10 minutes flat, same as 'added expense' -- see
+    // app/api/expenses/route.ts's own comment on the "typing" duration
+    // convention.
+    await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date), 600)
 
     const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
     return success({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
@@ -175,7 +176,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (expense) {
       const actor = session.user?.name || (session.user as any)?.username || 'Unknown'
       await logActivity(actor, 'edited expense',
-        `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${body.property_status}`, 30)
+        `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — property status → ${body.property_status}`, 600)
     }
 
     return success({ ok: true, property_status: body.property_status })
@@ -210,7 +211,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       parts.push(notAvailableReason)
     }
     await logActivity(actor, 'edited expense',
-      `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — ${parts.join(', ')}`, 30)
+      `${describeExpense(expense.expense_account, expense.amount, expense.expense_date)} — ${parts.join(', ')}`, 600)
   }
 
   return success({

@@ -36,7 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!vendor) return notFound()
 
     const actor = (session.user as { username?: string })?.username || session.user?.name || 'Unknown'
-    await logActivity(actor, 'edited vendor', vendor.display_name)
+    // 10 minutes flat, same "typing" convention as 'added vendor'.
+    await logActivity(actor, 'edited vendor', vendor.display_name, 600)
     return success(vendor)
   } catch (e) {
     return handleError('vendor PATCH', e)
