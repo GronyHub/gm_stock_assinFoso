@@ -1,10 +1,11 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
 import { formatDuration } from '@/lib/fmtDuration'
 import { formatGapMins } from '@/lib/fmtGap'
+import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 type MediaItem = { url: string; type: string }
@@ -18,6 +19,10 @@ type Announcement = {
   // /api/sales/live-tap). Null everywhere else until that type gets its own
   // rule (see lib/logger.ts's own comment on this column).
   estimated_duration_seconds?: number | null
+  // The raw logActivity action string (e.g. "counted stock") -- feeds
+  // effectiveDurationSeconds' flat-minute fallback for the Total column,
+  // same as /api/staff-times/worked-today's own worked-time sum.
+  category?: string | null
 }
 type MediaFile = { file: File | Blob; localUrl: string; uploading: boolean; url?: string; contentType?: string; error?: string; kind: 'image' | 'video' | 'audio' }
 
@@ -50,6 +55,22 @@ function fmtAnnTime(iso: string) {
 
 function dayKey(iso: string) {
   return new Date(iso).toDateString()
+}
+
+// Per-day, per-staff total of effectiveDurationSeconds -- backs the Total
+// column below. Grouped by calendar day (not just "today") so this stays
+// correct as older days load in via "load more" or a date-range search,
+// same effectiveDurationSeconds rule /api/staff-times/worked-today applies
+// server-side for the present-staff banner, so the two always agree.
+function computeDailyTotals(list: Announcement[]): Record<string, Record<string, number>> {
+  const totals: Record<string, Record<string, number>> = {}
+  for (const p of list) {
+    const day = dayKey(p.created_at)
+    const seconds = effectiveDurationSeconds(p.category, p.estimated_duration_seconds)
+    if (!totals[day]) totals[day] = {}
+    totals[day][p.author] = (totals[day][p.author] ?? 0) + seconds
+  }
+  return totals
 }
 
 // `list` is newest-first (same convention as Live Sale's Log mode dateTaps),
@@ -128,87 +149,101 @@ function ActivityMeta({ gapMins, durationSeconds }: { gapMins: number | null; du
   )
 }
 
-// One feed row -- shared between the normal live feed and search results so
-// they render identically. `gapMins` is null for the day's first entry (in
-// whichever list -- live feed or search results -- this row is being drawn
-// from), since there's no earlier same-day activity to diff against.
-function PostRow({ p, showDateHeader, gapMins, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
+// Number of columns the shared <table> header declares -- Staff/Time/Gap/
+// Dur/Total/Activity -- kept as one constant so the colSpan on date-header
+// and rich-post rows can't silently drift out of sync with the header.
+const FEED_COLUMNS = 6
+
+// One feed row (or two, when a date header precedes it) -- shared between
+// the normal live feed and search results so they render identically.
+// `gapMins` is null for the day's first entry (in whichever list -- live
+// feed or search results -- this row is being drawn from), since there's no
+// earlier same-day activity to diff against. Returns <tr>s directly (no
+// wrapping element) so every row -- auto-logged or a rich user post --
+// lives in the same <table>, sharing one header and one scroll region
+// instead of each row scrolling independently.
+function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
   p: Announcement
   showDateHeader: boolean
   gapMins: number | null
+  staffDayTotalSeconds: number
   canDelete: boolean
   onLongPressStart: (p: Announcement) => void
   onLongPressEnd: () => void
   onDelete: (id: number) => void
 }) {
+  const isAutoLogged = (p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60
+  const durationSeconds = effectiveDurationSeconds(p.category, p.estimated_duration_seconds)
   return (
-    <div>
+    <>
       {showDateHeader && (
-        <div className="flex justify-center py-1 bg-gray-50/60">
-          <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-            {dayLabel(p.created_at)}
-          </span>
-        </div>
+        <tr>
+          <td colSpan={FEED_COLUMNS} className="text-center py-1 bg-gray-50/60">
+            <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+              {dayLabel(p.created_at)}
+            </span>
+          </td>
+        </tr>
       )}
-      {(p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60 ? (
-        // Auto-logged activity row -- Staff/Time/Gap/Dur/Activity each get
-        // their own aligned column (same idea as Live Sale's Log mode
-        // table), instead of one run-on line that ellipsis-truncated the
-        // activity text. Activity stays single-line (whitespace-nowrap,
-        // not wrapped or truncated) -- when it's long enough to push the
-        // row past the viewport, this row's own container scrolls
-        // horizontally rather than clipping or wrapping it, same
-        // trade-off Live Sale's Log mode makes for its Item column. These
-        // are system records, not user-authored messages, so there's no
-        // delete button here -- that stays on manual posts below, which is
-        // a different kind of content people actually compose and might
-        // need to retract.
-        <div className="overflow-x-auto">
-          <div
-            onPointerDown={() => onLongPressStart(p)}
-            onPointerUp={onLongPressEnd}
-            onPointerLeave={onLongPressEnd}
-            onContextMenu={e => e.preventDefault()}
-            className="grid grid-cols-[minmax(3rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_minmax(3.25rem,auto)_auto] gap-x-2 items-baseline px-3 py-1 select-none w-max min-w-full"
-          >
-            <span className="font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</span>
-            <span className="text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</span>
-            <span className="text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? `Gap ${formatGapMins(gapMins)}` : ''}</span>
-            <span className="text-gray-400 text-[10px] whitespace-nowrap">{p.estimated_duration_seconds ? `Dur ${formatDuration(p.estimated_duration_seconds)}` : ''}</span>
-            <span className="text-gray-800 text-[11px] whitespace-nowrap">{p.body}</span>
-          </div>
-        </div>
-      ) : (
-        <div
+      {isAutoLogged ? (
+        // Auto-logged activity row -- Staff/Time/Gap/Dur/Total/Activity
+        // each get their own aligned column (same idea as Live Sale's Log
+        // mode table). Activity stays single-line (whitespace-nowrap, not
+        // wrapped or truncated) -- the shared table wrapper scrolls
+        // horizontally when it's long, same trade-off Live Sale's Log mode
+        // makes for its Item column. These are system records, not
+        // user-authored messages, so there's no delete button here -- that
+        // stays on manual posts below, which is a different kind of
+        // content people actually compose and might need to retract.
+        <tr
           onPointerDown={() => onLongPressStart(p)}
           onPointerUp={onLongPressEnd}
           onPointerLeave={onLongPressEnd}
           onContextMenu={e => e.preventDefault()}
-          className="px-3 py-1.5 space-y-0.5 select-none"
+          className="select-none hover:bg-gray-50"
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[10px] text-gray-400">
-                {fmtAnnTime(p.created_at)}
-                <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
-              </span>
-              {canDelete && (
-                <button onClick={() => onDelete(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+          <td className="pl-3 pr-2 py-1 font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</td>
+          <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</td>
+          <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? formatGapMins(gapMins) : '—'}</td>
+          <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
+          <td className="px-2 py-1 text-gray-500 font-semibold text-[10px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
+          <td className="px-2 pr-3 py-1 text-gray-800 text-[11px] whitespace-nowrap">{p.body}</td>
+        </tr>
+      ) : (
+        <tr>
+          <td colSpan={FEED_COLUMNS} className="p-0">
+            <div
+              onPointerDown={() => onLongPressStart(p)}
+              onPointerUp={onLongPressEnd}
+              onPointerLeave={onLongPressEnd}
+              onContextMenu={e => e.preventDefault()}
+              className="px-3 py-1.5 space-y-0.5 select-none"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-gray-400">
+                    {fmtAnnTime(p.created_at)}
+                    <ActivityMeta gapMins={gapMins} durationSeconds={p.estimated_duration_seconds} />
+                  </span>
+                  {canDelete && (
+                    <button onClick={() => onDelete(p.id)} className="text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
+                  )}
+                </div>
+              </div>
+              {p.reply_to_id && (
+                <div className="text-[10px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
+                  <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
+                  {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
+                </div>
               )}
+              {p.body && <Linkify text={p.body} as="p" className="text-xs text-gray-800 whitespace-pre-wrap leading-snug" />}
+              <MediaGrid items={p.media_urls ?? []} />
             </div>
-          </div>
-          {p.reply_to_id && (
-            <div className="text-[10px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
-              <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
-              {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
-            </div>
-          )}
-          {p.body && <Linkify text={p.body} as="p" className="text-xs text-gray-800 whitespace-pre-wrap leading-snug" />}
-          <MediaGrid items={p.media_urls ?? []} />
-        </div>
+          </td>
+        </tr>
       )}
-    </div>
+    </>
   )
 }
 
@@ -219,6 +254,7 @@ function AnnouncementsPanel() {
   const canDelete = ['owner', 'manager'].includes(role)
 
   const [posts, setPosts] = useState<Announcement[]>([])
+  const dailyTotals = useMemo(() => computeDailyTotals(posts), [posts])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [replyTo, setReplyTo] = useState<{ id: number; author: string; body: string } | null>(null)
@@ -305,6 +341,7 @@ function AnnouncementsPanel() {
   const [searchTo, setSearchTo] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const [searchResults, setSearchResults] = useState<Announcement[]>([])
+  const searchDailyTotals = useMemo(() => computeDailyTotals(searchResults), [searchResults])
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchLoadingMore, setSearchLoadingMore] = useState(false)
   const [searchHasMore, setSearchHasMore] = useState(true)
@@ -681,36 +718,70 @@ function AnnouncementsPanel() {
 
       {/* Feed — search results (full history) when a search/filter is
           active, otherwise the normal live feed. Older items load
-          automatically as the sentinel at the bottom scrolls into view. */}
+          automatically as the sentinel at the bottom scrolls into view.
+          One shared table/header/scroll region for the whole feed -- rich
+          posts (media/replies) still render their own card via a colSpan
+          row, they just live inside the same table as everything else now,
+          instead of each row scrolling independently. */}
       {hasActiveSearch ? (
         searchLoading && searchResults.length === 0 ? (
           <p className="text-[11px] text-gray-400 text-center py-3">Searching…</p>
         ) : searchResults.length === 0 ? (
           <p className="text-[11px] text-gray-400 text-center py-3">No announcements match.</p>
         ) : (
-          <div className="divide-y divide-gray-50">
-            {searchResults.map((p, i) => (
-              <PostRow key={p.id} p={p}
-                showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(searchResults[i - 1].created_at)}
-                gapMins={gapMinsFor(searchResults, i)}
-                canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
-            ))}
-            {searchHasMore && <div ref={sentinelRef} className="h-1" />}
-            {searchLoadingMore && <p className="text-[10px] text-gray-400 text-center py-2">Loading…</p>}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 z-10 bg-white">
+                <tr className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
+                  <th className="text-left pl-3 pr-2 py-1 whitespace-nowrap">Staff</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Time</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Gap</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Dur</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Total</th>
+                  <th className="text-left px-2 pr-3 py-1">Activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {searchResults.map((p, i) => (
+                  <PostRow key={p.id} p={p}
+                    showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(searchResults[i - 1].created_at)}
+                    gapMins={gapMinsFor(searchResults, i)}
+                    staffDayTotalSeconds={searchDailyTotals[dayKey(p.created_at)]?.[p.author] ?? 0}
+                    canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
+                ))}
+                {searchHasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
+                {searchLoadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[10px] text-gray-400 text-center py-2">Loading…</td></tr>}
+              </tbody>
+            </table>
           </div>
         )
       ) : posts.length === 0 ? (
         <p className="text-[11px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
-        <div className="divide-y divide-gray-50">
-          {posts.map((p, i) => (
-            <PostRow key={p.id} p={p}
-              showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
-              gapMins={gapMinsFor(posts, i)}
-              canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
-          ))}
-          {hasMore && <div ref={sentinelRef} className="h-1" />}
-          {loadingMore && <p className="text-[10px] text-gray-400 text-center py-2">Loading…</p>}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
+                <th className="text-left pl-3 pr-2 py-1 whitespace-nowrap">Staff</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Time</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Gap</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Dur</th>
+                <th className="text-left px-2 py-1 whitespace-nowrap">Total</th>
+                <th className="text-left px-2 pr-3 py-1">Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {posts.map((p, i) => (
+                <PostRow key={p.id} p={p}
+                  showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
+                  gapMins={gapMinsFor(posts, i)}
+                  staffDayTotalSeconds={dailyTotals[dayKey(p.created_at)]?.[p.author] ?? 0}
+                  canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
+              ))}
+              {hasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
+              {loadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[10px] text-gray-400 text-center py-2">Loading…</td></tr>}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

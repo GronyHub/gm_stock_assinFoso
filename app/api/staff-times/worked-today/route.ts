@@ -1,19 +1,8 @@
 import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 export const dynamic = 'force-dynamic'
-
-// Actions logged via lib/logger.ts's logActivity that never get a real
-// estimated_duration_seconds -- only a live sale tap can compute one (see
-// lib/logger.ts's own comment on that column). A stock count or a genuine
-// violation-fix action still represents real work though, so each such
-// announcement is credited a flat 1 minute when it has no duration of its
-// own, rather than silently contributing zero to the worked total.
-const FLAT_MINUTE_ACTIONS = new Set([
-  'counted stock', 'reported count gain', 'reported count loss', 'confirmed opening counts',
-  'merged items', 'marked as different items', 'marked all as different items',
-  'linked unresolved sales lines to item', 'confirmed VCP jump as correct',
-])
 
 // Backs the "present staff" banner above the mode-switch tabs: who's
 // currently clocked in (actual_in set, actual_out not yet set today) and
@@ -46,9 +35,7 @@ export async function GET() {
 
     const workedSeconds: Record<string, number> = {}
     for (const a of activity as { author: string; category: string | null; estimated_duration_seconds: number | null }[]) {
-      const seconds = a.estimated_duration_seconds != null
-        ? Number(a.estimated_duration_seconds)
-        : (a.category && FLAT_MINUTE_ACTIONS.has(a.category) ? 60 : 0)
+      const seconds = effectiveDurationSeconds(a.category, a.estimated_duration_seconds)
       workedSeconds[a.author] = (workedSeconds[a.author] ?? 0) + seconds
     }
 

@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     const rows = await sql`
       SELECT
-        a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id, a.estimated_duration_seconds,
+        a.id, a.author, a.body, a.media_urls, a.created_at, a.reply_to_id, a.estimated_duration_seconds, a.category,
         r.author AS reply_to_author, r.body AS reply_to_body
       FROM announcements a
       LEFT JOIN announcements r ON r.id = a.reply_to_id
