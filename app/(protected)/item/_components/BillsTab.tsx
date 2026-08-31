@@ -479,6 +479,20 @@ function BillsTab({
     return totals
   }, [billExpenses])
 
+  // Same grouping as expensesByBillId, but keeping each individual row --
+  // needed to actually list them under "Related Expenses" (whether they got
+  // there via AddBillExpenseButton or migrated wholesale from the Expenses
+  // tab, see /api/expenses/[id]/migrate-to-bill) rather than just their sum.
+  // Before this, a migrated expense had no home anywhere in the UI at all.
+  const expenseRowsByBillId = useMemo(() => {
+    const m: Record<number, BillExpense[]> = {}
+    for (const e of billExpenses) {
+      if (!m[e.bill_id]) m[e.bill_id] = []
+      m[e.bill_id].push(e)
+    }
+    return m
+  }, [billExpenses])
+
   const itemsById = useMemo(() => {
     const m = new Map<number, Item>()
     for (const it of items) m.set(it.id, it)
@@ -589,7 +603,7 @@ function BillsTab({
       map.get(gk)!.rows.push(r)
     }
     let prevDate: string | null = null
-    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number; billNumbers: string[] }[] = []
+    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number; billNumbers: string[]; expenseRows: BillExpense[] }[] = []
     for (const [key, g] of map) {
       const date10 = g.billDate.slice(0, 10)
       const agg = groupAggregates[key]
@@ -598,18 +612,23 @@ function BillsTab({
       const qty = agg?.qty ?? 0
       list.push({
         key, billDate: g.billDate, vendorName: g.vendorName,
-        total: vendorDayTotals[key] ?? 0,
+        // Includes the related expenses' own total now that they're listed
+        // as rows right below -- previously this only summed bill_lines, so
+        // the Total column silently excluded them (the +₵ badge next to the
+        // date was the only place their amount showed up at all).
+        total: (vendorDayTotals[key] ?? 0) + sharedExpensesTotal,
         editBillId: repBillId,
         isDayHead: date10 !== prevDate,
         rows: g.rows,
         sharedExpensesTotal,
         sharedPerUnit: qty > 0 ? sharedExpensesTotal / qty : 0,
         billNumbers: Array.from(new Set(g.rows.map(r => r.billNumber).filter(Boolean))),
+        expenseRows: expenseRowsByBillId[repBillId] ?? [],
       })
       prevDate = date10
     }
     return list
-  }, [filtered, vendorDayTotals, groupAggregates, expensesByBillId])
+  }, [filtered, vendorDayTotals, groupAggregates, expensesByBillId, expenseRowsByBillId])
 
   function toggleEdit(billId: number) {
     if (editingBillId === billId) { setEditingBillId(null); return }
@@ -631,6 +650,12 @@ function BillsTab({
   // Patches just the edited line in linesMap -- flatRows/groupAggregates/
   // groupedList all derive from it, so the group's total, Shared Expenses,
   // and ACP recompute automatically without a full refetch.
+  async function removeBillExpense(id: number) {
+    if (!confirm('Remove this related expense from the bill?')) return
+    const res = await fetch(`/api/bills/expenses/${id}`, { method: 'DELETE' })
+    if (res.ok) setBillExpenses(prev => prev.filter(e => e.id !== id))
+  }
+
   function handleLineSaved(updated: EditedBillLine) {
     setLinesMap(prev => {
       const lines = prev[updated.bill_id]
@@ -993,6 +1018,28 @@ function BillsTab({
                           </td>
                         )
                       })}
+                    </tr>
+                  ))}
+                  {/* A migrated (or directly-added) expense has no home of
+                      its own anywhere else in the app -- list it right here
+                      so it's visible instead of just padding the group's
+                      Total silently forever. */}
+                  {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => (
+                    <tr key={`exp-${e.id}`} className="border-b border-gray-100 text-[11px] font-bold leading-tight bg-purple-50/40 hover:bg-purple-50">
+                      <td className="px-1 py-0 text-purple-700 italic overflow-hidden">
+                        <span className="block truncate">Related Expense{e.description ? ` — ${e.description}` : ''}</span>
+                      </td>
+                      {colPrefs.shownColumns.map(c => (
+                        <td key={c.key} className="px-1 py-0 text-right truncate">
+                          {c.key === 'itemTotal' ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
+                              {fmt(e.amount)}
+                              <button onClick={() => removeBillExpense(e.id)} title="Remove this related expense"
+                                className="text-purple-300 hover:text-red-600 font-bold leading-none">×</button>
+                            </span>
+                          ) : '—'}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </Fragment>
