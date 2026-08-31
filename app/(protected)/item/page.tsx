@@ -2427,11 +2427,11 @@ function ItemHubPageInner() {
   function renderLiveExpensesRadio(v: typeof liveExpensesMainRadios[number]) {
     return (
       <label key={v.key}
-        className={`flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap select-none text-[9px] ${
+        className={`flex-1 min-w-0 flex items-center justify-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] text-center ${
           v.variant === 'flag' ? 'text-red-600' : v.variant === 'prop' ? 'font-semibold text-gray-600' : 'text-gray-700'
         }`}>
-        <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
-        <span>{v.label}{v.count !== null ? ` (${v.count})` : ''}</span>
+        <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
+        <span className="break-words">{v.label}{v.count !== null ? ` (${v.count})` : ''}</span>
       </label>
     )
   }
