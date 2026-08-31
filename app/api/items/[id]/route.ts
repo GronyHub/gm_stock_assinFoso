@@ -118,13 +118,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
+    // A service using GMC can never carry a cost price (see
+    // add-service-gmc-constraints's DB trigger) -- force it null here rather
+    // than trusting whatever purchase_rate happens to already be sitting on
+    // the row. Without this, an item left with a stale non-null (even a
+    // literal 0) cost price from before that trigger existed blocks *every*
+    // future edit to it, not just an attempt to change the cost price
+    // itself, since a full-row UPDATE re-submits the unchanged column too.
+    const finalPurchaseRate = gmc_type === 'service_using_gmc' ? null : purchase_rate
+
     const [row] = await sql`
       UPDATE items SET
         canonical_name      = COALESCE(${item_name  ?? null}, canonical_name),
         zoho_item_name      = COALESCE(${item_name  ?? null}, zoho_item_name),
         cf_group            = ${cf_group       ?? null},
         selling_rate        = ${selling_rate   ?? null},
-        purchase_rate       = ${purchase_rate  ?? null},
+        purchase_rate       = ${finalPurchaseRate ?? null},
         units_per_pack      = ${units_per_pack ?? null},
         unit_name           = ${unit_name      ?? null},
         unit_time_seconds   = ${unit_time_seconds ?? null},
