@@ -88,10 +88,21 @@ function StatusBadge({ status }: { status: PO['status'] }) {
 function ProgressBadge({ lines }: { lines: POLine[] }) {
   const state = receivingState(lines)
   if (state === 'complete') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600">RECEIVED</span>
-  if (state === 'not_started') return null
+  // Sent to the vendor but never received against -- no bill has ever been
+  // created for it, flagged rather than left blank so it isn't mistaken
+  // for "nothing to report yet" (a draft, or a PO that just hasn't shipped).
+  if (state === 'not_started') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600">NOT BILLED</span>
   const ordered = lines.reduce((s, l) => s + parseFloat(l.qty_ordered), 0)
   const received = lines.reduce((s, l) => s + parseFloat(l.qty_received), 0)
   return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600">{fmt(received)}/{fmt(ordered)}</span>
+}
+
+// Flagged set for the header count/filter below -- a sent PO (draft/
+// cancelled excluded, same gating ProgressBadge's caller already applies)
+// that has never had a single item received against it, i.e. never turned
+// into a bill.
+function isNotBilled(p: PO): boolean {
+  return p.status === 'sent' && receivingState(p.lines) === 'not_started'
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
@@ -135,6 +146,7 @@ export default function POTab({ search }: Props) {
   const [editResults, setEditResults] = useState<SearchItem[]>([])
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const [notBilledOnly, setNotBilledOnly] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('poTable', PO_COLUMNS)
 
   function loadList() {
@@ -230,15 +242,19 @@ export default function POTab({ search }: Props) {
     }
   }
 
+  const notBilledCount = useMemo(() => pos.filter(isNotBilled).length, [pos])
+
   const filtered = useMemo(() => {
-    if (!search) return pos
+    let list = pos
+    if (notBilledOnly) list = list.filter(isNotBilled)
+    if (!search) return list
     const q = search.toLowerCase()
-    return pos.filter(p =>
+    return list.filter(p =>
       (p.vendor_name ?? '').toLowerCase().includes(q) ||
       p.po_number.toLowerCase().includes(q) ||
       p.lines.some(l => l.item_name.toLowerCase().includes(q))
     )
-  }, [pos, search])
+  }, [pos, search, notBilledOnly])
 
   async function setStatus(status: 'sent' | 'cancelled') {
     if (!detail) return
@@ -307,6 +323,14 @@ export default function POTab({ search }: Props) {
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <span className="text-[9px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
         <div className="flex items-center gap-1.5">
+          {notBilledCount > 0 && (
+            <label title="Sent to the vendor but never received against -- no bill exists for it yet"
+              className="flex items-center gap-1 text-[9px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              <input type="checkbox" checked={notBilledOnly} onChange={e => setNotBilledOnly(e.target.checked)}
+                className="cursor-pointer w-2.5 h-2.5" />
+              Not Billed ({notBilledCount})
+            </label>
+          )}
           <ColumnsPickerButton prefs={colPrefs} />
           <Link href="/purchase-orders/new"
             className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">

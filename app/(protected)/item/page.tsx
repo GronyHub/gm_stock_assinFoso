@@ -94,6 +94,9 @@ const ReorderListsPanel = dynamic(() => import('./_components/ReorderListsPanel'
 const SalesTab = dynamic(() => import('./_components/SalesTab'), { ssr: false })
 const BillsTab = dynamic(() => import('./_components/BillsTab'), { ssr: false })
 const NewBillForm = dynamic(() => import('../bills/new/page'), { ssr: false })
+// Purchase Orders radio inside Bills swaps to this in place, instead of
+// navigating to the separate lossView==='purchaseOrders' destination.
+const POTab = dynamic(() => import('./_components/POTab'), { ssr: false })
 const SalesAnalyticsSection = dynamic(() => import('./_components/SalesAnalyticsSection'), { ssr: false })
 const BillsAnalyticsSection = dynamic(() => import('./_components/BillsAnalyticsSection'), { ssr: false })
 // Live/Log share one analytics view (same underlying tap data); Count
@@ -2215,6 +2218,11 @@ function ItemHubPageInner() {
   // tap-to-sell mode already covers) -- it always relied on its own tab
   // rendering NewBillForm as a sibling, so that comes along with it.
   const [liveBillsAddingNew, setLiveBillsAddingNew] = useState(false)
+  // Purchase Orders radio -- swaps Bills' own content area for the same
+  // <PurchaseOrdersPage> the sidebar's "Purchase Ord" menu item opens full-
+  // screen, but rendered inline here instead of navigating away (so the
+  // Bills tab underneath isn't unmounted/lost).
+  const [liveBillsShowPurchaseOrders, setLiveBillsShowPurchaseOrders] = useState(false)
   // Expenses has no internal "add new" of its own either -- same pattern as
   // Bills, reusing the standalone /expenses/new form as a sibling.
   const [liveExpensesAddingNew, setLiveExpensesAddingNew] = useState(false)
@@ -2368,14 +2376,15 @@ function ItemHubPageInner() {
   // log), same as a violation filter swaps it for a filtered list.
   const liveBillsRadioValue = liveBillsShowHistory ? 'history'
     : liveBillsAddingNew ? 'new_bill'
+    : liveBillsShowPurchaseOrders ? 'purchase_orders'
     : liveBillsBarsOnly ? 'bars_only'
     : liveBillsViolationFilter ? liveBillsViolationFilter
     : 'all'
   function selectLiveBillsRadio(value: string) {
-    if (value === 'purchase_orders') { pickLossView('purchaseOrders'); return }
     const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense']
     setLiveBillsShowHistory(value === 'history')
     setLiveBillsAddingNew(value === 'new_bill')
+    setLiveBillsShowPurchaseOrders(value === 'purchase_orders')
     setLiveBillsBarsOnly(value === 'bars_only')
     setLiveBillsViolationFilter(violationKeys.includes(value) ? value : null)
   }
@@ -6278,12 +6287,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
                 </label>
-                {/* Not a filter of this tab's own list -- selecting it
-                    navigates straight to the separate Purchase Orders page
-                    (lossView==='purchaseOrders'), same destination as the
-                    sidebar's "Purchase Ord" menu item. Never shows as
-                    checked afterwards since picking it leaves this tab. */}
-                <label title="Open the separate Purchase Orders page"
+                {/* Swaps Bills' own content area for POTab rendered inline
+                    (same "exclusive view selector" treatment as New Bill/
+                    History above), rather than navigating to the separate
+                    lossView==='purchaseOrders' destination. */}
+                <label title="Purchase Orders, opened inline"
                   className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'purchase_orders'} onChange={() => selectLiveBillsRadio('purchase_orders')}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -6313,6 +6321,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               ) : liveBillsShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><BillsAnalyticsSection /></div>
+              ) : liveBillsShowPurchaseOrders ? (
+                <div className="flex-1 min-h-0"><POTab search={liveEmbeddedSearch} /></div>
               ) : (
                 <div className="flex-1 overflow-auto">
                   <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter}
