@@ -116,7 +116,6 @@ type TableProps = {
   onDeleteCancel: () => void
   onMigrated: (id: number) => void
   colPrefs: ColumnPrefs<ColKey>
-  hideAccount?: boolean
   hideVendor?: boolean
   hidePropertyColumns?: boolean
   accounts: string[]
@@ -290,34 +289,24 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
 }
 
 function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
   onFetchAccountsData, onCreateAccount, onRenameAccount, onDeleteAccount }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_status', 'property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
-    && !(k === 'account' && hideAccount) && !(k === 'vendor' && hideVendor)
-    && !(k === 'account')
-    && !(k === 'group')
-    && !(k === 'date')
+    && !(k === 'vendor' && hideVendor)
     && !(hidePropertyColumns && propertyColKeys.includes(k)))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
     const label = colPrefs.columnLabels[key] ?? EXPENSE_COLUMNS.find(c => c.key === key)!.label
     const onResize = (d: number) => colPrefs.resizeWidth(key, d, EXPENSES_COL_DEFAULTS[key] ?? 100)
     const onReset = () => colPrefs.resetWidth(key)
-    if (key === 'account') return <FilterHeaderCell key={key} label={label} options={accounts} value={accountFilter} onChange={onAccountFilter} onResize={onResize} onResetWidth={onReset} />
     if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} onResize={onResize} onResetWidth={onReset} />
     return <ResizableTh key={key} noDivider={isLast} onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
-    // Display only -- expense_account/description stay separate columns in
-    // the database and in the edit form; this just folds the description
-    // into what the Account cell shows, so the account reads as its own
-    // full name at a glance instead of needing the Description column too.
-    if (key === 'account') return <td key={key} className={`${TD} text-gray-900 font-semibold truncate`}>{e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}</td>
-    if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
     if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
     if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
@@ -386,7 +375,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
               <td className={`${TD} sticky left-0 z-10 text-gray-900 font-semibold truncate border-r bg-inherit`}>
                 {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
               </td>
-              {bodyCellFor('group', e)}
+              <td className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
               <td className={`${TD} text-gray-600 whitespace-nowrap`}>{fmtShort(e.expense_date)}</td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
               {visibleKeys.map(k => bodyCellFor(k, e))}
@@ -1277,7 +1266,6 @@ export default function ExpensesTab({
                   </div>
                   <div className="[&>div]:rounded-t-none">
                     <ExpenseTable rows={rows} {...tableProps}
-                      hideAccount={groupBy === 'account'}
                       hideVendor={groupBy === 'vendor'}
                       hidePropertyColumns={!showProperties && showNonProperties} />
                   </div>
