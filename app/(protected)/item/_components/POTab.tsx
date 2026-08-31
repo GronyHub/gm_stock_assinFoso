@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
@@ -180,7 +180,19 @@ export default function POTab({ search }: Props) {
     }).catch(() => setDetailLoading(false))
   }
 
-  function select(po: PO) {
+  // Row click expands/collapses the same PO's detail inline underneath it
+  // (one at a time -- detail is fetched per-PO on demand, so there's no
+  // point supporting several open together). Clicking an already-open row
+  // closes it back up.
+  function toggleRow(po: PO) {
+    if (selectedId === po.id) {
+      setSelectedId(null)
+      setDetail(null)
+      setEditMode(false)
+      setReceiveOpen(false)
+      setReceiveError('')
+      return
+    }
     setSelectedId(po.id)
     setReceiveOpen(false)
     setReceiveError('')
@@ -338,32 +350,32 @@ export default function POTab({ search }: Props) {
           </Link>
         </div>
       </div>
-      <div className="flex flex-1 min-h-0">
-        <div className="w-1/2 border-r border-gray-200 overflow-auto min-h-0">
-          <table className="border-collapse text-[10px]" style={{
-            tableLayout: 'fixed',
-            width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
-          }}>
-            <colgroup>
-              <col style={{ width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) }} />
-              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90) }} />)}
-            </colgroup>
-            <thead className="sticky top-0 bg-gray-100 z-10">
-              <tr>
-                <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
-                  className="text-gray-500">PO</ResizableTh>
-                {colPrefs.shownColumns.map((c, i) => (
-                  <ResizableTh key={c.key} align={c.key === 'status' ? 'right' : 'left'} noDivider={i === colPrefs.shownColumns.length - 1}
-                    className="text-gray-500"
-                    onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
-                    {c.label}
-                  </ResizableTh>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} onClick={() => select(p)}
+      <div className="flex-1 overflow-auto min-h-0">
+        <table className="border-collapse text-[10px]" style={{
+          tableLayout: 'fixed',
+          width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
+        }}>
+          <colgroup>
+            <col style={{ width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90) }} />)}
+          </colgroup>
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
+                className="text-gray-500">PO</ResizableTh>
+              {colPrefs.shownColumns.map((c, i) => (
+                <ResizableTh key={c.key} align={c.key === 'status' ? 'right' : 'left'} noDivider={i === colPrefs.shownColumns.length - 1}
+                  className="text-gray-500"
+                  onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  {c.label}
+                </ResizableTh>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(p => (
+              <Fragment key={p.id}>
+                <tr onClick={() => toggleRow(p)}
                   className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                   <td className="px-0.5 py-0 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
                   {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
@@ -377,20 +389,14 @@ export default function POTab({ search }: Props) {
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No purchase orders</p>}
-        </div>
-
-        <div className="w-1/2 overflow-y-auto min-h-0 bg-white">
-          {!selectedId ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Select a purchase order</p>
-          ) : detailLoading || !detail ? (
-            <p className="text-[10px] text-gray-400 text-center py-10">Loading…</p>
-          ) : (
+                {selectedId === p.id && (
+                  <tr className="bg-white">
+                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 border-b border-gray-200">
+                      {detailLoading || !detail ? (
+                        <p className="text-[10px] text-gray-400 text-center py-6">Loading…</p>
+                      ) : (
             <div>
-              <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-0 z-10 space-y-1">
+              <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 space-y-1">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-bold text-gray-900">{detail.vendor_name ?? 'Unknown vendor'}</p>
@@ -632,8 +638,15 @@ export default function POTab({ search }: Props) {
                 </>
               )}
             </div>
-          )}
-        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No purchase orders</p>}
       </div>
       {viewingItemId != null && (
         <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
