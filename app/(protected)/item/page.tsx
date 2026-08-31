@@ -4310,26 +4310,43 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  // Expenses' Filter dropdown -- houses the view buttons that aren't kept
-  // as their own standalone radios (All Expenses/All Properties/
-  // Non-Properties and the four flag violations stay radios; everything
-  // else -- By Account, By Vendor, and the two property-availability/
-  // property-type splits -- lives here instead).
-  const EXPENSES_FILTER_BAR_KEYS = ['by_account', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  // Expenses' Filter dropdown -- houses everything except Columns (which
+  // stays its own control since it's a distinct widget, not a single
+  // click/select action) and the radios kept standalone (All Expenses/All
+  // Properties/Non-Properties and the four flag violations). Two kinds of
+  // options share this one select: persistent views that plug straight
+  // into the same liveExpensesRadioValue mutex (New Expense/History/By
+  // Account/By Vendor/property splits -- shown as "selected" when active),
+  // and momentary triggers (Analytics/Accounts/Laws & Tasks/Help) that just
+  // fire their own setter, same as Sales/Bills' "Laws & Tasks" option.
+  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_account', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
       <select
         value={EXPENSES_FILTER_BAR_KEYS.includes(liveExpensesRadioValue) ? liveExpensesRadioValue : ''}
-        onChange={e => selectLiveExpensesRadio(e.target.value || 'all')}
+        onChange={e => {
+          const v = e.target.value
+          if (v === 'analytics') { setLiveExpensesShowAnalytics(a => !a); return }
+          if (v === 'accounts') { setLiveExpensesShowAccountsManager(true); return }
+          if (v === 'help:laws') { setLiveExpensesShowLawsTasksModal(true); return }
+          if (v === 'help:guide') { setLiveHelpModalOpen(true); return }
+          selectLiveExpensesRadio(v || 'all')
+        }}
         className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
       >
         <option value="">Filter</option>
+        <option value="new_expense">+ New Expense</option>
+        <option value="history">History</option>
         <option value="by_account">By Account ({liveExpensesViewCounts.by_account})</option>
         <option value="by_vendor">By Vendor ({liveExpensesViewCounts.by_vendor})</option>
         <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
         <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
         <option value="printers">Printers ({liveExpensesViewCounts.printers})</option>
         <option value="computers">Computers ({liveExpensesViewCounts.computers})</option>
+        <option value="analytics">Analytics</option>
+        <option value="accounts">Accounts</option>
+        <option value="help:laws">⚖️ Laws &amp; Tasks</option>
+        <option value="help:guide">❓ Help</option>
       </select>
     )
   }
@@ -6252,49 +6269,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
                   🔍
                 </button>
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveExpensesShowAnalytics} onClick={() => setLiveExpensesShowAnalytics(a => !a)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Analytics
-                </label>
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveExpensesShowAccountsManager} onClick={() => setLiveExpensesShowAccountsManager(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Accounts
-                </label>
                 <ColumnsPickerButton prefs={liveExpensesColPrefs} radioStyle />
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveExpensesShowLawsTasksModal} onClick={() => setLiveExpensesShowLawsTasksModal(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Laws & Tasks
-                </label>
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Help
-                </label>
               </div>
-              {/* Rows 2-4: one mutually-exclusive radio group -- All/New Expense/
-                  History (black) first, then All Properties/Non-Properties,
-                  then the four flag violations (red, with live counts, sorted
-                  by count descending). By Account/By Vendor and the property
-                  availability/type splits moved into the Filter dropdown
-                  above instead of cluttering this row. No Bars Only here --
-                  Expenses has no day-bar/item-line grouping like Sales/Bills. */}
+              {/* Rows 2-4: one mutually-exclusive radio group -- All (black)
+                  first, then All Properties/Non-Properties, then the four
+                  flag violations (red, with live counts, sorted by count
+                  descending). Everything else -- New Expense/History/By
+                  Account/By Vendor/property availability+type splits/
+                  Analytics/Accounts/Laws & Tasks/Help -- moved into the
+                  Filter dropdown above; Columns keeps its own control since
+                  it's a distinct widget. No Bars Only here -- Expenses has
+                  no day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
-                </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'new_expense'} onChange={() => selectLiveExpensesRadio('new_expense')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  + New Expense
-                </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'history'} onChange={() => selectLiveExpensesRadio('history')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  History
                 </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
