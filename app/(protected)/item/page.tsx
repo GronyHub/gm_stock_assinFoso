@@ -825,7 +825,6 @@ function ItemHubPageInner() {
   // JSX repeatedly. Sales/Bills/Loss by Date no longer need one of their
   // own -- all three live inside Live Sale's own laws panel now.
   const plLaws = useLawsPanel('showPLLaws')
-  const homeLaws = useLawsPanel('showHomeLaws')
   const dailyLaws = useLawsPanel('showDailyLaws')
   const purchaseOrdersLaws = useLawsPanel('showPurchaseOrdersLaws')
   const servicesLaws = useLawsPanel('showServicesLaws')
@@ -5837,7 +5836,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               renderTabSwitcher). */}
           {liveShowHome && (
             <div className="flex-1 overflow-y-auto px-4 pt-2">
-              {inlineLaws('Home', homeLaws)}
               <TodayContent />
             </div>
           )}
@@ -8112,8 +8110,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
         {outerTab === 'loss' && lossView === 'home' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2">{inlineLaws('Home', homeLaws)}</div>
-            <div className="px-4"><TodayContent /></div>
+            <div className="px-4 pt-2"><TodayContent /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (

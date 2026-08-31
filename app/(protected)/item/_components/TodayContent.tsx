@@ -8,6 +8,8 @@ import { formatGapMins } from '@/lib/fmtGap'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
+// Read-only feed -- composing (message/media/voice/reply/search) was
+// removed from this panel entirely; it's just the activity log now.
 type MediaItem = { url: string; type: string }
 type Announcement = {
   id: number; author: string; body: string; media_urls: MediaItem[]; created_at: string
@@ -23,13 +25,6 @@ type Announcement = {
   // effectiveDurationSeconds' flat-minute fallback for the Total column,
   // same as /api/staff-times/worked-today's own worked-time sum.
   category?: string | null
-}
-type MediaFile = { file: File | Blob; localUrl: string; uploading: boolean; url?: string; contentType?: string; error?: string; kind: 'image' | 'video' | 'audio' }
-
-function fmtRecTime(s: number) {
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
 function fmtAnnTime(iso: string) {
@@ -59,9 +54,9 @@ function dayKey(iso: string) {
 
 // Per-day, per-staff total of effectiveDurationSeconds -- backs the Total
 // column below. Grouped by calendar day (not just "today") so this stays
-// correct as older days load in via "load more" or a date-range search,
-// same effectiveDurationSeconds rule /api/staff-times/worked-today applies
-// server-side for the present-staff banner, so the two always agree.
+// correct as older days load in via "load more", same effectiveDurationSeconds
+// rule /api/staff-times/worked-today applies server-side for the
+// present-staff banner, so the two always agree.
 function computeDailyTotals(list: Announcement[]): Record<string, Record<string, number>> {
   const totals: Record<string, Record<string, number>> = {}
   for (const p of list) {
@@ -95,10 +90,6 @@ function dayLabel(iso: string) {
     day: 'numeric', month: 'short',
     year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   })
-}
-
-function categoryLabel(c: string) {
-  return c.replace(/\b\w/g, ch => ch.toUpperCase())
 }
 
 function mediaKind(type: string): 'image' | 'video' | 'audio' {
@@ -137,8 +128,6 @@ function MediaGrid({ items }: { items: MediaItem[] }) {
 // Gap (time since the previous activity) and Dur (that activity's own
 // estimated duration, when known) -- same two figures Live Sale's Log mode
 // used to show per sale line, generalized to every activity type here.
-// Gap is always computed live from real timestamps; Dur only renders when
-// the row actually has one (see Announcement's own comment on the column).
 function ActivityMeta({ gapMins, durationSeconds }: { gapMins: number | null; durationSeconds?: number | null }) {
   if (gapMins == null && !durationSeconds) return null
   return (
@@ -154,22 +143,17 @@ function ActivityMeta({ gapMins, durationSeconds }: { gapMins: number | null; du
 // and rich-post rows can't silently drift out of sync with the header.
 const FEED_COLUMNS = 6
 
-// One feed row (or two, when a date header precedes it) -- shared between
-// the normal live feed and search results so they render identically.
-// `gapMins` is null for the day's first entry (in whichever list -- live
-// feed or search results -- this row is being drawn from), since there's no
-// earlier same-day activity to diff against. Returns <tr>s directly (no
-// wrapping element) so every row -- auto-logged or a rich user post --
-// lives in the same <table>, sharing one header and one scroll region
-// instead of each row scrolling independently.
-function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, onLongPressStart, onLongPressEnd, onDelete }: {
+// One feed row (or two, when a date header precedes it). Returns <tr>s
+// directly (no wrapping element) so every row -- auto-logged or a rich
+// historical post with media/a reply -- lives in the same <table>, sharing
+// one header and one scroll region instead of each row scrolling
+// independently.
+function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, onDelete }: {
   p: Announcement
   showDateHeader: boolean
   gapMins: number | null
   staffDayTotalSeconds: number
   canDelete: boolean
-  onLongPressStart: (p: Announcement) => void
-  onLongPressEnd: () => void
   onDelete: (id: number) => void
 }) {
   const isAutoLogged = (p.media_urls ?? []).length === 0 && !p.reply_to_id && p.body && !p.body.includes('\n') && p.body.length <= 60
@@ -191,17 +175,8 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
         // mode table). Activity stays single-line (whitespace-nowrap, not
         // wrapped or truncated) -- the shared table wrapper scrolls
         // horizontally when it's long, same trade-off Live Sale's Log mode
-        // makes for its Item column. These are system records, not
-        // user-authored messages, so there's no delete button here -- that
-        // stays on manual posts below, which is a different kind of
-        // content people actually compose and might need to retract.
-        <tr
-          onPointerDown={() => onLongPressStart(p)}
-          onPointerUp={onLongPressEnd}
-          onPointerLeave={onLongPressEnd}
-          onContextMenu={e => e.preventDefault()}
-          className="select-none hover:bg-gray-50"
-        >
+        // makes for its Item column.
+        <tr className="hover:bg-gray-50">
           <td className="pl-3 pr-2 py-1 font-semibold text-gray-700 capitalize whitespace-nowrap text-[11px]">{p.author}</td>
           <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{fmtAnnTime(p.created_at)}</td>
           <td className="px-2 py-1 text-gray-400 text-[10px] whitespace-nowrap">{gapMins != null ? formatGapMins(gapMins) : '—'}</td>
@@ -212,13 +187,7 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
       ) : (
         <tr>
           <td colSpan={FEED_COLUMNS} className="p-0">
-            <div
-              onPointerDown={() => onLongPressStart(p)}
-              onPointerUp={onLongPressEnd}
-              onPointerLeave={onLongPressEnd}
-              onContextMenu={e => e.preventDefault()}
-              className="px-3 py-1.5 space-y-0.5 select-none"
-            >
+            <div className="px-3 py-1.5 space-y-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-semibold text-gray-700 capitalize">{p.author}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -250,38 +219,12 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
 function AnnouncementsPanel() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
-  const canCompose = !!session
   const canDelete = ['owner', 'manager'].includes(role)
 
   const [posts, setPosts] = useState<Announcement[]>([])
   const dailyTotals = useMemo(() => computeDailyTotals(posts), [posts])
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [replyTo, setReplyTo] = useState<{ id: number; author: string; body: string } | null>(null)
-  const [body, setBody] = useState('')
-  const [media, setMedia] = useState<MediaFile[]>([])
-  const [posting, setPosting] = useState(false)
-  const [error, setError] = useState('')
-  const [recording, setRecording] = useState(false)
-  const [recordSeconds, setRecordSeconds] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
-  const typeFilterRef = useRef<HTMLDivElement>(null)
-  const [typeFilterOpen, setTypeFilterOpen] = useState(false)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const recordedChunksRef = useRef<Blob[]>([])
-  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  function startLongPress(p: Announcement) {
-    longPressTimerRef.current = setTimeout(() => {
-      setReplyTo({ id: p.id, author: p.author, body: p.body })
-      if (navigator.vibrate) navigator.vibrate(15)
-    }, 500)
-  }
-  function cancelLongPress() {
-    if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null }
-  }
 
   const PAGE_SIZE = 30
 
@@ -331,110 +274,21 @@ function AnnouncementsPanel() {
     }
   }
 
-  // ─── Search ──────────────────────────────────────────────────────────────
-  // Free text + type + date range, all combinable, searching the full
-  // history server-side (not just whatever's currently loaded).
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [searchText, setSearchText] = useState('')
-  const [searchCategory, setSearchCategory] = useState('')
-  const [searchFrom, setSearchFrom] = useState('')
-  const [searchTo, setSearchTo] = useState('')
-  const [categories, setCategories] = useState<string[]>([])
-  const [searchResults, setSearchResults] = useState<Announcement[]>([])
-  const searchDailyTotals = useMemo(() => computeDailyTotals(searchResults), [searchResults])
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [searchLoadingMore, setSearchLoadingMore] = useState(false)
-  const [searchHasMore, setSearchHasMore] = useState(true)
-
-  const hasActiveSearch = !!(searchText.trim() || searchCategory || searchFrom || searchTo)
-
-  // Loaded once on mount rather than lazily on searchOpen -- the type
-  // filter now lives outside the search panel (next to the mic button), so
-  // it needs the category list available right away too.
-  useEffect(() => {
-    fetch('/api/announcements/categories')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setCategories(Array.isArray(d) ? d : []))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (typeFilterRef.current && !typeFilterRef.current.contains(e.target as Node)) setTypeFilterOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  function searchQuery(before?: string) {
-    const params = new URLSearchParams()
-    if (searchText.trim()) params.set('q', searchText.trim())
-    if (searchCategory) params.set('category', searchCategory)
-    if (searchFrom) params.set('from', searchFrom)
-    if (searchTo) params.set('to', searchTo)
-    if (before) params.set('before', before)
-    return params.toString()
-  }
-
-  useEffect(() => {
-    if (!hasActiveSearch) { setSearchResults([]); setSearchHasMore(true); return }
-    setSearchLoading(true)
-    const t = setTimeout(() => {
-      fetch(`/api/announcements?${searchQuery()}`)
-        .then(r => r.ok ? r.json() : [])
-        .then((d: Announcement[]) => {
-          setSearchResults(Array.isArray(d) ? d : [])
-          setSearchHasMore(Array.isArray(d) && d.length >= PAGE_SIZE)
-        })
-        .catch(() => {})
-        .finally(() => setSearchLoading(false))
-    }, 300)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText, searchCategory, searchFrom, searchTo])
-
-  async function loadMoreSearch() {
-    if (searchLoadingMore || !searchHasMore || searchResults.length === 0) return
-    setSearchLoadingMore(true)
-    try {
-      const oldest = searchResults[searchResults.length - 1]
-      const res = await fetch(`/api/announcements?${searchQuery(oldest.created_at)}`)
-      const d: Announcement[] = await res.json()
-      if (Array.isArray(d) && d.length > 0) {
-        setSearchResults(prev => [...prev, ...d])
-        if (d.length < PAGE_SIZE) setSearchHasMore(false)
-      } else {
-        setSearchHasMore(false)
-      }
-    } catch {
-      // the sentinel just retries next time it's back in view
-    } finally {
-      setSearchLoadingMore(false)
-    }
-  }
-
-  function clearSearch() {
-    setSearchText(''); setSearchCategory(''); setSearchFrom(''); setSearchTo('')
-  }
-
-  // Auto-loads older announcements (either feed) as the bottom sentinel
-  // scrolls into view -- replaces the old "Load older" tap-to-load button.
+  // Auto-loads older announcements as the bottom sentinel scrolls into view.
   const sentinelRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const observer = new IntersectionObserver(entries => {
-      if (!entries[0].isIntersecting) return
-      if (hasActiveSearch) loadMoreSearch()
-      else loadMore()
+      if (entries[0].isIntersecting) loadMore()
     }, { rootMargin: '200px' })
     observer.observe(el)
     return () => observer.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasActiveSearch, posts.length, searchResults.length, hasMore, searchHasMore])
+  }, [posts.length, hasMore])
 
   useEffect(() => { load() }, [])
-  usePolling(load, 15000, !hasActiveSearch)
+  usePolling(load, 15000)
 
   // Clears the Home badge -- opening this panel means the user has seen
   // whatever's currently posted, even before scrolling through it.
@@ -442,320 +296,15 @@ function AnnouncementsPanel() {
     fetch('/api/announcements/mark-read', { method: 'POST' }).catch(() => {})
   }, [])
 
-  // Stop any in-progress recording if the panel unmounts mid-recording
-  useEffect(() => () => {
-    if (recordTimerRef.current) clearInterval(recordTimerRef.current)
-    mediaRecorderRef.current?.stream.getTracks().forEach(t => t.stop())
-  }, [])
-
-  async function uploadItem(item: MediaFile) {
-    const fd = new FormData()
-    fd.append('file', item.file)
-    try {
-      const res = await fetch('/api/announcements/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
-      setMedia(prev => prev.map(m =>
-        m.localUrl === item.localUrl ? { ...m, uploading: false, url: data.url, contentType: data.contentType } : m
-      ))
-    } catch (e: any) {
-      setMedia(prev => prev.map(m =>
-        m.localUrl === item.localUrl ? { ...m, uploading: false, error: e.message } : m
-      ))
-    }
-  }
-
-  async function handleFiles(files: FileList | null) {
-    if (!files) return
-    const newItems: MediaFile[] = Array.from(files).map(file => ({
-      file, localUrl: URL.createObjectURL(file), uploading: true, kind: mediaKind(file.type),
-    }))
-    setMedia(prev => [...prev, ...newItems])
-    for (const item of newItems) uploadItem(item)
-  }
-
-  async function startRecording() {
-    setError('')
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      const recorder = new MediaRecorder(stream, { mimeType })
-      recordedChunksRef.current = []
-      recorder.ondataavailable = e => { if (e.data.size > 0) recordedChunksRef.current.push(e.data) }
-      recorder.onstop = () => {
-        stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(recordedChunksRef.current, { type: mimeType })
-        const ext = mimeType.includes('mp4') ? 'm4a' : 'webm'
-        const file = new File([blob], `voice-note.${ext}`, { type: mimeType })
-        const item: MediaFile = { file, localUrl: URL.createObjectURL(blob), uploading: true, kind: 'audio' }
-        setMedia(prev => [...prev, item])
-        uploadItem(item)
-      }
-      recorder.start()
-      mediaRecorderRef.current = recorder
-      setRecording(true)
-      setRecordSeconds(0)
-      recordTimerRef.current = setInterval(() => setRecordSeconds(s => s + 1), 1000)
-    } catch {
-      setError('Could not access the microphone. Check your browser permissions.')
-    }
-  }
-
-  function stopRecording() {
-    mediaRecorderRef.current?.stop()
-    setRecording(false)
-    if (recordTimerRef.current) { clearInterval(recordTimerRef.current); recordTimerRef.current = null }
-  }
-
-  function removeMedia(localUrl: string) {
-    setMedia(prev => prev.filter(m => m.localUrl !== localUrl))
-  }
-
-  async function handlePost() {
-    const stillUploading = media.some(m => m.uploading)
-    if (stillUploading) { setError('Still uploading, please wait…'); return }
-    const failedUploads = media.filter(m => m.error)
-    if (failedUploads.length) { setError('Some files failed to upload. Remove them and try again.'); return }
-    if (!body.trim() && media.length === 0) { setError('Add a message, voice note, or media.'); return }
-
-    setPosting(true)
-    setError('')
-    try {
-      const media_urls: MediaItem[] = media
-        .filter(m => m.url)
-        .map(m => ({ url: m.url!, type: m.contentType ?? m.file.type }))
-      const res = await fetch('/api/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim(), media_urls, reply_to_id: replyTo?.id ?? null }),
-      })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed') }
-      setBody('')
-      setMedia([])
-      setReplyTo(null)
-      load()
-    } catch (e: any) {
-      setError(e.message ?? 'Something went wrong')
-    } finally {
-      setPosting(false)
-    }
-  }
-
   async function removePost(id: number) {
     if (!confirm('Delete this post?')) return
     await fetch('/api/announcements', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     load()
   }
 
-  const canPost = !posting && !recording && (body.trim().length > 0 || media.length > 0) && !media.some(m => m.uploading)
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      {/* Search — text + type + date range, all combinable, searching the
-          full history (not just what's loaded). Tucked behind an icon so it
-          doesn't take up space until someone actually wants it. */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Announcements</p>
-        <button onClick={() => setSearchOpen(o => !o)}
-          className={`text-base leading-none transition ${searchOpen || hasActiveSearch ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
-          🔍
-        </button>
-      </div>
-      {searchOpen && (
-        <div className="px-2 py-2 border-b border-gray-100 space-y-1.5 bg-gray-50/60">
-          <input value={searchText} onChange={e => setSearchText(e.target.value)}
-            placeholder="Search text or name…"
-            className="w-full text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
-          <div className="flex items-center gap-1.5">
-            <input type="date" value={searchFrom} onChange={e => setSearchFrom(e.target.value)}
-              className="flex-1 min-w-0 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
-            <span className="text-[10px] text-gray-400 shrink-0">to</span>
-            <input type="date" value={searchTo} onChange={e => setSearchTo(e.target.value)}
-              className="flex-1 min-w-0 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none" />
-          </div>
-          {hasActiveSearch && (
-            <button onClick={clearSearch} className="text-[10px] font-semibold text-blue-600">Clear filters</button>
-          )}
-        </div>
-      )}
-
-      {/* Compose — any logged-in staff member, matches server-side posting
-          permission. Kept compact/embedded (WhatsApp-style single bar) so it
-          doesn't dominate the Today page. */}
-      {canCompose && (
-        <div className="px-2 py-2 border-b border-gray-100 space-y-1.5">
-          {replyTo && (
-            <div className="flex items-center justify-between gap-2 bg-blue-50 rounded-lg px-2 py-1">
-              <p className="min-w-0 truncate text-[10px] text-blue-700">
-                Replying to <span className="font-semibold capitalize">{replyTo.author}</span>
-                {replyTo.body && <span className="text-blue-500"> · {replyTo.body.slice(0, 40)}{replyTo.body.length > 40 ? '…' : ''}</span>}
-              </p>
-              <button onClick={() => setReplyTo(null)} className="shrink-0 text-blue-400 hover:text-blue-600 font-bold leading-none">×</button>
-            </div>
-          )}
-
-          {/* Media previews */}
-          {media.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-1">
-              {media.map(m => (
-                <div key={m.localUrl} className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100">
-                  {m.kind === 'video' ? (
-                    <video src={m.localUrl} className="w-full h-full object-cover" />
-                  ) : m.kind === 'audio' ? (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white text-base">🎤</div>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.localUrl} alt="" className="w-full h-full object-cover" />
-                  )}
-                  {m.uploading && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-white text-[8px] font-semibold">…</span>
-                    </div>
-                  )}
-                  {m.error && (
-                    <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center">
-                      <span className="text-white text-[8px] font-semibold text-center px-0.5">!</span>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => removeMedia(m.localUrl)}
-                    className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center leading-none"
-                  >×</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {error && <p className="text-[10px] text-red-500 px-1">{error}</p>}
-          {recording && <p className="text-[10px] text-red-500 font-semibold px-1">● Recording {fmtRecTime(recordSeconds)}…</p>}
-
-          <div className="flex items-center gap-1.5">
-            <div className="flex-1 flex items-center gap-1.5 bg-gray-100 rounded-full pl-3 pr-1.5 py-1 min-w-0">
-              <input
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handlePost() }}
-                placeholder="Message"
-                disabled={recording}
-                className="flex-1 min-w-0 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none disabled:opacity-50"
-              />
-              <button onClick={() => fileInputRef.current?.click()} disabled={recording}
-                className="shrink-0 text-gray-400 hover:text-blue-600 disabled:opacity-40 text-base leading-none w-6 h-6 flex items-center justify-center">
-                📎
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                className="hidden"
-                onChange={e => handleFiles(e.target.files)}
-              />
-              <button onClick={() => cameraInputRef.current?.click()} disabled={recording}
-                className="shrink-0 text-gray-400 hover:text-blue-600 disabled:opacity-40 text-base leading-none w-6 h-6 flex items-center justify-center">
-                📷
-              </button>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={e => handleFiles(e.target.files)}
-              />
-              {/* Type filter -- inside the message box alongside 📎/📷,
-                  outside the collapsible search panel, so filtering the feed
-                  by type never needs opening search first. */}
-              <div className="relative shrink-0" ref={typeFilterRef}>
-                {typeFilterOpen && (
-                  <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl min-w-[160px] max-h-56 overflow-y-auto z-20">
-                    <button onClick={() => { setSearchCategory(''); setTypeFilterOpen(false) }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition ${!searchCategory ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                      All types
-                    </button>
-                    {categories.map(c => (
-                      <button key={c} onClick={() => { setSearchCategory(c); setTypeFilterOpen(false) }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition border-t border-gray-100 ${searchCategory === c ? 'text-blue-600 font-semibold' : 'text-gray-700'}`}>
-                        {categoryLabel(c)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button onClick={() => setTypeFilterOpen(o => !o)} disabled={recording} title="Filter by type"
-                  className={`shrink-0 text-base leading-none w-6 h-6 flex items-center justify-center transition disabled:opacity-40
-                    ${searchCategory ? 'text-blue-600' : 'text-gray-400 hover:text-blue-600'}`}>
-                  🗂️
-                </button>
-              </div>
-            </div>
-
-            {canPost ? (
-              <button
-                onClick={handlePost}
-                disabled={posting}
-                className="shrink-0 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 text-white flex items-center justify-center text-sm transition"
-              >
-                {posting ? '…' : '➤'}
-              </button>
-            ) : recording ? (
-              <button
-                onClick={stopRecording}
-                className="shrink-0 w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold animate-pulse"
-              >
-                ⏹
-              </button>
-            ) : (
-              <button
-                onClick={startRecording}
-                className="shrink-0 w-9 h-9 rounded-full bg-green-500 hover:bg-green-400 text-white flex items-center justify-center text-sm transition"
-              >
-                🎤
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Feed — search results (full history) when a search/filter is
-          active, otherwise the normal live feed. Older items load
-          automatically as the sentinel at the bottom scrolls into view.
-          One shared table/header/scroll region for the whole feed -- rich
-          posts (media/replies) still render their own card via a colSpan
-          row, they just live inside the same table as everything else now,
-          instead of each row scrolling independently. */}
-      {hasActiveSearch ? (
-        searchLoading && searchResults.length === 0 ? (
-          <p className="text-[11px] text-gray-400 text-center py-3">Searching…</p>
-        ) : searchResults.length === 0 ? (
-          <p className="text-[11px] text-gray-400 text-center py-3">No announcements match.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
-                  <th className="text-left pl-3 pr-2 py-1 whitespace-nowrap">Staff</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Time</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Gap</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Dur</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Total</th>
-                  <th className="text-left px-2 pr-3 py-1">Activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {searchResults.map((p, i) => (
-                  <PostRow key={p.id} p={p}
-                    showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(searchResults[i - 1].created_at)}
-                    gapMins={gapMinsFor(searchResults, i)}
-                    staffDayTotalSeconds={searchDailyTotals[dayKey(p.created_at)]?.[p.author] ?? 0}
-                    canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
-                ))}
-                {searchHasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
-                {searchLoadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[10px] text-gray-400 text-center py-2">Loading…</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )
-      ) : posts.length === 0 ? (
+      {posts.length === 0 ? (
         <p className="text-[11px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -776,7 +325,7 @@ function AnnouncementsPanel() {
                   showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
                   gapMins={gapMinsFor(posts, i)}
                   staffDayTotalSeconds={dailyTotals[dayKey(p.created_at)]?.[p.author] ?? 0}
-                  canDelete={canDelete} onLongPressStart={startLongPress} onLongPressEnd={cancelLongPress} onDelete={removePost} />
+                  canDelete={canDelete} onDelete={removePost} />
               ))}
               {hasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
               {loadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[10px] text-gray-400 text-center py-2">Loading…</td></tr>}
