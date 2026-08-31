@@ -2372,6 +2372,7 @@ function ItemHubPageInner() {
     : liveBillsViolationFilter ? liveBillsViolationFilter
     : 'all'
   function selectLiveBillsRadio(value: string) {
+    if (value === 'purchase_orders') { pickLossView('purchaseOrders'); return }
     const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense']
     setLiveBillsShowHistory(value === 'history')
     setLiveBillsAddingNew(value === 'new_bill')
@@ -2402,6 +2403,7 @@ function ItemHubPageInner() {
     : liveExpensesPropertyTypeFilter === 'Computer' ? 'computers'
     : 'all'
   function selectLiveExpensesRadio(value: string) {
+    if (value === 'expense_orders') { pickLossView('expenseOrders'); return }
     setLiveExpensesShowHistory(value === 'history')
     setLiveExpensesAddingNew(value === 'new_expense')
     setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
@@ -2437,7 +2439,7 @@ function ItemHubPageInner() {
   // Flattened into one list and split across exactly two rows instead, so
   // every row fills up with flex-1 items before spilling to the next --
   // color/weight is driven by `variant`, not which row an item lands on.
-  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'view' | 'flag'; description?: string }[] = [
+  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'view' | 'flag' | 'nav'; description?: string }[] = [
     { key: 'all', label: 'All', count: null, variant: 'all' },
     { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account, variant: 'view' },
     { key: 'by_vendor', label: 'By Vendor', count: liveExpensesViewCounts.by_vendor, variant: 'view' },
@@ -2445,6 +2447,11 @@ function ItemHubPageInner() {
     { key: 'by_related_property', label: 'By Related Property', count: liveExpensesViewCounts.by_related_property, variant: 'view' },
     { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'view' },
     { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'view' },
+    // Not a filter of this tab's own list -- selecting it navigates straight
+    // to the separate Expense Orders page (lossView==='expenseOrders'), same
+    // destination as the sidebar's "Expense Orders" menu item. Never shows
+    // as checked afterwards since picking it leaves this tab entirely.
+    { key: 'expense_orders', label: 'Expense Orders', count: null, variant: 'nav', description: 'Open the separate Expense Orders page.' },
     ...([
       { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar, description: 'Account names within a couple letters of another account -- likely the same account entered two different ways.' },
       { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled, description: 'Description mentions "and"/"etc" or has a comma -- likely covers more than one item bundled into one expense.' },
@@ -2468,7 +2475,7 @@ function ItemHubPageInner() {
     return (
       <label key={v.key} title={v.description}
         className={`flex-1 min-w-0 flex items-center justify-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] text-center ${
-          v.variant === 'flag' ? 'text-red-600' : v.variant === 'view' ? 'font-semibold text-gray-600' : 'text-gray-700'
+          v.variant === 'flag' ? 'text-red-600' : v.variant === 'nav' ? 'font-semibold text-blue-600' : v.variant === 'view' ? 'font-semibold text-gray-600' : 'text-gray-700'
         }`}>
         <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
         <span className="break-words">{v.label}{v.count !== null ? ` (${v.count})` : ''}</span>
@@ -6270,6 +6277,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'history'} onChange={() => selectLiveBillsRadio('history')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
+                </label>
+                {/* Not a filter of this tab's own list -- selecting it
+                    navigates straight to the separate Purchase Orders page
+                    (lossView==='purchaseOrders'), same destination as the
+                    sidebar's "Purchase Ord" menu item. Never shows as
+                    checked afterwards since picking it leaves this tab. */}
+                <label title="Open the separate Purchase Orders page"
+                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'purchase_orders'} onChange={() => selectLiveBillsRadio('purchase_orders')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Purchase Orders
                 </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
