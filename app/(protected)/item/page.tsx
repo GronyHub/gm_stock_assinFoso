@@ -4296,13 +4296,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // row up top instead.
   function renderModeToggleRow() {
     return (<>
-      {liveExpanded && (<>
-        <PresentStaffBar />
+      {liveExpanded && (
         <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0">
           {liveMode === 'sale' && renderModeProgressSummary(false, false)}
           {renderModeToggle(false)}
         </div>
-      </>)}
+      )}
     </>)
   }
 
@@ -5519,6 +5518,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               switcher, so it no longer shows there. */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
             <div className="shrink-0 bg-white border-b border-gray-200">
+              <PresentStaffBar />
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
                   centered in the row even when the right-side controls
