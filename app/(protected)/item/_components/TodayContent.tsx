@@ -145,8 +145,8 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
         </tr>
       )}
       {isAutoLogged ? (
-        // Auto-logged activity row -- Time/Activity/Item/Qty/SP/CP/PF/SOH/
-        // Gap/Staff/Duration/Total each get their own aligned column (same
+        // Auto-logged activity row -- Time/Activity/Qty/Gap/Staff/Duration/
+        // Total/Item/SP/CP/PF/SOH each get their own aligned column (same
         // idea, and largely the same columns, as Live Sale's Log mode
         // table -- Item/Qty/SP/CP/PF/SOH only ever populate for a live sale
         // tap, '—' for every other activity type). Activity stays
@@ -156,16 +156,16 @@ function PostRow({ p, showDateHeader, gapMins, staffDayTotalSeconds, canDelete, 
         <tr className="hover:bg-gray-50">
           <td className="pl-2 pr-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{fmtClockTime(p.created_at)}</td>
           <td className="px-1 py-0.5 text-gray-800 text-[8px] whitespace-nowrap">{p.body}</td>
-          <td className="px-1 py-0.5 text-gray-700 text-[8px] whitespace-nowrap">{p.tap_item_name ?? '—'}</td>
           <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(p.tap_quantity) : '—'}</td>
-          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(sp) : '—'}</td>
-          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(cp) : '—'}</td>
-          <td className={`px-1 py-0.5 text-[7px] whitespace-nowrap text-right ${isSale && pf < 0 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{isSale ? fmt(pf) : '—'}</td>
-          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(p.tap_soh) : '—'}</td>
           <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{gapMins != null ? formatGapMins(gapMins) : '—'}</td>
           <td className="px-1 py-0.5 font-semibold text-gray-700 capitalize whitespace-nowrap text-[8px]">{p.author}</td>
           <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
-          <td className="px-1 pr-2 py-0.5 text-gray-500 font-semibold text-[7px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
+          <td className="px-1 py-0.5 text-gray-500 font-semibold text-[7px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
+          <td className="px-1 py-0.5 text-gray-700 text-[8px] whitespace-nowrap">{p.tap_item_name ?? '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(sp) : '—'}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(cp) : '—'}</td>
+          <td className={`px-1 py-0.5 text-[7px] whitespace-nowrap text-right ${isSale && pf < 0 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{isSale ? fmt(pf) : '—'}</td>
+          <td className="px-1 pr-2 py-0.5 text-gray-400 text-[7px] whitespace-nowrap text-right">{isSale ? fmt(p.tap_soh) : '—'}</td>
         </tr>
       ) : (
         <tr>
@@ -321,16 +321,16 @@ function AnnouncementsPanel() {
               <tr className="text-[7px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
                 <th className="text-left pl-2 pr-1 py-0.5 whitespace-nowrap">Time</th>
                 <th className="text-left px-1 py-0.5">Activity</th>
-                <th className="text-left px-1 py-0.5 whitespace-nowrap">Item</th>
                 <th className="text-right px-1 py-0.5 whitespace-nowrap">Qty</th>
-                <th className="text-right px-1 py-0.5 whitespace-nowrap">SP</th>
-                <th className="text-right px-1 py-0.5 whitespace-nowrap">CP</th>
-                <th className="text-right px-1 py-0.5 whitespace-nowrap">PF</th>
-                <th className="text-right px-1 py-0.5 whitespace-nowrap">SOH</th>
                 <th className="text-right px-1 py-0.5 whitespace-nowrap" title="Time since the previous logged activity">Gap</th>
                 <th className="text-left px-1 py-0.5 whitespace-nowrap">Staff</th>
                 <th className="text-left px-1 py-0.5 whitespace-nowrap">Duration</th>
-                <th className="text-left px-1 pr-2 py-0.5 whitespace-nowrap">Total</th>
+                <th className="text-left px-1 py-0.5 whitespace-nowrap">Total</th>
+                <th className="text-left px-1 py-0.5 whitespace-nowrap">Item</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">SP</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">CP</th>
+                <th className="text-right px-1 py-0.5 whitespace-nowrap">PF</th>
+                <th className="text-right px-1 pr-2 py-0.5 whitespace-nowrap">SOH</th>
               </tr>
             </thead>
             <tbody>
