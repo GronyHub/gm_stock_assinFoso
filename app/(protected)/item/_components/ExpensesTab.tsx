@@ -314,7 +314,6 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   function bodyCellFor(key: ColKey, e: Expense) {
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 break-words`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
-    if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
     if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 break-words`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 break-words`}>{e.source_sheet ?? e.source ?? '—'}</td>
