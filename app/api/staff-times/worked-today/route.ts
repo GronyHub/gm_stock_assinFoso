@@ -33,16 +33,25 @@ export async function GET() {
       `,
     ])
 
+    // Keyed lowercase -- announcements.author comes from whatever
+    // logActivity was passed (some callers prefer session.user.name, others
+    // session.user.username, inconsistently across this codebase), while
+    // staff_times.staff_name always comes from username (see
+    // /api/staff-times/today's own `username ?? name`). Those two aren't
+    // guaranteed to be the exact same string, but they're always the same
+    // person differing only in case in practice, so an exact-case join here
+    // silently matched nobody and always showed 0 worked time.
     const workedSeconds: Record<string, number> = {}
     for (const a of activity as { author: string; category: string | null; estimated_duration_seconds: number | null }[]) {
+      const key = a.author.toLowerCase()
       const seconds = effectiveDurationSeconds(a.category, a.estimated_duration_seconds)
-      workedSeconds[a.author] = (workedSeconds[a.author] ?? 0) + seconds
+      workedSeconds[key] = (workedSeconds[key] ?? 0) + seconds
     }
 
     const staff = (present as { staff_name: string; actual_in: string }[]).map(r => ({
       staff_name: r.staff_name,
       actual_in: r.actual_in,
-      worked_seconds: workedSeconds[r.staff_name] ?? 0,
+      worked_seconds: workedSeconds[r.staff_name.toLowerCase()] ?? 0,
     }))
 
     return success({ staff })
