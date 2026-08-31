@@ -2447,8 +2447,17 @@ function ItemHubPageInner() {
       { key: 'delivery_unresolved', label: 'Delivery Unresolved', count: liveExpensesFlagCounts.delivery_unresolved, description: 'Mentions "delivery" but isn\'t marked as a related expense -- either migrate it to the bill it was for, or mark it related to the property it delivered.' },
     ].sort((a, b) => b.count - a.count).map(f => ({ ...f, variant: 'flag' as const }))),
   ]
-  const liveExpensesRadioRow1 = liveExpensesMainRadios.slice(0, 5)
-  const liveExpensesRadioRow2 = liveExpensesMainRadios.slice(5)
+  // 4 per row -- with 12+ items now (All/By Account/By Vendor/By Property
+  // Type/By Related Property/All Properties/Non-Properties/5 flags),
+  // cramming them 5-7 to a row (the old fixed slice(0,5)/slice(5) split)
+  // shrank each flex-1 item so far that its wrapped label fragments visibly
+  // ran into its neighbors'. Chunked into fixed-size rows instead, so every
+  // item keeps a legible, consistent share of the row regardless of how
+  // many total radios there are.
+  const liveExpensesRadioRows: typeof liveExpensesMainRadios[] = []
+  for (let i = 0; i < liveExpensesMainRadios.length; i += 4) {
+    liveExpensesRadioRows.push(liveExpensesMainRadios.slice(i, i + 4))
+  }
   function renderLiveExpensesRadio(v: typeof liveExpensesMainRadios[number]) {
     return (
       <label key={v.key} title={v.description}
@@ -6314,31 +6323,32 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              {/* Two rows -- one mutually-exclusive radio group -- holding
-                  All/All Properties/Non-Properties/the four flag violations
-                  (color/weight per item, not per row; see
-                  liveExpensesMainRadios above), each row filled with flex-1
-                  items before spilling to the next instead of one nearly-
-                  empty row per category. Search/Filter/Columns share the
-                  second row, to the right of its two radios (Global Search
-                  now lives once, next to the tab switcher above). Columns
-                  itself opens via a "Columns" option inside the Filter
-                  select -- ColumnsPickerButton renders here with
+              {/* One mutually-exclusive radio group (see
+                  liveExpensesMainRadios above), chunked into fixed 4-item
+                  rows so every radio keeps a legible, consistent share of
+                  its row regardless of the total count -- color/weight is
+                  per item (variant), not per row. The toolbar utilities
+                  (Account/Type filters, Search, Filter, Columns) get their
+                  own row below instead of squeezing onto the last radio
+                  row. Columns itself opens via a "Columns" option inside
+                  the Filter select -- ColumnsPickerButton renders here with
                   hideTrigger, purely so its floating panel has somewhere to
-                  anchor. Everything else -- New Expense/History/By Account/
-                  By Vendor/property availability+type splits/Analytics/
-                  Accounts/Laws & Tasks/Help -- also lives in that same
-                  Filter dropdown. No Bars Only here -- Expenses has no
-                  day-bar/item-line grouping like Sales/Bills. */}
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5">
-                {liveExpensesRadioRow1.map((v, i) => (
-                  <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-                    {renderLiveExpensesRadio(v)}
-                  </Fragment>
-                ))}
-              </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1.5">
+                  anchor. Everything else -- New Expense/History/property
+                  availability splits/Analytics/Accounts/Laws & Tasks/Help --
+                  also lives in that same Filter dropdown. No Bars Only here
+                  -- Expenses has no day-bar/item-line grouping like
+                  Sales/Bills. */}
+              {liveExpensesRadioRows.map((row, ri) => (
+                <div key={ri} className={`px-1.5 py-0.5 bg-white flex items-center gap-1.5 ${ri === liveExpensesRadioRows.length - 1 ? 'border-b border-gray-200' : 'border-b border-gray-100'}`}>
+                  {row.map((v, i) => (
+                    <Fragment key={v.key}>
+                      {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+                      {renderLiveExpensesRadio(v)}
+                    </Fragment>
+                  ))}
+                </div>
+              ))}
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
                 <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
                   <option value="">All Accounts</option>
@@ -6349,12 +6359,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <option value="">All Types</option>
                   {EXPENSES_PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-                {liveExpensesRadioRow2.map((v, i) => (
-                  <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-                    {renderLiveExpensesRadio(v)}
-                  </Fragment>
-                ))}
                 <input
                   type="text"
                   value={liveEmbeddedSearch}
