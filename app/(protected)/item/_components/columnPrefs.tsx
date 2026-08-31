@@ -181,18 +181,22 @@ export function ColResizeHandle({ onResize, onReset }: { onResize: (deltaPx: num
 // per table. Actual sizing comes from the table's own <colgroup> (matching
 // widths via the same ColumnPrefs.getWidth calls) -- this component is
 // purely presentational.
-export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', children }: {
+export function ResizableTh({ onResize, onReset, align = 'left', noDivider = false, className = '', wrapLabel = false, children }: {
   onResize: (deltaPx: number) => void
   onReset: () => void
   align?: 'left' | 'center' | 'right'
   noDivider?: boolean
   className?: string
+  // Opt-in: narrowing the column wraps the label onto another line instead
+  // of truncating it with an ellipsis. Off by default so every existing
+  // caller keeps its current truncate-on-resize behavior.
+  wrapLabel?: boolean
   children?: React.ReactNode
 }) {
   const alignCls = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
   return (
     <th className={`relative overflow-hidden px-2.5 py-2 font-bold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${noDivider ? '' : 'border-r'} ${alignCls} ${className}`}>
-      <span className="block truncate">{children}</span>
+      <span className={wrapLabel ? 'block break-words' : 'block truncate'}>{children}</span>
       <ColResizeHandle onResize={onResize} onReset={onReset} />
     </th>
   )

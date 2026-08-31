@@ -190,7 +190,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
       style={sticky ? { left: stickyLeftPx ?? 0 } : undefined} ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
-        <span className="truncate max-w-[80px]">{value ?? label}</span>
+        <span className="break-words">{value ?? label}</span>
         <span className="text-[8px] shrink-0">▾</span>
       </button>
       {open && (
@@ -309,28 +309,28 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
     const onResize = (d: number) => colPrefs.resizeWidth(key, d, EXPENSES_COL_DEFAULTS[key] ?? 100)
     const onReset = () => colPrefs.resetWidth(key)
     if (key === 'vendor') return <FilterHeaderCell key={key} label={label} options={vendors} value={vendorFilter} onChange={onVendorFilter} onResize={onResize} onResetWidth={onReset} />
-    return <ResizableTh key={key} noDivider={isLast} onResize={onResize} onReset={onReset}>{label}</ResizableTh>
+    return <ResizableTh key={key} noDivider={isLast} wrapLabel onResize={onResize} onReset={onReset}>{label}</ResizableTh>
   }
   function bodyCellFor(key: ColKey, e: Expense) {
-    if (key === 'group') return <td key={key} className={`${TD} text-gray-700 truncate`}>{e.expense_group ?? '—'}</td>
-    if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
+    if (key === 'group') return <td key={key} className={`${TD} text-gray-700 break-words`}>{e.expense_group ?? '—'}</td>
+    if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
     if (key === 'amount') return <td key={key} className={`${TD} text-right font-semibold text-gray-900`}>{e.amount_hidden ? '🔒' : `₵${fmt(e.amount)}`}</td>
-    if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
-    if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 truncate`}>{e.vendor_name ?? '—'}</td>
-    if (key === 'source') return <td key={key} className={`${TD} text-gray-400 truncate`}>{e.source_sheet ?? e.source ?? '—'}</td>
-    if (key === 'by') return <td key={key} className={`${TD} text-blue-500 truncate`}>{e.entered_by ?? '—'}</td>
-    if (key === 'is_related_expense') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.is_related_expense ? '✓ Yes' : '✗ No'}</td>
+    if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
+    if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 break-words`}>{e.vendor_name ?? '—'}</td>
+    if (key === 'source') return <td key={key} className={`${TD} text-gray-400 break-words`}>{e.source_sheet ?? e.source ?? '—'}</td>
+    if (key === 'by') return <td key={key} className={`${TD} text-blue-500 break-words`}>{e.entered_by ?? '—'}</td>
+    if (key === 'is_related_expense') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.is_related_expense ? '✓ Yes' : '✗ No'}</td>
     if (key === 'related_property') {
       const propName = relatedItems.find(p => p.id === e.related_to_property_id)?.name
-      return <td key={key} className={`${TD} text-gray-600 truncate`}>{propName ?? '—'}</td>
+      return <td key={key} className={`${TD} text-gray-600 break-words`}>{propName ?? '—'}</td>
     }
-    if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.related_expense_reasons ?? '—'}</td>
-    if (key === 'property_status') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.property_status ?? '—'}</td>
-    if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.property_type ?? '—'}</td>
-    if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
-    if (key === 'working') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
-    if (key === 'location') return <td key={key} className={`${TD} text-gray-600 truncate`}>{e.location ?? '—'}</td>
-    if (key === 'reason') return <td key={key} className={`${TD} text-gray-600 truncate text-[9px]`}>{e.not_working_reason ?? e.not_available_reason ?? '—'}</td>
+    if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.related_expense_reasons ?? '—'}</td>
+    if (key === 'property_status') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.property_status ?? '—'}</td>
+    if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.property_type ?? '—'}</td>
+    if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
+    if (key === 'working') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
+    if (key === 'location') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.location ?? '—'}</td>
+    if (key === 'reason') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.not_working_reason ?? e.not_available_reason ?? '—'}</td>
     return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
@@ -355,6 +355,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)}
             onReset={() => colPrefs.resetWidth('date')}
             className="sticky left-0 z-20 bg-gray-50"
+            wrapLabel
           >
             Date Bought
           </ResizableTh>
@@ -368,7 +369,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             sticky
             stickyLeftPx={dateWidth}
           />
-          <ResizableTh align="right" onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
+          <ResizableTh align="right" wrapLabel onResize={d => colPrefs.resizeWidth('amt', d, EXPENSES_COL_DEFAULTS.amt)} onReset={() => colPrefs.resetWidth('amt')}>Amt</ResizableTh>
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
       </thead>
@@ -378,12 +379,12 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
             <tr id={`expense-${e.id}`}
               onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
               className={`transition-colors text-[11px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
-              <td className={`${TD} sticky left-0 z-10 text-gray-600 whitespace-nowrap bg-inherit`}>{fmtShort(e.expense_date)}</td>
+              <td className={`${TD} sticky left-0 z-10 text-gray-600 break-words bg-inherit`}>{fmtShort(e.expense_date)}</td>
               {/* Display only -- expense_account/description stay separate
                   columns in the database and in the edit form below; this
                   just folds the description into what the frozen Account
                   column shows, so the account reads as its own full name. */}
-              <td className={`${TD} sticky z-10 text-gray-900 font-semibold truncate border-r bg-inherit`} style={{ left: dateWidth }}>
+              <td className={`${TD} sticky z-10 text-gray-900 font-semibold break-words border-r bg-inherit`} style={{ left: dateWidth }}>
                 {e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
               </td>
               <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
