@@ -517,7 +517,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -3871,6 +3871,7 @@ function ItemHubPageInner() {
         unit_name: d?.unit_name ?? '',
         unit_time_seconds: d?.unit_time_seconds != null ? String(d.unit_time_seconds) : '',
         converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
+        derived_from_item_id: d?.derived_from_item_id ? String(d.derived_from_item_id) : '',
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',
@@ -3932,6 +3933,7 @@ function ItemHubPageInner() {
         unit_name: d?.unit_name ?? '',
         unit_time_seconds: d?.unit_time_seconds != null ? String(d.unit_time_seconds) : '',
         converts_to_item_id: d?.converts_to_item_id ? String(d.converts_to_item_id) : '',
+        derived_from_item_id: d?.derived_from_item_id ? String(d.derived_from_item_id) : '',
         count_excluded: !!d?.count_excluded,
         count_cadence_days: d?.count_cadence_days != null ? String(d.count_cadence_days) : '',
         count_excluded_reason: d?.count_excluded_reason ?? '',

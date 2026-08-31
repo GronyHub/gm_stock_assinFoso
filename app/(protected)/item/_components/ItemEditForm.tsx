@@ -12,7 +12,7 @@ import { formatDuration } from '@/lib/fmtDuration'
 export const EMPTY_ITEM_EDIT_FORM = {
   item_name: '', cf_group: '', selling_rate: '', purchase_rate: '', units_per_pack: '', unit_name: '',
   unit_time_seconds: '',
-  converts_to_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
+  converts_to_item_id: '', derived_from_item_id: '', count_excluded: false, count_cadence_days: '', count_excluded_reason: '',
   gmc_type: '', product_type: '',
 }
 
@@ -379,6 +379,38 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               <div className={s.readOnly}>
                 {allItems.find(i => String(i.item_id) === form.converts_to_item_id)?.item_name ?? '—'}
               </div>
+            )}
+          </div>
+        )}
+        {!isService && (
+          <div>
+            <label className={s.label}>Derived from pack</label>
+            {editMode ? (
+              <select
+                value={form.derived_from_item_id}
+                onChange={(e) => {
+                  onChange({ ...form, derived_from_item_id: e.target.value })
+                }}
+                className={s.input}
+                title="Select the parent pack this item is derived from. Cost price will be auto-calculated as: parent selling price / units per pack">
+                <option value="">— No parent pack —</option>
+                {allItems.filter(i => {
+                  if (i.item_id === itemId) return false
+                  if (i.gmc_type) return false
+                  return true
+                }).map(i => (
+                  <option key={i.item_id} value={String(i.item_id)}>{i.item_name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className={s.readOnly}>
+                {allItems.find(i => String(i.item_id) === form.derived_from_item_id)?.item_name ?? '—'}
+              </div>
+            )}
+            {form.derived_from_item_id && form.units_per_pack && (
+              <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-blue-600 mt-1'}>
+                💡 Cost price will be calculated from the parent pack
+              </p>
             )}
           </div>
         )}

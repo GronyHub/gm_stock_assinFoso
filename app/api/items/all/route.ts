@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     // runs, not just before whichever one happens to succeed.
     await ensureUnitTimeColumn()
     await ensureAdjustedCostPriceColumn()
+    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
     const [rows, intervals] = await Promise.all([
       // items.updated_at doesn't reliably exist (same missing-column class
       // as sales_receipts/bills/staff_times earlier) -- selecting it was
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
+               i.derived_from_item_id,
                COALESCE(i.units_per_pack, 1) AS units_per_pack,
                i.unit_time_seconds,
                NOW() AS updated_at
@@ -71,6 +73,7 @@ export async function GET(req: NextRequest) {
                COALESCE(i.gmc_type, '') AS gmc_type,
                i.converts_to_item_id,
                target.canonical_name AS converts_to_name,
+               i.derived_from_item_id,
                COALESCE(i.units_per_pack, 1) AS units_per_pack,
                i.unit_time_seconds,
                NOW() AS updated_at
