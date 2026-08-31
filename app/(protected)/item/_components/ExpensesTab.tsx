@@ -761,6 +761,16 @@ type Props = {
   colPrefs: ColumnPrefs<ColKey>
   showAccountsManager?: boolean
   setShowAccountsManager?: (v: boolean) => void
+  // Account filter moved up so the parent's own toolbar can host a plain
+  // <select> for it (alongside a Type filter driven by the already-lifted
+  // propertyTypeFilter above) instead of it only being reachable by tapping
+  // the Account column's own header dropdown. vendorFilter stays local --
+  // only Account was asked for.
+  accountFilter?: string | null
+  setAccountFilter?: (v: string | null) => void
+  // Reports the distinct account names back up so the parent's <select>
+  // has real options, same idea as onViewCountsChange above.
+  onAccountOptionsChange?: (options: string[]) => void
 }
 
 type PropTab = 'all' | 'available' | 'away'
@@ -776,6 +786,8 @@ export default function ExpensesTab({
   onViewCountsChange,
   colPrefs,
   showAccountsManager = false, setShowAccountsManager = () => {},
+  accountFilter = null, setAccountFilter = () => {},
+  onAccountOptionsChange,
 }: Props) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -787,7 +799,6 @@ export default function ExpensesTab({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-  const [accountFilter, setAccountFilter] = useState<string | null>(null)
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
   const [itemsByType, setItemsByType] = useState<Record<string, { id: number; name: string }[]>>({})
   const [relatedItems, setRelatedItems] = useState<Array<{ id: number; name: string }>>([])
@@ -836,6 +847,11 @@ export default function ExpensesTab({
   const vendorOptions = useMemo(() =>
     Array.from(new Set(expenses.map(e => e.vendor_name).filter((v): v is string => !!v))).sort()
   , [expenses])
+
+  useEffect(() => {
+    onAccountOptionsChange?.(accountOptions)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountOptions, onAccountOptionsChange])
 
   // Account names close enough to each other (but not identical) that they
   // probably mean the same account entered two different ways.

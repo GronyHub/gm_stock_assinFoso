@@ -612,6 +612,11 @@ const COMPACT_SELECT_STYLE: CSSProperties = {
   backgroundSize: '6px 6px',
 }
 
+// Same list ExpensesTab.tsx's own edit form uses for its property_type
+// select -- duplicated here (not exported/shared) since it's a small fixed
+// list, just for the Expenses toolbar's Type filter.
+const EXPENSES_PROPERTY_TYPES = ['Printer', 'Computer', 'Banners', 'Seating', 'Tables', 'Lamination']
+
 // Bold attention banner for an item's own data-integrity problems -- same
 // idea as the COUNT NOW banner (see countStatus/pinnedDueItems below), for
 // every check item/page.tsx's own itemsWithViolations tracks. The first four
@@ -2256,6 +2261,14 @@ function ItemHubPageInner() {
     all_expenses: 0, by_account: 0, by_vendor: 0, show_properties: 0, show_non_properties: 0,
     prop_available: 0, prop_not_available: 0, printers: 0, computers: 0,
   })
+  // Account/Type toolbar filters -- Account is genuine expenses data
+  // (reported up via onAccountOptionsChange since only ExpensesTab knows
+  // the distinct account names), Type reuses the same
+  // liveExpensesPropertyTypeFilter the Printers/Computers radio shortcuts
+  // already drive, just widened to the full property-type list instead of
+  // only those two.
+  const [liveExpensesAccountFilter, setLiveExpensesAccountFilter] = useState<string | null>(null)
+  const [liveExpensesAccountOptions, setLiveExpensesAccountOptions] = useState<string[]>([])
   const [liveExpensesShowAccountsManager, setLiveExpensesShowAccountsManager] = useState(false)
   const [liveExpensesShowLawsTasksModal, setLiveExpensesShowLawsTasksModal] = useState(false)
   // Columns moved into the Filter dropdown (see renderExpensesFiltersBar) --
@@ -6316,6 +6329,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 ))}
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1.5">
+                <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  <option value="">All Accounts</option>
+                  {liveExpensesAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+                <select value={liveExpensesPropertyTypeFilter ?? ''} onChange={e => setLiveExpensesPropertyTypeFilter(e.target.value || null)}
+                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  <option value="">All Types</option>
+                  {EXPENSES_PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
                 {liveExpensesRadioRow2.map((v, i) => (
                   <Fragment key={v.key}>
                     {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
@@ -6351,7 +6374,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     propertyTypeFilter={liveExpensesPropertyTypeFilter} setPropertyTypeFilter={setLiveExpensesPropertyTypeFilter}
                     onViewCountsChange={setLiveExpensesViewCounts}
                     colPrefs={liveExpensesColPrefs}
-                    showAccountsManager={liveExpensesShowAccountsManager} setShowAccountsManager={setLiveExpensesShowAccountsManager} />
+                    showAccountsManager={liveExpensesShowAccountsManager} setShowAccountsManager={setLiveExpensesShowAccountsManager}
+                    accountFilter={liveExpensesAccountFilter} setAccountFilter={setLiveExpensesAccountFilter}
+                    onAccountOptionsChange={setLiveExpensesAccountOptions} />
                 </div>
               )}
             </div>
