@@ -348,7 +348,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
         <col style={{ width: amtWidth }} />
         {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
       </colgroup>
-      <thead className="sticky top-0 z-10">
+      <thead className="sticky top-0 z-30">
         <tr className="bg-gray-50">
           <ResizableTh
             onResize={d => colPrefs.resizeWidth('date', d, EXPENSES_COL_DEFAULTS.date)}
