@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
-    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName })
+    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)

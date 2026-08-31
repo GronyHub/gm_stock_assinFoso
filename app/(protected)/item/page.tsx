@@ -3608,6 +3608,10 @@ function ItemHubPageInner() {
         return
       }
 
+      if (data.debugDuration) {
+        const dd = data.debugDuration
+        addTapStatus(`Duration: ${dd.itemName} (type=${dd.productType}) qty=${dd.qty} → ${dd.estimatedDurationSeconds}s`)
+      }
       addTapStatus(`✓✓✓ SUCCESS - Tap recorded!`)
       setLiveTaps(prev => [data.tap, ...prev])
       if (!item) setLiveSelectedItem(null)
@@ -3676,6 +3680,11 @@ function ItemHubPageInner() {
         showToast(tapData.error || 'Failed to record sale', 'error')
         setLiveGmcCountSaving(false)
         return
+      }
+
+      if (tapData.debugDuration) {
+        const dd = tapData.debugDuration
+        showToast(`Duration: ${dd.itemName} (type=${dd.productType}) qty=${dd.qty} → ${dd.estimatedDurationSeconds}s`, 'info')
       }
 
       // Then, record a stock count for the target GMC item
