@@ -20,16 +20,26 @@ export async function GET(req: NextRequest) {
 
   try {
     const rows = await sql`
-      SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
-      FROM bills
+      SELECT b.id, b.bill_number, b.bill_date::date AS bill_date,
+        -- A bill's vendor is recorded either via vendor_id (picked from a
+        -- dropdown -- e.g. a Purchase Order's own vendor selector, see
+        -- /api/purchase-orders/[id]/receive) or as free text in
+        -- vendor_name directly, never necessarily both. Reading vendor_name
+        -- alone showed "No vendor" for every vendor_id-only bill (all
+        -- PO-receipts among them) -- resolved the same way
+        -- /api/purchase-orders' own GET already does for POTab's list.
+        COALESCE(v.display_name, b.vendor_name) AS vendor_name,
+        b.total, b.status
+      FROM bills b
+      LEFT JOIN vendors v ON v.id = b.vendor_id
       -- 'live_sale' bills are /api/sales/live-tap's own "Internal
       -- Consumption" stock-adjustment records (see that route) -- they
       -- exist purely to keep the target item's live stock number in sync
       -- when a GMC-linked service is tapped, not to be seen as a real
       -- vendor bill. Item 360's own history already shows that
       -- consumption from the sales side; this list is for real bills only.
-      WHERE source IS DISTINCT FROM 'live_sale'
-      ORDER BY bill_date DESC, id DESC
+      WHERE b.source IS DISTINCT FROM 'live_sale'
+      ORDER BY b.bill_date DESC, b.id DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `
@@ -46,10 +56,13 @@ export async function GET(req: NextRequest) {
     console.error('bills/route.ts GET error:', e instanceof Error ? e.message : String(e))
     try {
       const rows = await sql`
-        SELECT id, bill_number, bill_date::date AS bill_date, vendor_name, total, status
-        FROM bills
-        WHERE source IS DISTINCT FROM 'live_sale'
-        ORDER BY bill_date DESC, id DESC
+        SELECT b.id, b.bill_number, b.bill_date::date AS bill_date,
+          COALESCE(v.display_name, b.vendor_name) AS vendor_name,
+          b.total, b.status
+        FROM bills b
+        LEFT JOIN vendors v ON v.id = b.vendor_id
+        WHERE b.source IS DISTINCT FROM 'live_sale'
+        ORDER BY b.bill_date DESC, b.id DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `
