@@ -372,7 +372,7 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
           {visibleKeys.map((key, i) => headerCellFor(key, i === visibleKeys.length - 1))}
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-100">
+      <tbody className="divide-y divide-gray-300">
         {rows.map((e, i) => (
           <Fragment key={e.id}>
             <tr id={`expense-${e.id}`}
