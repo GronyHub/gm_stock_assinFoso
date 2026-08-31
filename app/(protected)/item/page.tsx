@@ -14,6 +14,7 @@ import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt,
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import ClockInGateModal from './_components/ClockInGateModal'
 import { LawsTasksModal } from './_components/LawsTasksModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
@@ -1305,12 +1306,26 @@ function ItemHubPageInner() {
   // yet" with the separate "items not yet counted today" violation count,
   // same formula the old Role Bar's Opener tab used.
   const [openerToday, setOpenerToday] = useState<{ opener: string | null; openerConfirmed: boolean | null }>({ opener: null, openerConfirmed: null })
+  // Gates a Sale tap behind a clock-in reminder (see recordTap/
+  // ClockInGateModal below) -- null means "not loaded yet", so recordTap
+  // never blocks on a slow/failed fetch, only on a confirmed "no".
+  const [myClockedInToday, setMyClockedInToday] = useState<boolean | null>(null)
   useEffect(() => {
     fetch('/api/staff-times/today')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setOpenerToday({ opener: d.opener ?? null, openerConfirmed: d.openerConfirmed ?? null }) })
+      .then(d => {
+        if (!d) return
+        setOpenerToday({ opener: d.opener ?? null, openerConfirmed: d.openerConfirmed ?? null })
+        setMyClockedInToday(!!d.mine?.actual_in)
+      })
       .catch(() => {})
   }, [])
+  const [clockGateOpen, setClockGateOpen] = useState(false)
+  // Once true (clocked in, or explicitly skipped), the reminder doesn't
+  // nag again for the rest of this session -- it's a one-time check, not a
+  // per-tap interruption.
+  const [clockGateDismissed, setClockGateDismissed] = useState(false)
+  const pendingTapItemRef = useRef<LiveItem | undefined>(undefined)
   const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
 
   // Per-page green task-count badges (opposite corner from the red flags
@@ -3483,7 +3498,26 @@ function ItemHubPageInner() {
     setLiveTapStatus(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${msg}`])
   }
 
-  async function recordTap(item?: LiveItem) {
+  // Fires when ClockInGateModal resolves (clocked in, or "continue without
+  // clocking in") -- marks the gate dismissed for the rest of this session
+  // and retries whichever tap was blocked. Passes bypassGate=true rather
+  // than relying on clockGateDismissed here: setClockGateDismissed(true)
+  // only takes effect on the next render, so recordTap's own closure would
+  // still read the old (false) value if this called it the normal way,
+  // re-opening the gate right back up.
+  function resolveClockGate(clockedIn: boolean) {
+    if (clockedIn) setMyClockedInToday(true)
+    setClockGateDismissed(true)
+    setClockGateOpen(false)
+    recordTap(pendingTapItemRef.current, true)
+  }
+
+  async function recordTap(item?: LiveItem, bypassGate = false) {
+    if (!bypassGate && !clockGateDismissed && myClockedInToday === false) {
+      pendingTapItemRef.current = item
+      setClockGateOpen(true)
+      return
+    }
     addTapStatus('STARTED - checking item & quantity')
     const tapItem = item || liveSelectedItem
     if (!tapItem || !liveQty) {
@@ -7986,6 +8020,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+          {clockGateOpen && (
+            <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
+          )}
           <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} scopeKey="Items" />
           <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} scopeKey="Sales" />
           <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} scopeKey="Bills" />

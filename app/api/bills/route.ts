@@ -162,7 +162,10 @@ export async function POST(req: NextRequest) {
 
     const vendorsUsed = Array.from(new Set(lines.map(l => l.vendorName).filter(Boolean)))
     const vendorNote = vendorsUsed.length === 1 ? ` from ${vendorsUsed[0]}` : vendorsUsed.length > 1 ? ` from ${vendorsUsed.length} vendors` : ''
-    await logActivity(enteredBy ?? 'Unknown', 'added bill', `${lines.length} line${lines.length > 1 ? 's' : ''} · ₵${grandTotal.toFixed(2)}${vendorNote}`)
+    // 30s flat -- entering a bill has no per-line time estimate like a live
+    // sale tap does, but it's still real work and shouldn't count as zero
+    // toward the present-staff worked-time banner (see PresentStaffBar.tsx).
+    await logActivity(enteredBy ?? 'Unknown', 'added bill', `${lines.length} line${lines.length > 1 ? 's' : ''} · ₵${grandTotal.toFixed(2)}${vendorNote}`, 30)
     await syncVcpForItems(itemIds)
     return success({ ok: true, billNumbers })
   } catch (e) {

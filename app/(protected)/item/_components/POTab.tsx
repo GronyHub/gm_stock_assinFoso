@@ -105,6 +105,13 @@ function isNotBilled(p: PO): boolean {
   return p.status === 'sent' && receivingState(p.lines) === 'not_started'
 }
 
+// A draft never got sent to the vendor at all -- worth flagging separately
+// from "not billed" (which only applies to a PO that's actually been sent),
+// since a draft sitting around usually means it was started and forgotten.
+function isDraftPo(p: PO): boolean {
+  return p.status === 'draft'
+}
+
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 // Date stays sticky/always-visible (first column); these two are the only
@@ -147,6 +154,7 @@ export default function POTab({ search }: Props) {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const [notBilledOnly, setNotBilledOnly] = useState(false)
+  const [draftOnly, setDraftOnly] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('poTable', PO_COLUMNS)
 
   function loadList() {
@@ -255,10 +263,12 @@ export default function POTab({ search }: Props) {
   }
 
   const notBilledCount = useMemo(() => pos.filter(isNotBilled).length, [pos])
+  const draftCount = useMemo(() => pos.filter(isDraftPo).length, [pos])
 
   const filtered = useMemo(() => {
     let list = pos
     if (notBilledOnly) list = list.filter(isNotBilled)
+    if (draftOnly) list = list.filter(isDraftPo)
     if (!search) return list
     const q = search.toLowerCase()
     return list.filter(p =>
@@ -266,7 +276,7 @@ export default function POTab({ search }: Props) {
       p.po_number.toLowerCase().includes(q) ||
       p.lines.some(l => l.item_name.toLowerCase().includes(q))
     )
-  }, [pos, search, notBilledOnly])
+  }, [pos, search, notBilledOnly, draftOnly])
 
   async function setStatus(status: 'sent' | 'cancelled') {
     if (!detail) return
@@ -335,6 +345,14 @@ export default function POTab({ search }: Props) {
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <span className="text-[9px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
         <div className="flex items-center gap-1.5">
+          {draftCount > 0 && (
+            <label title="Still in draft -- never sent to the vendor at all"
+              className="flex items-center gap-1 text-[9px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              <input type="checkbox" checked={draftOnly} onChange={e => setDraftOnly(e.target.checked)}
+                className="cursor-pointer w-2.5 h-2.5" />
+              Draft ({draftCount})
+            </label>
+          )}
           {notBilledCount > 0 && (
             <label title="Sent to the vendor but never received against -- no bill exists for it yet"
               className="flex items-center gap-1 text-[9px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">

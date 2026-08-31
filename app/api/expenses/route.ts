@@ -150,8 +150,12 @@ export async function POST(req: NextRequest) {
     }
 
     const confidential = isConfidentialExpense(expense_account)
+    // 30s flat -- entering an expense has no per-line time estimate like a
+    // live sale tap does, but it's still real work and shouldn't count as
+    // zero toward the present-staff worked-time banner (see
+    // PresentStaffBar.tsx).
     await logActivity(enteredBy ?? 'Unknown', 'added expense',
-      confidential ? `${expense_account} on ${expense_date}` : `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`)
+      confidential ? `${expense_account} on ${expense_date}` : `${expense_account} · ₵${Number(amount).toFixed(2)} on ${expense_date}`, 30)
     return success({ ...row, property_status: isProp ? 'at_shop' : null })
   } catch (e) {
     return handleError('expenses POST', e)

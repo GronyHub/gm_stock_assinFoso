@@ -26,7 +26,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const received = lines.filter(l => Number(l.qty) > 0)
     if (received.length === 0) return badRequest('Enter a quantity for at least one item.')
 
-    const [po] = await sql`SELECT id, po_number, vendor_id, vendor_name, status FROM purchase_orders WHERE id = ${poId}`
+    // A PO's vendor is recorded either way -- picked from the dropdown
+    // (vendor_id only, purchase_orders.vendor_name stays NULL) or typed as
+    // free text (vendor_name only, vendor_id NULL). GET /api/purchase-orders
+    // already resolves the display name the same way for POTab's own list;
+    // reading the raw column here without it meant a bill created from a
+    // dropdown-picked vendor got vendor_name = NULL, so it showed up in
+    // Bills as "No vendor" even though the PO clearly had one.
+    const [po] = await sql`
+      SELECT po.id, po.po_number, po.vendor_id, COALESCE(v.display_name, po.vendor_name) AS vendor_name, po.status
+      FROM purchase_orders po
+      LEFT JOIN vendors v ON v.id = po.vendor_id
+      WHERE po.id = ${poId}
+    `
     if (!po) return badRequest('Not found')
     if (po.status !== 'sent') {
       return badRequest('Only a sent purchase order can receive items -- send it first.')

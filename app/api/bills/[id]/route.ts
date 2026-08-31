@@ -46,7 +46,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   `
   if (!row) return notFound()
   const actor = getActorName(session)
-  await logActivity(actor, 'edited bill', `Bill #${billId}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`)
+  // 30s flat, same as 'added bill' -- see app/api/bills/route.ts's own
+  // comment on why these two don't get a computed duration like a live sale
+  // tap does.
+  await logActivity(actor, 'edited bill', `Bill #${billId}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`, 30)
   return success(row)
 }
 
