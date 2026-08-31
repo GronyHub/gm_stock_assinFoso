@@ -889,9 +889,9 @@ function BillsTab({
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, BILLS_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')}
-                className="text-[11px]">ITEM</ResizableTh>
+                className="text-[9px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
               {colPrefs.shownColumns.map((c, i) => (
-                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[11px]"
+                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[9px]"
                   onResize={d => colPrefs.resizeWidth(c.key, d, BILLS_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
                   {c.label}
                 </ResizableTh>
@@ -978,8 +978,8 @@ function BillsTab({
                   </tr>
                   {(!barsOnly || expandedIds.has(g.key)) && g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
-                      className={`border-b border-gray-100 text-[11px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                      <td className="px-1 py-0 text-gray-900 overflow-hidden">
+                      className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                      <td className={`sticky left-0 z-10 px-1 py-0 text-gray-900 overflow-hidden ${row.unresolved ? 'bg-red-50' : 'bg-white group-hover:bg-gray-50'}`}>
                         {row.itemId ? (
                           <button type="button" onClick={() => setViewingItemId(row.itemId)} className="block truncate text-blue-600 hover:underline text-left">
                             {row.itemName}
@@ -1025,14 +1025,14 @@ function BillsTab({
                       so it's visible instead of just padding the group's
                       Total silently forever. */}
                   {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => (
-                    <tr key={`exp-${e.id}`} className="border-b border-gray-100 text-[11px] font-bold leading-tight bg-purple-50/40 hover:bg-purple-50">
+                    <tr key={`exp-${e.id}`} className="group border-b border-gray-100 text-[9px] font-bold leading-tight bg-purple-50/40 hover:bg-purple-50">
                       {/* The amount lives here, next to the expense's own
                           name, not in the numeric Total column -- there can
                           be more than one related expense on the same bill,
                           each with a different name and amount, so a bare
                           number sitting in the shared Total column would
                           have nothing pinning it to which expense it was. */}
-                      <td className="px-1 py-0.5 text-purple-700 overflow-hidden">
+                      <td className="sticky left-0 z-10 px-1 py-0.5 text-purple-700 overflow-hidden bg-purple-50 group-hover:bg-purple-100">
                         <span className="block italic text-[9px] text-purple-400 leading-tight">Related Expense</span>
                         <span className="block break-words leading-tight">{e.description || 'Other'} — ₵{fmt(e.amount)}</span>
                       </td>
