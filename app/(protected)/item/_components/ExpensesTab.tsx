@@ -87,6 +87,16 @@ function looksBundled(description: string | null): boolean {
   return /[,&]|\band\b|\betc\b/i.test(description)
 }
 
+// A delivery expense should always end up either migrated onto the bill it
+// was delivering for (Migrate to Bill) or explicitly marked as related to
+// whichever property it was for -- otherwise it's just sitting here
+// unresolved. Once an expense IS migrated its row is deleted server-side
+// (see the migrate-to-bill route), so "still present here" already means
+// "not migrated" -- the only other thing left to check is is_related_expense.
+function looksLikeDelivery(e: Expense): boolean {
+  return /delivery/i.test(e.expense_account) || /delivery/i.test(e.description ?? '')
+}
+
 const TH = 'text-left px-1 py-0.5 font-bold text-gray-400 text-[9px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-1 py-0'
 
@@ -777,7 +787,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   )
 }
 
-type ExpensesFlag = 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location'
+type ExpensesFlag = 'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | 'delivery_unresolved'
 
 type Props = {
   search: string
@@ -931,6 +941,7 @@ export default function ExpensesTab({
     bundled: expenses.filter(e => looksBundled(e.description)).length,
     no_vendor: expenses.filter(e => !e.vendor_name).length,
     properties_no_location: expenses.filter(e => e.is_property && e.availability === 'available' && !e.location).length,
+    delivery_unresolved: expenses.filter(e => looksLikeDelivery(e) && !e.is_related_expense).length,
   }), [expenses, similarAccountNames])
 
   const viewCounts = useMemo(() => ({
@@ -958,7 +969,7 @@ export default function ExpensesTab({
   // violations system other pages' pane badges read from), so the count on
   // the Expenses pane row never showed them until this existed.
   useEffect(() => {
-    onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor + flagCounts.properties_no_location)
+    onFlagCountChange?.(flagCounts.similar + flagCounts.bundled + flagCounts.no_vendor + flagCounts.properties_no_location + flagCounts.delivery_unresolved)
     onFlagCountsChange?.(flagCounts)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flagCounts, onFlagCountChange])
@@ -987,6 +998,7 @@ export default function ExpensesTab({
     else if (activeFlag === 'bundled') list = list.filter(e => looksBundled(e.description))
     else if (activeFlag === 'no_vendor') list = list.filter(e => !e.vendor_name)
     else if (activeFlag === 'properties_no_location') list = list.filter(e => e.is_property && e.availability === 'available' && !e.location)
+    else if (activeFlag === 'delivery_unresolved') list = list.filter(e => looksLikeDelivery(e) && !e.is_related_expense)
     if (accountFilter) list = list.filter(e => e.expense_account === accountFilter)
     if (vendorFilter)  list = list.filter(e => e.vendor_name === vendorFilter)
     if (!showProperties || !showNonProperties) {

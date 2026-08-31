@@ -2248,9 +2248,9 @@ function ItemHubPageInner() {
   // of its view buttons (previously the embedded Laws & Tasks panel's
   // `flags` list) renders as one mutually-exclusive radio row here instead.
   const [liveExpensesShowHistory, setLiveExpensesShowHistory] = useState(false)
-  const [liveExpensesActiveFlag, setLiveExpensesActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | null>(null)
-  const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location', number>>({
-    similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0,
+  const [liveExpensesActiveFlag, setLiveExpensesActiveFlag] = useState<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | 'delivery_unresolved' | null>(null)
+  const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location' | 'delivery_unresolved', number>>({
+    similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0, delivery_unresolved: 0,
   })
   const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor' | 'property_type' | 'related_property'>('none')
   const [liveExpensesShowProperties, setLiveExpensesShowProperties] = useState(true)
@@ -2380,7 +2380,7 @@ function ItemHubPageInner() {
   // Printers/Computers) -- all one mutually-exclusive radio group now. No
   // Bars Only equivalent -- Expenses' list has no day-bar/item-line
   // grouping like Sales/Bills' receipts do.
-  const EXPENSES_FLAG_KEYS = ['similar', 'bundled', 'no_vendor', 'properties_no_location'] as const
+  const EXPENSES_FLAG_KEYS = ['similar', 'bundled', 'no_vendor', 'properties_no_location', 'delivery_unresolved'] as const
   const liveExpensesRadioValue = liveExpensesShowHistory ? 'history'
     : liveExpensesAddingNew ? 'new_expense'
     : liveExpensesActiveFlag ? liveExpensesActiveFlag
@@ -2444,6 +2444,7 @@ function ItemHubPageInner() {
       { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled, description: 'Description mentions "and"/"etc" or has a comma -- likely covers more than one item bundled into one expense.' },
       { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor, description: 'No vendor name recorded for this expense.' },
       { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location, description: 'Property is marked available but has no location set.' },
+      { key: 'delivery_unresolved', label: 'Delivery Unresolved', count: liveExpensesFlagCounts.delivery_unresolved, description: 'Mentions "delivery" but isn\'t marked as a related expense -- either migrate it to the bill it was for, or mark it related to the property it delivered.' },
     ].sort((a, b) => b.count - a.count).map(f => ({ ...f, variant: 'flag' as const }))),
   ]
   const liveExpensesRadioRow1 = liveExpensesMainRadios.slice(0, 5)
