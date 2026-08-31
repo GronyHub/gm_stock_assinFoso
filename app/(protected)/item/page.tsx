@@ -5555,9 +5555,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </div>
                 </div>
               </div>
-              {/* Row 2: filter bar — hidden on report-style submenus. */}
-              {showControls && (outerTab === 'loss' && (lossView === 'sales' || lossView === 'items')) && (liveMode === 'sale' || liveMode === 'log') && (
+              {/* Row 2: filter bar — hidden on report-style submenus. Type/
+                  Groups/Filter all share one row now -- Filter used to spill
+                  onto its own row by itself since it lived in a separate
+                  conditional block with its own wrapping div. */}
+              {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
+                  {(lossView === 'sales' || lossView === 'items') && (<>
                   <select
                     value={liveProductTypeFilter}
                     onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
@@ -5579,11 +5583,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
-                </div>
-              )}
-              {/* Filter dropdown for items view only */}
-              {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
-                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
+                  </>)}
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
