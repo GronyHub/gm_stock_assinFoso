@@ -4245,6 +4245,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // second row when there isn't room for all buttons.
     return (
       <div className="flex gap-6 overflow-x-auto max-w-full">
+        {/* Home isn't a liveMode -- it's a separate lossView ('home', the
+            announcements feed), so it navigates away via pickLossView
+            rather than joining the itemsPageMode/liveMode pair every other
+            tab here sets. Same destination/unread-clear behavior as the
+            sidebar's own Home row. */}
+        <button type="button" onClick={() => { pickLossView('home'); setUnreadAnnouncements(0) }} title="Home"
+          className={btnCls(lossView === 'home', 'bg-indigo-600')}>🏠</button>
         <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
