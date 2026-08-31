@@ -2411,22 +2411,22 @@ function ItemHubPageInner() {
   // Flattened into one list and split across exactly two rows instead, so
   // every row fills up with flex-1 items before spilling to the next --
   // color/weight is driven by `variant`, not which row an item lands on.
-  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'prop' | 'flag' }[] = [
+  const liveExpensesMainRadios: { key: string; label: string; count: number | null; variant: 'all' | 'prop' | 'flag'; description?: string }[] = [
     { key: 'all', label: 'All', count: null, variant: 'all' },
     { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'prop' },
     { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'prop' },
     ...([
-      { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar },
-      { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled },
-      { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor },
-      { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location },
+      { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar, description: 'Account names within a couple letters of another account -- likely the same account entered two different ways.' },
+      { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled, description: 'Description mentions "and"/"etc" or has a comma -- likely covers more than one item bundled into one expense.' },
+      { key: 'no_vendor', label: 'No Vendor', count: liveExpensesFlagCounts.no_vendor, description: 'No vendor name recorded for this expense.' },
+      { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location, description: 'Property is marked available but has no location set.' },
     ].sort((a, b) => b.count - a.count).map(f => ({ ...f, variant: 'flag' as const }))),
   ]
   const liveExpensesRadioRow1 = liveExpensesMainRadios.slice(0, 5)
   const liveExpensesRadioRow2 = liveExpensesMainRadios.slice(5)
   function renderLiveExpensesRadio(v: typeof liveExpensesMainRadios[number]) {
     return (
-      <label key={v.key}
+      <label key={v.key} title={v.description}
         className={`flex-1 min-w-0 flex items-center justify-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] text-center ${
           v.variant === 'flag' ? 'text-red-600' : v.variant === 'prop' ? 'font-semibold text-gray-600' : 'text-gray-700'
         }`}>
