@@ -313,7 +313,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
         className="text-[10px] bg-white border border-gray-200 rounded px-1 py-1 max-w-[180px]">
         <option value="">{loadingBills ? 'Loading…' : 'Select bill…'}</option>
         {filtered.map(b => (
-          <option key={b.id} value={b.id}>{b.bill_number} · {b.vendor_name ?? 'No vendor'} · ₵{Number(b.total).toFixed(0)}</option>
+          <option key={b.id} value={b.id}>{b.bill_number} · {fmtShort(b.bill_date)} · {b.vendor_name ?? 'No vendor'} · ₵{Number(b.total).toFixed(0)}</option>
         ))}
       </select>
       <button onClick={migrate} disabled={!pickedId || saving}

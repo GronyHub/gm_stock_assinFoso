@@ -589,7 +589,7 @@ function BillsTab({
       map.get(gk)!.rows.push(r)
     }
     let prevDate: string | null = null
-    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number }[] = []
+    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number; billNumbers: string[] }[] = []
     for (const [key, g] of map) {
       const date10 = g.billDate.slice(0, 10)
       const agg = groupAggregates[key]
@@ -604,6 +604,7 @@ function BillsTab({
         rows: g.rows,
         sharedExpensesTotal,
         sharedPerUnit: qty > 0 ? sharedExpensesTotal / qty : 0,
+        billNumbers: Array.from(new Set(g.rows.map(r => r.billNumber).filter(Boolean))),
       })
       prevDate = date10
     }
@@ -923,6 +924,12 @@ function BillsTab({
                         <span className={`whitespace-nowrap ${g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
                           {fmtShort(g.billDate)}
                         </span>
+                        {g.billNumbers.length > 0 && (
+                          <span onClick={e => e.stopPropagation()} title="Bill number -- tap and hold to select, then copy"
+                            className={`whitespace-nowrap select-text font-mono ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}>
+                            {g.billNumbers.join(', ')}
+                          </span>
+                        )}
                         <button onClick={e => { e.stopPropagation(); toggleEdit(g.editBillId) }} title="Edit this bill"
                           className={`leading-none ${g.isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                           ✏️
