@@ -22,6 +22,7 @@ export type SummaryRow = {
   cp: string | null
   units_per_pack: string | null
   converts_to_item_id: number | null
+  derived_from_item_id: number | null
   // The one place this table can confirm a "Count every N days" edit
   // actually saved -- see ItemEditForm's cadence field.
   count_interval: string | null
@@ -1214,11 +1215,22 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // 4x6, with Passport + Picture Printing) keep the per-service breakdown table.
   const singleServiceChain = packChainBreakdownNames.length <= 1
 
+  const parentPackName = item.derived_from_item_id != null
+    ? allItems.find(a => a.item_id === item.derived_from_item_id)?.item_name
+    : null
+
   return (
     // For the pack-chain view the wrapper grows to the table's full width
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
     <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${showPackChainTable ? 'w-max min-w-full' : 'overflow-hidden'}`}>
+      {parentPackName && (
+        <div className="px-3 py-1.5 border-b border-gray-200 bg-blue-50">
+          <p className="text-[8px] font-semibold text-blue-700">
+            <span className="text-gray-500">Derived from pack:</span> {parentPackName}
+          </p>
+        </div>
+      )}
 
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
