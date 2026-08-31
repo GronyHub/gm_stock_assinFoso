@@ -129,6 +129,9 @@ type TableProps = {
   // of repeating the same account name on every single row.
   hideAccount?: boolean
   hideVendor?: boolean
+  // Redundant once every row is already grouped down to one property type
+  // (the By Property Type grouped view) -- same reasoning as hideVendor.
+  hidePropertyType?: boolean
   hidePropertyColumns?: boolean
   accounts: string[]
   vendors: string[]
@@ -311,7 +314,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
 }
 
 function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
-  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
+  onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyType, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
@@ -319,6 +322,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   const propertyColKeys: ColKey[] = ['property_status', 'property_type', 'availability', 'working', 'location', 'reason']
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'vendor' && hideVendor)
+    && !(k === 'property_type' && hidePropertyType)
     && !(hidePropertyColumns && propertyColKeys.includes(k)))
 
   function headerCellFor(key: ColKey, isLast: boolean) {
@@ -789,8 +793,8 @@ type Props = {
   // (these aren't in the shared /api/flags -- they're computed locally
   // from this component's own expenses list).
   onFlagCountsChange?: (counts: Record<ExpensesFlag, number>) => void
-  groupBy?: 'none' | 'account' | 'vendor'
-  setGroupBy?: (v: 'none' | 'account' | 'vendor' | ((prev: 'none' | 'account' | 'vendor') => 'none' | 'account' | 'vendor')) => void
+  groupBy?: 'none' | 'account' | 'vendor' | 'property_type'
+  setGroupBy?: (v: 'none' | 'account' | 'vendor' | 'property_type' | ((prev: 'none' | 'account' | 'vendor' | 'property_type') => 'none' | 'account' | 'vendor' | 'property_type')) => void
   showProperties?: boolean
   setShowProperties?: (v: boolean) => void
   showNonProperties?: boolean
@@ -799,10 +803,11 @@ type Props = {
   setPropertyAvailabilityFilter?: (v: 'all' | 'available' | 'not_available') => void
   propertyTypeFilter?: string | null
   setPropertyTypeFilter?: (v: string | null) => void
-  // Reports the nine view-button counts (all/by-account/by-vendor/property
-  // views) back up so the parent's radio labels can show live counts.
+  // Reports the view-button counts (all/by-account/by-vendor/by-property-
+  // type/property views) back up so the parent's radio labels can show
+  // live counts.
   onViewCountsChange?: (counts: {
-    all_expenses: number; by_account: number; by_vendor: number
+    all_expenses: number; by_account: number; by_vendor: number; by_property_type: number
     show_properties: number; show_non_properties: number
     prop_available: number; prop_not_available: number
     printers: number; computers: number
@@ -927,6 +932,11 @@ export default function ExpensesTab({
     all_expenses: expenses.length,
     by_account: expenses.length,
     by_vendor: expenses.length,
+    // Grouping by property type only makes sense for property expenses
+    // (non-properties have no property_type at all), so this counts just
+    // those, same as show_properties -- not the full expenses.length like
+    // by_account/by_vendor, which don't narrow anything.
+    by_property_type: expenses.filter(e => e.is_property).length,
     show_properties: expenses.filter(e => e.is_property).length,
     show_non_properties: expenses.filter(e => !e.is_property).length,
     prop_available: expenses.filter(e => e.is_property && e.availability === 'available').length,
@@ -989,9 +999,9 @@ export default function ExpensesTab({
     if (groupBy === 'none') return []
     const map = new Map<string, Expense[]>()
     for (const e of filtered) {
-      const key = groupBy === 'account'
-        ? (e.expense_account || 'Uncategorised')
-        : (e.vendor_name || 'No Vendor')
+      const key = groupBy === 'account' ? (e.expense_account || 'Uncategorised')
+        : groupBy === 'vendor' ? (e.vendor_name || 'No Vendor')
+        : (e.property_type || 'Uncategorised')
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(e)
     }
@@ -1316,6 +1326,7 @@ export default function ExpensesTab({
             : <ExpenseTable groupedRows={grouped.map(([label, rows]) => ({ label, rows }))} {...tableProps}
                 hideAccount={groupBy === 'account'}
                 hideVendor={groupBy === 'vendor'}
+                hidePropertyType={groupBy === 'property_type'}
                 hidePropertyColumns={!showProperties && showNonProperties} />
         ) : (
           <>

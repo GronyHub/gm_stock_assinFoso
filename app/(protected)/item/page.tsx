@@ -2252,13 +2252,13 @@ function ItemHubPageInner() {
   const [liveExpensesFlagCounts, setLiveExpensesFlagCounts] = useState<Record<'similar' | 'bundled' | 'no_vendor' | 'properties_no_location', number>>({
     similar: 0, bundled: 0, no_vendor: 0, properties_no_location: 0,
   })
-  const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor'>('none')
+  const [liveExpensesGroupBy, setLiveExpensesGroupBy] = useState<'none' | 'account' | 'vendor' | 'property_type'>('none')
   const [liveExpensesShowProperties, setLiveExpensesShowProperties] = useState(true)
   const [liveExpensesShowNonProperties, setLiveExpensesShowNonProperties] = useState(true)
   const [liveExpensesPropertyAvailabilityFilter, setLiveExpensesPropertyAvailabilityFilter] = useState<'all' | 'available' | 'not_available'>('all')
   const [liveExpensesPropertyTypeFilter, setLiveExpensesPropertyTypeFilter] = useState<string | null>(null)
   const [liveExpensesViewCounts, setLiveExpensesViewCounts] = useState({
-    all_expenses: 0, by_account: 0, by_vendor: 0, show_properties: 0, show_non_properties: 0,
+    all_expenses: 0, by_account: 0, by_vendor: 0, by_property_type: 0, show_properties: 0, show_non_properties: 0,
     prop_available: 0, prop_not_available: 0, printers: 0, computers: 0,
   })
   // Account/Type toolbar filters -- Account is genuine expenses data
@@ -2386,6 +2386,7 @@ function ItemHubPageInner() {
     : liveExpensesActiveFlag ? liveExpensesActiveFlag
     : liveExpensesGroupBy === 'account' ? 'by_account'
     : liveExpensesGroupBy === 'vendor' ? 'by_vendor'
+    : liveExpensesGroupBy === 'property_type' ? 'by_property_type'
     : (liveExpensesShowProperties && !liveExpensesShowNonProperties) ? 'all_properties'
     : (!liveExpensesShowProperties && liveExpensesShowNonProperties) ? 'non_properties'
     : liveExpensesPropertyAvailabilityFilter === 'available' ? 'properties_available'
@@ -2397,9 +2398,12 @@ function ItemHubPageInner() {
     setLiveExpensesShowHistory(value === 'history')
     setLiveExpensesAddingNew(value === 'new_expense')
     setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
-    setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : 'none')
+    setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : value === 'by_property_type' ? 'property_type' : 'none')
+    // By Property Type only makes sense scoped to property expenses (non-
+    // properties have no property_type at all), same narrowing All
+    // Properties already does -- so it gets the same showNonProperties:false.
     setLiveExpensesShowProperties(value !== 'non_properties')
-    setLiveExpensesShowNonProperties(value !== 'all_properties')
+    setLiveExpensesShowNonProperties(value !== 'all_properties' && value !== 'by_property_type')
     setLiveExpensesPropertyAvailabilityFilter(value === 'properties_available' ? 'available' : value === 'properties_not_available' ? 'not_available' : 'all')
     setLiveExpensesPropertyTypeFilter(value === 'printers' ? 'Printer' : value === 'computers' ? 'Computer' : null)
   }
@@ -2409,6 +2413,7 @@ function ItemHubPageInner() {
     if ((EXPENSES_FLAG_KEYS as readonly string[]).includes(radioValue)) return `expensesTable_flag_${radioValue}`
     if (radioValue === 'by_account') return 'expensesTable_groupBy_account'
     if (radioValue === 'by_vendor') return 'expensesTable_groupBy_vendor'
+    if (radioValue === 'by_property_type') return 'expensesTable_groupBy_propertyType'
     if (radioValue === 'all_properties') return 'expensesTable_propertiesOnly'
     if (radioValue === 'non_properties') return 'expensesTable_nonPropertiesOnly'
     if (radioValue === 'properties_available') return 'expensesTable_propFilter_available'
@@ -4370,7 +4375,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // (that component renders with hideTrigger, right below this select, so
   // its floating panel still anchors somewhere sensible without a second
   // visible trigger of its own).
-  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'by_vendor', 'by_property_type', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
       <select
@@ -4390,6 +4395,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <option value="new_expense">+ New Expense</option>
         <option value="history">History</option>
         <option value="by_vendor">By Vendor ({liveExpensesViewCounts.by_vendor})</option>
+        <option value="by_property_type">By Property Type ({liveExpensesViewCounts.by_property_type})</option>
         <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
         <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
         <option value="printers">Printers ({liveExpensesViewCounts.printers})</option>
