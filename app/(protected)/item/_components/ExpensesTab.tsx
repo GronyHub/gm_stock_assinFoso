@@ -1207,27 +1207,6 @@ export default function ExpensesTab({
     </div>
   )
 
-  const isAllExpenses = activeFlag === null && propertyAvailabilityFilter === 'all' && groupBy === 'none' && showProperties && showNonProperties && !propertyTypeFilter
-
-  const getActiveViewHeading = () => {
-    if (activeFlag === 'similar') return 'Similar Account Names'
-    if (activeFlag === 'bundled') return 'Description Looks Bundled'
-    if (activeFlag === 'no_vendor') return 'No Vendor Name'
-    if (activeFlag === 'properties_no_location') return 'Properties Without Location'
-    if (propertyTypeFilter === 'Printer') return 'Printers'
-    if (propertyTypeFilter === 'Computer') return 'Computers'
-    if (groupBy === 'account') return 'Grouped by Account'
-    if (groupBy === 'vendor') return 'Grouped by Vendor'
-    if (propertyAvailabilityFilter === 'available') return 'Properties Available'
-    if (propertyAvailabilityFilter === 'not_available') return 'Properties Not Available'
-    if (!showProperties && showNonProperties) return 'Non-Properties Only'
-    if (showProperties && !showNonProperties) return 'Properties Only'
-    if (isAllExpenses) return 'All Expenses'
-    return null
-  }
-
-  const activeViewHeading = getActiveViewHeading()
-
   return (
     <div className="flex flex-col h-full min-h-0">
       {showHistory && <HistoryPanel keywords={['expense']} onEntryClick={log => {
@@ -1257,11 +1236,6 @@ export default function ExpensesTab({
       )}
 
       {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 pt-2 pr-2 pb-2 flex flex-col">
-        {activeViewHeading && (
-          <div className="px-3 py-2 mb-2 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs font-semibold text-blue-700">Showing: {activeViewHeading}</p>
-          </div>
-        )}
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
