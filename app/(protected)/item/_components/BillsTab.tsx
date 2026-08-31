@@ -1026,17 +1026,21 @@ function BillsTab({
                       Total silently forever. */}
                   {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => (
                     <tr key={`exp-${e.id}`} className="border-b border-gray-100 text-[11px] font-bold leading-tight bg-purple-50/40 hover:bg-purple-50">
-                      <td className="px-1 py-0 text-purple-700 italic overflow-hidden">
-                        <span className="block truncate">Related Expense{e.description ? ` — ${e.description}` : ''}</span>
+                      {/* The amount lives here, next to the expense's own
+                          name, not in the numeric Total column -- there can
+                          be more than one related expense on the same bill,
+                          each with a different name and amount, so a bare
+                          number sitting in the shared Total column would
+                          have nothing pinning it to which expense it was. */}
+                      <td className="px-1 py-0.5 text-purple-700 overflow-hidden">
+                        <span className="block italic text-[9px] text-purple-400 leading-tight">Related Expense</span>
+                        <span className="block break-words leading-tight">{e.description || 'Other'} — ₵{fmt(e.amount)}</span>
                       </td>
                       {colPrefs.shownColumns.map(c => (
                         <td key={c.key} className="px-1 py-0 text-right truncate">
                           {c.key === 'itemTotal' ? (
-                            <span className="inline-flex items-center gap-1 font-semibold text-purple-700">
-                              {fmt(e.amount)}
-                              <button onClick={() => removeBillExpense(e.id)} title="Remove this related expense"
-                                className="text-purple-300 hover:text-red-600 font-bold leading-none">×</button>
-                            </span>
+                            <button onClick={() => removeBillExpense(e.id)} title="Remove this related expense"
+                              className="text-purple-300 hover:text-red-600 font-bold leading-none">×</button>
                           ) : '—'}
                         </td>
                       ))}
