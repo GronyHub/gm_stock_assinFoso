@@ -185,8 +185,13 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
 
   const stickyClass = sticky ? 'sticky z-20 bg-gray-50' : ''
 
+  // No overflow-hidden here (unlike ResizableTh) -- this cell's own
+  // dropdown panel is an absolutely-positioned child of it, and an
+  // overflow-hidden ancestor clips any absolutely-positioned descendant
+  // that extends past its box, which is exactly what "top-full" does.
+  // Labels wrap (see the label span below) instead of needing clipping.
   return (
-    <th className={`${TH} relative overflow-hidden border-r ${stickyClass}`}
+    <th className={`${TH} relative border-r ${stickyClass}`}
       style={sticky ? { left: stickyLeftPx ?? 0 } : undefined} ref={ref}>
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
