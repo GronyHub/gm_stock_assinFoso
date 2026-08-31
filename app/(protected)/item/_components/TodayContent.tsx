@@ -5,6 +5,7 @@ import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
 import { formatDuration } from '@/lib/fmtDuration'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
+import { fmtClockTime } from '@/lib/clockTime'
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 // Read-only feed -- composing (message/media/voice/reply/search) was
@@ -24,21 +25,6 @@ type Announcement = {
   // effectiveDurationSeconds' flat-minute fallback for the Total column,
   // same as /api/staff-times/worked-today's own worked-time sum.
   category?: string | null
-}
-
-// Ghana/this app's own clock is GMT year-round (see live-tap's own
-// "Ghana is UTC+0" comment) -- an absolute clock time only means the same
-// thing to everyone reading it if it's read off the UTC parts of the
-// timestamp rather than whatever timezone the viewer's own device happens
-// to be set to.
-function fmtClockTime(iso: string): string {
-  const d = new Date(iso)
-  let h = d.getUTCHours()
-  const m = d.getUTCMinutes()
-  const ap = h >= 12 ? 'pm' : 'am'
-  h = h % 12
-  if (h === 0) h = 12
-  return `${h}:${String(m).padStart(2, '0')}${ap}`
 }
 
 // GMT calendar date (YYYY-MM-DD) -- both the day-header grouping below and

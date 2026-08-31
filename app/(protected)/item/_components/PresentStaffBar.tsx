@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { parseTimeMins } from '@/lib/staffTimes'
+import StaffTimeDetailModal from './StaffTimeDetailModal'
 
 type StaffRow = { staff_name: string; actual_in: string; worked_seconds: number }
 
@@ -28,6 +29,7 @@ function fmtHrMin(totalMinutes: number): string {
 export default function PresentStaffBar() {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -51,21 +53,27 @@ export default function PresentStaffBar() {
   const nowMins = now.getHours() * 60 + now.getMinutes()
 
   return (
-    <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-2.5 flex-wrap text-[10px] shrink-0">
-      <span className="font-semibold text-gray-400 shrink-0">Present</span>
-      {staff.map(s => {
-        const inMins = parseTimeMins(s.actual_in)
-        const totalMins = inMins != null ? Math.max(0, nowMins - inMins) : null
-        const workedMins = s.worked_seconds / 60
-        return (
-          <span key={s.staff_name} className="whitespace-nowrap">
-            <span className="font-semibold text-gray-700">{s.staff_name}</span>
-            {totalMins != null && (
-              <span className="text-gray-400">({fmtHrMin(workedMins)}/{fmtHrMin(totalMins)})</span>
-            )}
-          </span>
-        )
-      })}
-    </div>
+    <>
+      <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-2.5 flex-wrap text-[10px] shrink-0">
+        <span className="font-semibold text-gray-400 shrink-0">Present</span>
+        {staff.map(s => {
+          const inMins = parseTimeMins(s.actual_in)
+          const totalMins = inMins != null ? Math.max(0, nowMins - inMins) : null
+          const workedMins = s.worked_seconds / 60
+          return (
+            <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
+              title="View time details" className="whitespace-nowrap hover:underline">
+              <span className="font-semibold text-gray-700">{s.staff_name}</span>
+              {totalMins != null && (
+                <span className="text-gray-400">({fmtHrMin(workedMins)}/{fmtHrMin(totalMins)})</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      {selectedStaff && (
+        <StaffTimeDetailModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} />
+      )}
+    </>
   )
 }
