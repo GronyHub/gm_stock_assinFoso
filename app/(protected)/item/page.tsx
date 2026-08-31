@@ -6281,7 +6281,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it's a distinct widget. No Bars Only here -- Expenses has
                   no day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5">
-                <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px]">
+                <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[9px]">
                   <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
                 </label>
@@ -6291,7 +6291,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties },
                   { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties },
                 ].map(v => (
-                  <label key={v.key} className="flex-1 flex items-center justify-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                  <label key={v.key} className="flex-1 flex items-center justify-center gap-0.5 text-[9px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                     <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)}
                       className="cursor-pointer w-2.5 h-2.5" />
                     {v.label} ({v.count})
@@ -6306,8 +6306,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   { key: 'properties_no_location', label: 'No Location', count: liveExpensesFlagCounts.properties_no_location },
                 ].sort((a, b) => b.count - a.count).map((v, i) => (
                   <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
-                    <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px]">
+                    {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+                    <label className="flex-1 flex items-center justify-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[9px]">
                       <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
                       <span>{v.label} ({v.count})</span>
                     </label>
