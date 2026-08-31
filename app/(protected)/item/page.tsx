@@ -1734,7 +1734,12 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
+  // Home swaps the whole content area for the announcements feed (see
+  // liveShowHome/renderTabSwitcher) -- none of Sale/Log's own controls
+  // (Type/Groups/Filter, the search+WIC+Analytics row, the violation
+  // radios) make sense floating above it, so it's folded in here rather
+  // than at each of this flag's 3 call sites.
+  const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView) && !liveShowHome
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
