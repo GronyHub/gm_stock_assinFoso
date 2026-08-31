@@ -99,7 +99,12 @@ const EXPENSES_COL_DEFAULTS: Record<string, number> = {
 const EXPENSE_GROUPS = ['Utilities']
 
 type TableProps = {
-  rows: Expense[]
+  rows?: Expense[]
+  // When set, renders one shared table (one thead) with a spanning label
+  // row + total ahead of each group's own rows, instead of a separate
+  // <ExpenseTable> (and therefore a separate, repeated header row) per
+  // group. `rows` is ignored while this is set.
+  groupedRows?: { label: string; rows: Expense[] }[]
   highlightId?: number | null
   editId: number | null
   confirmDeleteId: number | null
@@ -305,7 +310,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
   )
 }
 
-function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
+function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDeleteId, deleting, saving, form, saveError, onEdit, onCloseEdit,
   onFormChange, onSaveEdit, onDeleteStart, onDeleteConfirm, onDeleteCancel, onMigrated, colPrefs, hideAccount, hideVendor, hidePropertyColumns,
   accounts, vendors, accountFilter, vendorFilter, onAccountFilter, onVendorFilter, itemsByType, onFetchItemsForType, relatedItems, onFetchRelatedItems, relatedItemsLoading, relatedItemsError,
   accountsData, showAccountsPanel, newAccountName, editingAccountId, editingAccountName, accountError, accountSaving,
@@ -350,6 +355,351 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
   const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
   const tableWidth = dateWidth + accountWidth + amtWidth
     + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
+
+  // Pulled out of the tbody's own .map so groupedRows (the By Account/By
+  // Vendor views) can share this same row rendering across every group's
+  // rows, all inside the ONE table/thead this component now always renders
+  // -- rather than each group getting its own separate <ExpenseTable> (and
+  // therefore its own repeated column header row).
+  function renderRow(e: Expense, i: number) {
+    return (
+      <Fragment key={e.id}>
+        <tr id={`expense-${e.id}`}
+          onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
+          className={`transition-colors text-[9px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+          <td className="pl-0 pr-1 py-0 sticky left-0 z-10 text-gray-600 break-words bg-inherit">{fmtShort(e.expense_date)}</td>
+          {/* Display only -- expense_account/description stay separate
+              columns in the database and in the edit form below; this
+              just folds the description into what the frozen Account
+              column shows, so the account reads as its own full name.
+              hideAccount (the By Account grouped view, where every row's
+              account already matches the group's own header) drops the
+              now-redundant account name and shows just the description. */}
+          <td className={`${TD} sticky z-10 text-gray-900 font-semibold break-words border-r bg-inherit`} style={{ left: dateWidth }}>
+            {hideAccount ? (e.description ?? '—') : e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
+          </td>
+          <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
+          {visibleKeys.map(k => bodyCellFor(k, e))}
+        </tr>
+        {editId === e.id && (
+          <tr className="bg-blue-50/40">
+            <td colSpan={3 + visibleKeys.length} className="px-3 py-3">
+              <div className="grid grid-cols-2 gap-1 max-w-lg">
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                  <input type="date" value={form.expense_date}
+                    onChange={ev => onFormChange({ ...form, expense_date: ev.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
+                  <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
+                    onChange={ev => onFormChange({ ...form, amount: ev.target.value })} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <p className="text-[9px] text-gray-400">Account</p>
+                    <button onClick={() => { onSetShowAccountsPanel(!showAccountsPanel); if (!showAccountsPanel) onFetchAccountsData() }}
+                      className="text-[8px] text-blue-600 hover:text-blue-700 font-semibold">
+                      {showAccountsPanel ? '✕ Hide' : '⚙ Manage'}
+                    </button>
+                  </div>
+                  <select value={form.expense_account}
+                    onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls}>
+                    <option value="">Select…</option>
+                    {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                  {showAccountsPanel && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200 space-y-2">
+                      {accountError && (
+                        <div className="text-[9px] text-red-600 p-1 bg-red-50 rounded border border-red-200">
+                          {accountError}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[9px] text-gray-600 mb-1">New Account</p>
+                        <div className="flex gap-1">
+                          <input type="text" value={newAccountName} onChange={e => onSetNewAccountName(e.target.value)}
+                            onKeyPress={ev => ev.key === 'Enter' && onCreateAccount()}
+                            placeholder="Account name…" className="flex-1 text-[10px] px-1.5 py-1 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-400 outline-none" />
+                          <button onClick={onCreateAccount} disabled={!newAccountName.trim() || accountSaving}
+                            className="px-1.5 py-1 bg-green-600 text-white text-[9px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-600 mb-1">Manage Accounts</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {accountsData.length === 0 ? (
+                            <p className="text-[9px] text-gray-400">No accounts</p>
+                          ) : (
+                            accountsData.map(acc => (
+                              <div key={acc.id} className="flex items-center gap-1 p-1 bg-white rounded border border-gray-200 text-[9px]">
+                                {editingAccountId === acc.id ? (
+                                  <>
+                                    <input type="text" value={editingAccountName} onChange={e => onSetEditingAccountName(e.target.value)}
+                                      onKeyPress={ev => ev.key === 'Enter' && onRenameAccount()}
+                                      className="flex-1 px-1 py-0.5 border border-blue-300 rounded text-[9px] bg-white outline-none" autoFocus />
+                                    <button onClick={onRenameAccount} disabled={accountSaving}
+                                      className="px-1 py-0.5 bg-green-600 text-white text-[8px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">✓</button>
+                                    <button onClick={() => { onSetEditingAccountId(null); onSetEditingAccountName('') }} disabled={accountSaving}
+                                      className="px-1 py-0.5 bg-gray-300 text-gray-700 text-[8px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50">✕</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="flex-1 truncate">{acc.name}</span>
+                                    <button onClick={() => { onSetEditingAccountId(acc.id); onSetEditingAccountName(acc.name); onSetAccountError(null) }}
+                                      className="px-1 py-0.5 bg-blue-100 text-blue-700 text-[8px] hover:bg-blue-200 rounded">Rename</button>
+                                    <button onClick={() => onDeleteAccount(acc.id)}
+                                      className="px-1 py-0.5 bg-red-100 text-red-700 text-[8px] hover:bg-red-200 rounded">Delete</button>
+                                  </>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
+                  <input value={form.description}
+                    onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                  <input value={form.vendor_name}
+                    onChange={ev => onFormChange({ ...form, vendor_name: ev.target.value })} className={inputCls} />
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
+                  <input value={form.cf_expense_type}
+                    onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-[9px] text-gray-400 mb-0.5">Property?</p>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
+                      onChange={() => onFormChange({ ...form, is_property: true })}
+                      className="w-3 h-3 accent-blue-600" />
+                    <span className="text-[10px] text-gray-700">Property</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
+                      onChange={() => onFormChange({ ...form, is_property: false })}
+                      className="w-3 h-3 accent-blue-600" />
+                    <span className="text-[10px] text-gray-700">Not a property</span>
+                  </label>
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
+                <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
+                  className={inputCls}>
+                  <option value="">Select…</option>
+                  {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="mt-2">
+                <p className="text-[9px] text-gray-400 mb-0.5">Related to another property?</p>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === false}
+                      onChange={() => onFormChange({ ...form, is_related_expense: false, related_to_property_id: null, related_expense_reasons: null })}
+                      className="w-3 h-3 accent-blue-600" />
+                    <span className="text-[10px] text-gray-700">No</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === true}
+                      onChange={() => { onFormChange({ ...form, is_related_expense: true }); onFetchRelatedItems() }}
+                      className="w-3 h-3 accent-blue-600" />
+                    <span className="text-[10px] text-gray-700">Yes</span>
+                  </label>
+                </div>
+              </div>
+              {form.is_related_expense && (
+                <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
+                  <div>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
+                    {relatedItemsLoading && (
+                      <div className="text-[9px] text-amber-600 mb-1">Loading properties...</div>
+                    )}
+                    {relatedItemsError && (
+                      <div className="text-[9px] text-red-600 mb-1 p-1 bg-red-50 rounded border border-red-200">
+                        ⚠️ {relatedItemsError}
+                      </div>
+                    )}
+                    <select value={form.related_to_property_id?.toString() ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
+                      className={`${inputCls} text-[9px]`}>
+                      <option value="">Choose a property…</option>
+                      {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : null}
+                    </select>
+                    {relatedItems.length > 0 && (
+                      <div className="text-[9px] text-green-600 mt-1">✓ {relatedItems.length} properties available</div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Reason(s)</p>
+                    <div className="space-y-1">
+                      {RELATED_EXPENSE_REASONS.map(reason => {
+                        const reasonsArray = form.related_expense_reasons
+                          ? form.related_expense_reasons.split(',').map(r => r.trim())
+                          : []
+                        const isChecked = reasonsArray.includes(reason)
+                        return (
+                          <label key={reason} className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={isChecked}
+                              onChange={ev => {
+                                if (ev.target.checked) {
+                                  const updated = reasonsArray.includes(reason) ? reasonsArray : [...reasonsArray, reason]
+                                  onFormChange({ ...form, related_expense_reasons: updated.join(', ') })
+                                } else {
+                                  const updated = reasonsArray.filter(r => r !== reason)
+                                  onFormChange({ ...form, related_expense_reasons: updated.length > 0 ? updated.join(', ') : null })
+                                }
+                              }}
+                              className="w-3 h-3 accent-blue-600" />
+                            <span className="text-[10px] text-gray-700">{reason}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {form.is_property && (
+                <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
+                  <div>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Property Group</p>
+                    <select value={form.property_type ?? ''} onChange={ev => {
+                      const newType = ev.target.value
+                      onFormChange({ ...form, property_type: newType, related_item_id: null })
+                      if (newType) onFetchItemsForType(newType)
+                    }}
+                      className={`${inputCls} text-[9px]`}>
+                      <option value="">Select…</option>
+                      {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                  </div>
+                  {form.property_type && (
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Related {form.property_type}</p>
+                      <select value={form.related_item_id ?? ''} onChange={ev => onFormChange({ ...form, related_item_id: ev.target.value ? parseInt(ev.target.value) : null })}
+                        className={`${inputCls} text-[9px]`}>
+                        <option value="">Select a {form.property_type}…</option>
+                        {(itemsByType[form.property_type] || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'available'}
+                          onChange={() => onFormChange({ ...form, availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">Available</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'not_available'}
+                          onChange={() => onFormChange({ ...form, availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
+                          className="w-3 h-3 accent-blue-600" />
+                        <span className="text-[10px] text-gray-700">Not Available</span>
+                      </label>
+                    </div>
+                  </div>
+                  {form.availability === 'available' && (
+                    <>
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name={`working-${e.id}`} checked={form.working === 'working'}
+                              onChange={() => onFormChange({ ...form, working: 'working', not_working_reason: null })}
+                              className="w-3 h-3 accent-blue-600" />
+                            <span className="text-[10px] text-gray-700">Working</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name={`working-${e.id}`} checked={form.working === 'not_working'}
+                              onChange={() => onFormChange({ ...form, working: 'not_working' })}
+                              className="w-3 h-3 accent-blue-600" />
+                            <span className="text-[10px] text-gray-700">Not Working</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
+                        <select value={form.location ?? ''} onChange={ev => onFormChange({ ...form, location: ev.target.value })}
+                          className={`${inputCls} text-[9px]`}>
+                          <option value="">Select…</option>
+                          {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                        </select>
+                      </div>
+                      {form.working === 'not_working' && (
+                        <div>
+                          <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
+                          <select value={form.not_working_reason ?? ''} onChange={ev => onFormChange({ ...form, not_working_reason: ev.target.value })}
+                            className={`${inputCls} text-[9px]`}>
+                            <option value="">Select…</option>
+                            {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {form.availability === 'not_available' && (
+                    <div>
+                      <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
+                      <select value={form.not_available_reason ?? ''} onChange={ev => onFormChange({ ...form, not_available_reason: ev.target.value })}
+                        className={`${inputCls} text-[9px]`}>
+                        <option value="">Select…</option>
+                        {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+              {saveError && (
+                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-[9px]">
+                  {saveError}
+                </div>
+              )}
+              <div className="flex items-center gap-1 mt-2">
+                <button onClick={onSaveEdit} disabled={saving}
+                  className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={onCloseEdit}
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                <MigrateToBillButton expenseId={e.id} onMigrated={onMigrated} />
+                {/* Delete lives here, inside Edit, rather than as its own
+                    button on every row -- one extra tap discourages
+                    accidental deletes. */}
+                {confirmDeleteId === e.id ? (
+                  <span className="ml-auto flex items-center gap-1">
+                    <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
+                      className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
+                      {deleting ? 'Deleting…' : 'Yes, Delete'}
+                    </button>
+                    <button onClick={onDeleteCancel}
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                  </span>
+                ) : (
+                  <button onClick={() => onDeleteStart(e.id)}
+                    className="ml-auto px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded hover:bg-red-100">
+                    Delete
+                  </button>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      </Fragment>
+    )
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
@@ -399,343 +749,19 @@ function ExpenseTable({ rows, highlightId, editId, confirmDeleteId, deleting, sa
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-300">
-        {rows.map((e, i) => (
-          <Fragment key={e.id}>
-            <tr id={`expense-${e.id}`}
-              onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
-              className={`transition-colors text-[9px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
-              <td className="pl-0 pr-1 py-0 sticky left-0 z-10 text-gray-600 break-words bg-inherit">{fmtShort(e.expense_date)}</td>
-              {/* Display only -- expense_account/description stay separate
-                  columns in the database and in the edit form below; this
-                  just folds the description into what the frozen Account
-                  column shows, so the account reads as its own full name.
-                  hideAccount (the By Account grouped view, where every row's
-                  account already matches the group's own header) drops the
-                  now-redundant account name and shows just the description. */}
-              <td className={`${TD} sticky z-10 text-gray-900 font-semibold break-words border-r bg-inherit`} style={{ left: dateWidth }}>
-                {hideAccount ? (e.description ?? '—') : e.description ? `${e.expense_account} — ${e.description}` : e.expense_account}
-              </td>
-              <td className={`${TD} text-right font-bold text-gray-900`}>{e.amount_hidden ? '🔒 Hidden' : `₵${fmt(e.amount)}`}</td>
-              {visibleKeys.map(k => bodyCellFor(k, e))}
-            </tr>
-            {editId === e.id && (
-              <tr className="bg-blue-50/40">
-                <td colSpan={3 + visibleKeys.length} className="px-3 py-3">
-                  <div className="grid grid-cols-2 gap-1 max-w-lg">
-                    <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-                      <input type="date" value={form.expense_date}
-                        onChange={ev => onFormChange({ ...form, expense_date: ev.target.value })} className={inputCls} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
-                      <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
-                        onChange={ev => onFormChange({ ...form, amount: ev.target.value })} className={inputCls} />
-                    </div>
-                    <div className="col-span-2">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <p className="text-[9px] text-gray-400">Account</p>
-                        <button onClick={() => { onSetShowAccountsPanel(!showAccountsPanel); if (!showAccountsPanel) onFetchAccountsData() }}
-                          className="text-[8px] text-blue-600 hover:text-blue-700 font-semibold">
-                          {showAccountsPanel ? '✕ Hide' : '⚙ Manage'}
-                        </button>
-                      </div>
-                      <select value={form.expense_account}
-                        onChange={ev => onFormChange({ ...form, expense_account: ev.target.value })} className={inputCls}>
-                        <option value="">Select…</option>
-                        {accounts.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                      {showAccountsPanel && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200 space-y-2">
-                          {accountError && (
-                            <div className="text-[9px] text-red-600 p-1 bg-red-50 rounded border border-red-200">
-                              {accountError}
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-[9px] text-gray-600 mb-1">New Account</p>
-                            <div className="flex gap-1">
-                              <input type="text" value={newAccountName} onChange={e => onSetNewAccountName(e.target.value)}
-                                onKeyPress={ev => ev.key === 'Enter' && onCreateAccount()}
-                                placeholder="Account name…" className="flex-1 text-[10px] px-1.5 py-1 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-400 outline-none" />
-                              <button onClick={onCreateAccount} disabled={!newAccountName.trim() || accountSaving}
-                                className="px-1.5 py-1 bg-green-600 text-white text-[9px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">
-                                Add
-                              </button>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-gray-600 mb-1">Manage Accounts</p>
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                              {accountsData.length === 0 ? (
-                                <p className="text-[9px] text-gray-400">No accounts</p>
-                              ) : (
-                                accountsData.map(acc => (
-                                  <div key={acc.id} className="flex items-center gap-1 p-1 bg-white rounded border border-gray-200 text-[9px]">
-                                    {editingAccountId === acc.id ? (
-                                      <>
-                                        <input type="text" value={editingAccountName} onChange={e => onSetEditingAccountName(e.target.value)}
-                                          onKeyPress={ev => ev.key === 'Enter' && onRenameAccount()}
-                                          className="flex-1 px-1 py-0.5 border border-blue-300 rounded text-[9px] bg-white outline-none" autoFocus />
-                                        <button onClick={onRenameAccount} disabled={accountSaving}
-                                          className="px-1 py-0.5 bg-green-600 text-white text-[8px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">✓</button>
-                                        <button onClick={() => { onSetEditingAccountId(null); onSetEditingAccountName('') }} disabled={accountSaving}
-                                          className="px-1 py-0.5 bg-gray-300 text-gray-700 text-[8px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50">✕</button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span className="flex-1 truncate">{acc.name}</span>
-                                        <button onClick={() => { onSetEditingAccountId(acc.id); onSetEditingAccountName(acc.name); onSetAccountError(null) }}
-                                          className="px-1 py-0.5 bg-blue-100 text-blue-700 text-[8px] hover:bg-blue-200 rounded">Rename</button>
-                                        <button onClick={() => onDeleteAccount(acc.id)}
-                                          className="px-1 py-0.5 bg-red-100 text-red-700 text-[8px] hover:bg-red-200 rounded">Delete</button>
-                                      </>
-                                    )}
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
-                      <input value={form.description}
-                        onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                      <input value={form.vendor_name}
-                        onChange={ev => onFormChange({ ...form, vendor_name: ev.target.value })} className={inputCls} />
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
-                      <input value={form.cf_expense_type}
-                        onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-[9px] text-gray-400 mb-0.5">Property?</p>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
-                          onChange={() => onFormChange({ ...form, is_property: true })}
-                          className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">Property</span>
-                      </label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
-                          onChange={() => onFormChange({ ...form, is_property: false })}
-                          className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">Not a property</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
-                    <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
-                      className={inputCls}>
-                      <option value="">Select…</option>
-                      {EXPENSE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-[9px] text-gray-400 mb-0.5">Related to another property?</p>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === false}
-                          onChange={() => onFormChange({ ...form, is_related_expense: false, related_to_property_id: null, related_expense_reasons: null })}
-                          className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">No</span>
-                      </label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === true}
-                          onChange={() => { onFormChange({ ...form, is_related_expense: true }); onFetchRelatedItems() }}
-                          className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">Yes</span>
-                      </label>
-                    </div>
-                  </div>
-                  {form.is_related_expense && (
-                    <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
-                      <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
-                        {relatedItemsLoading && (
-                          <div className="text-[9px] text-amber-600 mb-1">Loading properties...</div>
-                        )}
-                        {relatedItemsError && (
-                          <div className="text-[9px] text-red-600 mb-1 p-1 bg-red-50 rounded border border-red-200">
-                            ⚠️ {relatedItemsError}
-                          </div>
-                        )}
-                        <select value={form.related_to_property_id?.toString() ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
-                          className={`${inputCls} text-[9px]`}>
-                          <option value="">Choose a property…</option>
-                          {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : null}
-                        </select>
-                        {relatedItems.length > 0 && (
-                          <div className="text-[9px] text-green-600 mt-1">✓ {relatedItems.length} properties available</div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Reason(s)</p>
-                        <div className="space-y-1">
-                          {RELATED_EXPENSE_REASONS.map(reason => {
-                            const reasonsArray = form.related_expense_reasons
-                              ? form.related_expense_reasons.split(',').map(r => r.trim())
-                              : []
-                            const isChecked = reasonsArray.includes(reason)
-                            return (
-                              <label key={reason} className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" checked={isChecked}
-                                  onChange={ev => {
-                                    if (ev.target.checked) {
-                                      const updated = reasonsArray.includes(reason) ? reasonsArray : [...reasonsArray, reason]
-                                      onFormChange({ ...form, related_expense_reasons: updated.join(', ') })
-                                    } else {
-                                      const updated = reasonsArray.filter(r => r !== reason)
-                                      onFormChange({ ...form, related_expense_reasons: updated.length > 0 ? updated.join(', ') : null })
-                                    }
-                                  }}
-                                  className="w-3 h-3 accent-blue-600" />
-                                <span className="text-[10px] text-gray-700">{reason}</span>
-                              </label>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {form.is_property && (
-                    <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
-                      <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Property Group</p>
-                        <select value={form.property_type ?? ''} onChange={ev => {
-                          const newType = ev.target.value
-                          onFormChange({ ...form, property_type: newType, related_item_id: null })
-                          if (newType) onFetchItemsForType(newType)
-                        }}
-                          className={`${inputCls} text-[9px]`}>
-                          <option value="">Select…</option>
-                          {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                        </select>
-                      </div>
-                      {form.property_type && (
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Related {form.property_type}</p>
-                          <select value={form.related_item_id ?? ''} onChange={ev => onFormChange({ ...form, related_item_id: ev.target.value ? parseInt(ev.target.value) : null })}
-                            className={`${inputCls} text-[9px]`}>
-                            <option value="">Select a {form.property_type}…</option>
-                            {(itemsByType[form.property_type] || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-                          </select>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'available'}
-                              onChange={() => onFormChange({ ...form, availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
-                              className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Available</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'not_available'}
-                              onChange={() => onFormChange({ ...form, availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
-                              className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Not Available</span>
-                          </label>
-                        </div>
-                      </div>
-                      {form.availability === 'available' && (
-                        <>
-                          <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
-                            <div className="flex items-center gap-3">
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" name={`working-${e.id}`} checked={form.working === 'working'}
-                                  onChange={() => onFormChange({ ...form, working: 'working', not_working_reason: null })}
-                                  className="w-3 h-3 accent-blue-600" />
-                                <span className="text-[10px] text-gray-700">Working</span>
-                              </label>
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input type="radio" name={`working-${e.id}`} checked={form.working === 'not_working'}
-                                  onChange={() => onFormChange({ ...form, working: 'not_working' })}
-                                  className="w-3 h-3 accent-blue-600" />
-                                <span className="text-[10px] text-gray-700">Not Working</span>
-                              </label>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
-                            <select value={form.location ?? ''} onChange={ev => onFormChange({ ...form, location: ev.target.value })}
-                              className={`${inputCls} text-[9px]`}>
-                              <option value="">Select…</option>
-                              {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                            </select>
-                          </div>
-                          {form.working === 'not_working' && (
-                            <div>
-                              <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
-                              <select value={form.not_working_reason ?? ''} onChange={ev => onFormChange({ ...form, not_working_reason: ev.target.value })}
-                                className={`${inputCls} text-[9px]`}>
-                                <option value="">Select…</option>
-                                {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                              </select>
-                            </div>
-                          )}
-                        </>
-                      )}
-                      {form.availability === 'not_available' && (
-                        <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
-                          <select value={form.not_available_reason ?? ''} onChange={ev => onFormChange({ ...form, not_available_reason: ev.target.value })}
-                            className={`${inputCls} text-[9px]`}>
-                            <option value="">Select…</option>
-                            {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {saveError && (
-                    <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-[9px]">
-                      {saveError}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 mt-2">
-                    <button onClick={onSaveEdit} disabled={saving}
-                      className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
-                      {saving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button onClick={onCloseEdit}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                    <MigrateToBillButton expenseId={e.id} onMigrated={onMigrated} />
-                    {/* Delete lives here, inside Edit, rather than as its own
-                        button on every row -- one extra tap discourages
-                        accidental deletes. */}
-                    {confirmDeleteId === e.id ? (
-                      <span className="ml-auto flex items-center gap-1">
-                        <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
-                          className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
-                          {deleting ? 'Deleting…' : 'Yes, Delete'}
-                        </button>
-                        <button onClick={onDeleteCancel}
-                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-                      </span>
-                    ) : (
-                      <button onClick={() => onDeleteStart(e.id)}
-                        className="ml-auto px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded hover:bg-red-100">
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
-          </Fragment>
-        ))}
+        {groupedRows ? groupedRows.flatMap(g => [
+          <tr key={`group-${g.label}`} className="bg-blue-600">
+            <td colSpan={3 + visibleKeys.length} className="px-3 py-0.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-white">{g.label}</p>
+                <p className="text-[10px] text-blue-100">
+                  {g.rows.length} record{g.rows.length !== 1 ? 's' : ''} · {g.rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(g.rows)}`}
+                </p>
+              </div>
+            </td>
+          </tr>,
+          ...g.rows.map((e, i) => renderRow(e, i)),
+        ]) : rows.map((e, i) => renderRow(e, i))}
       </tbody>
     </table>
     </div>
@@ -1283,24 +1309,14 @@ export default function ExpensesTab({
         {groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
-            : <div className="space-y-3">
-              {grouped.map(([label, rows]) => (
-                <div key={label}>
-                  <div className="flex items-center justify-between px-3 py-0.5 bg-blue-600 rounded-t-xl sticky top-0 z-20">
-                    <p className="text-xs font-bold text-white">{label}</p>
-                    <p className="text-[10px] text-blue-100">
-                      {rows.length} record{rows.length !== 1 ? 's' : ''} · {rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(rows)}`}
-                    </p>
-                  </div>
-                  <div className="[&>div]:rounded-t-none">
-                    <ExpenseTable rows={rows} {...tableProps}
-                      hideAccount={groupBy === 'account'}
-                      hideVendor={groupBy === 'vendor'}
-                      hidePropertyColumns={!showProperties && showNonProperties} />
-                  </div>
-                </div>
-              ))}
-            </div>
+            // One shared table (one header row) for the whole grouped
+            // listing -- each group gets its own spanning label+total row
+            // ahead of its own rows, instead of a separate <ExpenseTable>
+            // (and therefore a separate, repeated header row) per group.
+            : <ExpenseTable groupedRows={grouped.map(([label, rows]) => ({ label, rows }))} {...tableProps}
+                hideAccount={groupBy === 'account'}
+                hideVendor={groupBy === 'vendor'}
+                hidePropertyColumns={!showProperties && showNonProperties} />
         ) : (
           <>
             <ExpenseTable rows={filtered} {...tableProps} hidePropertyColumns={!showProperties && showNonProperties} />
