@@ -4310,6 +4310,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  // Expenses' Filter dropdown -- houses the view buttons that aren't kept
+  // as their own standalone radios (All Expenses/All Properties/
+  // Non-Properties and the four flag violations stay radios; everything
+  // else -- By Account, By Vendor, and the two property-availability/
+  // property-type splits -- lives here instead).
+  const EXPENSES_FILTER_BAR_KEYS = ['by_account', 'by_vendor', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  function renderExpensesFiltersBar() {
+    return (
+      <select
+        value={EXPENSES_FILTER_BAR_KEYS.includes(liveExpensesRadioValue) ? liveExpensesRadioValue : ''}
+        onChange={e => selectLiveExpensesRadio(e.target.value || 'all')}
+        className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
+      >
+        <option value="">Filter</option>
+        <option value="by_account">By Account ({liveExpensesViewCounts.by_account})</option>
+        <option value="by_vendor">By Vendor ({liveExpensesViewCounts.by_vendor})</option>
+        <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
+        <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
+        <option value="printers">Printers ({liveExpensesViewCounts.printers})</option>
+        <option value="computers">Computers ({liveExpensesViewCounts.computers})</option>
+      </select>
+    )
+  }
+
   // The count records table -- also doubles as the old Loss by Date feed
   // (see liveCountRecordFilter/liveCountLossSummary above), since that was
   // always just this same stock_counts history with the reconciliation
@@ -6223,6 +6247,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
+                {renderExpensesFiltersBar()}
                 <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
                   className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
                   🔍
@@ -6250,12 +6275,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </label>
               </div>
               {/* Rows 2-4: one mutually-exclusive radio group -- All/New Expense/
-                  History (black) first, then the eight view buttons that used
-                  to only be reachable through the embedded Laws & Tasks panel's
-                  `flags` list (By Account/By Vendor/property views), then the
-                  four flag violations (red, with live counts, sorted by count
-                  descending). No Bars Only here -- Expenses has no day-bar/
-                  item-line grouping like Sales/Bills. */}
+                  History (black) first, then All Properties/Non-Properties,
+                  then the four flag violations (red, with live counts, sorted
+                  by count descending). By Account/By Vendor and the property
+                  availability/type splits moved into the Filter dropdown
+                  above instead of cluttering this row. No Bars Only here --
+                  Expenses has no day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === 'all'} onChange={() => selectLiveExpensesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
@@ -6274,14 +6299,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 {[
-                  { key: 'by_account', label: 'By Account', count: liveExpensesViewCounts.by_account },
-                  { key: 'by_vendor', label: 'By Vendor', count: liveExpensesViewCounts.by_vendor },
                   { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties },
                   { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties },
-                  { key: 'properties_available', label: 'Properties Available', count: liveExpensesViewCounts.prop_available },
-                  { key: 'properties_not_available', label: 'Properties Not Available', count: liveExpensesViewCounts.prop_not_available },
-                  { key: 'printers', label: 'Printers', count: liveExpensesViewCounts.printers },
-                  { key: 'computers', label: 'Computers', count: liveExpensesViewCounts.computers },
                 ].map(v => (
                   <label key={v.key} className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                     <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)}
