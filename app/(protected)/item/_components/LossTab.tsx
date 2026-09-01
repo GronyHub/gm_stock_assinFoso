@@ -1589,8 +1589,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   {!isService && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
                   {isGmcItem && (
                     <td className="px-1 py-0 text-left text-teal-700 font-medium whitespace-nowrap">
-                      {getSourcePackForDate(row.date) ? (
-                        <span>{getSourcePackForDate(row.date)}</span>
+                      {(row.converted_in_qty && row.converted_in_qty > 0) ? (
+                        <span>{getSourcePackForDate(row.date) || '—'}</span>
                       ) : (
                         <span className="text-gray-300">—</span>
                       )}
