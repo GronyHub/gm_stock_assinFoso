@@ -862,6 +862,8 @@ function ItemHubPageInner() {
   // announcements feed in place, independent of itemsPageMode/liveMode --
   // it isn't one of that family's modes, just a sibling toggle.
   const [liveShowHome, setLiveShowHome] = useState(false)
+  // Toggle between Sale and Log views inside the Sale tab
+  const [liveShowLogInSale, setLiveShowLogInSale] = useState(initialLiveMode === 'log')
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -4279,8 +4281,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </span>
           )}
         </div>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(!liveShowHome && itemsPageMode === 'log', 'bg-gray-700')}>Log</button>
+        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale'); setLiveShowLogInSale(false) }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(!liveShowHome && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(!liveShowHome && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(!liveShowHome && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
@@ -5855,8 +5856,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <TodayContent />
             </div>
           )}
-          {/* Log tab */}
-          {!liveShowHome && liveMode === 'log' && (
+          {/* Sale/Log tabs */}
+          {!liveShowHome && liveMode === 'sale' && !liveShowLogInSale && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
@@ -5874,28 +5875,40 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex justify-end items-center gap-1.5 px-1.5 py-1 border-b border-gray-100">
-                {isOwnerLevel(session?.user as any) && (
+              <div className="flex items-center justify-between px-1.5 py-1 border-b border-gray-100 gap-2">
+                <div className="flex items-center gap-1">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={!liveShowLogInSale} onChange={() => setLiveShowLogInSale(false)} className="w-3 h-3" />
+                    <span className="text-[9px] font-semibold text-gray-600">Sale</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={liveShowLogInSale} onChange={() => setLiveShowLogInSale(true)} className="w-3 h-3" />
+                    <span className="text-[9px] font-semibold text-gray-600">Log</span>
+                  </label>
+                </div>
+                <div className="flex justify-end items-center gap-1.5">
+                  {isOwnerLevel(session?.user as any) && (
+                    <button
+                      type="button"
+                      onClick={reconcileUndoneTaps}
+                      disabled={liveReconcilingTaps}
+                      title="Fix past undone sales that were never removed from totals"
+                      className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+                    >
+                      {liveReconcilingTaps ? '…' : 'Fix undone sales'}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={reconcileUndoneTaps}
-                    disabled={liveReconcilingTaps}
-                    title="Fix past undone sales that were never removed from totals"
-                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+                    onClick={() => setLiveLogShowAnalytics(a => !a)}
+                    title="Analytics"
+                    className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
+                      liveLogShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                   >
-                    {liveReconcilingTaps ? '…' : 'Fix undone sales'}
+                    📊
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setLiveLogShowAnalytics(a => !a)}
-                  title="Analytics"
-                  className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
-                    liveLogShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  📊
-                </button>
+                </div>
               </div>
               {liveLogShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
@@ -6137,6 +6150,117 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          {/* Log tab -- shown inside Sale mode via radio button toggle */}
+          {!liveShowHome && liveMode === 'sale' && liveShowLogInSale && (
+            <div className={liveRootClassName}>
+              {/* "Large screen" makes this root `fixed inset-0`, covering
+                  this component's own top green bar/footer -- still mounted
+                  underneath, just visually hidden. This floating button is
+                  the actual way back out, reachable regardless of which mode
+                  is showing or how far the content underneath has scrolled. */}
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="flex items-center justify-between px-1.5 py-1 border-b border-gray-100 gap-2">
+                <div className="flex items-center gap-1">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={!liveShowLogInSale} onChange={() => setLiveShowLogInSale(false)} className="w-3 h-3" />
+                    <span className="text-[9px] font-semibold text-gray-600">Sale</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" checked={liveShowLogInSale} onChange={() => setLiveShowLogInSale(true)} className="w-3 h-3" />
+                    <span className="text-[9px] font-semibold text-gray-600">Log</span>
+                  </label>
+                </div>
+                <div className="flex justify-end items-center gap-1.5">
+                  {isOwnerLevel(session?.user as any) && (
+                    <button
+                      type="button"
+                      onClick={reconcileUndoneTaps}
+                      disabled={liveReconcilingTaps}
+                      title="Fix past undone sales that were never removed from totals"
+                      className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 transition disabled:opacity-50"
+                    >
+                      {liveReconcilingTaps ? '…' : 'Fix undone sales'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setLiveLogShowAnalytics(a => !a)}
+                    title="Analytics"
+                    className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
+                      liveLogShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    📊
+                  </button>
+                </div>
+              </div>
+              {liveLogShowAnalytics && <LossFeedAnalyticsSection />}
+              {!liveLogShowAnalytics && (
+                <div className="flex-1 overflow-y-auto">
+                  <table className="w-full border-collapse text-[9px] tabular-nums">
+                    <thead className="sticky top-0 z-10 bg-gray-100">
+                      <tr className="border-b border-gray-200">
+                        <th className="pl-1 pr-1 py-0 text-left">Item</th>
+                        <th className="px-1 py-0 text-right">Amount</th>
+                        <th className="px-1 py-0 text-right">Time</th>
+                        <th className="px-1 py-0 text-right">Price</th>
+                        <th className="px-1 py-0 text-right">CP</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {liveTapsByDate.flatMap(([date, dateTaps]) =>
+                        (dateTaps || []).filter((t): t is Tap => t != null).map((tap) => {
+                          const tapCostPrice = liveCostPriceByItemId.get(tap.item_id) ?? 0
+                          const tapItem = liveAllItems.find(it => it.name.toLowerCase() === tap.item_name.toLowerCase())
+                          return (
+                            <tr key={tap.id} className={`group hover:bg-gray-50 transition ${tap.undone ? 'bg-gray-50 opacity-60' : ''}`}>
+                              <td className={`sticky left-0 z-[1] leading-none px-0.5 py-0 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                                {tap.undone ? (
+                                  <span className={`text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400 ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`} onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}>
+                                    {tap.item_name}
+                                  </span>
+                                ) : (
+                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
+                                )}
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
+                                  ₵{formatPrice(Number(tap.price) * tap.quantity)}
+                                </span>
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-center">
+                                <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                  ₵{formatPrice(tap.price)}
+                                </span>
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-right">
+                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                  ₵{formatPrice(tapCostPrice)}
+                                </span>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
