@@ -62,7 +62,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
     fetch('/api/losses/summary').then(r => r.json())
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [collapsed, expanded, dataFetched])
+  }, [collapsed, expanded, dataFetched, itemId])
 
   useEffect(() => {
     if (collapsed && !expanded) return

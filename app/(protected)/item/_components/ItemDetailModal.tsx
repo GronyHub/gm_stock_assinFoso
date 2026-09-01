@@ -1,8 +1,28 @@
 'use client'
 import dynamic from 'next/dynamic'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Component, ReactNode } from 'react'
 
 const ItemDetailPanel = dynamic(() => import('./ItemDetailPanel'), { ssr: false })
+
+// Error boundary to catch rendering errors for problematic items
+class ErrorBoundary extends Component<{ children: ReactNode; itemId: number }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(e: any) {
+    console.error(`[ItemDetailModal] Render error for item #${this.props.itemId}:`, e)
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div className="p-4 text-red-600 text-sm">Unable to load this item's details</div>
+    }
+    return this.props.children
+  }
+}
 
 // The bottom-sheet chrome around ItemDetailPanel -- first built for Live
 // Sale's own "tap an item's name" popup, now the shared way any page opens
@@ -40,7 +60,9 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
             ×
           </button>
         </div>
-        <ItemDetailPanel itemId={itemId} onItemGone={onClose} />
+        <ErrorBoundary itemId={itemId}>
+          <ItemDetailPanel itemId={itemId} onItemGone={onClose} />
+        </ErrorBoundary>
       </div>
     </div>
   )
