@@ -349,7 +349,7 @@ type Props = {
   setMonthFilter?: (v: number | null) => void
   yearFilter?: number | null
   setYearFilter?: (v: number | null) => void
-  gmcFilter?: boolean
+  gmcFilter?: 'all' | 'gmc' | 'vendor'
   gmcItemIds?: Set<number>
   colPrefs: ColumnPrefs<ColKey>
   onAvailableVendorsChange?: (vendors: string[]) => void
@@ -360,7 +360,7 @@ function BillsTab({
   items, groupFilter, search, violation = null, jumpToBillId, onJumpDone,
   showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
   vendorFilter = null, setVendorFilter = () => {}, monthFilter = null, setMonthFilter = () => {},
-  yearFilter = null, setYearFilter = () => {}, gmcFilter = false, gmcItemIds = new Set(), colPrefs, onAvailableVendorsChange, onAvailableYearsChange,
+  yearFilter = null, setYearFilter = () => {}, gmcFilter = 'all', gmcItemIds = new Set(), colPrefs, onAvailableVendorsChange, onAvailableYearsChange,
 }: Props) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
@@ -563,8 +563,10 @@ function BillsTab({
         return true
       })
     }
-    if (gmcFilter && gmcItemIds.size > 0) {
+    if (gmcFilter === 'gmc' && gmcItemIds.size > 0) {
       list = list.filter(r => r.itemId !== null && gmcItemIds.has(r.itemId))
+    } else if (gmcFilter === 'vendor' && gmcItemIds.size > 0) {
+      list = list.filter(r => r.itemId === null || !gmcItemIds.has(r.itemId))
     }
     if (search) {
       const q = search.toLowerCase()
