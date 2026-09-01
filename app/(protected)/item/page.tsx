@@ -4283,6 +4283,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
         </div>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(!liveShowHome && itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(!liveShowHome && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(!liveShowHome && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(!liveShowHome && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
@@ -5786,14 +5787,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <button
-                    type="button"
-                    onClick={() => { setLiveShowHome(false); setItemsPageMode('log'); setLiveMode('log'); setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
-                    className="px-1.5 py-0.5 text-gray-700 hover:text-blue-600 hover:underline whitespace-nowrap text-[9px] font-semibold"
-                  >
-                    Log
-                  </button>
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
