@@ -20,7 +20,6 @@ export async function GET() {
       JOIN bills b ON bl.bill_id = b.id
       JOIN items i ON bl.item_id = i.id
       WHERE b.vendor_name = 'Internal Consumption'
-        AND bl.source = 'live_sale'
         AND bl.quantity < 0
       ORDER BY b.bill_date DESC, bl.item_id
     ` as ConversionRecord[]
