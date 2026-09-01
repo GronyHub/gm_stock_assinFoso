@@ -228,6 +228,45 @@ const TOPICS: Topic[] = [
     ),
   },
   {
+    id: 'pack-items-gmc-only',
+    title: 'Pack items and GMC-only conversions',
+    group: 'Item settings',
+    keywords: 'pack item gmc only conversion single units photo paper ream',
+    body: (
+      <div className="space-y-4">
+        <p className="text-sm text-gray-700"><strong>Pack items</strong> are items sold as a container of smaller units (e.g. a ream of photo paper, a case of pens). When you set up a pack item, you configure how many singles it contains, and what the single-unit item is called.</p>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700"><strong>How pack conversions work:</strong></p>
+          <Steps items={[
+            <>You buy a pack (e.g. 1 ream of photo paper). The pack's stock goes +1.</>,
+            <>You GMC the pack — the system knows a pack always converts to its singles, so it automatically credits the singles item instead (e.g. +500 sheets of photo paper). The pack's stock goes back to -1 (undo the purchase), and the singles inventory grows.</>,
+            <>You can now sell the singles individually without ever buying a pack per sale — the inventory is already there, and GMC-ing the pack was how it got there.</>,
+          ]} />
+        </div>
+
+        <Callout>
+          <strong>Example:</strong> Photo paper ream (pack) <strong>converts to</strong> 500 sheets (singles). Buy a ream → GMC the ream → 500 sheets are credited automatically. Sell sheets one at a time; never need to buy another ream until inventory runs out.
+        </Callout>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700"><strong>GMC-only items:</strong></p>
+          <p className="text-sm text-gray-700">Some items are marked as "GMC only, no service" — these can <strong>never</strong> be bought directly, and can only exist in stock as credits from pack conversions. Examples: individual sheets that come from a ream, individual pieces from a bulk pack.</p>
+          <p className="text-sm text-gray-700">If you try to GMC one of these items directly (or buy one in a bill), the system blocks it and tells you to GMC the pack instead.</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700"><strong>Why this matters:</strong></p>
+          <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+            <li>It prevents inventory chaos — GMC-only items <strong>must</strong> flow through their pack conversion, keeping stock numbers consistent and traceable.</li>
+            <li>Pack conversions are the single source of truth for how many singles came in.</li>
+            <li>If stock of a singles item doesn't add up, look at the pack's GMC history to find where they came from (or didn't).</li>
+          </ul>
+        </div>
+      </div>
+    ),
+  },
+  {
     id: 'item-filter',
     title: 'Using the item filter (Loss / Gain / Low SOH / count cadence)',
     group: 'Live tab',
