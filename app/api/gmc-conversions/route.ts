@@ -35,6 +35,13 @@ export async function GET() {
         AND gmc_type = 'pack_to_gmc'
     ` as Array<{ converts_to_item_id: number | null; id: number; canonical_name: string; units_per_pack: number | null }>
 
+    console.log('GMC conversions debug:', {
+      conversionsCount: conversions.length,
+      conversions: conversions.slice(0, 3),
+      packsCount: packs.length,
+      packs: packs.slice(0, 3)
+    })
+
     const packsByTarget: Record<string, Array<{ name: string; unitsPerPack: number | null }>> = {}
     packs.forEach(pack => {
       if (!pack.converts_to_item_id) return
@@ -58,10 +65,17 @@ export async function GET() {
 
       const qty = Math.abs(Number(record.quantity))
       const packList = packsByTarget[key] || []
-      const matchingPacks = packList.filter(p => p.unitsPerPack === qty)
+      // Match packs by comparing quantities; allow small numeric differences
+      const matchingPacks = packList.filter(p =>
+        p.unitsPerPack !== null && Math.abs(p.unitsPerPack - qty) < 0.01
+      )
       const sourcePackName = matchingPacks.length > 0
         ? matchingPacks.map(p => p.name).join(' / ')
         : null
+
+      if (matchingPacks.length === 0 && packList.length > 0) {
+        console.log(`No pack match for qty=${qty}, available packs:`, packList.map(p => ({ name: p.name, units: p.unitsPerPack })))
+      }
 
       groupedByTarget[key].push({
         date: record.date,
