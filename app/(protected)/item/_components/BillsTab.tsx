@@ -623,15 +623,16 @@ function BillsTab({
       map.get(gk)!.rows.push(r)
     }
     let prevDate: string | null = null
-    const list: { key: string; billDate: string; vendorName: string | null; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number; billNumbers: string[]; expenseRows: BillExpense[] }[] = []
+    const list: { key: string; billDate: string; vendorName: string | null; isGmc: boolean; total: number; editBillId: number; isDayHead: boolean; rows: FlatRow[]; sharedExpensesTotal: number; sharedPerUnit: number; billNumbers: string[]; expenseRows: BillExpense[] }[] = []
     for (const [key, g] of map) {
       const date10 = g.billDate.slice(0, 10)
       const agg = groupAggregates[key]
       const repBillId = agg?.representativeBillId ?? g.rows[0].billId
       const sharedExpensesTotal = expensesByBillId[repBillId] ?? 0
       const qty = agg?.qty ?? 0
+      const isGmc = !g.vendorName || g.vendorName.trim() === ''
       list.push({
-        key, billDate: g.billDate, vendorName: g.vendorName,
+        key, billDate: g.billDate, vendorName: g.vendorName, isGmc,
         // Includes the related expenses' own total now that they're listed
         // as rows right below -- previously this only summed bill_lines, so
         // the Total column silently excluded them (the +₵ badge next to the
@@ -934,6 +935,20 @@ function BillsTab({
           <tbody>
             {groupedList.map(g => {
               const isEditing = editingBillId === g.editBillId
+              const barBgColor = g.isGmc
+                ? (g.isDayHead ? 'bg-amber-500 hover:bg-amber-600' : 'bg-amber-50 hover:bg-amber-100')
+                : (g.isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100')
+              const barTextColor = g.isGmc
+                ? (g.isDayHead ? 'text-white font-semibold' : 'text-amber-900 font-medium')
+                : (g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium')
+              const barSecondaryText = g.isGmc
+                ? (g.isDayHead ? 'text-amber-100' : 'text-amber-600')
+                : (g.isDayHead ? 'text-blue-100' : 'text-gray-400')
+              const barEditText = g.isGmc
+                ? (g.isDayHead ? 'text-amber-100 hover:text-white' : 'text-amber-600 hover:text-amber-900')
+                : (g.isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700')
+              const vendorDisplay = g.isGmc ? 'GMC' : (g.vendorName ?? '—')
+
               if (isEditing) {
                 return (
                   <tr key={g.key}>
@@ -976,34 +991,34 @@ function BillsTab({
               return (
                 <Fragment key={g.key}>
                   <tr onClick={() => toggleExpanded(g.key)} title="Show/hide this group's items"
-                    className={`cursor-pointer ${g.isDayHead ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                    className={`cursor-pointer ${barBgColor}`}>
                     <td colSpan={1 + colPrefs.shownColumns.length} className={`relative ${g.isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'}`}>
                       <div className="flex items-center gap-1.5">
-                        <span className={`whitespace-nowrap ${g.isDayHead ? 'text-white font-semibold' : 'text-gray-600 font-medium'}`}>
+                        <span className={`whitespace-nowrap ${barTextColor}`}>
                           {fmtShort(g.billDate)}
                         </span>
                         {g.billNumbers.length > 0 && (
                           <span onClick={e => e.stopPropagation()} title="Bill number -- tap and hold to select, then copy"
-                            className={`whitespace-nowrap select-text font-mono ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}>
+                            className={`whitespace-nowrap select-text font-mono ${barSecondaryText}`}>
                             {g.billNumbers.join(', ')}
                           </span>
                         )}
                         <button onClick={e => { e.stopPropagation(); toggleEdit(g.editBillId) }} title="Edit this bill"
-                          className={`leading-none ${g.isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                          className={`leading-none ${barEditText}`}>
                           ✏️
                         </button>
                         <AddBillExpenseButton billId={g.editBillId} onAdded={row => setBillExpenses(prev => [...prev, row])} />
                         {g.sharedExpensesTotal > 0 && (
-                          <span className={`text-[9px] whitespace-nowrap ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}
+                          <span className={`text-[9px] whitespace-nowrap ${barSecondaryText}`}
                             title="Total shared extra costs entered against this bill">
                             +₵{g.sharedExpensesTotal.toFixed(2)}
                           </span>
                         )}
-                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[11px]'}`}
-                          title={g.vendorName ?? ''}>
-                          {g.vendorName ?? '—'}
+                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? (g.isGmc ? 'text-white text-xs' : 'text-white text-xs') : (g.isGmc ? 'text-amber-900 text-[11px]' : 'text-gray-700 text-[11px]')}`}
+                          title={g.vendorName ?? 'GMC'}>
+                          {vendorDisplay}
                         </span>
-                        <span className={`font-semibold whitespace-nowrap ${g.isDayHead ? 'text-white' : 'text-gray-900'}`}>
+                        <span className={`font-semibold whitespace-nowrap ${g.isDayHead ? 'text-white' : (g.isGmc ? 'text-amber-900' : 'text-gray-900')}`}>
                           {fmt(g.total.toFixed(2))}
                         </span>
                       </div>
