@@ -2404,6 +2404,8 @@ function ItemHubPageInner() {
     : liveBillsShowPurchaseOrders ? 'purchase_orders'
     : liveBillsBarsOnly ? 'bars_only'
     : liveBillsViolationFilter ? liveBillsViolationFilter
+    : liveBillsGmcFilter === 'gmc' ? 'gmc_only'
+    : liveBillsGmcFilter === 'vendor' ? 'vendor_only'
     : 'all'
   function selectLiveBillsRadio(value: string) {
     const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense']
@@ -2412,6 +2414,7 @@ function ItemHubPageInner() {
     setLiveBillsShowPurchaseOrders(value === 'purchase_orders')
     setLiveBillsBarsOnly(value === 'bars_only')
     setLiveBillsViolationFilter(violationKeys.includes(value) ? value : null)
+    setLiveBillsGmcFilter(value === 'gmc_only' ? 'gmc' : value === 'vendor_only' ? 'vendor' : 'all')
   }
 
   // Same treatment for Expenses: All/New Expense/History/the four flag
@@ -6483,23 +6486,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Purchase Orders
                 </label>
                 <span className="text-gray-300 text-[10px] mx-1">·</span>
-                <div className="shrink-0 flex items-center gap-1">
-                  <label className="flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                    <input type="radio" name="liveBillsType" checked={liveBillsGmcFilter === 'all'} onChange={() => setLiveBillsGmcFilter('all')}
-                      className="cursor-pointer w-2.5 h-2.5" />
-                    All
-                  </label>
-                  <label className="flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                    <input type="radio" name="liveBillsType" checked={liveBillsGmcFilter === 'gmc'} onChange={() => setLiveBillsGmcFilter('gmc')}
-                      className="cursor-pointer w-2.5 h-2.5" />
-                    GMC Only
-                  </label>
-                  <label className="flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                    <input type="radio" name="liveBillsType" checked={liveBillsGmcFilter === 'vendor'} onChange={() => setLiveBillsGmcFilter('vendor')}
-                      className="cursor-pointer w-2.5 h-2.5" />
-                    Vendor Only
-                  </label>
-                </div>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'gmc_only'} onChange={() => selectLiveBillsRadio('gmc_only')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  GMC Only
+                </label>
+                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'vendor_only'} onChange={() => selectLiveBillsRadio('vendor_only')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Vendor Only
+                </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
