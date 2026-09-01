@@ -3071,6 +3071,9 @@ function ItemHubPageInner() {
     // record in the first place.
     if (liveMode === 'sale' && liveSaleType === 'GMC') {
       filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
+      // GMC cannot tap "GMC only, no service" items -- they can only be
+      // credited from a pack conversion, never directly purchased.
+      filtered = filtered.filter(item => item.gmc_type !== 'gmc')
     }
 
     // Show only items due for count when the filter is active in Sale mode

@@ -51,6 +51,12 @@ export async function POST(req: NextRequest) {
     console.log('[live-tap] Item fetched:', item?.canonical_name)
     if (!item) return badRequest('Item not found')
 
+    // GMC (the service) cannot buy "GMC only, no service" items -- they can
+    // only be credited from a pack conversion, never directly purchased.
+    if (isGMC && item.gmc_type === 'gmc') {
+      return badRequest(`${item.canonical_name} is a "GMC only, no service" item — it cannot be directly purchased, only credited from a pack's GMC conversion.`)
+    }
+
     // If this is a service using GMC, check if the target GMC item has stock
     if (item.product_type === 'service' && item.gmc_type && item.converts_to_item_id) {
       const [targetItem] = await sql`
