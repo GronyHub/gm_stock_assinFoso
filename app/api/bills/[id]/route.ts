@@ -32,24 +32,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
   const vendorNameProvided = vendor_name !== undefined
 
-  await ensureBillAttachmentsColumn()
-  const [row] = await sql`
-    UPDATE bills
-    SET
-      bill_date = COALESCE(${bill_date ?? null}, bill_date),
-      vendor_name = CASE WHEN ${vendorNameProvided} THEN ${vendor_name ?? null} ELSE vendor_name END,
-      status = COALESCE(${status ?? null}, status),
-      attachments = COALESCE(${attachmentsJson}::jsonb, attachments)
-    WHERE id = ${billId}
-    RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
-              COALESCE(attachments, '[]'::jsonb) AS attachments
-  `
-  if (!row) return notFound()
-  const actor = getActorName(session)
-  // 10 minutes flat, same as 'added bill' -- see app/api/bills/route.ts's own
-  // comment on the "typing" duration convention.
-  await logActivity(actor, 'edited bill', `Bill #${billId}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`, 600)
-  return success(row)
+  try {
+    await ensureBillAttachmentsColumn()
+    const [row] = await sql`
+      UPDATE bills
+      SET
+        bill_date = COALESCE(${bill_date ?? null}, bill_date),
+        vendor_name = CASE WHEN ${vendorNameProvided} THEN ${vendor_name ?? null} ELSE vendor_name END,
+        status = COALESCE(${status ?? null}, status),
+        attachments = COALESCE(${attachmentsJson}::jsonb, attachments)
+      WHERE id = ${billId}
+      RETURNING id, bill_number, bill_date::date AS bill_date, vendor_name, total, status, entered_by,
+                COALESCE(attachments, '[]'::jsonb) AS attachments
+    `
+    if (!row) return notFound()
+    const actor = getActorName(session)
+    // 10 minutes flat, same as 'added bill' -- see app/api/bills/route.ts's own
+    // comment on the "typing" duration convention.
+    await logActivity(actor, 'edited bill', `Bill #${billId}${row.vendor_name ? ` — ${row.vendor_name}` : ''}`, 600)
+    return success(row)
+  } catch (err) {
+    console.error('Error updating bill:', err)
+    return new Response(
+      JSON.stringify({ error: `Database error: ${err instanceof Error ? err.message : 'Unknown error'}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
