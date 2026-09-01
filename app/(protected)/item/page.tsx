@@ -862,8 +862,6 @@ function ItemHubPageInner() {
   // announcements feed in place, independent of itemsPageMode/liveMode --
   // it isn't one of that family's modes, just a sibling toggle.
   const [liveShowHome, setLiveShowHome] = useState(false)
-  // Toggle between Sale and Log views inside the Sale tab
-  const [liveShowLogInSale, setLiveShowLogInSale] = useState(initialLiveMode === 'log')
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -4284,7 +4282,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </span>
           )}
         </div>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale'); setLiveShowLogInSale(false) }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(!liveShowHome && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(!liveShowHome && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(!liveShowHome && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
@@ -5788,6 +5786,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <button
+                    type="button"
+                    onClick={() => { setLiveMode('log'); setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
+                    className="px-1.5 py-0.5 text-gray-700 hover:text-blue-600 hover:underline whitespace-nowrap text-[9px] font-semibold"
+                  >
+                    Log
+                  </button>
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
@@ -5859,8 +5865,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <TodayContent />
             </div>
           )}
-          {/* Sale/Log tabs */}
-          {!liveShowHome && liveMode === 'sale' && !liveShowLogInSale && (
+          {/* Sale tab */}
+          {!liveShowHome && liveMode === 'sale' && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
@@ -5878,17 +5884,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex items-center justify-between px-1.5 py-1 border-b border-gray-100 gap-2">
-                <div className="flex items-center gap-1">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" checked={!liveShowLogInSale} onChange={() => setLiveShowLogInSale(false)} className="w-3 h-3" />
-                    <span className="text-[9px] font-semibold text-gray-600">Sale</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" checked={liveShowLogInSale} onChange={() => setLiveShowLogInSale(true)} className="w-3 h-3" />
-                    <span className="text-[9px] font-semibold text-gray-600">Log</span>
-                  </label>
-                </div>
+              <div className="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
                 <div className="flex justify-end items-center gap-1.5">
                   {isOwnerLevel(session?.user as any) && (
                     <button
@@ -6156,7 +6152,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
           {/* Log tab -- shown inside Sale mode via radio button toggle */}
-          {!liveShowHome && liveMode === 'sale' && liveShowLogInSale && (
+          {/* Log tab */}
+          {!liveShowHome && liveMode === 'log' && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
@@ -6174,17 +6171,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex items-center justify-between px-1.5 py-1 border-b border-gray-100 gap-2">
-                <div className="flex items-center gap-1">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" checked={!liveShowLogInSale} onChange={() => setLiveShowLogInSale(false)} className="w-3 h-3" />
-                    <span className="text-[9px] font-semibold text-gray-600">Sale</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" checked={liveShowLogInSale} onChange={() => setLiveShowLogInSale(true)} className="w-3 h-3" />
-                    <span className="text-[9px] font-semibold text-gray-600">Log</span>
-                  </label>
-                </div>
+              <div className="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
                 <div className="flex justify-end items-center gap-1.5">
                   {isOwnerLevel(session?.user as any) && (
                     <button
