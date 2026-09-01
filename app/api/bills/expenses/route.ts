@@ -11,7 +11,7 @@ export async function GET() {
   await ensureBillExpensesTable()
   try {
     const rows = await sql`
-      SELECT id, bill_id, description, amount, migrated_from_expense_id, created_at
+      SELECT id, bill_id, description, amount, migrated_from_expense_id, source, created_at
       FROM bill_expenses
       ORDER BY bill_id, id
     `
@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
   await ensureBillExpensesTable()
   try {
     const [row] = await sql`
-      INSERT INTO bill_expenses (bill_id, description, amount)
-      VALUES (${billId}, ${description || null}, ${amount})
-      RETURNING id, bill_id, description, amount, migrated_from_expense_id, created_at
+      INSERT INTO bill_expenses (bill_id, description, amount, source)
+      VALUES (${billId}, ${description || null}, ${amount}, 'manual')
+      RETURNING id, bill_id, description, amount, migrated_from_expense_id, source, created_at
     `
     const actor = session!.user?.name || (session!.user as any)?.username || 'Unknown'
     await logActivity(actor, 'added bill expense', `Bill #${billId} · ₵${Number(amount).toFixed(2)}${description ? ` — ${description}` : ''}`)

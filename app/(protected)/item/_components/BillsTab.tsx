@@ -15,7 +15,7 @@ const BILLS_COL_DEFAULTS: Record<string, number> = {
   item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, currentCost: 100, costDiff: 80, newSp: 110,
 }
 
-type BillExpense = { id: number; bill_id: number; description: string | null; amount: string; migrated_from_expense_id?: number | null; created_at?: string }
+type BillExpense = { id: number; bill_id: number; description: string | null; amount: string; migrated_from_expense_id?: number | null; source?: string | null; created_at?: string }
 
 type Bill = {
   id: number
@@ -373,6 +373,7 @@ function BillsTab({
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [linesMap, setLinesMap] = useState<Record<number, BillLine[]>>({})
   const [billExpenses, setBillExpenses] = useState<BillExpense[]>([])
+  const [expenseSourceFilter, setExpenseSourceFilter] = useState<'all' | 'sales' | 'manual'>('all')
   // Overrides the item's own selling_price prop the moment a New SP save
   // succeeds -- so every row for that same item (it can appear on more than
   // one bill) reflects it immediately, without waiting on a full refetch.
@@ -483,9 +484,13 @@ function BillsTab({
   // (date, vendor) group).
   const expensesByBillId = useMemo(() => {
     const totals: Record<number, number> = {}
-    for (const e of billExpenses) totals[e.bill_id] = (totals[e.bill_id] ?? 0) + (Number(e.amount) || 0)
+    for (const e of billExpenses) {
+      if (expenseSourceFilter === 'all' || e.source === expenseSourceFilter) {
+        totals[e.bill_id] = (totals[e.bill_id] ?? 0) + (Number(e.amount) || 0)
+      }
+    }
     return totals
-  }, [billExpenses])
+  }, [billExpenses, expenseSourceFilter])
 
   // Same grouping as expensesByBillId, but keeping each individual row --
   // needed to actually list them under "Related Expenses" (whether they got
@@ -495,11 +500,13 @@ function BillsTab({
   const expenseRowsByBillId = useMemo(() => {
     const m: Record<number, BillExpense[]> = {}
     for (const e of billExpenses) {
-      if (!m[e.bill_id]) m[e.bill_id] = []
-      m[e.bill_id].push(e)
+      if (expenseSourceFilter === 'all' || e.source === expenseSourceFilter) {
+        if (!m[e.bill_id]) m[e.bill_id] = []
+        m[e.bill_id].push(e)
+      }
     }
     return m
-  }, [billExpenses])
+  }, [billExpenses, expenseSourceFilter])
 
   const itemsById = useMemo(() => {
     const m = new Map<number, Item>()
@@ -901,6 +908,24 @@ function BillsTab({
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-200 bg-gray-50 text-[10px] shrink-0">
+        <span className="font-semibold text-gray-600">Expenses:</span>
+        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
+          <input type="radio" name="expenseSource" value="all" checked={expenseSourceFilter === 'all'}
+            onChange={() => setExpenseSourceFilter('all')} className="w-3 h-3" />
+          <span className="text-gray-700">All</span>
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
+          <input type="radio" name="expenseSource" value="sales" checked={expenseSourceFilter === 'sales'}
+            onChange={() => setExpenseSourceFilter('sales')} className="w-3 h-3" />
+          <span className="text-gray-700">Sales</span>
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
+          <input type="radio" name="expenseSource" value="manual" checked={expenseSourceFilter === 'manual'}
+            onChange={() => setExpenseSourceFilter('manual')} className="w-3 h-3" />
+          <span className="text-gray-700">Manual</span>
+        </label>
+      </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="overflow-x-auto">
         <table className="border-collapse text-[10px]" style={{

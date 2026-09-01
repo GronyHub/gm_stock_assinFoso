@@ -20,10 +20,12 @@ async function ensureBillExpensesTableImpl() {
       description TEXT,
       amount NUMERIC NOT NULL,
       migrated_from_expense_id INTEGER,
+      source TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS bill_expenses_bill_id_idx ON bill_expenses(bill_id)`.catch(() => {})
+  await sql`ALTER TABLE IF EXISTS bill_expenses ADD COLUMN IF NOT EXISTS source TEXT`.catch(() => {})
 }
 
 export const ensureBillExpensesTable = once(ensureBillExpensesTableImpl)
