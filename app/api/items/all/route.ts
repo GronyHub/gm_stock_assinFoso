@@ -4,30 +4,30 @@ import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn } fr
 import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
 import { NextResponse, NextRequest } from 'next/server'
 
+// Cache for default items request (no limit/offset)
+let cachedItems: any = null
+let cachedItemsTime: number = 0
+const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
   const url = new URL(req.url)
-  // Every caller (item pickers, aliasing, live sale) fetches this with no
-  // limit/offset -- a picker missing an item mid-sale is a live business
-  // problem, not just a display gap. Only an explicit ?limit caps it now.
   const limit = Math.min(Number(url.searchParams.get('limit')) || 50000, 50000)
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
+  // Return cached data if using defaults and cache is fresh
+  const now = Date.now()
+  if (limit === 50000 && offset === 0 && cachedItems && now - cachedItemsTime < CACHE_TTL) {
+    return NextResponse.json(cachedItems)
+  }
+
   try {
-    // Column may not exist yet on first deploy -- both the primary and
-    // fallback queries below select it, so it has to be there before either
-    // runs, not just before whichever one happens to succeed.
     await ensureUnitTimeColumn()
     await ensureAdjustedCostPriceColumn()
     await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
     const [rows, intervals] = await Promise.all([
-      // items.updated_at doesn't reliably exist (same missing-column class
-      // as sales_receipts/bills/staff_times earlier) -- selecting it was
-      // silently throwing on every request, sending every caller (item
-      // pickers, Live Sale's laws panel, etc.) into the fallback below,
-      // which has neither real soh nor count_interval at all.
       sql`
         SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
                COALESCE(s.calculated_soh, 0) AS soh,
@@ -59,6 +59,13 @@ export async function GET(req: NextRequest) {
       console.warn(`items/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
     }
     const withIntervals = (rows as { id: number }[]).map(r => ({ ...r, count_interval: formatCountInterval(intervals.get(r.id)) }))
+
+    // Cache default request
+    if (limit === 50000 && offset === 0) {
+      cachedItems = withIntervals
+      cachedItemsTime = now
+    }
+
     return NextResponse.json(withIntervals)
   } catch (e) {
     console.error('items/all primary query failed, falling back to items table (no soh/count_interval):', e instanceof Error ? e.message : String(e))
@@ -87,6 +94,13 @@ export async function GET(req: NextRequest) {
       if (rows.length === limit) {
         console.warn(`items/all fallback: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
       }
+
+      // Cache default request
+      if (limit === 50000 && offset === 0) {
+        cachedItems = rows
+        cachedItemsTime = now
+      }
+
       return NextResponse.json(rows)
     } catch (e) {
       console.error('items/all fallback error:', e)

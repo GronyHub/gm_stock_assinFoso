@@ -8,8 +8,19 @@ interface ConversionRecord {
   quantity: number
 }
 
+// In-memory cache to reduce database load (5 minute TTL)
+let cachedResponse: any = null
+let cacheTime: number = 0
+const CACHE_TTL = 5 * 60 * 1000
+
 export async function GET() {
   try {
+    // Return cached response if still valid
+    const now = Date.now()
+    if (cachedResponse && now - cacheTime < CACHE_TTL) {
+      return success(cachedResponse)
+    }
+
     const conversions = await sql`
       SELECT
         bl.item_id AS target_item_id,
@@ -34,23 +45,19 @@ export async function GET() {
       source_pack_name: string | null
     }>
 
-    const packs = await sql`
+    // Only fetch packs for targets that actually have conversions
+    const targetIds = [...new Set(conversions.map(c => String(c.target_item_id)))]
+
+    const packs = targetIds.length > 0 ? await sql`
       SELECT
         converts_to_item_id,
         id,
         canonical_name,
         units_per_pack
       FROM items
-      WHERE converts_to_item_id IS NOT NULL
+      WHERE converts_to_item_id = ANY(ARRAY[${targetIds.map(id => parseInt(id)).join(',')}]::integer[])
         AND gmc_type = 'pack_to_gmc'
-    ` as Array<{ converts_to_item_id: number | null; id: number; canonical_name: string; units_per_pack: number | null }>
-
-    console.log('GMC conversions debug:', {
-      conversionsCount: conversions.length,
-      conversions: conversions.slice(0, 3),
-      packsCount: packs.length,
-      packs: packs.slice(0, 3)
-    })
+    ` as Array<{ converts_to_item_id: number | null; id: number; canonical_name: string; units_per_pack: number | null }> : []
 
     const packsByTarget: Record<string, Array<{ name: string; unitsPerPack: number | null }>> = {}
     packs.forEach(pack => {
@@ -82,16 +89,11 @@ export async function GET() {
       } else {
         // Priority 2: Fall back to quantity matching for older records
         const packList = packsByTarget[key] || []
-        // Match packs by comparing quantities; allow small numeric differences
         const matchingPacks = packList.filter(p =>
           p.unitsPerPack !== null && Math.abs(p.unitsPerPack - qty) < 0.01
         )
         if (matchingPacks.length > 0) {
           sourcePackName = matchingPacks.map(p => p.name).join(' / ')
-        }
-
-        if (matchingPacks.length === 0 && packList.length > 0) {
-          console.log(`No pack match for qty=${qty}, available packs:`, packList.map(p => ({ name: p.name, units: p.unitsPerPack })))
         }
       }
 
@@ -103,6 +105,9 @@ export async function GET() {
       })
     })
 
+    // Cache and return
+    cachedResponse = groupedByTarget
+    cacheTime = now
     return success(groupedByTarget)
   } catch (e) {
     return handleError('gmc-conversions', e)

@@ -22,6 +22,11 @@ const ensureTshirtColumns = once(async () => {
   await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
 })
 
+// Cache flags response (updated every 2 minutes)
+let cachedFlags: any = null
+let cachedFlagsTime: number = 0
+const FLAGS_CACHE_TTL = 2 * 60 * 1000
+
 export const dynamic = 'force-dynamic'
 
 async function safeQuery(query: () => Promise<any[]>, fallback: any[] = []): Promise<any[]> {
@@ -113,6 +118,12 @@ function shouldKeepPair(n1: string, n2: string): boolean {
 }
 
 export async function GET() {
+  // Return cached flags if still fresh
+  const now = Date.now()
+  if (cachedFlags && now - cachedFlagsTime < FLAGS_CACHE_TTL) {
+    return cachedFlags
+  }
+
   await ensureSalesAttachmentsColumn()
   // Needed before query #4 (ACP-based cost>=selling check) below, which
   // reads bill_expenses directly.
@@ -560,10 +571,15 @@ export async function GET() {
     .filter((p: any) => !p.has_company_tshirt && p.tshirt_due_date && p.tshirt_due_date < todayStr)
     .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
 
-  return success({
+  const result = success({
     noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
   })
+
+  // Cache the result
+  cachedFlags = result
+  cachedFlagsTime = now
+  return result
 }
