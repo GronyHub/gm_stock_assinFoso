@@ -34,6 +34,21 @@ export async function POST(req: NextRequest) {
     return badRequest('A bill and a positive amount are required.')
   }
 
+  // Expenses should not reference pack items (items with converts_to_item_id).
+  // If the description mentions a pack item, reject it.
+  if (description && description.trim()) {
+    const desc = description.trim().toLowerCase()
+    const packItems = await sql`
+      SELECT id, canonical_name FROM items WHERE converts_to_item_id IS NOT NULL
+    ` as unknown as { id: number; canonical_name: string }[]
+
+    for (const pack of packItems) {
+      if (desc.includes(pack.canonical_name.toLowerCase())) {
+        return badRequest(`The expense description mentions "${pack.canonical_name}", which is a pack item. Expenses should not reference pack items — only use generic descriptions like "transport", "bank charges", etc.`)
+      }
+    }
+  }
+
   await ensureBillExpensesTable()
   try {
     const [row] = await sql`
