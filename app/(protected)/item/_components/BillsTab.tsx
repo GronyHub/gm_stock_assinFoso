@@ -908,24 +908,6 @@ function BillsTab({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center gap-3 px-2 py-1.5 border-b border-gray-200 bg-gray-50 text-[10px] shrink-0">
-        <span className="font-semibold text-gray-600">Expenses:</span>
-        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
-          <input type="radio" name="expenseSource" value="all" checked={expenseSourceFilter === 'all'}
-            onChange={() => setExpenseSourceFilter('all')} className="w-3 h-3" />
-          <span className="text-gray-700">All</span>
-        </label>
-        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
-          <input type="radio" name="expenseSource" value="sales" checked={expenseSourceFilter === 'sales'}
-            onChange={() => setExpenseSourceFilter('sales')} className="w-3 h-3" />
-          <span className="text-gray-700">Sales</span>
-        </label>
-        <label className="flex items-center gap-1 cursor-pointer hover:text-gray-900">
-          <input type="radio" name="expenseSource" value="manual" checked={expenseSourceFilter === 'manual'}
-            onChange={() => setExpenseSourceFilter('manual')} className="w-3 h-3" />
-          <span className="text-gray-700">Manual</span>
-        </label>
-      </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="overflow-x-auto">
         <table className="border-collapse text-[10px]" style={{
