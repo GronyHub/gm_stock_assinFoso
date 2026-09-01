@@ -1155,7 +1155,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   function getSourcePackForDate(date: string): string | null {
     if (!conversionHistory) return null
     const conversions = conversionHistory[String(item.item_id)] ?? []
-    const conv = conversions.find(c => c.date === date)
+    // Normalize the date to YYYY-MM-DD format for comparison
+    const normalizedDate = date.split('T')[0]
+    const conv = conversions.find(c => {
+      const convDate = c.date.split('T')[0]
+      return convDate === normalizedDate
+    })
     return conv?.sourcePackName ?? null
   }
 
