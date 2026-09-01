@@ -15,14 +15,24 @@ export async function GET() {
         bl.item_id AS target_item_id,
         b.bill_date::date AS date,
         i.canonical_name AS target_item,
-        ABS(bl.quantity::numeric) AS quantity
+        ABS(bl.quantity::numeric) AS quantity,
+        bl.source_pack_item_id,
+        sp.canonical_name AS source_pack_name
       FROM bill_lines bl
       JOIN bills b ON bl.bill_id = b.id
       JOIN items i ON bl.item_id = i.id
+      LEFT JOIN items sp ON bl.source_pack_item_id = sp.id
       WHERE b.vendor_name = 'Internal Consumption'
         AND bl.quantity < 0
       ORDER BY b.bill_date DESC, bl.item_id
-    ` as ConversionRecord[]
+    ` as Array<{
+      target_item_id: string | number
+      date: string
+      target_item: string
+      quantity: number
+      source_pack_item_id: number | null
+      source_pack_name: string | null
+    }>
 
     const packs = await sql`
       SELECT
@@ -64,17 +74,25 @@ export async function GET() {
       }
 
       const qty = Math.abs(Number(record.quantity))
-      const packList = packsByTarget[key] || []
-      // Match packs by comparing quantities; allow small numeric differences
-      const matchingPacks = packList.filter(p =>
-        p.unitsPerPack !== null && Math.abs(p.unitsPerPack - qty) < 0.01
-      )
-      const sourcePackName = matchingPacks.length > 0
-        ? matchingPacks.map(p => p.name).join(' / ')
-        : null
 
-      if (matchingPacks.length === 0 && packList.length > 0) {
-        console.log(`No pack match for qty=${qty}, available packs:`, packList.map(p => ({ name: p.name, units: p.unitsPerPack })))
+      // Priority 1: Use source_pack_item_id if set (direct tracking)
+      let sourcePackName: string | null = null
+      if (record.source_pack_name) {
+        sourcePackName = record.source_pack_name
+      } else {
+        // Priority 2: Fall back to quantity matching for older records
+        const packList = packsByTarget[key] || []
+        // Match packs by comparing quantities; allow small numeric differences
+        const matchingPacks = packList.filter(p =>
+          p.unitsPerPack !== null && Math.abs(p.unitsPerPack - qty) < 0.01
+        )
+        if (matchingPacks.length > 0) {
+          sourcePackName = matchingPacks.map(p => p.name).join(' / ')
+        }
+
+        if (matchingPacks.length === 0 && packList.length > 0) {
+          console.log(`No pack match for qty=${qty}, available packs:`, packList.map(p => ({ name: p.name, units: p.unitsPerPack })))
+        }
       }
 
       groupedByTarget[key].push({
