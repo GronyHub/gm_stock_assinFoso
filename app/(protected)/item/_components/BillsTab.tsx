@@ -576,10 +576,10 @@ function BillsTab({
         return true
       })
     }
-    if (gmcFilter === 'gmc' && gmcItemIds.size > 0) {
-      list = list.filter(r => r.itemId !== null && gmcItemIds.has(r.itemId))
-    } else if (gmcFilter === 'vendor' && gmcItemIds.size > 0) {
-      list = list.filter(r => r.itemId === null || !gmcItemIds.has(r.itemId))
+    if (gmcFilter === 'gmc') {
+      list = list.filter(r => !r.vendorName || r.vendorName.trim() === '')
+    } else if (gmcFilter === 'vendor') {
+      list = list.filter(r => r.vendorName && r.vendorName.trim() !== '')
     }
     if (search) {
       const q = search.toLowerCase()
