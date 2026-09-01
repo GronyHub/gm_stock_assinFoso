@@ -1124,6 +1124,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     if (item.gmc_type !== 'gmc') { setConversionHistory(null); return }
     fetch('/api/gmc-conversions').then(r => r.json())
       .then((d: Record<string, any>) => {
+        // Check if response is an error (API returns { error: "..." } on failure)
+        if (d && 'error' in d) {
+          console.error('GMC conversions API error:', d.error)
+          setConversionHistory({})
+          return
+        }
         if (typeof d === 'object' && d !== null) {
           const itemConversions = d[String(item.item_id)] ?? []
           setConversionHistory(itemConversions.length > 0 ? { [String(item.item_id)]: itemConversions } : {})
@@ -1131,7 +1137,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           setConversionHistory({})
         }
       })
-      .catch(() => setConversionHistory({}))
+      .catch((e) => {
+        console.error('GMC conversions fetch error:', e)
+        setConversionHistory({})
+      })
   }, [item.item_id, item.gmc_type])
 
   async function confirmVcpJump(billId: number) {
