@@ -15,7 +15,7 @@ const BILLS_COL_DEFAULTS: Record<string, number> = {
   item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, currentCost: 100, costDiff: 80, newSp: 110,
 }
 
-type BillExpense = { id: number; bill_id: number; description: string | null; amount: string }
+type BillExpense = { id: number; bill_id: number; description: string | null; amount: string; migrated_from_expense_id?: number | null; created_at?: string }
 
 type Bill = {
   id: number
@@ -643,6 +643,19 @@ function BillsTab({
     return list
   }, [filtered, vendorDayTotals, groupAggregates, expensesByBillId, expenseRowsByBillId])
 
+  // Check if an expense description mentions a pack item (has converts_to_item_id)
+  function isExpenseMentioningPack(expense: BillExpense): boolean {
+    if (!expense.description) return false
+    const desc = expense.description.toLowerCase()
+    // Check if any pack item's name appears in the description
+    for (const item of items) {
+      if (item.converts_to_item_id && item.item_name) {
+        if (desc.includes(item.item_name.toLowerCase())) return true
+      }
+    }
+    return false
+  }
+
   function toggleEdit(billId: number) {
     if (editingBillId === billId) { setEditingBillId(null); return }
     const b = billsById[billId]
@@ -1053,16 +1066,18 @@ function BillsTab({
                       its own anywhere else in the app -- list it right here
                       so it's visible instead of just padding the group's
                       Total silently forever. */}
-                  {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => (
-                    <tr key={`exp-${e.id}`} className="group border-b border-gray-100 text-[9px] font-bold leading-tight bg-purple-50/40 hover:bg-purple-50">
+                  {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => {
+                    const mentionsPack = isExpenseMentioningPack(e)
+                    return (
+                    <tr key={`exp-${e.id}`} className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${mentionsPack ? 'bg-red-50/40 hover:bg-red-50' : 'bg-purple-50/40 hover:bg-purple-50'}`}>
                       {/* The amount lives here, next to the expense's own
                           name, not in the numeric Total column -- there can
                           be more than one related expense on the same bill,
                           each with a different name and amount, so a bare
                           number sitting in the shared Total column would
                           have nothing pinning it to which expense it was. */}
-                      <td className="sticky left-0 z-10 px-1 py-0.5 text-purple-700 overflow-hidden bg-purple-50 group-hover:bg-purple-100">
-                        <span className="block italic text-[9px] text-purple-400 leading-tight">Related Expense</span>
+                      <td className={`sticky left-0 z-10 px-1 py-0.5 overflow-hidden ${mentionsPack ? 'text-red-700 bg-red-50 group-hover:bg-red-100' : 'text-purple-700 bg-purple-50 group-hover:bg-purple-100'}`}>
+                        <span className={`block italic text-[9px] leading-tight ${mentionsPack ? 'text-red-400' : 'text-purple-400'}`}>Related Expense</span>
                         <span className="block break-words leading-tight">{e.description || 'Other'} — ₵{fmt(e.amount)}</span>
                       </td>
                       {colPrefs.shownColumns.map(c => (
@@ -1074,7 +1089,8 @@ function BillsTab({
                         </td>
                       ))}
                     </tr>
-                  ))}
+                    )
+                  })}
                 </Fragment>
               )
             })}
