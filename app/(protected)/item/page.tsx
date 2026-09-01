@@ -5858,8 +5858,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <TodayContent />
             </div>
           )}
-          {/* Sale tab */}
-          {!liveShowHome && liveMode === 'sale' && (
+          {/* Log tab */}
+          {!liveShowHome && liveMode === 'log' && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
