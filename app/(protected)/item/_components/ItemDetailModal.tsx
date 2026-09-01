@@ -5,20 +5,29 @@ import { useState, useEffect, Component, ReactNode } from 'react'
 const ItemDetailPanel = dynamic(() => import('./ItemDetailPanel'), { ssr: false })
 
 // Error boundary to catch rendering errors for problematic items
-class ErrorBoundary extends Component<{ children: ReactNode; itemId: number }, { hasError: boolean }> {
+class ErrorBoundary extends Component<{ children: ReactNode; itemId: number }, { hasError: boolean; errorMsg: string }> {
   constructor(props: any) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, errorMsg: '' }
   }
-  static getDerivedStateFromError() {
-    return { hasError: true }
+  static getDerivedStateFromError(error: any) {
+    return {
+      hasError: true,
+      errorMsg: error?.message || String(error) || 'Unknown render error'
+    }
   }
   componentDidCatch(e: any) {
     console.error(`[ItemDetailModal] Render error for item #${this.props.itemId}:`, e)
   }
   render() {
     if (this.state.hasError) {
-      return <div className="p-4 text-red-600 text-sm">Unable to load this item's details</div>
+      return (
+        <div className="p-4 bg-red-50 border-b border-red-200">
+          <p className="text-red-700 text-sm font-semibold mb-1">Render Error</p>
+          <p className="text-red-600 text-xs whitespace-pre-wrap break-words">{this.state.errorMsg}</p>
+          <p className="text-red-500 text-xs mt-2">Item #: {this.props.itemId}</p>
+        </div>
+      )
     }
     return this.props.children
   }
@@ -31,17 +40,25 @@ class ErrorBoundary extends Component<{ children: ReactNode; itemId: number }, {
 // longer exists as its own destination.
 export default function ItemDetailModal({ itemId, onClose }: { itemId: number; onClose: () => void }) {
   const [itemName, setItemName] = useState<string>('')
+  const [error, setError] = useState<string>('')
 
   useEffect(() => {
     fetch('/api/losses/summary')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`API error: ${r.status} ${r.statusText}`)
+        return r.json()
+      })
       .then(d => {
         if (Array.isArray(d)) {
           const item = d.find((i: any) => i.item_id === itemId)
           if (item) setItemName(item.item_name)
+        } else {
+          setError(`Invalid response: expected array, got ${typeof d}`)
         }
       })
-      .catch(() => {})
+      .catch((err: any) => {
+        setError(`Error loading item: ${err?.message || 'Unknown error'}`)
+      })
   }, [itemId])
 
   return (
@@ -51,7 +68,7 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
         onClick={e => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
-          <p className="text-lg font-bold text-red-600 truncate">{itemName}</p>
+          <p className="text-lg font-bold text-red-600 truncate">{itemName || `Item #${itemId}`}</p>
           <button
             type="button"
             onClick={onClose}
@@ -60,6 +77,12 @@ export default function ItemDetailModal({ itemId, onClose }: { itemId: number; o
             ×
           </button>
         </div>
+        {error && (
+          <div className="p-4 bg-red-50 border-b border-red-200">
+            <p className="text-red-700 text-sm font-semibold mb-1">Error</p>
+            <p className="text-red-600 text-xs whitespace-pre-wrap break-words">{error}</p>
+          </div>
+        )}
         <ErrorBoundary itemId={itemId}>
           <ItemDetailPanel itemId={itemId} onItemGone={onClose} />
         </ErrorBoundary>
