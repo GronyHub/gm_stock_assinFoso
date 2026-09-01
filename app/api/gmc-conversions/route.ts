@@ -25,17 +25,50 @@ export async function GET() {
       ORDER BY b.bill_date DESC, bl.item_id
     ` as ConversionRecord[]
 
-    const groupedByTarget: Record<string, Array<{ date: string; targetItem: string; quantity: number }>> = {}
+    const packs = await sql`
+      SELECT
+        converts_to_item_id,
+        id,
+        canonical_name,
+        units_per_pack
+      FROM items
+      WHERE converts_to_item_id IS NOT NULL
+        AND gmc_type = 'pack_to_gmc'
+    ` as Array<{ converts_to_item_id: number | null; id: number; canonical_name: string; units_per_pack: number | null }>
+
+    const packsByTarget: Record<string, Array<{ name: string; unitsPerPack: number | null }>> = {}
+    packs.forEach(pack => {
+      if (!pack.converts_to_item_id) return
+      const key = String(pack.converts_to_item_id)
+      if (!packsByTarget[key]) {
+        packsByTarget[key] = []
+      }
+      packsByTarget[key].push({
+        name: pack.canonical_name,
+        unitsPerPack: pack.units_per_pack ? Number(pack.units_per_pack) : null
+      })
+    })
+
+    const groupedByTarget: Record<string, Array<{ date: string; targetItem: string; quantity: number; sourcePackName: string | null }>> = {}
 
     conversions.forEach(record => {
       const key = String(record.target_item_id)
       if (!groupedByTarget[key]) {
         groupedByTarget[key] = []
       }
+
+      const qty = Math.abs(Number(record.quantity))
+      const packList = packsByTarget[key] || []
+      const matchingPacks = packList.filter(p => p.unitsPerPack === qty)
+      const sourcePackName = matchingPacks.length > 0
+        ? matchingPacks.map(p => p.name).join(' / ')
+        : null
+
       groupedByTarget[key].push({
         date: record.date,
         targetItem: record.target_item,
-        quantity: Math.abs(Number(record.quantity))
+        quantity: qty,
+        sourcePackName
       })
     })
 

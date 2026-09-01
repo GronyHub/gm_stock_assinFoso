@@ -1101,26 +1101,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   tradeOffRecords?: CountRecord[]
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
-  const [conversionHistory, setConversionHistory] = useState<Array<{ date: string; quantity: number }>>([])
-
   useEffect(() => {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
       .then(d => setDayRows(Array.isArray(d) ? d : []))
       .catch(() => setDayRows([]))
   }, [item.item_id])
-
-  useEffect(() => {
-    if (item.gmc_type !== 'gmc') return
-    fetch(`/api/gmc-conversions`).then(r => r.json())
-      .then(d => {
-        const historyByTarget = typeof d === 'object' && d !== null ? d : {}
-        const thisItemsHistory = historyByTarget[String(item.item_id)] || []
-        setConversionHistory(thisItemsHistory.sort((a: any, b: any) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        ))
-      })
-      .catch(() => {})
-  }, [item.item_id, item.gmc_type])
 
   // Bill ids whose VCP jump was already confirmed as a genuine price change
   // (see /api/flags/dismiss-vcp-jump) -- fetched per item so computeVcpJumps
@@ -1133,12 +1118,36 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       .catch(() => {})
   }, [item.item_id])
 
+  // Conversion history for GMC items (which pack converted to this item on each date)
+  const [conversionHistory, setConversionHistory] = useState<Record<string, { date: string; targetItem: string; quantity: number; sourcePackName: string | null }[]> | null>(null)
+  useEffect(() => {
+    if (item.gmc_type !== 'gmc') { setConversionHistory(null); return }
+    fetch('/api/gmc-conversions').then(r => r.json())
+      .then((d: Record<string, any>) => {
+        if (typeof d === 'object' && d !== null) {
+          const itemConversions = d[String(item.item_id)] ?? []
+          setConversionHistory(itemConversions.length > 0 ? { [String(item.item_id)]: itemConversions } : {})
+        } else {
+          setConversionHistory({})
+        }
+      })
+      .catch(() => setConversionHistory({}))
+  }, [item.item_id, item.gmc_type])
+
   async function confirmVcpJump(billId: number) {
     setDismissedVcpJumpBillIds(prev => new Set(prev).add(billId))
     await fetch('/api/flags/dismiss-vcp-jump', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId: item.item_id, billId }),
     }).catch(() => {})
+  }
+
+  // Helper to look up source pack name for a given date
+  function getSourcePackForDate(date: string): string | null {
+    if (!conversionHistory) return null
+    const conversions = conversionHistory[String(item.item_id)] ?? []
+    const conv = conversions.find(c => c.date === date)
+    return conv?.sourcePackName ?? null
   }
 
   const isPackChain = item.product_type !== 'service' && item.converts_to_item_id != null
@@ -1522,6 +1531,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
               <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>
+              {isGmcItem && <th className="px-1 py-0 text-left text-teal-600" title="Which pack was converted to create this CNV">Source Pack</th>}
               <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
               <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>
               <th className="px-1 py-0 text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
@@ -1563,6 +1573,15 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     ) : shortItemDate(row.date)}
                   </td>
                   {!isService && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
+                  {isGmcItem && (
+                    <td className="px-1 py-0 text-left text-teal-700 font-medium whitespace-nowrap">
+                      {getSourcePackForDate(row.date) ? (
+                        <span>{getSourcePackForDate(row.date)}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                  )}
                   {/* row.used (feeding the real Expected/Loss math below) no
                       longer folds in the per-service breakdown amounts --
                       that used to double-count them against the negative
@@ -1790,31 +1809,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               ...and {computed!.length - maxRows!} more rows
             </div>
           )}
-          </div>
-        </div>
-      )}
-      {isGmcItem && conversionHistory.length > 0 && (
-        <div className="border-t border-gray-200 bg-gray-50 p-3">
-          <h4 className="text-xs font-bold text-gray-700 mb-2">Consumption History</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[9px]">
-              <thead>
-                <tr className="bg-gray-100 border-b border-gray-200">
-                  <th className="border border-gray-200 px-2 py-1 text-left font-semibold text-gray-700">Date Consumed</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold text-gray-700">Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {conversionHistory.map((conv, idx) => (
-                  <tr key={idx} className="border-b border-gray-100 hover:bg-blue-50">
-                    <td className="border border-gray-200 px-2 py-1 text-gray-700">
-                      {new Date(conv.date).toLocaleDateString()}
-                    </td>
-                    <td className="border border-gray-200 px-2 py-1 text-center text-gray-700 font-semibold">×{conv.quantity}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
