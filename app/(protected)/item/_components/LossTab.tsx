@@ -1101,7 +1101,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   tradeOffRecords?: CountRecord[]
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
-  const [conversionHistory, setConversionHistory] = useState<Array<{ date: string; quantity: number; sourcePackName: string | null }>>([])
+  const [conversionHistory, setConversionHistory] = useState<Array<{ date: string; quantity: number }>>([])
 
   useEffect(() => {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
@@ -1801,7 +1801,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <thead>
                 <tr className="bg-gray-100 border-b border-gray-200">
                   <th className="border border-gray-200 px-2 py-1 text-left font-semibold text-gray-700">Date Consumed</th>
-                  <th className="border border-gray-200 px-2 py-1 text-left font-semibold text-gray-700">Source Pack</th>
                   <th className="border border-gray-200 px-2 py-1 text-center font-semibold text-gray-700">Quantity</th>
                 </tr>
               </thead>
@@ -1810,13 +1809,6 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <tr key={idx} className="border-b border-gray-100 hover:bg-blue-50">
                     <td className="border border-gray-200 px-2 py-1 text-gray-700">
                       {new Date(conv.date).toLocaleDateString()}
-                    </td>
-                    <td className="border border-gray-200 px-2 py-1 text-gray-700">
-                      {conv.sourcePackName ? (
-                        <span className="font-semibold text-blue-700">{conv.sourcePackName}</span>
-                      ) : (
-                        <span className="text-gray-400 italic">Unknown</span>
-                      )}
                     </td>
                     <td className="border border-gray-200 px-2 py-1 text-center text-gray-700 font-semibold">×{conv.quantity}</td>
                   </tr>
