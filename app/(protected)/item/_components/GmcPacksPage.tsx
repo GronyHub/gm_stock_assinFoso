@@ -19,9 +19,16 @@ interface AllItem {
   product_type?: string
 }
 
+interface ConversionHistory {
+  date: string
+  targetItem: string
+  quantity: number
+}
+
 export default function GmcPacksPage() {
   const [packs, setPacks] = useState<GmcPack[]>([])
   const [allItems, setAllItems] = useState<AllItem[]>([])
+  const [conversionHistory, setConversionHistory] = useState<Record<string, ConversionHistory[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,17 +43,23 @@ export default function GmcPacksPage() {
       try {
         setLoading(true)
         setError(null)
-        const [packsRes, itemsRes] = await Promise.all([
+        const [packsRes, itemsRes, historyRes] = await Promise.all([
           fetch('/api/gmc-packs'),
-          fetch('/api/items/all')
+          fetch('/api/items/all'),
+          fetch('/api/gmc-conversions')
         ])
         if (!packsRes.ok || !itemsRes.ok) {
           throw new Error('Failed to fetch data')
         }
         const packsData = await packsRes.json()
         const itemsData = await itemsRes.json()
+        let historyData = {}
+        if (historyRes.ok) {
+          historyData = await historyRes.json()
+        }
         setPacks(packsData)
         setAllItems(itemsData)
+        setConversionHistory(historyData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
@@ -223,6 +236,9 @@ export default function GmcPacksPage() {
             <th className="border border-gray-200 px-1.5 py-0.5 text-left font-semibold text-gray-700">
               Service Uses GMC
             </th>
+            <th className="border border-gray-200 px-1.5 py-0.5 text-left font-semibold text-gray-700">
+              Conversion History
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -260,6 +276,20 @@ export default function GmcPacksPage() {
                             ({source.units_per_pack}u)
                           </span>
                         )}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-[8px] italic">—</span>
+                  )}
+                </div>
+              </td>
+              <td className="border border-gray-200 px-1.5 py-0">
+                <div className="space-y-0.5">
+                  {conversionHistory[row.target_id] && conversionHistory[row.target_id].length > 0 ? (
+                    conversionHistory[row.target_id].map((conv: ConversionHistory, convIdx: number) => (
+                      <div key={convIdx} className="text-[9px] text-gray-700">
+                        <div>{conv.targetItem}</div>
+                        <div className="text-gray-500 text-[8px]">{new Date(conv.date).toLocaleDateString()} × {conv.quantity}</div>
                       </div>
                     ))
                   ) : (
