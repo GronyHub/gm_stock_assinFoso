@@ -23,8 +23,11 @@ export async function GET(req: NextRequest) {
         bl.unit_price,
         bl.item_total,
         bl.usage_unit,
-        COALESCE(bl.unresolved, false) AS unresolved
+        COALESCE(bl.unresolved, false) AS unresolved,
+        i.converts_to_item_id,
+        COALESCE(i.gmc_type, '') AS gmc_type
       FROM bill_lines bl
+      LEFT JOIN items i ON i.id = bl.item_id
       -- Skip lines belonging to /api/sales/live-tap's "Internal
       -- Consumption" bills -- see /api/bills' own GET for why those are
       -- excluded from the Bills tab entirely, same reasoning here.

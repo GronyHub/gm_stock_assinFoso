@@ -113,6 +113,17 @@ export async function POST(req: NextRequest) {
       const names = gmcOnlyItems.map(i => `"${i.canonical_name}"`).join(', ')
       return badRequest(`${names} ${gmcOnlyItems.length === 1 ? 'is a' : 'are'} "GMC only, no service" item${gmcOnlyItems.length === 1 ? '' : 's'} -- these are never bought directly, only credited from a pack's GMC conversion. Check the item picked.`)
     }
+
+    // Items in a bill must have converts_to_item_id set (i.e., they are
+    // packs that produce GMC items). Items without this relationship should
+    // not be in bills.
+    const nonPackItems = await sql`
+      SELECT id, canonical_name FROM items WHERE id = ANY(${itemIds}) AND converts_to_item_id IS NULL
+    ` as unknown as { id: number; canonical_name: string }[]
+    if (nonPackItems.length > 0) {
+      const names = nonPackItems.map(i => `"${i.canonical_name}"`).join(', ')
+      return badRequest(`${names} ${nonPackItems.length === 1 ? 'is not a' : 'are not'} pack item${nonPackItems.length === 1 ? '' : 's'} (marked in red) -- only packs with "converts to" relationships should be in bills. Remove ${nonPackItems.length === 1 ? 'it' : 'them'} and try again.`)
+    }
   }
 
   const enteredBy = session!.user?.name || (session!.user as any)?.username || null

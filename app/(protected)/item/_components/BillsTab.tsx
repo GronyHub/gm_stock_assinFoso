@@ -9,7 +9,7 @@ import { type ColKey, COLUMNS } from './billsTabColumns'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import ItemDetailModal from './ItemDetailModal'
 
-type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null; cost_price?: string | number | null }
+type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null; cost_price?: string | number | null; converts_to_item_id?: number | null; gmc_type?: string | null }
 
 const BILLS_COL_DEFAULTS: Record<string, number> = {
   item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, currentCost: 100, costDiff: 80, newSp: 110,
@@ -38,6 +38,8 @@ type BillLine = {
   item_total: string
   usage_unit: string | null
   unresolved: boolean
+  converts_to_item_id?: number | null
+  gmc_type?: string | null
 }
 
 // One row per item line (not per bill) -- date/vendor come from the line's
@@ -57,6 +59,8 @@ type FlatRow = {
   unitPrice: string
   itemTotal: string
   unresolved: boolean
+  convertsToItemId?: number | null
+  gmcType?: string | null
 }
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
@@ -442,6 +446,8 @@ function BillsTab({
           unitPrice: l.unit_price,
           itemTotal: l.item_total,
           unresolved: l.item_id == null || l.unresolved,
+          convertsToItemId: l.converts_to_item_id,
+          gmcType: l.gmc_type,
         })
       })
     }
@@ -986,7 +992,7 @@ function BillsTab({
                   {(!barsOnly || expandedIds.has(g.key)) && g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
                       className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                      <td className={`sticky left-0 z-10 px-1 py-0 text-gray-900 overflow-hidden ${row.unresolved ? 'bg-red-50' : 'bg-white group-hover:bg-gray-50'}`}>
+                      <td className={`sticky left-0 z-10 px-1 py-0 text-gray-900 overflow-hidden ${row.unresolved || (row.itemId && !row.convertsToItemId && row.gmcType !== 'gmc') ? 'bg-red-50' : 'bg-white group-hover:bg-gray-50'}`}>
                         {row.itemId ? (
                           <button type="button" onClick={() => setViewingItemId(row.itemId)} className="block truncate text-blue-600 hover:underline text-left">
                             {row.itemName}
