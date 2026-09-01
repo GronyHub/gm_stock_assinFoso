@@ -5789,7 +5789,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span className="text-gray-400 px-1">·</span>
                   <button
                     type="button"
-                    onClick={() => { setLiveMode('log'); setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
+                    onClick={() => { setLiveShowHome(false); setItemsPageMode('log'); setLiveMode('log'); setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
                     className="px-1.5 py-0.5 text-gray-700 hover:text-blue-600 hover:underline whitespace-nowrap text-[9px] font-semibold"
                   >
                     Log
