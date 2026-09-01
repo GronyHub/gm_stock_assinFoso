@@ -961,8 +961,13 @@ function BillsTab({
                       </div>
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
-                        <input value={editForm.vendor_name} autoComplete="off"
-                          onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                        <select value={editForm.vendor_name} onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))}
+                          className="w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
+                          <option value="">— GMC (no vendor) —</option>
+                          {availableVendors.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Receipt</p>
