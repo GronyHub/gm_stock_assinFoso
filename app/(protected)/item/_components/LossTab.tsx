@@ -1101,12 +1101,26 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   tradeOffRecords?: CountRecord[]
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
+  const [conversionHistory, setConversionHistory] = useState<Array<{ date: string; sourceItem: string; quantity: number }>>([])
 
   useEffect(() => {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
       .then(d => setDayRows(Array.isArray(d) ? d : []))
       .catch(() => setDayRows([]))
   }, [item.item_id])
+
+  useEffect(() => {
+    if (item.gmc_type !== 'gmc') return
+    fetch(`/api/gmc-conversions`).then(r => r.json())
+      .then(d => {
+        const historyByTarget = typeof d === 'object' && d !== null ? d : {}
+        const thisItemsHistory = historyByTarget[String(item.item_id)] || []
+        setConversionHistory(thisItemsHistory.sort((a: any, b: any) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        ))
+      })
+      .catch(() => {})
+  }, [item.item_id, item.gmc_type])
 
   // Bill ids whose VCP jump was already confirmed as a genuine price change
   // (see /api/flags/dismiss-vcp-jump) -- fetched per item so computeVcpJumps
@@ -1776,6 +1790,31 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               ...and {computed!.length - maxRows!} more rows
             </div>
           )}
+          </div>
+        </div>
+      )}
+      {isGmcItem && conversionHistory.length > 0 && (
+        <div className="border-t border-gray-200 bg-gray-50 p-3">
+          <h4 className="text-xs font-bold text-gray-700 mb-2">Consumption History</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[9px]">
+              <thead>
+                <tr className="bg-gray-100 border-b border-gray-200">
+                  <th className="border border-gray-200 px-2 py-1 text-left font-semibold text-gray-700">Date Consumed</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold text-gray-700">Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {conversionHistory.map((conv, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 hover:bg-blue-50">
+                    <td className="border border-gray-200 px-2 py-1 text-gray-700">
+                      {new Date(conv.date).toLocaleDateString()}
+                    </td>
+                    <td className="border border-gray-200 px-2 py-1 text-center text-gray-700 font-semibold">×{conv.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
