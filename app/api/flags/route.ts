@@ -22,10 +22,16 @@ const ensureTshirtColumns = once(async () => {
   await sql`ALTER TABLE staff_profiles ADD COLUMN IF NOT EXISTS tshirt_due_date DATE`.catch(() => {})
 })
 
-// Cache flags response (updated every 2 minutes)
+// Cache flags response. Was 2 minutes, which nearly matched this route's
+// own 2-minute poll interval (useViolations.ts's loadFlags) -- almost every
+// poll tick was a cache miss, re-running all ~20 flag queries plus 4
+// schema-ensure calls (including two that pg_stat_statements showed costing
+// ~1-1.4 seconds each per cold-started process) from scratch. 30 minutes
+// keeps flags reasonably current for staff without re-running that on
+// nearly every poll tick.
 let cachedFlags: any = null
 let cachedFlagsTime: number = 0
-const FLAGS_CACHE_TTL = 2 * 60 * 1000
+const FLAGS_CACHE_TTL = 30 * 60 * 1000
 
 export const dynamic = 'force-dynamic'
 
