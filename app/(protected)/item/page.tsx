@@ -6482,17 +6482,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   Purchase Orders
                 </label>
-                <span className="text-gray-300 text-[10px] mx-1">·</span>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'gmc_only'} onChange={() => selectLiveBillsRadio('gmc_only')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  GMC Only
-                </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'vendor_only'} onChange={() => selectLiveBillsRadio('vendor_only')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Vendor Only
-                </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
