@@ -7522,27 +7522,37 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 {liveTapError}
                               </div>
                             )}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2 py-1 text-[9px] text-yellow-900 font-mono">
+                              <div>DEBUG:</div>
+                              <div>qty="{liveQty}"</div>
+                              <div>price="{livePrice}"</div>
+                              <div>saving={String(liveSaving)}</div>
+                              <div>disabled={String(liveQty === '' || liveSaving)}</div>
+                              <div>item={liveSelectedItem ? liveSelectedItem.name : 'NULL'}</div>
+                            </div>
                             <button
                               type="button"
-                              onClick={async () => {
-                                const clickedMsg = `[QUICK TAP] Button clicked - item: ${liveSelectedItem?.name}, qty: ${liveQty}`
+                              onClick={() => {
+                                const clickedMsg = `[QUICK TAP] Button clicked! item: ${liveSelectedItem?.name}, qty: ${liveQty}`
                                 console.log(clickedMsg)
                                 alert(clickedMsg)
-                                setLiveTapStatus(['CLICKED - Starting recordTap...'])
-                                try {
-                                  await recordTap()
-                                  setLiveEditingSelectedItem(false)
-                                } catch (e) {
-                                  const errMsg = e instanceof Error ? e.message : String(e)
-                                  console.error('[QUICK TAP] Error:', errMsg)
-                                  alert(`QUICK TAP ERROR: ${errMsg}`)
-                                  setLiveTapError(`Tap failed: ${errMsg}`)
-                                  setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
-                                  showToast(`Tap failed: ${errMsg}`, 'error')
-                                }
+                                setLiveTapStatus(prev => [...prev, 'CLICKED - Starting recordTap...'])
+                                ;(async () => {
+                                  try {
+                                    await recordTap()
+                                    setLiveEditingSelectedItem(false)
+                                  } catch (e) {
+                                    const errMsg = e instanceof Error ? e.message : String(e)
+                                    console.error('[QUICK TAP] Error:', errMsg)
+                                    alert(`QUICK TAP ERROR: ${errMsg}`)
+                                    setLiveTapError(`Tap failed: ${errMsg}`)
+                                    setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
+                                    showToast(`Tap failed: ${errMsg}`, 'error')
+                                  }
+                                })()
                               }}
                               disabled={liveQty === '' || liveSaving}
-                              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
+                              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {liveSaving ? 'Recording…' : 'Tap Sale'}
                             </button>
