@@ -1,6 +1,5 @@
 {
   "crons": [
-    { "path": "/api/violations/auto-check", "schedule": "0 6 * * *" },
     { "path": "/api/maintenance/optimize-db", "schedule": "0 2 * * 0" }
   ]
 }
