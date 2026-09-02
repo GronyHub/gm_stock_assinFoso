@@ -14,6 +14,7 @@ import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt,
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import { HelpButton } from './_components/HelpButton'
 import ClockInGateModal from './_components/ClockInGateModal'
 import { LawsTasksModal } from './_components/LawsTasksModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
@@ -8221,6 +8222,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+          <div className="fixed bottom-4 right-4 z-40">
+            <HelpButton onClick={() => setLiveHelpModalOpen(true)} className="bg-blue-600 text-white hover:text-white hover:bg-blue-700 rounded-full shadow-lg px-3 py-2" />
+          </div>
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
           )}
