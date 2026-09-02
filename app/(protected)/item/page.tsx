@@ -7476,6 +7476,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           <div className="px-3 py-1.5 text-xs font-extrabold text-white bg-blue-600">
                             QUICK TAP
                           </div>
+                          {liveTapStatus.length > 0 && (
+                            <div className="p-2 border-b border-blue-200 bg-white">
+                              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-[9px] font-mono text-blue-900 max-h-20 overflow-y-auto">
+                                {liveTapStatus.map((msg, i) => (
+                                  <div key={i}>{msg}</div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           <div className="p-3 space-y-2">
                             <div className="space-y-2">
                               <label className="block text-xs font-semibold text-gray-700">Quantity</label>
@@ -7515,9 +7524,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             )}
                             <button
                               type="button"
-                              onClick={() => {
-                                recordTap()
-                                setLiveEditingSelectedItem(false)
+                              onClick={async () => {
+                                try {
+                                  await recordTap()
+                                  setLiveEditingSelectedItem(false)
+                                } catch (e) {
+                                  const errMsg = e instanceof Error ? e.message : String(e)
+                                  setLiveTapError(`Tap failed: ${errMsg}`)
+                                  showToast(`Tap failed: ${errMsg}`, 'error')
+                                }
                               }}
                               disabled={liveQty === '' || liveSaving}
                               className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
@@ -7771,7 +7786,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         </button>
                         <button
                           type="button"
-                          onClick={() => recordTap()}
+                          onClick={async () => {
+                            try {
+                              await recordTap()
+                            } catch (e) {
+                              const errMsg = e instanceof Error ? e.message : String(e)
+                              setLiveTapError(`Tap failed: ${errMsg}`)
+                              showToast(`Tap failed: ${errMsg}`, 'error')
+                            }
+                          }}
                           disabled={!liveQty || liveSaving || liveGmcCountSaving}
                           className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-50"
                         >
