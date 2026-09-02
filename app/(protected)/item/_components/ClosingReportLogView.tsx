@@ -32,7 +32,7 @@ export default function ClosingReportLogView({ field, label, icon }: {
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 30000)
+  usePolling(load, 120000)
 
   return (
     <div className="py-2 px-2 space-y-2">

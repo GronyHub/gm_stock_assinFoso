@@ -74,7 +74,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 120000)
+  usePolling(load, 600000)
 
   const filtered = useMemo(() => {
     let list = properties

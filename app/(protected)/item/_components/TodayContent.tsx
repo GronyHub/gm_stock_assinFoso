@@ -296,7 +296,7 @@ function AnnouncementsPanel() {
   }, [posts.length, hasMore])
 
   useEffect(() => { load() }, [])
-  usePolling(load, 15000)
+  usePolling(load, 90000)
 
   // Clears the Home badge -- opening this panel means the user has seen
   // whatever's currently posted, even before scrolling through it.

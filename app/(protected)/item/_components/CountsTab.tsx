@@ -329,8 +329,8 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
 
   useEffect(() => { loadRecords() }, [])
   useEffect(() => { loadDaily() }, [])
-  usePolling(loadRecords, 120000, editingId === null)
-  usePolling(loadDaily, 120000, editingId === null)
+  usePolling(loadRecords, 600000, editingId === null)
+  usePolling(loadDaily, 600000, editingId === null)
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null

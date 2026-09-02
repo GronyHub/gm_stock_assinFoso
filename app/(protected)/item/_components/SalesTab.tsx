@@ -289,7 +289,7 @@ function SalesTab({
   }
 
   useEffect(() => { loadReceipts() }, [])
-  usePolling(loadReceipts, 120000, editingId === null)
+  usePolling(loadReceipts, 600000, editingId === null)
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null

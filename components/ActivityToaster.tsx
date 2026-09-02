@@ -43,7 +43,7 @@ export default function ActivityToaster() {
   useEffect(() => { if (status === 'authenticated') poll() }, [status, username])
   // Mounted app-wide in the root layout, same story as LivePresence -- was
   // running unguarded on every open tab all day regardless of visibility.
-  usePolling(poll, 30000, status === 'authenticated')
+  usePolling(poll, 90000, status === 'authenticated')
 
   if (!toasts.length) return null
 

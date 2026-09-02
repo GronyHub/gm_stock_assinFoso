@@ -1013,7 +1013,7 @@ function ItemHubPageInner() {
       .catch(() => {})
   }
   useEffect(() => { fetchStaff() }, [])
-  usePolling(fetchStaff, 30000)
+  usePolling(fetchStaff, 60000)
 
   // UK's people + per-person submenus + selected submenu's columns/rows --
   // shared between the merged pane (a flat "every person's every submenu"
@@ -1119,7 +1119,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadItems() }, [])
-  usePolling(loadItems, 120000)
+  usePolling(loadItems, 600000)
 
   // Group filter options -- deliberately NOT derived from `items` above.
   // The Items table (LossTab) is built from item_stock_summary, which can
@@ -1135,7 +1135,7 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
   useEffect(() => { loadLossGroups() }, [])
-  usePolling(loadLossGroups, 120000)
+  usePolling(loadLossGroups, 600000)
 
   // Renaming a group from the Group dropdown itself, rather than one item
   // at a time -- applies everywhere via PUT /api/items/groups.
@@ -1349,7 +1349,7 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
   useEffect(() => { loadTaskCounts() }, [])
-  usePolling(loadTaskCounts, 120000)
+  usePolling(loadTaskCounts, 600000)
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
   // A few pane rows' PageToolIcons scopeKey differs from their own pane
   // label (either because the label was later shortened for the pane -- see
@@ -1782,7 +1782,7 @@ function ItemHubPageInner() {
   const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
   const fetchPaneOrder = () => fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
   useEffect(() => { fetchPaneOrder() }, [])
-  usePolling(fetchPaneOrder, 120000)
+  usePolling(fetchPaneOrder, 600000)
   // Same shared-with-everyone pattern as paneOrder above, but for display
   // labels instead of row order -- see ReorderListsPanel.tsx and
   // /api/pane-labels. Purely cosmetic: a row's `key` (used for routing,
@@ -1791,7 +1791,7 @@ function ItemHubPageInner() {
   const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
   const fetchPaneLabels = () => fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
   useEffect(() => { fetchPaneLabels() }, [])
-  usePolling(fetchPaneLabels, 120000)
+  usePolling(fetchPaneLabels, 600000)
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Same shared-with-everyone pattern again, but for which section a Cash
   // row sits in -- see /api/pane-groups and ReorderListsPanel.tsx. A row
@@ -1805,7 +1805,7 @@ function ItemHubPageInner() {
   const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
   const fetchPaneGroups = () => fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
   useEffect(() => { fetchPaneGroups() }, [])
-  usePolling(fetchPaneGroups, 120000)
+  usePolling(fetchPaneGroups, 600000)
   // Same shared-with-everyone pattern again, but for which rows are hidden
   // from the sidebar entirely -- see /api/pane-hidden and
   // ReorderListsPanel.tsx. Purely a visibility override, same guarantee as
@@ -1815,7 +1815,7 @@ function ItemHubPageInner() {
   const [paneHidden, setPaneHidden] = useState<Record<string, boolean>>({})
   const fetchPaneHidden = () => fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
   useEffect(() => { fetchPaneHidden() }, [])
-  usePolling(fetchPaneHidden, 120000)
+  usePolling(fetchPaneHidden, 600000)
   // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
   // the Sales row, then their own standalone rows. Now Sales, Bills, and
   // Loss by Date have all folded into Live Sale's own mode switcher
@@ -2904,7 +2904,7 @@ function ItemHubPageInner() {
       .catch(() => {})
   }
   useEffect(loadCountProgress, [])
-  usePolling(loadCountProgress, 60000)
+  usePolling(loadCountProgress, 300000)
 
   // Count Records -- fetched when viewing the Count Records view, showing full-page
   // count display in Sale mode, or viewing Loss by Date/Items views. Unlike the queues

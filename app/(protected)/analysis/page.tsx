@@ -61,7 +61,7 @@ export default function AnalysisPage() {
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 90000)
+  usePolling(load, 600000)
 
   const monthlyRevenue = useMemo(() => (data?.monthlyRevenue ?? []).map((r: any) => ({
     month: monthLabel(r.month), wic: n(r.wic), gmc: n(r.gmc), total: n(r.total),

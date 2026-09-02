@@ -135,7 +135,7 @@ export default function SalesAnalyticsSection() {
       .catch(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
-  usePolling(load, 30000)
+  usePolling(load, 120000)
 
   const monthlyRevenue = useMemo(() => (data?.monthlyRevenue ?? []).filter((r: any) => r.month).map((r: any) => ({ month: monthLabel(r.month), wic: n(r.wic), gmc: n(r.gmc), total: n(r.total) })), [data])
   const dailyRevenue30 = useMemo(() => (data?.dailyRevenue30 ?? []).filter((r: any) => r.date).map((r: any) => ({ date: dayLabel(r.date), total: n(r.total) })), [data])

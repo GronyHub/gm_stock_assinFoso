@@ -58,7 +58,7 @@ export default function ManageLogPanel({ category, label, icon, headerExtra }: {
   }
 
   useEffect(() => { load() }, [category])
-  usePolling(load, 120000)
+  usePolling(load, 600000)
 
   async function handleFile(file: File) {
     setUploading(true)

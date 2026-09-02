@@ -165,7 +165,7 @@ export default function POTab({ search }: Props) {
   }
 
   useEffect(() => { loadList() }, [])
-  usePolling(loadList, 120000, !receiveOpen && !editMode)
+  usePolling(loadList, 600000, !receiveOpen && !editMode)
 
   useEffect(() => {
     fetch('/api/vendors').then(r => r.json()).then(d => setVendors(Array.isArray(d) ? d : [])).catch(() => {})
