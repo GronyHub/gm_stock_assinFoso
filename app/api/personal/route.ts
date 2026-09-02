@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensurePersonalSubcategoryColumn } from '@/lib/personalLedger'
 import { initializeDatabase } from '@/lib/dbInitialize'
+import { NextResponse } from 'next/server'
 
 function isAllowed(session: any) {
   const role     = (session?.user as any)?.role     as string | undefined
@@ -9,10 +10,19 @@ function isAllowed(session: any) {
   return role === 'owner' || username === 'joe'
 }
 
+let cachedPersonal: any = null
+let cachedPersonalTime = 0
+const PERSONAL_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+
 export async function GET() {
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isAllowed(session)) return success([])
+
+  const now = Date.now()
+  if (cachedPersonal && now - cachedPersonalTime < PERSONAL_CACHE_TTL) {
+    return NextResponse.json(cachedPersonal)
+  }
 
   await initializeDatabase()
   await ensurePersonalSubcategoryColumn()
@@ -21,7 +31,10 @@ export async function GET() {
     FROM grony_personal_ledger
     ORDER BY entry_date DESC, id DESC
   `
-  return success(entries)
+  const result = entries
+  cachedPersonal = result
+  cachedPersonalTime = Date.now()
+  return success(result)
 }
 
 export async function POST(req: Request) {

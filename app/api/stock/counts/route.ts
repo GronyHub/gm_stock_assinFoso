@@ -3,9 +3,18 @@ import sql from '@/lib/db'
 import { reconciliationByCount } from '@/lib/lossEvents'
 import { NextRequest, NextResponse } from 'next/server'
 
+let cachedStockCounts: any = null
+let cachedStockCountsTime = 0
+const STOCK_COUNTS_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const now = Date.now()
+  if (cachedStockCounts && now - cachedStockCountsTime < STOCK_COUNTS_CACHE_TTL) {
+    return NextResponse.json(cachedStockCounts)
+  }
 
   const [rows, reconciliation] = await Promise.all([
     sql`
@@ -32,5 +41,7 @@ export async function GET() {
       kind: rec?.kind ?? null,
     }
   })
+  cachedStockCounts = enriched
+  cachedStockCountsTime = Date.now()
   return NextResponse.json(enriched)
 }

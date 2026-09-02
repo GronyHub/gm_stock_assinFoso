@@ -5,8 +5,13 @@ import { getItemDayRows } from '@/lib/itemDayRows'
 import { computeChainLossSummary } from '@/lib/packChain'
 import { ensureActiveItemsView } from '@/lib/activeItems'
 import { itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
+import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
+
+let cachedLossesSummary: any = null
+let cachedLossesSummaryTime = 0
+const LOSSES_SUMMARY_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
 
 type DayRow = {
   item_id: number
@@ -82,6 +87,11 @@ function aggregateItem(rows: DayRow[], sp: number) {
 export async function GET() {
   const { error } = await requireAuth()
   if (error) return error
+
+  const now = Date.now()
+  if (cachedLossesSummary && now - cachedLossesSummaryTime < LOSSES_SUMMARY_CACHE_TTL) {
+    return NextResponse.json(cachedLossesSummary)
+  }
 
   try {
     await ensureActiveItemsView()
@@ -267,6 +277,8 @@ export async function GET() {
     }
   })
 
+    cachedLossesSummary = result
+    cachedLossesSummaryTime = Date.now()
     return success(result)
   } catch (e) {
     return handleError('losses/summary', e)
