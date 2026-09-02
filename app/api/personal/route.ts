@@ -12,7 +12,7 @@ function isAllowed(session: any) {
 
 let cachedPersonal: any = null
 let cachedPersonalTime = 0
-const PERSONAL_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+const PERSONAL_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 
 export async function GET() {
   const { session, error } = await requireAuth()

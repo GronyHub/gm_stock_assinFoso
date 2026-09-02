@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 let cachedStockCounts: any = null
 let cachedStockCountsTime = 0
-const STOCK_COUNTS_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+const STOCK_COUNTS_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 
 export async function GET() {
   const session = await auth()

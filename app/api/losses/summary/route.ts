@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 let cachedLossesSummary: any = null
 let cachedLossesSummaryTime = 0
-const LOSSES_SUMMARY_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+const LOSSES_SUMMARY_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 
 type DayRow = {
   item_id: number
