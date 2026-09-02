@@ -2,14 +2,13 @@ import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/a
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
-import { ensureCountCadenceColumns, ensureGmcColumn, ensureUnitTimeColumn, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
+import { ensureCountCadenceColumns, ensureGmcColumn, ensureUnitTimeColumn, ensureDerivedFromColumn, itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const itemId = Number(id)
   try {
-    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn()])
-    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
+    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn(), ensureDerivedFromColumn()])
     const [[row], intervals] = await Promise.all([
       sql`
         SELECT i.id, i.canonical_name, i.cf_group, i.selling_rate AS selling_price,
@@ -70,8 +69,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json()
     const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k)
 
-    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn()])
-    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
+    await Promise.all([ensureCountCadenceColumns(), ensureGmcColumn(), ensureUnitTimeColumn(), ensureDerivedFromColumn()])
     const [current] = await sql`
       SELECT i.canonical_name, i.cf_group, i.selling_rate, i.purchase_rate, i.units_per_pack, i.unit_name, i.converts_to_item_id, i.product_type,
              i.count_excluded, i.count_cadence_days, i.count_excluded_reason, i.unit_time_seconds, COALESCE(i.gmc_type, '') AS gmc_type,

@@ -64,6 +64,17 @@ async function ensureUnitTimeColumnImpl() {
 
 export const ensureUnitTimeColumn = once(ensureUnitTimeColumnImpl)
 
+// Was run as a raw, un-memoized ALTER TABLE at the top of every
+// /api/items/[id] GET/PUT and /api/items(/all) request -- a real round trip
+// to Neon on every single item view/edit, forever, to re-confirm a migration
+// that only ever needed to happen once per server process. Wrapping it in
+// `once()` like every other ensureX* here fixes that.
+async function ensureDerivedFromColumnImpl() {
+  await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
+}
+
+export const ensureDerivedFromColumn = once(ensureDerivedFromColumnImpl)
+
 // Fixed reasons the item edit form offers for "Exclude from counts
 // entirely" -- kept here (not just inline in the form) so the PUT route can
 // validate against the same list a custom "Other" reason has to bypass.

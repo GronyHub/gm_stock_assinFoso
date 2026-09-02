@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn } from '@/lib/countRules'
+import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn, ensureDerivedFromColumn } from '@/lib/countRules'
 import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
 import { NextResponse, NextRequest } from 'next/server'
 
@@ -24,9 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await ensureUnitTimeColumn()
-    await ensureAdjustedCostPriceColumn()
-    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
+    await Promise.all([ensureUnitTimeColumn(), ensureAdjustedCostPriceColumn(), ensureDerivedFromColumn()])
     const [rows, intervals] = await Promise.all([
       sql`
         SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",

@@ -1,12 +1,11 @@
 import { badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureActiveItemsView } from '@/lib/activeItems'
-import { ensureGmcColumn } from '@/lib/countRules'
+import { ensureGmcColumn, ensureDerivedFromColumn } from '@/lib/countRules'
 
 export async function GET() {
   try {
-    await Promise.all([ensureActiveItemsView(), ensureGmcColumn()])
-    await sql`ALTER TABLE items ADD COLUMN IF NOT EXISTS derived_from_item_id INTEGER REFERENCES items(id)`.catch(() => {})
+    await Promise.all([ensureActiveItemsView(), ensureGmcColumn(), ensureDerivedFromColumn()])
     const rows = await sql`
       SELECT
         i.id,
