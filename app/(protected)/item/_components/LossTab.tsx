@@ -56,7 +56,7 @@ const EMPTY_FORM = EMPTY_ITEM_EDIT_FORM
 
 /* ── helpers ── */
 function fmtN(n: number | null) {
-  if (n === null) return '—'
+  if (n === null || typeof n !== 'number' || isNaN(n)) return '—'
   return n % 1 === 0 ? String(n) : n.toFixed(2)
 }
 function fmtQs(v: string | null) {
@@ -65,7 +65,7 @@ function fmtQs(v: string | null) {
   return isNaN(n) || n === 0 ? '—' : n % 1 === 0 ? String(n) : n.toFixed(2)
 }
 function fmtQ(v: number) {
-  if (v === 0) return '—'
+  if (typeof v !== 'number' || isNaN(v) || v === 0) return '—'
   return v % 1 === 0 ? String(v) : v.toFixed(2)
 }
 function fmtCcy(v: string | null) {
@@ -74,8 +74,9 @@ function fmtCcy(v: string | null) {
   return isNaN(x) || x === 0 ? '—' : x.toFixed(0)
 }
 function fmtAmt(v: number) {
-  if (v === 0) return '—'
-  const s = Math.abs(v) >= 100 ? Math.abs(v).toFixed(0) : Math.abs(v).toFixed(1)
+  if (typeof v !== 'number' || isNaN(v) || v === 0) return '—'
+  const absV = Math.abs(v)
+  const s = absV >= 100 ? absV.toFixed(0) : absV.toFixed(1)
   return (v > 0 ? '+' : '-') + s
 }
 // Strips the "—" placeholder these fmt* helpers return for empty/zero
@@ -1860,9 +1861,10 @@ function renderCell(key: ColKey, row: SummaryRow) {
       return <td key={key} className="text-center py-0 text-blue-600 tabular-nums">{fmtQ(row.bl)}</td>
     case 'soh': {
       const soh = parseFloat(row.soh ?? '0') || 0
+      const sohNum = typeof soh === 'number' && !isNaN(soh) ? soh : 0
       return (
-        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${soh <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-          {soh % 1 === 0 ? soh : soh.toFixed(1)}
+        <td key={key} className={`text-center py-0 font-semibold tabular-nums ${sohNum <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+          {sohNum % 1 === 0 ? sohNum : sohNum.toFixed(1)}
         </td>
       )
     }
