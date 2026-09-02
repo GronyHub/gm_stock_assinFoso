@@ -8106,7 +8106,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <div className="flex-1 min-w-0 flex flex-col">
                               <p className="text-[9px] text-transparent font-medium mb-1 select-none">Tap</p>
                               <button
-                                onClick={() => recordTap(editItem)}
+                                onClick={async () => {
+                                  console.log('[SALE TAP] Clicked - qty:', liveQty, 'saving:', liveSaving, 'item:', editItem?.name)
+                                  alert(`[SALE TAP] Clicked\nQty: ${liveQty}\nItem: ${editItem?.name}`)
+                                  try {
+                                    await recordTap(editItem)
+                                  } catch (e) {
+                                    const err = e instanceof Error ? e.message : String(e)
+                                    console.error('[SALE TAP] Error:', err)
+                                    alert(`ERROR: ${err}`)
+                                  }
+                                }}
                                 disabled={!liveQty || liveSaving}
                                 className="w-full flex-1 px-1 py-4 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
                                 {liveSaving ? '…' : 'Tap'}
