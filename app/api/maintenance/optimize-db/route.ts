@@ -44,22 +44,18 @@ export async function POST(request: NextRequest) {
     results.indexOptimization = 'Indexes optimized'
 
     // 6. Analyze tables for query optimization
-    const tablesToAnalyze = [
-      'live_sale_taps',
-      'manage_logs',
-      'stock_count_revisions',
-      'sales_receipts',
-      'items'
-    ]
-
-    for (const table of tablesToAnalyze) {
-      try {
-        await sql`ANALYZE ${sql.identifier(table)}`.catch(() => {})
-      } catch (e) {
-        // Table may not exist
-      }
+    try {
+      await Promise.all([
+        sql`ANALYZE live_sale_taps`.catch(() => {}),
+        sql`ANALYZE manage_logs`.catch(() => {}),
+        sql`ANALYZE stock_count_revisions`.catch(() => {}),
+        sql`ANALYZE sales_receipts`.catch(() => {}),
+        sql`ANALYZE items`.catch(() => {})
+      ])
+      results.analyzed = '5 tables'
+    } catch (e) {
+      results.analyzed = 'Analysis attempted'
     }
-    results.analyzed = tablesToAnalyze.length + ' tables'
 
     // 7. Check current database size
     try {
