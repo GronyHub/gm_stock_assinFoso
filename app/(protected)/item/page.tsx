@@ -7525,12 +7525,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <button
                               type="button"
                               onClick={async () => {
+                                const clickedMsg = `[QUICK TAP] Button clicked - item: ${liveSelectedItem?.name}, qty: ${liveQty}`
+                                console.log(clickedMsg)
+                                alert(clickedMsg)
+                                setLiveTapStatus(['CLICKED - Starting recordTap...'])
                                 try {
                                   await recordTap()
                                   setLiveEditingSelectedItem(false)
                                 } catch (e) {
                                   const errMsg = e instanceof Error ? e.message : String(e)
+                                  console.error('[QUICK TAP] Error:', errMsg)
+                                  alert(`QUICK TAP ERROR: ${errMsg}`)
                                   setLiveTapError(`Tap failed: ${errMsg}`)
+                                  setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
                                   showToast(`Tap failed: ${errMsg}`, 'error')
                                 }
                               }}
@@ -7787,11 +7794,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         <button
                           type="button"
                           onClick={async () => {
+                            const clickedMsg = `[MAIN TAP] Button clicked - item: ${liveSelectedItem?.name}, qty: ${liveQty}`
+                            console.log(clickedMsg)
+                            alert(clickedMsg)
+                            setLiveTapStatus(['CLICKED - Starting recordTap...'])
                             try {
                               await recordTap()
                             } catch (e) {
                               const errMsg = e instanceof Error ? e.message : String(e)
+                              console.error('[MAIN TAP] Error:', errMsg)
+                              alert(`MAIN TAP ERROR: ${errMsg}`)
                               setLiveTapError(`Tap failed: ${errMsg}`)
+                              setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
                               showToast(`Tap failed: ${errMsg}`, 'error')
                             }
                           }}
