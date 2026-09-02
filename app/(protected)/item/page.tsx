@@ -7414,6 +7414,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
+              // Force alert to confirm code deployed
+              if (typeof window !== 'undefined') {
+                setTimeout(() => alert(`[MODAL OPEN] Item: ${liveSelectedItem.name}, Editing: ${liveEditingSelectedItem}, Qty: "${liveQty}"`), 100)
+              }
               return (
               <div className="fixed inset-0 bg-black/50 flex items-end z-50">
                 <div className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto">
