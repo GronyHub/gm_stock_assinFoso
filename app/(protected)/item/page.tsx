@@ -7444,6 +7444,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       stacking alongside it, so there's no ambiguity about which
                       form a tap on Save applies to. Cancel returns to the normal
                       sheet, it doesn't close it. */}
+                  <div className="bg-red-100 border border-red-300 rounded p-2 text-xs font-mono text-red-900 mb-2">
+                    <div>EDIT STATE: editing={String(liveEditingSelectedItem)}, loading={String(liveEditLoading)}, item={liveSelectedItem ? 'SET' : 'NULL'}</div>
+                    <div>QTY STATE: qty="{liveQty}", price="{livePrice}", saving={String(liveSaving)}</div>
+                  </div>
                   {liveEditingSelectedItem ? (
                     <div className="p-4">
                       {liveEditLoading ? (
