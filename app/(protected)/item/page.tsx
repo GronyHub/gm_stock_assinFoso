@@ -6811,7 +6811,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <span>Intervals</span>
                   </label>
                 </div>
-                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-[50px] z-9 flex gap-1 flex-wrap items-center" style={(liveCountView as any)?.kind === 'intervals' ? { display: 'none' } : undefined}>
+                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-[50px] z-9 flex gap-2 flex-wrap items-center" style={(liveCountView as any)?.kind === 'intervals' ? { display: 'none' } : undefined}>
                   <span className="text-[9px] font-semibold text-gray-600">Filter:</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
                     <input
@@ -6853,6 +6853,24 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     />
                     ✓ OK
                   </label>
+                  <div className="border-l border-gray-300 h-4 mx-0.5" />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={liveEmbeddedSearch}
+                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
+                      placeholder="Search…"
+                      className="text-[9px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
+                    />
+                    {liveEmbeddedSearch && (
+                      <button
+                        onClick={() => setLiveEmbeddedSearch('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <table className="w-full text-[10px] border-collapse flex-1">
                   <thead>
