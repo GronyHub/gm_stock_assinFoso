@@ -23,3 +23,25 @@ only for reads that list/search candidates. Single-item-by-id lookups and
 all writes (edits, merges, status changes) should keep using the raw `items`
 table, since they often need to operate on an item regardless of its current
 status.
+
+# Neon Free Tier (10 GB Storage Limit)
+
+**Automatic optimizations in place:**
+- 5-minute API caching on `/api/losses/summary` (~70-80% query reduction)
+- Automatic data retention policies delete old logs/tokens
+- `/api/maintenance/optimize-db` endpoint for weekly cleanup
+
+**Weekly maintenance (set in your scheduler):**
+```bash
+curl -X POST https://yourapp.com/api/maintenance/optimize-db \
+  -H "Authorization: Bearer $MAINTENANCE_SECRET"
+```
+
+**Data retention policy:** See `.claude/DATA_RETENTION.md` for full details.
+- `live_sale_taps`: 6 months (completed only)
+- `manage_logs`: 1 year max
+- `password_reset_tokens`: 24 hours
+- `training_attempts`: 6 months
+- Core data (items, receipts, POs): Indefinite
+
+**If you exceed 10 GB:** Upgrade to Neon Pro ($15/month, 500 GB) or archive old data to S3.
