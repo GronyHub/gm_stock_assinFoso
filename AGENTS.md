@@ -24,14 +24,27 @@ all writes (edits, merges, status changes) should keep using the raw `items`
 table, since they often need to operate on an item regardless of its current
 status.
 
-# Neon Free Tier (10 GB Storage Limit)
+# Neon Free Tier (10 GB Storage Limit + Compute Cost Control)
 
-**Automatic optimizations in place:**
-- 5-minute API caching on `/api/losses/summary` (~70-80% query reduction)
-- Automatic data retention policies delete old logs/tokens
-- `/api/maintenance/optimize-db` endpoint for weekly cleanup
+**Automatic optimizations in place (see `.claude/NEON_COST_OPTIMIZATION_LOG.md`
+for the full record of what changed, when, and why):**
+- 2-hour server-side response caching on 8 read-heavy endpoints
+  (`/api/personal`, `/api/stock/counts`, `/api/losses/summary`,
+  `/api/stock/overdue`, `/api/stock/gmc-weekly`, `/api/stock/daily`,
+  `/api/items/groups`, `/api/items/all`)
+- Background polling (`usePolling(...)`) across ~30 components slowed from
+  15s-2min intervals to 60s-10min, since a single open browser tab was
+  generating continuous database traffic all day regardless of activity
+- Automatic weekly data retention cleanup via `/api/maintenance/optimize-db`
+- Weekly-only cron schedule — the old daily `/api/violations/auto-check`
+  cron was removed to cut one of two scheduled overnight wakeups
 
-**Weekly maintenance (set in your scheduler):**
+**Trade-off:** writes (sale taps, counts, edits) stay instant; reads/summaries
+(loss reports, lists, dashboards) can lag up to 2 hours behind. This is
+explained to staff in the in-app Help Guide under "Good to Know" →
+"Why do some numbers take a while to update?"
+
+**Weekly maintenance (runs automatically via `vercel.json` cron, Sundays 2 AM UTC):**
 ```bash
 curl -X POST https://yourapp.com/api/maintenance/optimize-db \
   -H "Authorization: Bearer $MAINTENANCE_SECRET"

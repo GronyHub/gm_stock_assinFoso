@@ -434,6 +434,41 @@ const TOPICS: Topic[] = [
     ),
   },
   {
+    id: 'data-delay',
+    title: 'Why do some numbers take a while to update?',
+    group: 'Good to Know',
+    keywords: 'slow delay refresh update stale cache wait hours cost data not updating frozen stuck',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">To keep the app affordable to run, some screens now show data that can be <strong>up to 2 hours old</strong> instead of updating the instant something changes. This was done deliberately — it doesn't mean something is broken.</p>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-800 font-semibold">Always instant, no matter what:</p>
+          <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+            <li>Tapping a sale</li>
+            <li>Recording a stock count</li>
+            <li>Editing an item</li>
+            <li>The "COUNT NOW" list you actually work through — it shrinks in real time as you count, even though the badge below might not</li>
+          </ul>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-800 font-semibold">Can lag up to 2 hours:</p>
+          <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+            <li>Loss summaries</li>
+            <li>Count Records list</li>
+            <li>Overdue / 7-day / daily count badges (the small numbers, not the actual work list)</li>
+            <li>Personal ledger</li>
+            <li>Items list, groups filter</li>
+            <li>Bills, Sales, Purchase Orders, Expenses lists</li>
+          </ul>
+        </div>
+
+        <Callout>If a number looks off, it's most likely just waiting for its next refresh — nothing was lost, and what you entered is already safely saved. Refreshing the page won't speed it up (the delay is on the server, not your device). If it still looks wrong after a couple of hours, tell a manager.</Callout>
+      </div>
+    ),
+  },
+  {
     id: 'glossary',
     title: 'Glossary: SOH, SP, CP, WIC, GMC, Expected, and more',
     group: 'Glossary',
