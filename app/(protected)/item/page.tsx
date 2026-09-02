@@ -2250,6 +2250,10 @@ function ItemHubPageInner() {
   // Expenses has no internal "add new" of its own either -- same pattern as
   // Bills, reusing the standalone /expenses/new form as a sibling.
   const [liveExpensesAddingNew, setLiveExpensesAddingNew] = useState(false)
+  // Expense Orders radio -- swaps Expenses' own content area for the same
+  // <ExpenseOrdersPanel> the sidebar's menu item opens full-screen, but
+  // rendered inline here instead of navigating away.
+  const [liveExpensesShowOrders, setLiveExpensesShowOrders] = useState(false)
   const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
   const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
   const [liveExpensesShowAnalytics, setLiveExpensesShowAnalytics] = useState(false)
@@ -2425,7 +2429,8 @@ function ItemHubPageInner() {
   // Bars Only equivalent -- Expenses' list has no day-bar/item-line
   // grouping like Sales/Bills' receipts do.
   const EXPENSES_FLAG_KEYS = ['similar', 'bundled', 'no_vendor', 'properties_no_location', 'delivery_unresolved'] as const
-  const liveExpensesRadioValue = liveExpensesShowHistory ? 'history'
+  const liveExpensesRadioValue = liveExpensesShowOrders ? 'expense_orders'
+    : liveExpensesShowHistory ? 'history'
     : liveExpensesAddingNew ? 'new_expense'
     : liveExpensesActiveFlag ? liveExpensesActiveFlag
     : liveExpensesGroupBy === 'account' ? 'by_account'
@@ -2440,9 +2445,10 @@ function ItemHubPageInner() {
     : liveExpensesPropertyTypeFilter === 'Computer' ? 'computers'
     : 'all'
   function selectLiveExpensesRadio(value: string) {
-    if (value === 'expense_orders') { pickLossView('expenseOrders'); return }
+    if (value === 'expense_orders') { setLiveExpensesShowOrders(true); return }
     setLiveExpensesShowHistory(value === 'history')
     setLiveExpensesAddingNew(value === 'new_expense')
+    setLiveExpensesShowOrders(false)
     setLiveExpensesActiveFlag((EXPENSES_FLAG_KEYS as readonly string[]).includes(value) ? value as typeof EXPENSES_FLAG_KEYS[number] : null)
     setLiveExpensesGroupBy(value === 'by_account' ? 'account' : value === 'by_vendor' ? 'vendor' : value === 'by_property_type' ? 'property_type' : value === 'by_related_property' ? 'related_property' : 'none')
     // By Property Type only makes sense scoped to property expenses (non-
@@ -2484,11 +2490,8 @@ function ItemHubPageInner() {
     { key: 'by_related_property', label: 'By Related Property', count: liveExpensesViewCounts.by_related_property, variant: 'view' },
     { key: 'all_properties', label: 'All Properties', count: liveExpensesViewCounts.show_properties, variant: 'view' },
     { key: 'non_properties', label: 'Non-Properties', count: liveExpensesViewCounts.show_non_properties, variant: 'view' },
-    // Not a filter of this tab's own list -- selecting it navigates straight
-    // to the separate Expense Orders page (lossView==='expenseOrders'), same
-    // destination as the sidebar's "Expense Orders" menu item. Never shows
-    // as checked afterwards since picking it leaves this tab entirely.
-    { key: 'expense_orders', label: 'Expense Orders', count: null, variant: 'nav', description: 'Open the separate Expense Orders page.' },
+    // Opens the Expense Orders view inline in this tab.
+    { key: 'expense_orders', label: 'Expense Orders', count: null, variant: 'view', description: 'View the running wishlist of future purchases.' },
     ...([
       { key: 'similar', label: 'Similar Accounts', count: liveExpensesFlagCounts.similar, description: 'Account names within a couple letters of another account -- likely the same account entered two different ways.' },
       { key: 'bundled', label: 'Bundled', count: liveExpensesFlagCounts.bundled, description: 'Description mentions "and"/"etc" or has a comma -- likely covers more than one item bundled into one expense.' },
@@ -6602,6 +6605,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               ) : liveExpensesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><ExpensesAnalyticsSection /></div>
+              ) : liveExpensesShowOrders ? (
+                <div className="px-3 pt-2 flex-1 overflow-auto"><ExpenseOrdersPanel /></div>
               ) : (
                 <div className="flex-1 overflow-auto">
                   <ExpensesTab search={liveEmbeddedSearch} onFlagCountChange={setExpensesFlagsCount}
