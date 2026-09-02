@@ -2,6 +2,10 @@ import sql from '@/lib/db'
 import { DAILY_ITEM_IDS, ensureCountCadenceColumns } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
+let cachedOverdue: any = null
+let cachedOverdueTime = 0
+const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
+
 // The periodic (default 15-day) count list, with cadence rules:
 // - Services are never countable and never appear.
 // - GMC items (goods with internal-use history) live on the 7-day list
@@ -16,6 +20,11 @@ import { NextResponse } from 'next/server'
 //   count_cadence_days (a fixed cadence that wins over the computed 15/30,
 //   for whenever the automatic relaxation guesses wrong for a specific item).
 export async function GET() {
+  const now = Date.now()
+  if (cachedOverdue && now - cachedOverdueTime < CACHE_TTL) {
+    return NextResponse.json(cachedOverdue)
+  }
+
   await ensureCountCadenceColumns()
   const rows = await sql`
     WITH ranked AS (
@@ -91,5 +100,7 @@ export async function GET() {
       END DESC,
       COALESCE(i.canonical_name, s.item_name) ASC
   `
+  cachedOverdue = rows
+  cachedOverdueTime = Date.now()
   return NextResponse.json(rows)
 }

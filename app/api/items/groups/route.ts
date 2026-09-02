@@ -3,6 +3,10 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextResponse } from 'next/server'
 
+let cachedGroups: any = null
+let cachedGroupsTime = 0
+const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
+
 // Every group name the Items table (LossTab) can actually show as a
 // heading -- built from the exact same base/JOIN/COALESCE as
 // /api/losses/summary, which is what that table renders. The Group filter
@@ -14,6 +18,11 @@ import { NextResponse } from 'next/server'
 // filter option. Deriving the list from this identical base guarantees the
 // two can't diverge.
 export async function GET() {
+  const now = Date.now()
+  if (cachedGroups && now - cachedGroupsTime < CACHE_TTL) {
+    return NextResponse.json(cachedGroups)
+  }
+
   try {
     const rows = await sql`
       SELECT DISTINCT COALESCE(i.cf_group, s.cf_group) AS cf_group
@@ -23,7 +32,10 @@ export async function GET() {
         AND s.item_name NOT ILIKE 'old- stop%'
       ORDER BY cf_group NULLS LAST
     `
-    return NextResponse.json(rows.map((r: any) => r.cf_group))
+    const result = rows.map((r: any) => r.cf_group)
+    cachedGroups = result
+    cachedGroupsTime = Date.now()
+    return NextResponse.json(result)
   } catch (e) {
     console.error('items/groups GET error:', e)
     return NextResponse.json([])

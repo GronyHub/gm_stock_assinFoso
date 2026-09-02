@@ -7,7 +7,7 @@ import { NextResponse, NextRequest } from 'next/server'
 // Cache for default items request (no limit/offset)
 let cachedItems: any = null
 let cachedItemsTime: number = 0
-const CACHE_TTL = 3 * 60 * 1000 // 3 minutes
+const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 
 export async function GET(req: NextRequest) {
   const session = await auth()

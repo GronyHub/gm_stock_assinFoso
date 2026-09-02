@@ -2,6 +2,10 @@ import sql from '@/lib/db'
 import { DAILY_ITEM_IDS, ensureCountCadenceColumns } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
 
+let cachedGmcWeekly: any = null
+let cachedGmcWeeklyTime = 0
+const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
+
 // 7-day count list: GMC items -- goods the shop takes for its own use
 // (4x6 packs, A4 sheets, Brown Envelope packs, etc., identified by having
 // at least one GMC take on record). Internal use moves faster and is easier
@@ -14,6 +18,11 @@ import { NextResponse } from 'next/server'
 // /api/stock/overdue: last 2+ counts all zero with no bill since drops the
 // item off this list too, until a bill brings it back.
 export async function GET() {
+  const now = Date.now()
+  if (cachedGmcWeekly && now - cachedGmcWeeklyTime < CACHE_TTL) {
+    return NextResponse.json(cachedGmcWeekly)
+  }
+
   await ensureCountCadenceColumns()
   const rows = await sql`
     WITH gmc_items AS (
@@ -76,5 +85,7 @@ export async function GET() {
       END DESC,
       COALESCE(i.canonical_name, s.item_name) ASC
   `
+  cachedGmcWeekly = rows
+  cachedGmcWeeklyTime = Date.now()
   return NextResponse.json(rows)
 }
