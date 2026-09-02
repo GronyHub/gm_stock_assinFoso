@@ -8084,14 +8084,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <p className="text-[9px] text-transparent font-medium mb-1 select-none">Tap</p>
                               <button
                                 onClick={async () => {
-                                  console.log('[SALE TAP] Clicked - qty:', liveQty, 'saving:', liveSaving, 'item:', editItem?.name)
-                                  alert(`[SALE TAP] Clicked\nQty: ${liveQty}\nItem: ${editItem?.name}`)
                                   try {
                                     await recordTap(editItem)
                                   } catch (e) {
                                     const err = e instanceof Error ? e.message : String(e)
                                     console.error('[SALE TAP] Error:', err)
-                                    alert(`ERROR: ${err}`)
+                                    showToast(`Error: ${err}`, 'error')
                                   }
                                 }}
                                 disabled={!liveQty || liveSaving}
