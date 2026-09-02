@@ -560,6 +560,11 @@ function BillsTab({
 
   const filtered = useMemo(() => {
     let list = flatRows
+    if (gmcFilter === 'gmc' && gmcItemIds.size > 0) {
+      list = list.filter(r => r.itemId !== null && gmcItemIds.has(r.itemId))
+    } else if (gmcFilter === 'vendor' && gmcItemIds.size > 0) {
+      list = list.filter(r => r.itemId === null || !gmcItemIds.has(r.itemId))
+    }
     if (groupItemNames) {
       list = list.filter(r => groupItemNames.has(r.itemName))
     }
