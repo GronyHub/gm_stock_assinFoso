@@ -1,8 +1,35 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Component, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
+
+class ItemDetailErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
+  constructor(props: any) {
+    super(props)
+    this.state = { hasError: false, errorMsg: '' }
+  }
+  static getDerivedStateFromError(error: any) {
+    return {
+      hasError: true,
+      errorMsg: error?.message || String(error) || 'Unknown error in ItemDetail'
+    }
+  }
+  componentDidCatch(e: any) {
+    console.error('[ItemDetailPanel] ItemDetail render error:', e)
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded">
+          <p className="text-red-700 text-sm font-semibold mb-1">ItemDetail Render Error</p>
+          <p className="text-red-600 text-xs whitespace-pre-wrap break-words font-mono">{this.state.errorMsg}</p>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 interface CountRecord {
   id: number
@@ -122,6 +149,10 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   }, [collapsed, expanded, itemId])
 
   const item = rows.find(r => r.item_id === itemId)
+
+  if (!item && rows.length > 0) {
+    return <div className="p-4 text-orange-600 text-sm">Item #{itemId} not found in loaded data</div>
+  }
 
   // Enrich count records with trade-off suggestions
   const countRecordsWithTradeOffs = useMemo(() =>
@@ -266,31 +297,33 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
           )}
         </div>
       )}
-      <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
-        tradeOffRecords={countRecordsWithTradeOffs}
-        currentAliases={aliasRecords[item.item_id] ?? []}
-        currentMatches={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
-        candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
-        mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== item.item_id)}
-        isOwnerLevelUser={isOwnerLevelUser}
-        onSaved={u => patchItem(item.item_id, u)}
-        onRelationsSaved={(newAliases, newMatches) => {
-          setAliasRecords(prev => ({ ...prev, [item.item_id]: newAliases }))
-          setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: newMatches }))
-        }}
-        onMerged={() => onItemGone?.()}
-        // Opened in a new tab rather than navigated to in place -- this
-        // popup can be sitting on top of any page (Live Sale, Bills, a PO,
-        // ...), and jumping the current tab to Sales/Bills would silently
-        // lose whatever the user was doing there. &mode= is required (not
-        // just &view=) since `view` only opens the Live Sale hub itself --
-        // `mode` is the separate param that picks which of its six modes
-        // (Sale/Log/Sales/Bills/Loss/Count) actually shows.
-        onDateClick={(date, itemName) =>
-          window.open(`/item?tab=loss&view=sales&mode=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
-        onBillClick={(billId) =>
-          window.open(`/item?tab=loss&view=sales&mode=bills&jumpBillId=${billId}`, '_blank')}
-        maxRows={maxRows} />
+      <ItemDetailErrorBoundary>
+        <ItemDetail item={item} groups={groupNames} allItems={allItemsList}
+          tradeOffRecords={countRecordsWithTradeOffs}
+          currentAliases={aliasRecords[item.item_id] ?? []}
+          currentMatches={matchRecords[item.item_name.trim().toLowerCase()] ?? []}
+          candidatePool={item.product_type === 'service' ? goodsPool : servicesPool}
+          mergePool={[...goodsPool, ...servicesPool].filter(i => i.item_id !== item.item_id)}
+          isOwnerLevelUser={isOwnerLevelUser}
+          onSaved={u => patchItem(item.item_id, u)}
+          onRelationsSaved={(newAliases, newMatches) => {
+            setAliasRecords(prev => ({ ...prev, [item.item_id]: newAliases }))
+            setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: newMatches }))
+          }}
+          onMerged={() => onItemGone?.()}
+          // Opened in a new tab rather than navigated to in place -- this
+          // popup can be sitting on top of any page (Live Sale, Bills, a PO,
+          // ...), and jumping the current tab to Sales/Bills would silently
+          // lose whatever the user was doing there. &mode= is required (not
+          // just &view=) since `view` only opens the Live Sale hub itself --
+          // `mode` is the separate param that picks which of its six modes
+          // (Sale/Log/Sales/Bills/Loss/Count) actually shows.
+          onDateClick={(date, itemName) =>
+            window.open(`/item?tab=loss&view=sales&mode=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
+          onBillClick={(billId) =>
+            window.open(`/item?tab=loss&view=sales&mode=bills&jumpBillId=${billId}`, '_blank')}
+          maxRows={maxRows} />
+      </ItemDetailErrorBoundary>
     </div>
   )
 }
