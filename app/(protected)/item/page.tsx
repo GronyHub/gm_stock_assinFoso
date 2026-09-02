@@ -1229,7 +1229,7 @@ function ItemHubPageInner() {
   }
 
   useEffect(() => { loadBadgeData() }, [])
-  usePolling(loadBadgeData, 120000)
+  usePolling(loadBadgeData, 600000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
     const negSoh = items.filter(i => Number(i.calculated_soh) < 0 && i.product_type !== 'service').length
