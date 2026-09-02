@@ -7414,10 +7414,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
-              // Force alert to confirm code deployed
-              if (typeof window !== 'undefined') {
-                setTimeout(() => alert(`[MODAL OPEN] Item: ${liveSelectedItem.name}, Editing: ${liveEditingSelectedItem}, Qty: "${liveQty}"`), 100)
-              }
               return (
               <div className="fixed inset-0 bg-black/50 flex items-end z-50">
                 <div className="w-full bg-white rounded-t-2xl shadow-xl max-h-[92dvh] overflow-y-auto">
@@ -7448,10 +7444,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       stacking alongside it, so there's no ambiguity about which
                       form a tap on Save applies to. Cancel returns to the normal
                       sheet, it doesn't close it. */}
-                  <div className="bg-red-100 border border-red-300 rounded p-2 text-xs font-mono text-red-900 mb-2">
-                    <div>EDIT STATE: editing={String(liveEditingSelectedItem)}, loading={String(liveEditLoading)}, item={liveSelectedItem ? 'SET' : 'NULL'}</div>
-                    <div>QTY STATE: qty="{liveQty}", price="{livePrice}", saving={String(liveSaving)}</div>
-                  </div>
                   {liveEditingSelectedItem ? (
                     <div className="p-4">
                       {liveEditLoading ? (
@@ -7530,34 +7522,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 {liveTapError}
                               </div>
                             )}
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2 py-1 text-[9px] text-yellow-900 font-mono">
-                              <div>DEBUG:</div>
-                              <div>qty="{liveQty}"</div>
-                              <div>price="{livePrice}"</div>
-                              <div>saving={String(liveSaving)}</div>
-                              <div>disabled={String(liveQty === '' || liveSaving)}</div>
-                              <div>item={liveSelectedItem ? liveSelectedItem.name : 'NULL'}</div>
-                            </div>
                             <button
                               type="button"
-                              onClick={() => {
-                                const clickedMsg = `[QUICK TAP] Button clicked! item: ${liveSelectedItem?.name}, qty: ${liveQty}`
-                                console.log(clickedMsg)
-                                alert(clickedMsg)
-                                setLiveTapStatus(prev => [...prev, 'CLICKED - Starting recordTap...'])
-                                ;(async () => {
-                                  try {
-                                    await recordTap()
-                                    setLiveEditingSelectedItem(false)
-                                  } catch (e) {
-                                    const errMsg = e instanceof Error ? e.message : String(e)
-                                    console.error('[QUICK TAP] Error:', errMsg)
-                                    alert(`QUICK TAP ERROR: ${errMsg}`)
-                                    setLiveTapError(`Tap failed: ${errMsg}`)
-                                    setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
-                                    showToast(`Tap failed: ${errMsg}`, 'error')
-                                  }
-                                })()
+                              onClick={async () => {
+                                try {
+                                  await recordTap()
+                                  setLiveEditingSelectedItem(false)
+                                } catch (e) {
+                                  const errMsg = e instanceof Error ? e.message : String(e)
+                                  console.error('[QUICK TAP] Error:', errMsg)
+                                  setLiveTapError(`Tap failed: ${errMsg}`)
+                                  setLiveTapStatus(prev => [...prev, `ERROR: ${errMsg}`])
+                                  showToast(`Tap failed: ${errMsg}`, 'error')
+                                }
                               }}
                               disabled={liveQty === '' || liveSaving}
                               className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
