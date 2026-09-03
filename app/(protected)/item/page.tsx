@@ -6586,6 +6586,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20 shrink-0"
                 />
+                <button onClick={() => setLiveExpensesAddingNew(true)}
+                  className="text-xs font-semibold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 shrink-0">
+                  + New
+                </button>
                 {renderExpensesFiltersBar()}
                 <ColumnsPickerButton prefs={liveExpensesColPrefs} hideTrigger open={liveExpensesColumnsOpen} onOpenChange={setLiveExpensesColumnsOpen} />
               </div>
