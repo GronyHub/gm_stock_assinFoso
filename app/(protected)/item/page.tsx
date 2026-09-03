@@ -4475,16 +4475,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
   // Expenses' Filter dropdown -- houses everything except the radios kept
   // standalone (All Expenses/By Account/By Vendor/By Property Type/All
-  // Properties/Non-Properties and the four flag violations). Three kinds of
+  // Properties/Non-Properties and the four flag violations) and "+ New
+  // Expense" (its own visible button next to Search, not buried here since a
+  // dropdown is a bad discovery path for "create new"). Three kinds of
   // options share this one select: persistent views that plug straight into
-  // the same liveExpensesRadioValue mutex (New Expense/History/property
-  // splits -- shown as "selected" when active), momentary triggers
-  // (Analytics/Accounts/Laws & Tasks/Help) that just fire their own setter,
-  // and "columns" which opens ColumnsPickerButton's panel via its
-  // controlled open/onOpenChange (that component renders with hideTrigger,
-  // right below this select, so its floating panel still anchors somewhere
-  // sensible without a second visible trigger of its own).
-  const EXPENSES_FILTER_BAR_KEYS = ['new_expense', 'history', 'properties_available', 'properties_not_available', 'printers', 'computers']
+  // the same liveExpensesRadioValue mutex (History/property splits -- shown
+  // as "selected" when active), momentary triggers (Analytics/Accounts/Laws
+  // & Tasks/Help) that just fire their own setter, and "columns" which opens
+  // ColumnsPickerButton's panel via its controlled open/onOpenChange (that
+  // component renders with hideTrigger, right below this select, so its
+  // floating panel still anchors somewhere sensible without a second visible
+  // trigger of its own).
+  const EXPENSES_FILTER_BAR_KEYS = ['history', 'properties_available', 'properties_not_available', 'printers', 'computers']
   function renderExpensesFiltersBar() {
     return (
       <select
@@ -4501,7 +4503,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
       >
         <option value="">Filter</option>
-        <option value="new_expense">+ New Expense</option>
         <option value="history">History</option>
         <option value="properties_available">Properties Available ({liveExpensesViewCounts.prop_available})</option>
         <option value="properties_not_available">Properties Not Available ({liveExpensesViewCounts.prop_not_available})</option>
@@ -6555,11 +6556,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   itself opens via a "Columns" option inside the Filter
                   select -- ColumnsPickerButton renders here with
                   hideTrigger, purely so its floating panel has somewhere to
-                  anchor. Everything else -- New Expense/History/property
-                  availability splits/Analytics/Accounts/Laws & Tasks/Help --
-                  also lives in that same Filter dropdown. No Bars Only here
-                  -- Expenses has no day-bar/item-line grouping like
-                  Sales/Bills. */}
+                  anchor. New Expense is its own visible "+ New" button (below,
+                  next to Search) rather than buried in the dropdown --
+                  everything else -- History/property availability
+                  splits/Analytics/Accounts/Laws & Tasks/Help -- still lives
+                  in that same Filter dropdown. No Bars Only here -- Expenses
+                  has no day-bar/item-line grouping like Sales/Bills. */}
               <div className="px-1.5 py-0.5 bg-white flex items-center flex-wrap gap-x-1.5 gap-y-0.5 border-b border-gray-200">
                 {liveExpensesMainRadios.map((v, i) => (
                   <Fragment key={v.key}>
@@ -6586,7 +6588,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20 shrink-0"
                 />
-                <button onClick={() => setLiveExpensesAddingNew(true)}
+                <button onClick={() => selectLiveExpensesRadio('new_expense')}
                   className="text-xs font-semibold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 shrink-0">
                   + New
                 </button>
