@@ -88,9 +88,14 @@ export async function GET() {
   const { error } = await requireAuth()
   if (error) return error
 
+  const cacheHeaders = {
+    'Cache-Control': 'max-age=7200', // 2 hours for client/browser
+    'Neon-Caching-Control': 'max-age=7200' // Neon edge cache
+  }
+
   const now = Date.now()
   if (cachedLossesSummary && now - cachedLossesSummaryTime < LOSSES_SUMMARY_CACHE_TTL) {
-    return NextResponse.json(cachedLossesSummary)
+    return NextResponse.json(cachedLossesSummary, { headers: cacheHeaders })
   }
 
   try {
@@ -279,7 +284,12 @@ export async function GET() {
 
     cachedLossesSummary = result
     cachedLossesSummaryTime = Date.now()
-    return success(result)
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'max-age=7200',
+        'Neon-Caching-Control': 'max-age=7200'
+      }
+    })
   } catch (e) {
     return handleError('losses/summary', e)
   }

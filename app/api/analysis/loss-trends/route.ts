@@ -1,5 +1,6 @@
 import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { NextResponse } from 'next/server'
 
 type DayRow = {
   item_id: number
@@ -165,7 +166,12 @@ export async function GET() {
       .map(([cf_group, value]) => ({ cf_group, value: Math.round(value * 100) / 100 }))
       .sort((a, b) => b.value - a.value)
 
-    return success({ monthlyLoss, topByValue, topByQty, leastByValue, lossByGroup })
+    return NextResponse.json({ monthlyLoss, topByValue, topByQty, leastByValue, lossByGroup }, {
+      headers: {
+        'Cache-Control': 'max-age=7200',
+        'Neon-Caching-Control': 'max-age=7200'
+      }
+    })
   } catch (e) {
     return handleError('analysis/loss-trends', e)
   }

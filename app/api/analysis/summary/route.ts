@@ -2,6 +2,7 @@ import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { getCached } from '@/lib/cacheStore'
+import { NextResponse } from 'next/server'
 
 export async function GET() {
   const { session, error } = await requireAuth()
@@ -9,10 +10,14 @@ export async function GET() {
 
   try {
     const canSeeAmounts = isOwnerLevel(session?.user as any)
+    const data = await getCached('analysis:summary', 300, () => computeSummary(canSeeAmounts))
 
-    return success(
-      await getCached('analysis:summary', 300, () => computeSummary(canSeeAmounts))
-    )
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'max-age=600',
+        'Neon-Caching-Control': 'max-age=600'
+      }
+    })
   } catch (e) {
     return handleError('analysis/summary', e)
   }

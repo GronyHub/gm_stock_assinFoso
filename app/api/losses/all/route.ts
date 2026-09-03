@@ -88,5 +88,10 @@ export async function GET(req: NextRequest) {
   if (rows.length === limit) {
     console.warn(`losses/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
   }
-  return NextResponse.json(rows)
+  return NextResponse.json(rows, {
+    headers: {
+      'Cache-Control': 'max-age=7200',
+      'Neon-Caching-Control': 'max-age=7200'
+    }
+  })
 }
