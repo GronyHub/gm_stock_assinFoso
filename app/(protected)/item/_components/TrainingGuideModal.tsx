@@ -154,7 +154,7 @@ const TOPICS: Topic[] = [
       <div className="space-y-4">
         <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. Only the single most serious one shows on the card (plus a "+N more" if there is more than one) -- worst first. Each one below has the exact taps to clear it.</p>
 
-        <Callout kind="warn">Tapping one of these flags in the current view flags panel only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, switch to the Items view (in the same page) to reach the fix buttons.</Callout>
+        <Callout kind="warn">Tapping one of these flags in the current view flags panel only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, go to the <strong>Items</strong> tab to reach the fix buttons.</Callout>
 
         <div className="space-y-3">
           <div>
@@ -188,7 +188,7 @@ const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">This item looks like the same product entered twice under a slightly different name.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Switch to the <strong>Items</strong> view.</>,
+              <>Go to the <strong>Items</strong> tab.</>,
               <>Open the flags panel (📜) and tap the <strong>Duplicate Items</strong> pill.</>,
               <>Each pair shows both names side by side with two buttons: <strong>Keep "Name A"</strong> or <strong>Keep "Name B"</strong> -- tap whichever one you want to keep. The other full history (sales, bills, counts) merges into it automatically.</>,
               <>If they are genuinely two different products, tap <strong>Different -- Not a Duplicate</strong> instead, so it stops being flagged.</>,
@@ -200,7 +200,7 @@ const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">A past sale line matches this item by name but was never actually linked to it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Switch to the <strong>Items</strong> view, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
+              <>Go to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
               <>Each row shows how many sale lines matched this item and a button reading <strong>"Link N sale(s) to this item"</strong> -- tap it to connect them all at once.</>,
             ]} />
           </div>
@@ -210,7 +210,7 @@ const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">A service item (no physical stock) shows GMC use, a bill, or a stock count against it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Switch to the <strong>Items</strong> view, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they are carrying.</>,
+              <>Go to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they are carrying.</>,
               <>Tap the <strong>⚙️ Service GMC</strong> button near the top to open the Service GMC actions dropdown.</>,
               <>Use one of these actions:
                 <ul className="list-disc list-inside ml-2 text-sm">
