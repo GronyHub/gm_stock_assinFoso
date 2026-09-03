@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/maintenance/migrate-db", "schedule": "0 1 * * 0" },
     { "path": "/api/maintenance/optimize-db", "schedule": "0 2 * * 0" }
   ]
 }
