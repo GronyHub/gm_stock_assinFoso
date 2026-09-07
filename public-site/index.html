@@ -136,19 +136,16 @@
   }
   .brand {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    align-items: center;
+    gap: 12px;
     text-decoration: none;
     color: var(--ink);
   }
-  .brand-mark {
-    font-family: "Big Shoulders Display", sans-serif;
-    font-weight: 900;
-    font-size: 26px;
-    line-height: 1;
-    letter-spacing: 0.01em;
+  .brand-logo {
+    height: 38px;
+    width: auto;
+    display: block;
   }
-  .brand-mark span { color: var(--accent-text); }
   .brand-sub {
     font-family: "IBM Plex Mono", monospace;
     font-size: 10.5px;
@@ -490,11 +487,8 @@
 <header>
   <div class="wrap header-row">
     <a class="brand" href="#top">
-      <span class="crop-mark" aria-hidden="true"></span>
-      <span>
-        <div class="brand-mark">GRONY<span>.</span></div>
-        <div class="brand-sub">MULTIMEDIA — ASSIN FOSO</div>
-      </span>
+      <img src="logo.png" alt="Grony Multimedia" class="brand-logo">
+      <span class="brand-sub">ASSIN FOSO</span>
     </a>
     <nav class="primary">
       <span class="nav-links" style="display:flex;gap:28px;">
