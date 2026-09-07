@@ -5069,7 +5069,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ]
       },
       noViolations: {
-        title: '✓ All(NV) - No Violation Banners',
+        title: '✓ Live - No Violation Banners',
         description: 'Showing all items without violation banners displayed. Perfect for normal sales operations where you don\'t want to be distracted by violation alerts.',
         steps: [
           'All items are shown regardless of violation status',
@@ -5732,7 +5732,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>All(NV)</span>
+                    <span>Live</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
