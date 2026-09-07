@@ -644,6 +644,111 @@ const TOPICS: Topic[] = [
       </div>
     ),
   },
+  {
+    id: 'ai-design-overview',
+    title: 'Using Claude AI to design posters, flyers & brochures',
+    group: 'Design with Claude AI',
+    keywords: 'claude ai design poster flyer brochure canva adobe figma app which claude use assistant chatgpt overview',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Claude (the same AI that built this app) can also design real, finished artwork for the shop -- posters, flyers, brochures, banners, business cards, social media graphics -- by talking to it in plain English. It does the actual layout, text, and colour work itself, and can hand the result to <strong>Canva</strong> or <strong>Adobe</strong> for you to fine-tune or print.</p>
+        <div className="space-y-1.5">
+          <p className="text-sm text-gray-800 font-semibold">Which Claude app to use:</p>
+          <p className="text-sm text-gray-700">Use <strong>claude.ai</strong> in a normal web browser (phone or computer) -- it is the simplest place to do design work, shows pictures/previews directly in the chat, and is where the Canva/Adobe/Figma connections below get switched on. The Claude mobile app works the same way. (This stock/sales app you're reading this in is separate from claude.ai -- this Help Guide just lives inside it.)</p>
+        </div>
+        <Callout>You do not need to learn any technical terms to do this. There is no special "mode" to turn on for design work -- just describe what you want in your own words, the same way you'd explain it to a designer, and Claude figures out the rest.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'ai-design-connect',
+    title: 'Connecting Canva, Adobe, and Figma to Claude',
+    group: 'Design with Claude AI',
+    keywords: 'connect connector canva adobe figma settings login account setup enable integration',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">A "connector" is just a switched-on link between Claude and another account you already have (or can make for free) -- once it's on, you can ask Claude to use that app directly inside your conversation.</p>
+        <Steps items={[
+          <>On <strong>claude.ai</strong>, open <strong>Settings</strong> (your profile/account menu) and find <strong>Connectors</strong>.</>,
+          <>Find <strong>Canva</strong>, <strong>Adobe</strong> (sometimes listed as "Adobe for Creativity" or Firefly/Express), and <strong>Figma</strong> in the list, and tap <strong>Connect</strong> on each one you want.</>,
+          <>You'll be sent to that service's own login page -- sign in with an existing account, or create a free one if you don't have one yet, then approve the connection.</>,
+          <>Back in Claude, that connector now shows as connected. You don't need to open Canva/Adobe/Figma yourself afterwards -- just describe what you want in the Claude chat and it'll use the connected app for you.</>,
+        ]} />
+        <Callout kind="warn">Only connect an account you're allowed to use for shop work. If a design needs to end up in a specific shared Canva/Adobe team account (rather than a personal one), make sure that's the account you sign into when connecting.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'ai-design-canva',
+    title: 'Step-by-step: making a poster or flyer with Canva',
+    group: 'Design with Claude AI',
+    keywords: 'canva poster flyer step by step tutorial how to create design social media graphic',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Canva (via Claude) is the best starting point for most everyday jobs: posters, flyers, social media posts, banners, invitations, simple business cards.</p>
+        <Steps items={[
+          <>Start a new chat with Claude and describe the job in one message: what it's for, the exact text that must appear (business name, offer, price, date), the size (e.g. "A4 poster", "square Instagram post", "L. Format 3ft banner"), and mention you'd like it made in <strong>Canva</strong>.</>,
+          <>Example: <em>"Make an A4 flyer in Canva for a back-to-school printing discount -- 20% off photocopies this week, Grony Multimedia, navy and gold colours, our logo at the top."</em></>,
+          <>Claude will either ask a couple of quick questions first, or go straight to showing you a draft.</>,
+          <>Review the draft and ask for changes in plain language -- <em>"make the headline bigger"</em>, <em>"use our logo instead of that icon"</em>, <em>"try a red background instead"</em>. Keep going until it looks right; there's no limit on how many rounds of changes you can ask for.</>,
+          <>Once you're happy, ask Claude to give you the finished file -- e.g. <em>"export this as a PDF I can print"</em> or <em>"open it in Canva so I can tweak it myself"</em>. If it's already a Canva design, you can also open canva.com and find it in your account to make further edits by hand.</>,
+        ]} />
+        <Callout>Canva is template-friendly -- if you already like a particular style, you can ask Claude to "start from a Canva template" instead of a blank design, which is often faster for standard formats like flyers and social posts.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'ai-design-adobe',
+    title: 'Step-by-step: brochures, photo edits & bulk documents with Adobe',
+    group: 'Design with Claude AI',
+    keywords: 'adobe firefly express indesign photoshop illustrator step by step tutorial brochure photo edit background remove bulk merge certificates id cards',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Adobe (via Claude) covers more advanced or print-specific jobs that Canva isn't built for:</p>
+        <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+          <li><strong>Multi-page brochures and layouts</strong> that need precise print sizing.</li>
+          <li><strong>Photo editing</strong> -- removing/changing a background, fixing brightness/colour, sharpening a blurry photo.</li>
+          <li><strong>Generating new images from a description</strong> (e.g. "a photo-realistic image of a printer with paper flying out, for a banner background") instead of using a stock photo.</li>
+          <li><strong>Bulk personalised documents</strong> -- e.g. printing 50 certificates or ID cards that each need a different name/photo from a list, without designing each one by hand.</li>
+        </ul>
+        <Steps items={[
+          <>Start a chat with Claude and describe the job, e.g. <em>"Remove the background from this photo and put it on a white background"</em> (attach the photo), or <em>"Design a tri-fold brochure for our printing services, three panels, using Adobe."</em></>,
+          <>For bulk documents: describe the template (what the certificate/ID card looks like) and provide the list of names/details (e.g. as a simple spreadsheet) -- Claude can generate one finished file per person automatically.</>,
+          <>Review and ask for changes the same way as with Canva -- plain-language feedback, as many rounds as needed.</>,
+          <>Ask for the final file in whatever format you need to print or share (PDF, PNG, etc.).</>,
+        ]} />
+        <Callout kind="warn">Some Adobe features work best with a Creative Cloud (paid) account rather than a free one -- if something says it's unavailable, that's usually why. A free Adobe account still covers a lot of the basics (Express-style designs, most image edits).</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'ai-design-figma',
+    title: 'When to use Figma instead',
+    group: 'Design with Claude AI',
+    keywords: 'figma when use digital screen app website ui mockup diagram figjam',
+    body: (
+      <p className="text-sm text-gray-700">Figma (via Claude) is built for <strong>on-screen</strong> design -- website pages, app screens, digital mockups, or diagrams -- rather than print. For the shop's usual work (posters, flyers, brochures, business cards) reach for Canva or Adobe instead; only bring in Figma if you're specifically designing something for a website, app, or a digital-only mockup that needs to look like a real screen. Connecting and using it follows the exact same pattern as Canva/Adobe above -- describe what you want, review, and ask for changes.</p>
+    ),
+  },
+  {
+    id: 'ai-design-tips',
+    title: 'Getting good results: tips for working with Claude on design',
+    group: 'Design with Claude AI',
+    keywords: 'tips prompts brand colors logo advice best practices dimensions size download export',
+    body: (
+      <div className="space-y-3">
+        <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
+          <li><strong>Be specific about the exact text</strong> that must appear -- business name, offer, price, dates, contact info -- word for word if it matters. Claude won't guess correctly if you leave it vague.</li>
+          <li><strong>Mention the size/format</strong> up front (A4, A3, a specific banner size, a social media post, etc.) so you're not resizing later.</li>
+          <li><strong>Use Grony Multimedia's brand colours</strong> when you want it on-brand -- navy blue (<code className="bg-gray-100 px-1 py-0.5 rounded text-xs">#14145a</code>) and gold/yellow (<code className="bg-gray-100 px-1 py-0.5 rounded text-xs">#f5d80b</code>), the same ones on the company website and logo. Just say "use our brand navy and gold" -- Claude/Canva/Adobe will pick the right shades.</li>
+          <li><strong>Attach the logo</strong> (or a product photo) directly in the chat if you want it included -- Claude can place, resize, and clean up an attached image.</li>
+          <li><strong>Ask for one change at a time</strong> if you want tight control ("make the title bigger" then "now change the background"), or describe several changes together if you're comfortable with a bigger jump -- both work.</li>
+          <li><strong>Always ask for the format you actually need</strong> at the end -- "give me a print-ready PDF", "give me a PNG for WhatsApp", "open it in Canva for me to edit" -- Claude won't know which one you want unless you say so.</li>
+        </ul>
+        <Callout>None of this requires learning any Claude-specific jargon or commands. If a request doesn't come out right, just say what's wrong in your own words and ask again -- that always works.</Callout>
+      </div>
+    ),
+  },
 ]
 
 export function TrainingGuideModal({ isOpen, onClose }: {
