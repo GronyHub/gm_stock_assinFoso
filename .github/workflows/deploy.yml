@@ -20,3 +20,6 @@ jobs:
             npm install
             npm run build
             pm2 restart grony-app
+            mkdir -p /var/www/gronymultimedia
+            cp -r /root/app/public-site/. /var/www/gronymultimedia/
+            chmod -R a+rX /var/www/gronymultimedia
