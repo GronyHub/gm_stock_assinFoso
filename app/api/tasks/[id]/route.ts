@@ -1,6 +1,7 @@
 import { requireAuth, notFound, success } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
+import { invalidateCache } from '@/lib/cacheStore'
 import { NextRequest } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     WHERE id = ${taskId}
     RETURNING id, title, notes, due_date, submenu, view, done, created_by, created_at, completed_at, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, completed_by
   `
+  invalidateCache('tasks:all')
   return success(row)
 }
 
@@ -43,5 +45,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const taskId = await getIdParam(params)
   await sql`DELETE FROM custom_tasks WHERE id = ${taskId}`
+  invalidateCache('tasks:all')
   return success({ ok: true })
 }

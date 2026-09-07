@@ -2,29 +2,38 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { getCached, invalidateCache } from '@/lib/cacheStore'
 
+// Every open Item hub tab polled this every 2 minutes regardless of which
+// sub-tab was showing -- by far the most frequent background request in the
+// app. A short cache absorbs that, and the POST handler below clears it
+// immediately on save, so a manager who just reassigns something always
+// sees their own change right away.
 export async function GET() {
   try {
-    const [assignments, settings] = await Promise.all([
-      sql`SELECT violation_type, staff_name, deadline::text, assigned_by, assigned_on::text FROM violation_assignments`,
-      sql`SELECT key, value FROM violation_settings`,
-    ])
-    const assignmentMap: Record<string, string> = {}
-    const deadlineMap: Record<string, string> = {}
-    const assignedByMap: Record<string, string> = {}
-    const assignedOnMap: Record<string, string> = {}
-    for (const r of assignments) {
-      assignmentMap[r.violation_type] = r.staff_name
-      if (r.deadline) deadlineMap[r.violation_type] = String(r.deadline).slice(0, 10)
-      if (r.assigned_by) assignedByMap[r.violation_type] = r.assigned_by
-      if (r.assigned_on) assignedOnMap[r.violation_type] = String(r.assigned_on).slice(0, 10)
-    }
-    const settingsMap: Record<string, string> = {}
-    for (const r of settings) settingsMap[r.key] = r.value
-    return NextResponse.json({
-      assignments: assignmentMap, deadlines: deadlineMap,
-      assignedBy: assignedByMap, assignedOn: assignedOnMap, settings: settingsMap,
+    const data = await getCached('violations:assignments', 300, async () => {
+      const [assignments, settings] = await Promise.all([
+        sql`SELECT violation_type, staff_name, deadline::text, assigned_by, assigned_on::text FROM violation_assignments`,
+        sql`SELECT key, value FROM violation_settings`,
+      ])
+      const assignmentMap: Record<string, string> = {}
+      const deadlineMap: Record<string, string> = {}
+      const assignedByMap: Record<string, string> = {}
+      const assignedOnMap: Record<string, string> = {}
+      for (const r of assignments) {
+        assignmentMap[r.violation_type] = r.staff_name
+        if (r.deadline) deadlineMap[r.violation_type] = String(r.deadline).slice(0, 10)
+        if (r.assigned_by) assignedByMap[r.violation_type] = r.assigned_by
+        if (r.assigned_on) assignedOnMap[r.violation_type] = String(r.assigned_on).slice(0, 10)
+      }
+      const settingsMap: Record<string, string> = {}
+      for (const r of settings) settingsMap[r.key] = r.value
+      return {
+        assignments: assignmentMap, deadlines: deadlineMap,
+        assignedBy: assignedByMap, assignedOn: assignedOnMap, settings: settingsMap,
+      }
     })
+    return NextResponse.json(data)
   } catch (e) {
     console.error('violation assignments GET error:', e)
     return NextResponse.json({ assignments: {}, deadlines: {}, assignedBy: {}, assignedOn: {}, settings: {} })
@@ -82,6 +91,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    invalidateCache('violations:assignments')
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('violation assignments POST error:', e)

@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
+import { getCached, invalidateCache } from '@/lib/cacheStore'
 import { NextRequest } from 'next/server'
 
 // Ten DDL statements, previously re-run on every request to this route --
@@ -81,11 +82,16 @@ export async function GET(req: NextRequest) {
       `
       return success(rows)
     } else {
-      const rows = await sql`
+      // Unfiltered "all tasks" is what the per-page green task-count badges
+      // fetch every 10 minutes from every open Item hub tab, regardless of
+      // which sub-tab is showing -- a short cache absorbs that background
+      // traffic. Cleared on every write below so a staff member who just
+      // added/completed/edited a task always sees it immediately.
+      const rows = await getCached('tasks:all', 120, () => sql`
         SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
         FROM custom_tasks
         ORDER BY done ASC, due_date NULLS LAST, created_at DESC
-      `
+      `)
       return success(rows)
     }
   } catch (e) {
@@ -116,6 +122,7 @@ export async function POST(req: NextRequest) {
       VALUES (${text}, ${typeof notes === 'string' && notes.trim() ? notes.trim() : null}, ${due_date || null}, ${submenuText}, ${viewText || null}, ${law_id || null}, ${flag_key || null}, ${assignedToText}, ${task_type || 'General +'}, ${recurrence_type || null}, ${recurrence_days ? JSON.stringify(recurrence_days) : null}, ${actor})
       RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
+    invalidateCache('tasks:all')
     return success(row)
   } catch (e) {
     return handleError('tasks POST', e)
@@ -140,6 +147,7 @@ export async function PATCH(req: NextRequest) {
       WHERE id = ${id}
       RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `
+    invalidateCache('tasks:all')
     return success(row)
   } catch (e) {
     return handleError('tasks PATCH', e)
