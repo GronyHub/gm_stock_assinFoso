@@ -572,6 +572,78 @@ const TOPICS: Topic[] = [
       </div>
     ),
   },
+  {
+    id: 'password-reset-email',
+    title: 'How "Forgot password" emails get sent (Resend)',
+    group: 'Hosting & Infrastructure',
+    keywords: 'password reset email resend smtp gmail forgot link not arriving spam',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Tapping <strong>"Send reset link"</strong> on the Forgot Password screen doesn't talk to Gmail directly -- it calls <strong>Resend</strong>, an email-sending service, over a plain HTTPS API request.</p>
+        <p className="text-sm text-gray-700">This changed after the app moved off Vercel: DigitalOcean (like most cloud hosts) silently blocks outbound raw SMTP connections as an anti-spam measure, which made the old Gmail-SMTP transport hang and then fail on every single reset request. HTTPS on port 443 is never blocked that way, so Resend's API is the reliable path now.</p>
+        <div className="space-y-1.5 text-sm text-gray-700">
+          <p><strong>The flow, end to end:</strong></p>
+          <Steps items={[
+            <>Staff member enters their email on <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">/forgot-password</code>.</>,
+            <><code className="bg-gray-100 px-1 py-0.5 rounded text-xs">/api/auth/forgot-password</code> creates a reset token (valid <strong>1 hour</strong>) and calls Resend's API with the reset link baked into an HTML email.</>,
+            <>Resend delivers the email; the app always shows "Check your email" regardless of whether that address is actually registered, so the form can't be used to probe which emails have accounts.</>,
+            <>The emailed link opens the reset-password page, which accepts the token until it expires.</>,
+          ]} />
+        </div>
+        <Callout kind="warn">If reset emails aren't arriving, check spam first. Past that, this is a backend/API-key issue (the Resend API key or sending domain), not something fixable from the app UI -- flag it to whoever manages the Droplet's environment variables.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'hosting-deploy',
+    title: 'Where the app runs, and how a code change goes live',
+    group: 'Hosting & Infrastructure',
+    keywords: 'hosting deploy digitalocean droplet caddy pm2 github actions vercel vps deploy pipeline',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">The app moved off Vercel to a self-hosted <strong>DigitalOcean Droplet</strong> (a small always-on server, based in London) to cut recurring hosting cost. It's live at <strong>app.gronymultimedia.com</strong>.</p>
+        <div className="space-y-1.5 text-sm text-gray-700">
+          <p><strong>How the pieces fit together:</strong></p>
+          <ul className="space-y-1 list-disc list-inside">
+            <li><strong>Caddy</strong> sits in front, handling HTTPS automatically and forwarding requests to the app.</li>
+            <li><strong>pm2</strong> keeps the Next.js app itself running as a persistent process on port 3000, and restarts it automatically if it crashes.</li>
+            <li><strong>GitHub Actions</strong> (<code className="bg-gray-100 px-1 py-0.5 rounded text-xs">.github/workflows/deploy.yml</code>) is the deploy pipeline -- every push to <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">main</code> automatically SSHes into the Droplet and runs <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">git pull</code>, <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">npm install</code>, <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">npm run build</code>, then <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">pm2 restart grony-app</code>.</li>
+          </ul>
+        </div>
+        <p className="text-sm text-gray-700">In practice this means: merge/push to <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">main</code>, and the live app updates on its own within a few minutes -- there is no manual deploy step anymore.</p>
+        <Callout>The old Vercel project still exists but is downgraded to its free Hobby tier and no longer receives deployments -- it's a frozen, unused leftover, not a second live copy of the app.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'public-website',
+    title: 'The public marketing website (separate from this app)',
+    group: 'Hosting & Infrastructure',
+    keywords: 'public website marketing site homepage logo brand colors static',
+    body: (
+      <p className="text-sm text-gray-700">Grony Multimedia also has a plain static marketing website (brand colors, logo, company info) served from the same Droplet via Caddy, separate from this stock/sales app. It lives in the repository under <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">public-site/</code>, and the same deploy pipeline copies its files into place on every push to <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">main</code>. It has no login and no shared data with the app -- it's purely informational.</p>
+    ),
+  },
+  {
+    id: 'neon-compute-hours',
+    title: 'Why background updates got slower (and why that is intentional)',
+    group: 'Hosting & Infrastructure',
+    keywords: 'neon compute hours free tier suspend polling slow presence staff online bar cost budget',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">The database runs on Neon's <strong>free tier</strong>, which includes a monthly allowance of compute hours -- and Neon only stops billing compute time once the database has sat fully idle (no queries at all) for about <strong>5 minutes straight</strong>.</p>
+        <p className="text-sm text-gray-700">Several background features used to poll far faster than that -- most notably the "who's online" presence heartbeat (every 15 seconds, from every open tab) and the staff bar's worked-today poll -- which meant the database effectively never got a clean 5-minute gap to suspend during business hours, even when nobody was actively using the app.</p>
+        <div className="space-y-1.5 text-sm text-gray-700">
+          <p><strong>What changed:</strong></p>
+          <ul className="space-y-1 list-disc list-inside">
+            <li><strong>Online presence</strong> ("who's online" status) no longer touches the database at all -- it's tracked in the running app's own memory instead, since the app now runs as one persistent server process rather than disposable serverless functions.</li>
+            <li>Every other background poll across the app (staff bar, activity toaster, analytics sections, closing report, logs auto-refresh, etc.) was slowed to <strong>10 minutes</strong>, comfortably past the 5-minute auto-suspend window.</li>
+          </ul>
+        </div>
+        <Callout>This is the same reason some lists/summaries can lag up to 2 hours -- see "Why do some numbers take a while to update?" above. Sale taps, counts, and edits are still always instant; it's only background badges/summaries/"who's online" style data that intentionally trades a little freshness for keeping the database bill under control.</Callout>
+      </div>
+    ),
+  },
 ]
 
 export function TrainingGuideModal({ isOpen, onClose }: {
