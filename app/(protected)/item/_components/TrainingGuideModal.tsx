@@ -211,16 +211,8 @@ const TOPICS: Topic[] = [
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
               <>Go to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they are carrying.</>,
-              <>Tap the <strong>⚙️ Service GMC</strong> button near the top to open the Service GMC actions dropdown.</>,
-              <>Use one of these actions:
-                <ul className="list-disc list-inside ml-2 text-sm">
-                  <li><strong>Migrate Data</strong> -- transfers counts, bills, and sales from services to their target GMC items (if configured).</li>
-                  <li><strong>Fix Loss Records</strong> -- moves the audit trail of deletions from services to their target items.</li>
-                  <li><strong>Clear Cost Prices</strong> -- removes cost prices from services (owner-level only).</li>
-                  <li><strong>Add Constraints</strong> -- enforces database rules to prevent new violations (owner-level only).</li>
-                </ul>
-              </>,
-              <>If the service does not have a target GMC item, track down the wrongly-logged bill, count, or GMC entry (in Bills, Count Records, or the Log) and correct or delete it there.</>,
+              <>Track down the wrongly-logged bill, count, or GMC entry (in Bills, Count Records, or the Log) and correct or delete it there.</>,
+              <>If the service still shows a cost price it shouldn't have, edit the item and clear it -- cost pricing belongs on the GMC material it consumes, not on the service itself.</>,
             ]} />
           </div>
         </div>

@@ -2350,9 +2350,9 @@ function ItemHubPageInner() {
   // from the same catalogue fetch everything else here already uses.
   // Services never carry their own cost_price (it's cleared/zeroed by
   // design -- cost pricing belongs on the GMC material they actually
-  // consume, see migrate-service-gmc-data), so a service's cost is instead
-  // however many units of its converts_to_item_id material one tap uses
-  // (units_per_pack) times THAT item's own cost price.
+  // consume), so a service's cost is instead however many units of its
+  // converts_to_item_id material one tap uses (units_per_pack) times THAT
+  // item's own cost price.
   const liveCostPriceByItemId = useMemo(() => {
     const byId = new Map<number, LiveItem>()
     for (const item of liveAllItems) byId.set(item.id, item)
@@ -5636,45 +5636,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveSaleFilter(null)
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
-                      } else if (v.startsWith('action:')) {
-                        const action = v.slice('action:'.length)
-                        let endpoint = ''
-                        let confirmMsg = ''
-
-                        switch (action) {
-                          case 'migrate-gmc':
-                            endpoint = '/api/items/migrate-service-gmc-data'
-                            confirmMsg = 'Migrate all services using GMC?\n\nThis will transfer counts, bills, and sales from services to their target GMC items, then clear cost prices from the services.'
-                            break
-                          case 'fix-gmc-losses':
-                            endpoint = '/api/fix-service-gmc-loss-records'
-                            confirmMsg = 'Transfer loss revision records from services using GMC to their target items?\n\nThis will move the audit trail of deletions from services to the actual inventory items.'
-                            break
-                          case 'add-gmc-constraints':
-                            endpoint = '/api/add-service-gmc-constraints'
-                            confirmMsg = 'Add database constraints to enforce service GMC data integrity?\n\nThis will prevent:\n- Cost prices on services\n- Stock counts on services\n- Bills on services\n- Sales on services'
-                            break
-                          case 'clear-gmc-costs':
-                            endpoint = '/api/clear-service-gmc-costs'
-                            confirmMsg = 'Clear cost prices from services using GMC?\n\nCost pricing information should only exist on the target GMC items, not on the services themselves.'
-                            break
-                        }
-
-                        if (confirm(confirmMsg)) {
-                          fetch(endpoint, { method: 'POST' })
-                            .then(r => r.json())
-                            .then(data => {
-                              if (!data.error) {
-                                showToast(data.message || 'Operation completed', 'success')
-                              } else {
-                                showToast(data.error, 'error')
-                              }
-                            })
-                            .catch(e => showToast(e.message || 'Operation failed', 'error'))
-                            .finally(() => selectEl.value = '')
-                        } else {
-                          selectEl.value = ''
-                        }
                       } else if (v.startsWith('interval:')) {
                         setLiveCurrentView(null)
                         setLiveGmcTypeFilter(null)
@@ -5757,14 +5718,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option value="gmc:pack_to_gmc">Pack → GMC</option>
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
-                    {isOwnerLevel(session?.user as any) && (
-                      <optgroup label="Service GMC">
-                        <option value="action:migrate-gmc">↻ Migrate Service GMC Data</option>
-                        <option value="action:fix-gmc-losses">→ Fix Service Loss Records</option>
-                        <option value="action:add-gmc-constraints">🔒 Add Service GMC Constraints</option>
-                        <option value="action:clear-gmc-costs">💰 Clear Service Cost Prices</option>
-                      </optgroup>
-                    )}
                   </select>
                 </div>
               )}
