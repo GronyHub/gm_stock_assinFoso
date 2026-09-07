@@ -44,9 +44,10 @@ for the full record of what changed, when, and why):**
 explained to staff in the in-app Help Guide under "Good to Know" →
 "Why do some numbers take a while to update?"
 
-**Weekly maintenance (runs automatically via `vercel.json` cron, Sundays 2 AM UTC):**
+**Weekly maintenance (runs automatically via a system cron job on the VPS,
+`/etc/cron.d/grony-maintenance`, Sundays 1-2 AM UTC):**
 ```bash
-curl -X POST https://yourapp.com/api/maintenance/optimize-db \
+curl -X POST http://localhost:3000/api/maintenance/optimize-db \
   -H "Authorization: Bearer $MAINTENANCE_SECRET"
 ```
 
@@ -58,3 +59,15 @@ curl -X POST https://yourapp.com/api/maintenance/optimize-db \
 - Core data (items, receipts, POs): Indefinite
 
 **If you exceed 10 GB:** Upgrade to Neon Pro ($15/month, 500 GB) or archive old data to S3.
+
+# Hosting
+
+Moved off Vercel to a self-hosted DigitalOcean Droplet (London) to cut
+recurring cost. Live at `https://app.gronymultimedia.com`, served by Caddy
+(automatic HTTPS) reverse-proxying to a Next.js app run under pm2 on port
+3000. `git push` to `main` triggers `.github/workflows/deploy.yml`, which
+SSHes into the Droplet and runs `git pull && npm install && npm run build &&
+pm2 restart grony-app` automatically — no manual deploy step needed. The old
+Vercel project is downgraded to Hobby and no longer receives deployments;
+treat it as a frozen, unused artifact.
+
