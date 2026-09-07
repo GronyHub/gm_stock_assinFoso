@@ -43,7 +43,11 @@ export default function ActivityToaster() {
   useEffect(() => { if (status === 'authenticated') poll() }, [status, username])
   // Mounted app-wide in the root layout, same story as LivePresence -- was
   // running unguarded on every open tab all day regardless of visibility.
-  usePolling(poll, 90000, status === 'authenticated')
+  // 90s is well under Neon's 5-minute auto-suspend window, and since this
+  // runs on literally every open tab app-wide, it alone could keep the
+  // database from ever sleeping during a quiet moment. Bumped to the same
+  // 10-minute "background data" tier used everywhere else in the app.
+  usePolling(poll, 600000, status === 'authenticated')
 
   if (!toasts.length) return null
 

@@ -296,7 +296,10 @@ function AnnouncementsPanel() {
   }, [posts.length, hasMore])
 
   useEffect(() => { load() }, [])
-  usePolling(load, 90000)
+  // Was under Neon's 5-minute auto-suspend window; bumped to match the
+  // 10-minute "background data" tier used elsewhere so a quiet moment can
+  // actually let the database sleep.
+  usePolling(load, 600000)
 
   // Clears the Home badge -- opening this panel means the user has seen
   // whatever's currently posted, even before scrolling through it.

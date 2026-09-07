@@ -45,12 +45,15 @@ export default function PresentStaffBar() {
   // the app (see usePolling's own comment), so a forgotten background tab
   // kept hitting the database every 60s indefinitely. This bar is always
   // mounted (sits above the mode-switch tabs regardless of which tab is
-  // open), so it was one of the steadiest Neon compute-hour drivers.
+  // open), so it was one of the steadiest Neon compute-hour drivers. Bumped
+  // to the same 10-minute "background data" tier used everywhere else, past
+  // Neon's 5-minute auto-suspend window, so a quiet moment can actually let
+  // the database sleep.
   usePolling(() => {
     fetch('/api/staff-times/worked-today').then(r => r.ok ? r.json() : null).then(d => {
       if (Array.isArray(d?.staff)) setStaff(d.staff)
     }).catch(() => {})
-  }, 180000)
+  }, 600000)
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 30000)

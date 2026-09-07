@@ -45,8 +45,10 @@ export default function LogsPage() {
     load()
   }, [])
 
-  // Auto-refresh every 60s
-  usePolling(load, 60_000, autoRefresh)
+  // Was 60s (well under Neon's 5-minute auto-suspend window) and enabled by
+  // default; bumped to the same 10-minute "background data" tier used
+  // elsewhere so a quiet moment can actually let the database sleep.
+  usePolling(load, 600_000, autoRefresh)
 
   const filtered = useMemo(() => {
     if (!search.trim()) return logs

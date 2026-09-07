@@ -1014,7 +1014,10 @@ function ItemHubPageInner() {
       .catch(() => {})
   }
   useEffect(() => { fetchStaff() }, [])
-  usePolling(fetchStaff, 60000)
+  // Was under Neon's 5-minute auto-suspend window; bumped to match the
+  // 10-minute "background data" tier used elsewhere so a quiet moment can
+  // actually let the database sleep.
+  usePolling(fetchStaff, 600000)
 
   // UK's people + per-person submenus + selected submenu's columns/rows --
   // shared between the merged pane (a flat "every person's every submenu"
@@ -2901,7 +2904,10 @@ function ItemHubPageInner() {
       .catch(() => {})
   }
   useEffect(loadCountProgress, [])
-  usePolling(loadCountProgress, 300000)
+  // Was exactly at Neon's 5-minute auto-suspend threshold (300000ms), close
+  // enough to still occasionally prevent a quiet moment from suspending;
+  // bumped to the same 10-minute tier as the other background pollers.
+  usePolling(loadCountProgress, 600000)
 
   // Count Records -- fetched when viewing the Count Records view, showing full-page
   // count display in Sale mode, or viewing Loss by Date/Items views. Unlike the queues

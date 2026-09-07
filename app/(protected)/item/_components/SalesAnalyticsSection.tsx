@@ -135,7 +135,10 @@ export default function SalesAnalyticsSection() {
       .catch(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
-  usePolling(load, 120000)
+  // Was under Neon's 5-minute auto-suspend window; bumped to match the
+  // 10-minute "background data" tier used elsewhere so a quiet moment can
+  // actually let the database sleep.
+  usePolling(load, 600000)
 
   const monthlyRevenue = useMemo(() => (data?.monthlyRevenue ?? []).filter((r: any) => r.month).map((r: any) => ({ month: monthLabel(r.month), wic: n(r.wic), gmc: n(r.gmc), total: n(r.total) })), [data])
   const dailyRevenue30 = useMemo(() => (data?.dailyRevenue30 ?? []).filter((r: any) => r.date).map((r: any) => ({ date: dayLabel(r.date), total: n(r.total) })), [data])

@@ -32,7 +32,10 @@ export default function ClosingReportLogView({ field, label, icon }: {
   }
 
   useEffect(() => { load() }, [])
-  usePolling(load, 120000)
+  // Was under Neon's 5-minute auto-suspend window; bumped to match the
+  // 10-minute "background data" tier used elsewhere so a quiet moment can
+  // actually let the database sleep.
+  usePolling(load, 600000)
 
   return (
     <div className="py-2 px-2 space-y-2">
