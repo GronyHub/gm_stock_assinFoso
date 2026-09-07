@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grony Multimedia — Assin Foso</title>
+<meta name="description" content="Grony Multimedia is Assin Foso's business center for printing, technology and media — software development, printing press, internet cafe, AI services, photo/video/audio, large format printing and more, near GCB Bank.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light dark;
+    --paper: #f0efe8;
+    --paper-raised: #ffffff;
+    --ink: #14171c;
+    --ink-soft: #4a4f58;
+    --ink-faint: #8a8f98;
+    --line: #d8d5cb;
+    --accent: #0e7c86;
+    --accent-strong: #0a5c64;
+    --accent-tint: #dcecec;
+    --mark: #c63756;
+    --shadow: rgba(20, 23, 28, 0.08);
+    --focus: #0e7c86;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15181d;
+      --paper-raised: #1c2027;
+      --ink: #eeece6;
+      --ink-soft: #b3b7bf;
+      --ink-faint: #6b707a;
+      --line: #2c313a;
+      --accent: #35a3ad;
+      --accent-strong: #55bcc4;
+      --accent-tint: #1c3336;
+      --mark: #e0637b;
+      --shadow: rgba(0, 0, 0, 0.35);
+      --focus: #55bcc4;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #15181d;
+    --paper-raised: #1c2027;
+    --ink: #eeece6;
+    --ink-soft: #b3b7bf;
+    --ink-faint: #6b707a;
+    --line: #2c313a;
+    --accent: #35a3ad;
+    --accent-strong: #55bcc4;
+    --accent-tint: #1c3336;
+    --mark: #e0637b;
+    --shadow: rgba(0, 0, 0, 0.35);
+    --focus: #55bcc4;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  h1, h2, h3 {
+    font-family: "Big Shoulders Display", system-ui, sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    letter-spacing: 0.02em;
+  }
+
+  a { color: var(--accent-strong); }
+
+  img { max-width: 100%; }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 48px);
+  }
+
+  /* ---------- crop-mark motif ---------- */
+  .crop-mark {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .crop-mark::before,
+  .crop-mark::after {
+    content: "";
+    position: absolute;
+    background: var(--mark);
+  }
+  .crop-mark::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+  .crop-mark::after { left: 50%; top: 0; height: 100%; width: 2px; transform: translateX(-50%); }
+
+  /* ---------- header ---------- */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .brand-mark {
+    font-family: "Big Shoulders Display", sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+  .brand-mark span { color: var(--accent); }
+  .brand-sub {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+  }
+  nav.primary {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 3vw, 32px);
+  }
+  nav.primary a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14.5px;
+  }
+  nav.primary a:hover { color: var(--accent-strong); }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 14.5px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #f5fbfb; }
+  .btn-primary:hover { background: var(--accent-strong); }
+  .btn-ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent-strong); }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    padding: clamp(56px, 9vw, 96px) 0 clamp(48px, 7vw, 72px);
+    border-bottom: 1px solid var(--line);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
+    gap: clamp(32px, 5vw, 64px);
+    align-items: start;
+  }
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    color: var(--accent-strong);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6.4vw, 74px);
+    line-height: 0.98;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero-sub {
+    margin-top: 22px;
+    max-width: 46ch;
+    font-size: 17.5px;
+    color: var(--ink-soft);
+  }
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 30px;
+  }
+  .hero-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 22px 24px;
+    box-shadow: 0 8px 24px -12px var(--shadow);
+  }
+  .hero-card h3 {
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .hero-fact {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 14.5px;
+  }
+  .hero-fact:last-child { border-bottom: none; }
+  .hero-fact dt { color: var(--ink-faint); }
+  .hero-fact dd { margin: 0; font-weight: 600; text-align: right; font-family: "IBM Plex Mono", monospace; }
+
+  /* ---------- section shell ---------- */
+  section { padding: clamp(52px, 8vw, 88px) 0; }
+  section + section { border-top: 1px solid var(--line); }
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: clamp(32px, 5vw, 48px);
+    flex-wrap: wrap;
+  }
+  .section-head h2 { font-size: clamp(30px, 4.4vw, 44px); }
+  .section-tag {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .section-note { max-width: 42ch; color: var(--ink-soft); font-size: 15px; }
+
+  /* ---------- services ---------- */
+  .service-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .service-group {
+    background: var(--paper);
+    padding: 28px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .service-group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .service-group-head h3 {
+    font-size: 21px;
+    letter-spacing: 0.02em;
+  }
+  .service-group-head .count {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .service-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .service-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .service-item h4 {
+    margin: 0;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 15.5px;
+    color: var(--ink);
+  }
+  .service-item p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- gallery ---------- */
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .gallery-tile {
+    aspect-ratio: 4 / 3;
+    border: 1.5px dashed var(--line);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 20px;
+    color: var(--ink-faint);
+    background: var(--paper-raised);
+  }
+  .gallery-tile .glyph {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .gallery-tile span.label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- contact ---------- */
+  .contact-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr);
+    gap: clamp(32px, 5vw, 56px);
+    align-items: start;
+  }
+  .info-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 26px;
+    margin-bottom: 16px;
+  }
+  .info-card h3 {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+  .info-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .k { font-size: 13px; color: var(--ink-faint); width: 78px; flex-shrink: 0; font-family: "IBM Plex Mono", monospace; padding-top: 1px; }
+  .info-row .v { font-size: 15px; font-weight: 500; }
+  .info-row .v a { text-decoration: none; }
+  .hours-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .hours-table td { padding: 6px 0; }
+  .hours-table td:last-child { text-align: right; font-family: "IBM Plex Mono", monospace; color: var(--ink-soft); }
+
+  form.enquiry {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  form.enquiry .ticket-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 4px;
+  }
+  form.enquiry .ticket-head h3 { font-size: 20px; }
+  form.enquiry .ticket-head span { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint); }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+  input, textarea, select {
+    font: inherit;
+    font-size: 15px;
+    padding: 11px 12px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+  .enquiry-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 13px 18px;
+    border-radius: 3px;
+    border: none;
+    background: var(--accent);
+    color: #f5fbfb;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .enquiry-submit:hover { background: var(--accent-strong); }
+  .enquiry-note { font-size: 12.5px; color: var(--ink-faint); text-align: center; }
+
+  /* ---------- footer ---------- */
+  footer { border-top: 1px solid var(--line); padding: 36px 0; }
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13.5px;
+    color: var(--ink-faint);
+  }
+  .footer-row a { color: var(--ink-faint); text-decoration: none; }
+  .footer-row a:hover { color: var(--accent-strong); }
+
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .contact-grid { grid-template-columns: 1fr; }
+    nav.primary .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-row">
+    <a class="brand" href="#top">
+      <span class="crop-mark" aria-hidden="true"></span>
+      <span>
+        <div class="brand-mark">GRONY<span>.</span></div>
+        <div class="brand-sub">MULTIMEDIA — ASSIN FOSO</div>
+      </span>
+    </a>
+    <nav class="primary">
+      <span class="nav-links" style="display:flex;gap:28px;">
+        <a href="#services">Services</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#contact">Contact</a>
+      </span>
+      <a class="btn btn-primary" href="https://wa.me/233248533826" target="_blank" rel="noopener">WhatsApp Us</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow"><span class="crop-mark" aria-hidden="true"></span> Assin Foso · Near GCB Bank</div>
+        <h1>Print it.<br>Build it.<br><em>All under one roof.</em></h1>
+        <p class="hero-sub">Grony Multimedia is Assin Foso's business center for printing, technology and media — nine services, one address, steps from GCB Bank.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary" href="https://wa.me/233248533826" target="_blank" rel="noopener">Enquire on WhatsApp</a>
+          <a class="btn btn-ghost" href="tel:+233248533826">Call 024 853 3826</a>
+        </div>
+      </div>
+      <div class="hero-card">
+        <h3>VISIT US</h3>
+        <dl style="margin:0;">
+          <div class="hero-fact"><dt>Location</dt><dd>Assin Foso,<br>near GCB Bank</dd></div>
+          <div class="hero-fact"><dt>Hours</dt><dd>Mon – Sat<br>8:30 – 18:30</dd></div>
+          <div class="hero-fact"><dt>Phone</dt><dd>024 853 3826</dd></div>
+          <div class="hero-fact"><dt>Sunday</dt><dd>Closed</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section id="services">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="section-tag"><span class="crop-mark" aria-hidden="true"></span> What we do</div>
+          <h2 style="margin-top:10px;">Nine services, three counters</h2>
+        </div>
+        <p class="section-note">From a print run to a photo shoot to a piece of custom software — walk in, call, or send an enquiry below.</p>
+      </div>
+
+      <div class="service-groups">
+        <div class="service-group">
+          <div class="service-group-head"><h3>Print &amp; Design</h3><span class="count mono">03</span></div>
+          <div class="service-item">
+            <h4>Printing Press Services</h4>
+            <p>Documents, forms, receipt books, invitations and everyday print jobs, done on-site.</p>
+          </div>
+          <div class="service-item">
+            <h4>Large Format Printing</h4>
+            <p>Banners, posters, vinyl signage and large-scale prints for shops, events and campaigns.</p>
+          </div>
+          <div class="service-item">
+            <h4>Sale of Printing Materials</h4>
+            <p>Paper stock, inks, toners and other printing consumables, in stock and ready.</p>
+          </div>
+        </div>
+
+        <div class="service-group">
+          <div class="service-group-head"><h3>Technology &amp; AI</h3><span class="count mono">04</span></div>
+          <div class="service-item">
+            <h4>Software Development</h4>
+            <p>Custom business software, websites and applications, built around how you actually work.</p>
+          </div>
+          <div class="service-item">
+            <h4>Artificial Intelligence Services</h4>
+            <p>Practical AI tools and consulting to help your business work faster and smarter.</p>
+          </div>
+          <div class="service-item">
+            <h4>Internet Cafe Services</h4>
+            <p>Browsing, typing, scanning and printing on fast connections — walk-in or by appointment.</p>
+          </div>
+          <div class="service-item">
+            <h4>Sale of Computer Accessories</h4>
+            <p>Cables, storage drives, peripherals and other computer accessories.</p>
+          </div>
+        </div>
+
+        <div class="service-group">
+          <div class="service-group-head"><h3>Media &amp; Events</h3><span class="count mono">02</span></div>
+          <div class="service-item">
+            <h4>Photo, Video &amp; Audio</h4>
+            <p>Event coverage, studio shoots and audio production, from capture to final edit.</p>
+          </div>
+          <div class="service-item">
+            <h4>Hiring Services</h4>
+            <p>Equipment and gear for events and projects, hired out for the day or the duration you need.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="gallery">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <div class="section-tag"><span class="crop-mark" aria-hidden="true"></span> Our work</div>
+          <h2 style="margin-top:10px;">Gallery</h2>
+        </div>
+        <p class="section-note">Photos of completed print jobs, signage and events are on the way — check back soon.</p>
+      </div>
+      <div class="gallery-grid">
+        <div class="gallery-tile"><span class="glyph">01</span><span class="label">Print jobs</span></div>
+        <div class="gallery-tile"><span class="glyph">02</span><span class="label">Signage &amp; banners</span></div>
+        <div class="gallery-tile"><span class="glyph">03</span><span class="label">Events covered</span></div>
+        <div class="gallery-tile"><span class="glyph">04</span><span class="label">Studio shoots</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="wrap contact-grid">
+      <div>
+        <div class="section-tag"><span class="crop-mark" aria-hidden="true"></span> Get in touch</div>
+        <h2 style="margin-top:10px; margin-bottom:24px;">Visit, call, or send an enquiry</h2>
+
+        <div class="info-card">
+          <h3>CONTACT</h3>
+          <div class="info-row"><span class="k">Address</span><span class="v">Assin Foso, near GCB Bank</span></div>
+          <div class="info-row"><span class="k">Phone</span><span class="v"><a href="tel:+233248533826">024 853 3826</a></span></div>
+          <div class="info-row"><span class="k">WhatsApp</span><span class="v"><a href="https://wa.me/233248533826" target="_blank" rel="noopener">024 853 3826</a></span></div>
+        </div>
+
+        <div class="info-card">
+          <h3>OPENING HOURS</h3>
+          <table class="hours-table">
+            <tr><td>Monday – Saturday</td><td>8:30 – 18:30</td></tr>
+            <tr><td>Sunday</td><td>Closed</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <form class="enquiry" id="enquiryForm">
+        <div class="ticket-head">
+          <h3>Send an enquiry</h3>
+          <span class="mono">VIA WHATSAPP</span>
+        </div>
+        <label>Your name
+          <input type="text" id="f-name" required placeholder="e.g. Kwame Mensah">
+        </label>
+        <div class="field-row">
+          <label>Phone
+            <input type="tel" id="f-phone" placeholder="024 xxx xxxx">
+          </label>
+          <label>Service
+            <select id="f-service">
+              <option>Printing Press Services</option>
+              <option>Large Format Printing</option>
+              <option>Sale of Printing Materials</option>
+              <option>Software Development</option>
+              <option>Artificial Intelligence Services</option>
+              <option>Internet Cafe Services</option>
+              <option>Sale of Computer Accessories</option>
+              <option>Photo, Video &amp; Audio</option>
+              <option>Hiring Services</option>
+              <option>Not sure / other</option>
+            </select>
+          </label>
+        </div>
+        <label>What do you need?
+          <textarea id="f-message" required placeholder="Tell us a bit about the job..."></textarea>
+        </label>
+        <button type="submit" class="enquiry-submit">Send via WhatsApp</button>
+        <p class="enquiry-note">Opens WhatsApp with your enquiry pre-filled — just hit send.</p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <span>© <span id="year"></span> Grony Multimedia — Assin Foso, Ghana</span>
+    <a href="https://wa.me/233248533826" target="_blank" rel="noopener">024 853 3826</a>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  document.getElementById('enquiryForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = document.getElementById('f-name').value.trim();
+    var phone = document.getElementById('f-phone').value.trim();
+    var service = document.getElementById('f-service').value;
+    var message = document.getElementById('f-message').value.trim();
+    var lines = [
+      'Hello Grony Multimedia, I have an enquiry from your website:',
+      '',
+      'Name: ' + name,
+      phone ? ('Phone: ' + phone) : null,
+      'Service: ' + service,
+      'Message: ' + message,
+    ].filter(Boolean);
+    var text = encodeURIComponent(lines.join('\n'));
+    window.open('https://wa.me/233248533826?text=' + text, '_blank', 'noopener');
+  });
+</script>
+</body>
+</html>
