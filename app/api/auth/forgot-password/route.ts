@@ -22,7 +22,11 @@ export async function POST(req: NextRequest) {
       VALUES (${user.id}, ${token}, ${expiresAt.toISOString()})
     `
 
-    const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+    // NEXTAUTH_URL was leftover from an older next-auth naming convention and
+    // was never actually set anywhere -- the rest of the app already uses
+    // AUTH_URL/AUTH_SECRET's v5 naming, so this always silently fell back to
+    // localhost, making every reset link unreachable for a real user.
+    const baseUrl = process.env.AUTH_URL ?? 'http://localhost:3000'
     const resetUrl = `${baseUrl}/reset-password?token=${token}`
 
     await sendPasswordResetEmail(user.email, user.display_name, resetUrl)
