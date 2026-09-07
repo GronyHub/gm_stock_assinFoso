@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { parseTimeMins } from '@/lib/staffTimes'
+import { usePolling } from '@/lib/usePolling'
 import StaffTimeDetailModal from './StaffTimeDetailModal'
 
 type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; worked_seconds: number }
@@ -37,9 +38,19 @@ export default function PresentStaffBar() {
       }).catch(() => {})
     }
     load()
-    const poll = setInterval(load, 60000)
-    return () => { cancelled = true; clearInterval(poll) }
+    return () => { cancelled = true }
   }, [])
+  // Worked-time totals don't need second-level freshness -- was a raw
+  // setInterval with no pause-when-hidden guard, unlike every other poll in
+  // the app (see usePolling's own comment), so a forgotten background tab
+  // kept hitting the database every 60s indefinitely. This bar is always
+  // mounted (sits above the mode-switch tabs regardless of which tab is
+  // open), so it was one of the steadiest Neon compute-hour drivers.
+  usePolling(() => {
+    fetch('/api/staff-times/worked-today').then(r => r.ok ? r.json() : null).then(d => {
+      if (Array.isArray(d?.staff)) setStaff(d.staff)
+    }).catch(() => {})
+  }, 180000)
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 30000)
