@@ -11,50 +11,54 @@
 <style>
   :root {
     color-scheme: light dark;
-    --paper: #f0efe8;
+    --paper: #f1f1f6;
     --paper-raised: #ffffff;
-    --ink: #14171c;
-    --ink-soft: #4a4f58;
-    --ink-faint: #8a8f98;
-    --line: #d8d5cb;
-    --accent: #0e7c86;
-    --accent-strong: #0a5c64;
-    --accent-tint: #dcecec;
-    --mark: #c63756;
-    --shadow: rgba(20, 23, 28, 0.08);
-    --focus: #0e7c86;
+    --ink: #14145a;
+    --ink-soft: #4b4e7c;
+    --ink-faint: #8a8db3;
+    --line: #d9d9ea;
+    --accent: #f5d80b;
+    --accent-strong: #dcbf00;
+    --accent-tint: #fdf6cf;
+    --accent-text: #8a6d00;
+    --on-accent: #14145a;
+    --mark: #14145a;
+    --shadow: rgba(20, 20, 60, 0.1);
+    --focus: #dcbf00;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper: #15181d;
-      --paper-raised: #1c2027;
-      --ink: #eeece6;
-      --ink-soft: #b3b7bf;
-      --ink-faint: #6b707a;
-      --line: #2c313a;
-      --accent: #35a3ad;
-      --accent-strong: #55bcc4;
-      --accent-tint: #1c3336;
-      --mark: #e0637b;
-      --shadow: rgba(0, 0, 0, 0.35);
-      --focus: #55bcc4;
+      --paper: #111132;
+      --paper-raised: #191947;
+      --ink: #eef0fa;
+      --ink-soft: #b7bad9;
+      --ink-faint: #7d80ab;
+      --line: #2c2d68;
+      --accent: #f7de3a;
+      --accent-strong: #ffe873;
+      --accent-tint: #3a381f;
+      --accent-text: #f7de3a;
+      --mark: #eef0fa;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --focus: #f7de3a;
     }
   }
 
   :root[data-theme="dark"] {
-    --paper: #15181d;
-    --paper-raised: #1c2027;
-    --ink: #eeece6;
-    --ink-soft: #b3b7bf;
-    --ink-faint: #6b707a;
-    --line: #2c313a;
-    --accent: #35a3ad;
-    --accent-strong: #55bcc4;
-    --accent-tint: #1c3336;
-    --mark: #e0637b;
-    --shadow: rgba(0, 0, 0, 0.35);
-    --focus: #55bcc4;
+    --paper: #111132;
+    --paper-raised: #191947;
+    --ink: #eef0fa;
+    --ink-soft: #b7bad9;
+    --ink-faint: #7d80ab;
+    --line: #2c2d68;
+    --accent: #f7de3a;
+    --accent-strong: #ffe873;
+    --accent-tint: #3a381f;
+    --accent-text: #f7de3a;
+    --mark: #eef0fa;
+    --shadow: rgba(0, 0, 0, 0.4);
+    --focus: #f7de3a;
   }
 
   * { box-sizing: border-box; }
@@ -88,7 +92,7 @@
     letter-spacing: 0.02em;
   }
 
-  a { color: var(--accent-strong); }
+  a { color: var(--accent-text); }
 
   img { max-width: 100%; }
 
@@ -144,7 +148,7 @@
     line-height: 1;
     letter-spacing: 0.01em;
   }
-  .brand-mark span { color: var(--accent); }
+  .brand-mark span { color: var(--accent-text); }
   .brand-sub {
     font-family: "IBM Plex Mono", monospace;
     font-size: 10.5px;
@@ -162,7 +166,7 @@
     font-weight: 500;
     font-size: 14.5px;
   }
-  nav.primary a:hover { color: var(--accent-strong); }
+  nav.primary a:hover { color: var(--accent-text); }
   .btn {
     display: inline-flex;
     align-items: center;
@@ -176,10 +180,10 @@
     cursor: pointer;
     white-space: nowrap;
   }
-  .btn-primary { background: var(--accent); color: #f5fbfb; }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
   .btn-primary:hover { background: var(--accent-strong); }
   .btn-ghost { background: transparent; border-color: var(--line); color: var(--ink); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .btn-ghost:hover { border-color: var(--accent-text); color: var(--accent-text); }
   a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
@@ -203,7 +207,7 @@
     font-family: "IBM Plex Mono", monospace;
     font-size: 12.5px;
     letter-spacing: 0.14em;
-    color: var(--accent-strong);
+    color: var(--accent-text);
     text-transform: uppercase;
     margin-bottom: 18px;
   }
@@ -213,7 +217,7 @@
   }
   .hero h1 em {
     font-style: normal;
-    color: var(--accent);
+    color: var(--accent-text);
   }
   .hero-sub {
     margin-top: 22px;
@@ -451,7 +455,7 @@
     border-radius: 3px;
     border: none;
     background: var(--accent);
-    color: #f5fbfb;
+    color: var(--on-accent);
     font-weight: 700;
     font-size: 15px;
     cursor: pointer;
