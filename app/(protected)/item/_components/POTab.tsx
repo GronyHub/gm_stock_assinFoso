@@ -456,6 +456,13 @@ export default function POTab({ search }: Props) {
                         Cancel
                       </button>
                     )}
+                    {detail.status === 'cancelled' && (
+                      <button onClick={() => setStatus('sent')} disabled={busy}
+                        title="Reopens this PO as Sent -- the same status it's in right before receiving items"
+                        className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
+                        ↺ Reopen
+                      </button>
+                    )}
                     <a href={`/purchase-orders/${detail.id}/print`} target="_blank" rel="noopener noreferrer"
                       className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">
                       🖨️ Print / Download
