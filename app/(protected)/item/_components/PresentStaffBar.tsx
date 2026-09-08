@@ -4,7 +4,9 @@ import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
 import StaffMemberModal, { type StaffMemberModalProps } from './StaffMemberModal'
 
-type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; worked_seconds: number }
+type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; on_break: boolean; worked_seconds: number }
+type RosterEntry = { username: string; active: boolean }
+type Status = 'present' | 'break' | 'out' | 'absent'
 
 // "2hr 10min" / "45min" / "3hr" -- deliberately "hr"/"min" rather than
 // lib/fmtDuration.ts's "2h 30m" (that one's shared with the Log tab's Time
@@ -18,25 +20,31 @@ function fmtHrMin(totalMinutes: number): string {
   return `${m}min`
 }
 
-// Sits right above the mode-switch tabs: shows staff who have clocked in
-// today, both currently clocked in and clocked out, displaying
-// "Joe(2hr/5hr 10min)" for clocked-in and "Jane (out)(1hr/3hr)" for
-// clocked-out. No "Present" label any more -- a staff name showing up here
-// at all already means present, the word was redundant. Worked time comes
-// from /api/staff-times/worked-today, which sums today's announcements'
-// estimated_duration_seconds; total time is from clock-in to now (or to
-// clock-out time if already logged out). A trailing "Total" entry sums both
-// figures across everyone shown, same format as each person's own entry --
-// clicking it opens Home (via onTotalClick) rather than a per-person detail
-// modal, since Home's own announcement feed is the actual activity record
-// the worked-time half of every figure here is summed from. Tapping a
-// person's own chip instead opens their whole personal page (StaffMemberModal
-// -- the same page the pane's own "Staff Members" row opens, just as a modal
-// here), landing on its Times tab, rather than a narrow detail-only modal.
-// Polls for new activity/clock changes and ticks its own clock every 30
-// seconds.
-export default function PresentStaffBar({ onTotalClick, staffMemberModalProps }: {
+// Sits right above the mode-switch tabs: one chip per active staff member
+// (see `roster`, the same list backing the pane's own "Staff Members"
+// section), not just whoever's clocked in today -- the whole point is being
+// able to see everyone's status (and tap through to their tasks/duties) at a
+// glance, including who hasn't shown up. A colored dot carries that status:
+// green = present (clocked in, not on break), red = on break, clocked out,
+// or never clocked in today at all -- absent additionally gets its name
+// struck through, since "not here at all" reads differently from "was here,
+// stepped away". Worked time comes from /api/staff-times/worked-today, which
+// sums today's announcements' estimated_duration_seconds; total time is from
+// clock-in to now (or to clock-out time if already logged out) -- neither
+// applies to someone absent, so their chip has no second line. A trailing
+// "Total" entry sums both figures across everyone actually present today,
+// same format as each person's own entry -- clicking it opens Home (via
+// onTotalClick) rather than a per-person detail modal, since Home's own
+// announcement feed is the actual activity record the worked-time half of
+// every figure here is summed from. Tapping a person's own chip instead
+// opens their whole personal page (StaffMemberModal -- the same page the
+// pane's own "Staff Members" row opens, just as a modal here), landing on
+// its Times tab, rather than a narrow detail-only modal -- this works
+// identically whether they're present or absent today. Polls for new
+// activity/clock/break changes and ticks its own clock every 30 seconds.
+export default function PresentStaffBar({ onTotalClick, roster, staffMemberModalProps }: {
   onTotalClick?: () => void
+  roster: RosterEntry[]
   staffMemberModalProps: StaffMemberModalProps
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
@@ -73,7 +81,7 @@ export default function PresentStaffBar({ onTotalClick, staffMemberModalProps }:
     return () => clearInterval(tick)
   }, [])
 
-  if (staff.length === 0) return null
+  if (roster.length === 0) return null
 
   // Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
   // now -- using getUTCHours/getUTCMinutes rather than the viewing device's
@@ -81,17 +89,24 @@ export default function PresentStaffBar({ onTotalClick, staffMemberModalProps }:
   // the device viewing this bar happens to be set to.
   const nowMins = now.getUTCHours() * 60 + now.getUTCMinutes()
 
-  // Computed once per render (rather than inline in the .map() below) so
-  // the same per-person worked/total minutes can also feed the "Total"
-  // summary's sums without recomputing them a second time.
-  const computed = staff.map(s => {
-    const inMins = parseTimeMins(s.actual_in)
-    const isLoggedOut = s.actual_out != null
+  // One entry per roster member (not per worked-today row) -- someone absent
+  // has no row in `staff` at all, so they're matched by name (case-
+  // insensitive: staff_times.staff_name and /api/staff/status's username
+  // aren't guaranteed identical case, same reasoning as worked-today's own
+  // author-matching) and just falls through to the 'absent' branch below.
+  const computed = roster.map(r => {
+    const match = staff.find(s => s.staff_name.toLowerCase() === r.username.toLowerCase())
+    if (!match) {
+      return { staff_name: r.username, status: 'absent' as Status, totalMins: null as number | null, workedMins: 0 }
+    }
+    const inMins = parseTimeMins(match.actual_in)
+    const isLoggedOut = match.actual_out != null
     const totalMins = isLoggedOut
-      ? (outMins => outMins != null && inMins != null ? outMins - inMins : null)(parseTimeMins(s.actual_out))
+      ? (outMins => outMins != null && inMins != null ? outMins - inMins : null)(parseTimeMins(match.actual_out))
       : (inMins != null ? Math.max(0, nowMins - inMins) : null)
-    const workedMins = s.worked_seconds / 60
-    return { staff_name: s.staff_name, isLoggedOut, totalMins, workedMins }
+    const workedMins = match.worked_seconds / 60
+    const status: Status = isLoggedOut ? 'out' : (match.on_break ? 'break' : 'present')
+    return { staff_name: r.username, status, totalMins, workedMins }
   })
   const totalWorkedMins = computed.reduce((sum, c) => sum + c.workedMins, 0)
   const totalPresentMins = computed.reduce((sum, c) => sum + (c.totalMins ?? 0), 0)
@@ -103,17 +118,18 @@ export default function PresentStaffBar({ onTotalClick, staffMemberModalProps }:
           stacking is what lets everyone plus Total actually fit on one row
           on a narrow phone screen instead of wrapping. flex-nowrap +
           overflow-x-auto is the fallback for whenever there are enough
-          people clocked in at once that they still don't all fit -- scrolls
+          people to show at once that they still don't all fit -- scrolls
           sideways instead of wrapping to a second row either way. */}
       <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0">
         {computed.map(s => (
           <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
-            title="View time details"
-            className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.isLoggedOut ? 'opacity-60' : ''}`}>
-            <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">
-              {s.staff_name}{s.isLoggedOut ? ' (out)' : ''}
+            title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
+            className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
+            <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className={s.status === 'absent' ? 'line-through' : ''}>{s.staff_name}</span>
             </span>
-            {s.totalMins != null && (
+            {s.status !== 'absent' && s.totalMins != null && (
               <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
             )}
           </button>

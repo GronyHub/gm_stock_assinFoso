@@ -171,7 +171,7 @@ type RecentRow = {
   id?: number; staff_name: string; work_date: string; actual_in: string | null; actual_out: string | null
   entered_by: string | null; in_source?: string | null; out_source?: string | null
 }
-type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean; in_source?: string | null; out_source?: string | null } | null
+type Mine = { actual_in: string | null; actual_out: string | null; opening_count_confirmed?: boolean; in_source?: string | null; out_source?: string | null; on_break?: boolean } | null
 
 // A dot next to a clock time shows how it got there: green for the actual
 // Clock In/Out button (GPS-verified, see /api/staff-times/today), red for a
@@ -252,6 +252,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   const [pickingTime, setPickingTime] = useState(false)
   const [customTime, setCustomTime] = useState(nowAsHHMM())
   const [saving, setSaving] = useState(false)
+  const [savingBreak, setSavingBreak] = useState(false)
   const [err, setErr] = useState('')
   const [roleBanner, setRoleBanner] = useState<string | null>(null)
   const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
@@ -433,6 +434,26 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
       } else {
         setErr(d.error || 'Failed to save')
       }
+    }
+  }
+
+  // Toggles the display-only on_break flag (see /api/staff-times/break) --
+  // no GPS check, unlike clock() itself, since it doesn't create or move a
+  // clock-in/out record, just marks the one already in place. Only shown
+  // while actually clocked in for the day (see the button below).
+  async function toggleBreak() {
+    setSavingBreak(true)
+    const res = await fetch('/api/staff-times/break', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on_break: !mine?.on_break }),
+    })
+    setSavingBreak(false)
+    if (res.ok) {
+      const updated = await res.json()
+      setMine(prev => prev ? { ...prev, on_break: updated.on_break } : prev)
+    } else {
+      const d = await res.json().catch(() => ({}))
+      setErr(d.error || 'Failed to save')
     }
   }
 
@@ -818,6 +839,17 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
             {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>
         </div>
+        {/* Only makes sense once actually clocked in for the day, and not
+            after clocking out again -- see /api/staff-times/break's own
+            comment on why this is a separate, lighter action than clock(). */}
+        {mine?.actual_in && !mine?.actual_out && (
+          <button onClick={toggleBreak} disabled={savingBreak}
+            className={`w-full text-sm font-semibold rounded-xl py-2 transition disabled:opacity-40 ${
+              mine?.on_break ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}>
+            {savingBreak ? '…' : (mine?.on_break ? 'End Break' : 'Take a Break')}
+          </button>
+        )}
         <p className="text-[10px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
       </div>
       </>)}

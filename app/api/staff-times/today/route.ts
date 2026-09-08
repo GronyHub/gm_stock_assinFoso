@@ -24,6 +24,13 @@ const ensureSourceCols = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS out_source TEXT`.catch(() => {})
 })
 
+// See /api/staff-times/break's own comment -- ensured here too (same
+// duplicated-per-route pattern as the other columns above) so `mine`'s
+// initial on_break value is correct on page load, not just after a toggle.
+const ensureBreakCol = once(async () => {
+  await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS on_break BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+})
+
 export async function GET() {
   const { session, error } = await requireAuth()
   if (error) return success({ today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
@@ -53,10 +60,11 @@ export async function GET() {
 
     const username = sessionUser?.username ?? sessionUser?.name
     await ensureOpeningCountCol()
+    await ensureBreakCol()
     let mine: any
     try {
       ;[mine] = await sql`
-        SELECT actual_in, actual_out, opening_count_confirmed, in_source, out_source FROM staff_times
+        SELECT actual_in, actual_out, opening_count_confirmed, in_source, out_source, on_break FROM staff_times
         WHERE staff_name = ${username} AND work_date = ${today}
       `
     } catch {

@@ -104,13 +104,14 @@ const TOPICS: Topic[] = [
     id: 'clocking-in-out',
     title: 'How do I clock in/out, and who are the Opener and Closer?',
     group: 'Getting Started',
-    keywords: 'clock in out opener closer gps location closing report time',
+    keywords: 'clock in out opener closer gps location closing report time break',
     body: (
       <div className="space-y-3">
         <p className="text-sm text-gray-700">Clock in and out from <strong>Team → Team Times</strong>. It's GPS-checked -- you have to actually be at the shop, or it won't let you.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Opener 🌅</strong> -- whoever clocks in earliest that day.</li>
           <li><strong>Closer 🌙</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire (was the advert played, any property issue, a new customer, etc).</li>
+          <li><strong>Take a Break</strong> -- once you're clocked in, a "Take a Break"/"End Break" button appears there too. It just flips your status dot red on the staff time bar above the tab switcher so others can see you've stepped away -- it doesn't clock you out or change your worked-time total.</li>
         </ul>
       </div>
     ),
