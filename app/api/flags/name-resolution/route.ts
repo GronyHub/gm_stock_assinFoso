@@ -29,7 +29,7 @@ export async function GET() {
     sql`
       SELECT id, canonical_name
       FROM items
-      WHERE LOWER(status) = 'active'
+      WHERE status IS NULL OR LOWER(status) != 'inactive'
       ORDER BY canonical_name
     `,
   ])

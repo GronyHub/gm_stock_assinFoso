@@ -202,7 +202,7 @@ export async function GET() {
               LOWER(TRIM(a.canonical_name)) = LOWER(TRIM(b.canonical_name))
               OR SIMILARITY(LOWER(a.canonical_name), LOWER(b.canonical_name)) > 0.65
             )
-          WHERE LOWER(a.status) = 'active' AND LOWER(b.status) = 'active'
+          WHERE (a.status IS NULL OR LOWER(a.status) != 'inactive') AND (b.status IS NULL OR LOWER(b.status) != 'inactive')
             AND a.canonical_name NOT ILIKE 'old stop%'
             AND b.canonical_name NOT ILIKE 'old stop%'
             AND a.canonical_name NOT ILIKE 'old-stop%'
@@ -221,7 +221,7 @@ export async function GET() {
           FROM items a
           JOIN items b ON a.id < b.id
             AND LOWER(TRIM(a.canonical_name)) = LOWER(TRIM(b.canonical_name))
-          WHERE LOWER(a.status) = 'active' AND LOWER(b.status) = 'active'
+          WHERE (a.status IS NULL OR LOWER(a.status) != 'inactive') AND (b.status IS NULL OR LOWER(b.status) != 'inactive')
             AND a.canonical_name NOT ILIKE 'old stop%'
             AND b.canonical_name NOT ILIKE 'old stop%'
             AND a.canonical_name NOT ILIKE 'old-stop%'
@@ -398,7 +398,7 @@ export async function GET() {
              COUNT(*)::int AS line_count
       FROM sales_receipt_lines srl
       JOIN items i ON LOWER(i.canonical_name) = LOWER(COALESCE(srl.resolved_name, srl.raw_item_name))
-      WHERE srl.item_id IS NULL AND LOWER(i.status) = 'active'
+      WHERE srl.item_id IS NULL AND (i.status IS NULL OR LOWER(i.status) != 'inactive')
       GROUP BY COALESCE(srl.resolved_name, srl.raw_item_name), i.id
       ORDER BY item_name
     `),
