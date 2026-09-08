@@ -62,7 +62,11 @@ export default function PresentStaffBar() {
 
   if (staff.length === 0) return null
 
-  const nowMins = now.getHours() * 60 + now.getMinutes()
+  // Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
+  // now -- using getUTCHours/getUTCMinutes rather than the viewing device's
+  // own local getters keeps elapsed time correct no matter what timezone
+  // the device viewing this bar happens to be set to.
+  const nowMins = now.getUTCHours() * 60 + now.getUTCMinutes()
 
   return (
     <>

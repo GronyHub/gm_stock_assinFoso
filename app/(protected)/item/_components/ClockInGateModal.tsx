@@ -1,9 +1,13 @@
 'use client'
 import { useState } from 'react'
 
+// Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
+// now -- using getUTCHours/getUTCMinutes here (instead of the device's own
+// local getters) means a clock-in recorded from a phone set to any other
+// timezone still lands on the correct Ghana wall-clock time.
 function nowAsHHMM(): string {
   const d = new Date()
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
 }
 
 // staff_times.actual_in is stored as "9:15am"/"2:30pm" (see lib/staffTimes.ts's

@@ -5,9 +5,13 @@ type Log = { id: number; staff_name: string; action: string; details: string | n
 
 const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 
+// Ghana runs on UTC year-round with no DST, so reading this timestamp's UTC
+// fields is the same as reading its Ghana wall-clock fields -- and unlike
+// the local getters this replaced, it doesn't depend on the viewing
+// device's own timezone setting.
 function fmtTime(iso: string) {
   const d = new Date(iso)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} '${String(d.getFullYear()).slice(-2)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(-2)} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
 }
 
 type Props = { keywords: string[]; onEntryClick?: (log: Log) => void }

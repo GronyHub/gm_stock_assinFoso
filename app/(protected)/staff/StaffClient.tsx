@@ -17,9 +17,13 @@ import {
 
 const STAFF = ['joe', 'bino', 'james', 'rawlings', 'grony']
 
+// Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
+// now -- using getUTCHours/getUTCMinutes here (instead of the device's own
+// local getters) means a clock-in recorded from a phone set to any other
+// timezone still lands on the correct Ghana wall-clock time.
 function nowAsHHMM() {
   const d = new Date()
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
 }
 
 function hhmmTo12h(hhmm: string): string {
