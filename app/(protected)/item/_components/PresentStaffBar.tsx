@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
-import StaffTimeDetailModal from './StaffTimeDetailModal'
+import StaffMemberModal, { type StaffMemberModalProps } from './StaffMemberModal'
 
 type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; worked_seconds: number }
 
@@ -29,10 +29,16 @@ function fmtHrMin(totalMinutes: number): string {
 // figures across everyone shown, same format as each person's own entry --
 // clicking it opens Home (via onTotalClick) rather than a per-person detail
 // modal, since Home's own announcement feed is the actual activity record
-// the worked-time half of every figure here is summed from.
+// the worked-time half of every figure here is summed from. Tapping a
+// person's own chip instead opens their whole personal page (StaffMemberModal
+// -- the same page the pane's own "Staff Members" row opens, just as a modal
+// here), landing on its Times tab, rather than a narrow detail-only modal.
 // Polls for new activity/clock changes and ticks its own clock every 30
 // seconds.
-export default function PresentStaffBar({ onTotalClick }: { onTotalClick?: () => void }) {
+export default function PresentStaffBar({ onTotalClick, staffMemberModalProps }: {
+  onTotalClick?: () => void
+  staffMemberModalProps: StaffMemberModalProps
+}) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
@@ -119,7 +125,7 @@ export default function PresentStaffBar({ onTotalClick }: { onTotalClick?: () =>
         </button>
       </div>
       {selectedStaff && (
-        <StaffTimeDetailModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} />
+        <StaffMemberModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
       )}
     </>
   )

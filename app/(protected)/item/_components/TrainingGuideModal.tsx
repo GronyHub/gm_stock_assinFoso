@@ -74,7 +74,7 @@ const TOPICS: Topic[] = [
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Staff Members</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">One row per active staff member -- tap a name to open that person's own page (their tasks, assessment scores, meeting attendance, and more).</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">A "Home" row (the activity feed), then one row per active staff member -- tap a name to open that person's own page (their tasks, times, assessment scores, meeting attendance, and more).</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Personal</p>
@@ -96,7 +96,7 @@ const TOPICS: Topic[] = [
     keywords: 'home feed announcements photos voice notes news',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Open Items, then tap the <strong>🏠 Home</strong> button in the small switcher above the grid (next to Sale/Log/Sales/Bills/Expenses) -- that's the activity feed: announcements, photos, and voice notes, newest first. A red badge shows how many you haven't seen yet.</p>
+        <p className="text-sm text-gray-700">Tap the <strong>🏠 Home</strong> row at the top of the Staff Members section, or the <strong>Total</strong> chip in the staff time bar above the tab switcher -- either opens the activity feed: announcements, photos, and voice notes, newest first.</p>
       </div>
     ),
   },

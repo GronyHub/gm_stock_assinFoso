@@ -6,10 +6,12 @@ import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
 import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
+import StaffTimesView from './StaffTimesView'
 
-type TabKey = 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
+type TabKey = 'times' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
+  { key: 'times', icon: '🕐', label: 'Times' },
   { key: 'tasks', icon: '✅', label: 'Tasks' },
   { key: 'mentions', icon: '🔍', label: 'Mentions' },
   { key: 'dressCode', icon: '👕', label: 'Dress Code' },
@@ -21,7 +23,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
 ]
 
 export default function StaffMemberPersonalTab({
-  staffName, username, role, canManage, staffRoster, routablePages, categoryIds,
+  staffName, username, role, canManage, staffRoster, routablePages, categoryIds, initialTab,
 }: {
   staffName: string
   username: string
@@ -30,8 +32,12 @@ export default function StaffMemberPersonalTab({
   staffRoster: string[]
   routablePages: string[]
   categoryIds: Record<string, number>
+  // Defaults to Tasks (the pane's own "Staff Members" row still lands
+  // there), but PresentStaffBar/StaffMemberModal opens straight onto Times
+  // instead, since that's specifically what tapping a name there is for.
+  initialTab?: TabKey
 }) {
-  const [activeTab, setActiveTab] = useState<TabKey>('tasks')
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'tasks')
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<any>(null)
@@ -141,6 +147,7 @@ export default function StaffMemberPersonalTab({
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} /></div>}
         {activeTab === 'tasks' && <div className="p-3"><TasksView /></div>}
         {activeTab === 'mentions' && <div className="p-3"><MentionsView /></div>}
         {activeTab === 'dressCode' && (<>

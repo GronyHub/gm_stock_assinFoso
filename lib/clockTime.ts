@@ -2,7 +2,7 @@
 // own "Ghana is UTC+0" comment) -- an absolute clock time only means the
 // same thing to everyone reading it if it's read off the UTC parts of the
 // timestamp rather than whatever timezone the viewer's own device happens
-// to be set to. Shared by TodayContent.tsx's feed and StaffTimeDetailModal.
+// to be set to. Shared by TodayContent.tsx's feed and StaffTimesView.
 export function fmtClockTime(iso: string): string {
   const d = new Date(iso)
   let h = d.getUTCHours()

@@ -745,7 +745,8 @@ function ItemHubPageInner() {
   // default to Today, whose own pane is intentionally empty (same treatment
   // as UK/C&H), so the very first thing anyone saw was a near-blank screen.
   // Defaulting to Grony Cash's Items view instead means the full pane is
-  // there immediately. Today is still one tap away via the Home button.
+  // there immediately. Today's own feed is still one tap away, via
+  // PresentStaffBar's Total chip or the Staff Members section's Home row.
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'loss'
   )
@@ -850,10 +851,6 @@ function ItemHubPageInner() {
   const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl'>(initialLiveMode)
   const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl'>(initialLiveMode)
-  // Home tab (see renderTabSwitcher) swaps the content area for the
-  // announcements feed in place, independent of itemsPageMode/liveMode --
-  // it isn't one of that family's modes, just a sibling toggle.
-  const [liveShowHome, setLiveShowHome] = useState(false)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -1155,7 +1152,6 @@ function ItemHubPageInner() {
   const [prezohoBillsCount, setPrezohoBillsCount] = useState(0)
   const [prezohoReceiptsCount, setPrezohoReceiptsCount] = useState(0)
   const [aliasFlaggedCount, setAliasFlaggedCount] = useState(0)
-  const [unreadAnnouncements, setUnreadAnnouncements] = useState(0)
   const [aliasAmbiguousCount, setAliasAmbiguousCount] = useState(0)
   const [nameConflictsCount, setNameConflictsCount] = useState(0)
   const [gainsCount, setGainsCount] = useState(0)
@@ -1197,9 +1193,6 @@ function ItemHubPageInner() {
       setPrezohoReceiptsCount(pending(receiptRows))
       setAliasFlaggedCount(Array.isArray(auditRows) ? auditRows.length : 0)
       setAliasAmbiguousCount(Array.isArray(ambiguousRows) ? ambiguousRows.length : 0)
-    }).catch(() => {})
-    fetch('/api/announcements/unread-count').then(r => r.ok ? r.json() : null).then(d => {
-      setUnreadAnnouncements(Number(d?.count) || 0)
     }).catch(() => {})
     fetch('/api/aliases/leaks').then(r => r.ok ? r.json() : []).then(d => {
       setNameConflictsCount(Array.isArray(d) ? d.length : 0)
@@ -1383,9 +1376,6 @@ function ItemHubPageInner() {
       setItemsPageMode('sale')
     }
     if (t === 'ch') setLossView(CH_ITEMS[0].key)
-    // Optimistic -- TodayContent marks these read for real as soon as it
-    // mounts, but that round-trip shouldn't leave the badge lingering.
-    if (t === 'today') setUnreadAnnouncements(0)
   }
 
   // The one navigation primitive every Cash/Manage/Staff row (and every
@@ -1725,12 +1715,7 @@ function ItemHubPageInner() {
     productType !== 'all' ? (productType === 'goods' ? 'Goods' : 'Services') : null,
   ].filter(Boolean).join(' · ')
 
-  // Home swaps the whole content area for the announcements feed (see
-  // liveShowHome/renderTabSwitcher) -- none of Sale/Log's own controls
-  // (Type/Groups/Filter, the search+WIC+Analytics row, the violation
-  // radios) make sense floating above it, so it's folded in here rather
-  // than at each of this flag's 3 call sites.
-  const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView) && !liveShowHome
+  const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
@@ -4310,30 +4295,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // second row when there isn't room for all buttons.
     return (
       <div className="flex gap-6 overflow-x-auto max-w-full">
-        {/* Home isn't a liveMode -- it's a sibling toggle (liveShowHome)
-            that swaps this whole content area for the announcements feed in
-            place, rather than navigating to lossView==='home' and losing
-            this tab switcher underneath. Same unread-clear behavior as the
-            sidebar's own Home row used to have. */}
-        <div className="relative shrink-0">
-          <button type="button" onClick={() => { setLiveShowHome(true); setUnreadAnnouncements(0) }} title="Home"
-            className={btnCls(liveShowHome, 'bg-indigo-600')}>🏠</button>
-          {unreadAnnouncements > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-600 text-white text-[8px] font-bold flex items-center justify-center leading-none">
-              {unreadAnnouncements}
-            </span>
-          )}
-        </div>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(!liveShowHome && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(!liveShowHome && itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(!liveShowHome && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(!liveShowHome && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(!liveShowHome && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
+        <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
+        <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => { setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
         {/* P&L has no CASH_ITEMS row of its own any more (see CASH_ITEMS)
             -- it's a tab here instead, same as Sales/Bills/Expenses. Still
             owner/Joe-only, same gate the old pane row used. */}
         {canSeePL && (
-          <button type="button" onClick={() => { setLiveShowHome(false); setItemsPageMode('pl'); setLiveMode('pl') }} title="P&L" className={btnCls(!liveShowHome && itemsPageMode === 'pl', 'bg-purple-600')}>P&amp;L</button>
+          <button type="button" onClick={() => { setItemsPageMode('pl'); setLiveMode('pl') }} title="P&L" className={btnCls(itemsPageMode === 'pl', 'bg-purple-600')}>P&amp;L</button>
         )}
       </div>
     )
@@ -5377,10 +5348,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {canSeeTeam && activeStaff.length > 0 && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 <div className="text-xs font-semibold text-gray-400 px-3 py-2">Staff Members</div>
-                {activeStaff.map((staff, i) => {
+                {/* Home used to be its own tab on Items' switcher -- moved
+                    here instead, as an ordinary pane row like every staff
+                    member below it, once the switcher's own Home button (and
+                    its unread-announcements badge) was retired in favor of
+                    this row plus PresentStaffBar's own Total chip. */}
+                <SidePaneButton icon="🏠" label="Home" mode={cashDisplayMode}
+                  active={paneActive(lossView === 'home')}
+                  onClick={() => pickLossView('home')} />
+                {activeStaff.map((staff) => {
                   const staffViewKey = `staffMember_${staff.username}` as LossView
                   return (
-                    <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider={i > 0}
+                    <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider
                       active={paneActive(lossView === staffViewKey)}
                       onClick={() => pickLossView(staffViewKey)} />
                   )
@@ -5549,7 +5528,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar -- appears above the tab switcher */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
-            <PresentStaffBar onTotalClick={() => { setLiveShowHome(true); setUnreadAnnouncements(0) }} />
+            <PresentStaffBar onTotalClick={() => pickLossView('home')}
+              staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
           )}
 
           {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView
@@ -5795,17 +5775,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items') ? (<>
           {/* Filter bar moved to green header above */}
-          {/* Home tab -- swaps this whole content area for the announcements
-              feed in place, rather than navigating to lossView==='home' and
-              losing the tab switcher underneath (see the Home button in
-              renderTabSwitcher). */}
-          {liveShowHome && (
-            <div className="flex-1 overflow-y-auto px-4 pt-2">
-              <TodayContent />
-            </div>
-          )}
           {/* Log tab */}
-          {!liveShowHome && liveMode === 'log' && (
+          {liveMode === 'log' && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
@@ -6092,7 +6063,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
           {/* Log tab -- shown inside Sale mode via radio button toggle */}
           {/* Log tab */}
-          {!liveShowHome && liveMode === 'log' && (
+          {liveMode === 'log' && (
             <div className={liveRootClassName}>
               {/* "Large screen" makes this root `fixed inset-0`, covering
                   this component's own top green bar/footer -- still mounted
@@ -6196,7 +6167,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {/* Sales tab -- the classic Sales Receipts list. Folded in here since it
               had nothing left that justified its own sidebar destination once the
               New Sale form was dropped and its own tap-a-sale case moved to Sale mode. */}
-          {!liveShowHome && liveMode === 'sales' && (
+          {liveMode === 'sales' && (
             <div className={liveRootClassName}>
               {liveExpanded && (
                 <button
@@ -6351,7 +6322,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               relied on a sibling NewBillForm rendered externally, which now lives
               inside this tab's own header instead. Same compact-header/radio-row
               treatment as Sales. */}
-          {!liveShowHome && liveMode === 'bills' && (
+          {liveMode === 'bills' && (
             <div className={liveRootClassName}>
               {liveExpanded && (
                 <button
@@ -6507,7 +6478,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               Sales/Bills already got. ExpensesTab itself has no "add new" of
               its own either, same as Bills, reusing /expenses/new as a
               sibling. */}
-          {!liveShowHome && liveMode === 'expenses' && (
+          {liveMode === 'expenses' && (
             <div className={liveRootClassName}>
               {liveExpanded && (
                 <button
@@ -6605,7 +6576,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               sub-view of P&L rather than getting its own liveMode -- it's
               one simple view, not a whole tab's worth of content, and it's
               closely related (both are money-position summaries). */}
-          {canSeePL && !liveShowHome && liveMode === 'pl' && (
+          {canSeePL && liveMode === 'pl' && (
             <div className={liveRootClassName}>
               {liveExpanded && (
                 <button
@@ -6643,7 +6614,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               deleted what). Moved to its own tab since they're audit/browse
               views, not part of actually tapping a sale. */}
           {/* Sale mode (the default/landing mode) */}
-          {!liveShowHome && liveMode === 'sale' && (<>
+          {liveMode === 'sale' && (<>
           {liveDebugLogs.length > 0 && (
             <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
               {liveDebugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
