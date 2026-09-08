@@ -79,12 +79,13 @@ function fmt(val: string | null) {
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
-const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense'])
+const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'vcp_jump'])
 
 type NoVendorRow = { id: number; bill_number: string; bill_date: string; total: string }
 type NoItemsRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
 type MismatchRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string; lines_total: string }
 type NoAttachmentRow = { id: number; bill_number: string; vendor_name: string | null; bill_date: string; total: string }
+type VcpJumpRow = { item_id: number; item_name: string; bill_id: number; bill_date: string; prev_vcp: string; new_vcp: string; pct: string }
 
 // Fix view for the "no_vendor" flag -- one row per bill missing a vendor,
 // with an inline input to set it (same PUT /api/bills/[id] the group bar's
@@ -391,6 +392,7 @@ function BillsTab({
   const [flags, setFlags] = useState<{
     noVendorBills: NoVendorRow[]; noItemsBills: NoItemsRow[]
     billTotalMismatch: MismatchRow[]; billNoAttachment: NoAttachmentRow[]; billNoExpense: NoAttachmentRow[]
+    vcpJumps: VcpJumpRow[]
   } | null>(null)
 
   useEffect(() => {
@@ -869,6 +871,50 @@ function BillsTab({
                     <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
                   </div>
                   <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+      </div>
+    )
+  }
+
+  if (violation === 'vcp_jump') {
+    const rows = flags?.vcpJumps ?? []
+    return (
+      <div className="overflow-y-auto h-full py-2">
+        <p className="text-[10px] text-gray-400 px-2 mb-1">
+          {!flags ? 'Loading…' : `${rows.length} item${rows.length !== 1 ? 's' : ''} whose cost jumped 20%+ from the previous bill`}
+        </p>
+        <p className="text-[9px] text-gray-400 px-2 mb-2">
+          Check this bill's price against the earlier one -- a real supplier change or negotiation is fine, a typo isn't. Confirm clears it once reviewed; it won't come back for this same jump.
+        </p>
+        {flags && (rows.length === 0
+          ? <p className="py-4 text-center text-gray-400 text-[10px]">No cost jumps to review.</p>
+          : (
+            <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
+              {rows.map(r => (
+                <div key={`${r.item_id}-${r.bill_id}`} className="px-2 py-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold text-gray-700 truncate">{r.item_name}</p>
+                    <p className="text-[9px] text-gray-400">{fmtShort(r.bill_date)} · ₵{fmt(r.prev_vcp)} → ₵{fmt(r.new_vcp)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <p className="text-[10px] font-bold text-red-600">+{r.pct}%</p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setFlags(f => f ? { ...f, vcpJumps: f.vcpJumps.filter(x => !(x.item_id === r.item_id && x.bill_id === r.bill_id)) } : f)
+                        await fetch('/api/flags/dismiss-vcp-jump', {
+                          method: 'POST', headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ itemId: r.item_id, billId: r.bill_id }),
+                        }).catch(() => {})
+                      }}
+                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 text-white transition whitespace-nowrap"
+                    >
+                      Confirm
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

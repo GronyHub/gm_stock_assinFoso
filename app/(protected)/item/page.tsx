@@ -469,6 +469,10 @@ const SALES_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'dup_receipt', letter: 'D', label: 'Duplicate Receipts' },
   { key: 'no_attachment', letter: 'A', label: 'No Attachment' },
   { key: 'high_wnw', letter: 'H', label: 'WNW Over ₵200' },
+  // Moved here from the Sale tab's own violation row -- this is a sale that
+  // went out at or under its cost, so the fix (correcting that line's price)
+  // happens on this tab, not the live tap-to-sell grid.
+  { key: 'sold_below_cost', letter: 'B', label: 'Sold Below Cost' },
 ]
 
 // Items' 11 flag categories -- same treatment as Sales. `not_in_inventory`
@@ -498,6 +502,10 @@ const BILLS_FLAG_TYPES: { key: string; letter: string; label: string }[] = [
   { key: 'bill_total_mismatch', letter: 'T', label: 'Total Mismatch' },
   { key: 'bill_no_attachment', letter: 'A', label: 'No Attachment' },
   { key: 'bill_no_expense', letter: 'E', label: 'No Expense' },
+  // Moved here from the Sale tab's own violation row -- an item's cost
+  // jumping 20%+ from its previous bill is a bill-data anomaly, and the fix
+  // (correcting that bill line's price) happens on this tab.
+  { key: 'vcp_jump', letter: 'J', label: 'VCP Jump' },
 ]
 
 const VALID_TABS: OuterTab[] = ['today', 'loss', 'uk', 'ch']
@@ -1258,11 +1266,13 @@ function ItemHubPageInner() {
       dup_receipt: f?.dupReceipts?.length ?? 0,
       no_attachment: f?.noAttachment?.length ?? 0,
       high_wnw: f?.highWnw?.length ?? 0,
+      sold_below_cost: f?.costGteSell?.length ?? 0,
       no_vendor: f?.noVendorBills?.length ?? 0,
       no_items_bills: f?.noItemsBills?.length ?? 0,
       bill_total_mismatch: f?.billTotalMismatch?.length ?? 0,
       bill_no_attachment: f?.billNoAttachment?.length ?? 0,
       bill_no_expense: f?.billNoExpense?.length ?? 0,
+      vcp_jump: f?.vcpJumps?.length ?? 0,
       daily: pendingCounts.daily,
       '7day': pendingCounts.gmcWeekly,
       '15day': pendingCounts.overdue,
@@ -5802,11 +5812,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Duplicates ({liveDuplicateCount})</span>
                   </label></>)}
-                  {liveSoldBelowCostCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'soldBelowCost'} onChange={() => { setLiveSaleViolationFilter('soldBelowCost'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>Sold Below Cost ({liveSoldBelowCostCount})</span>
-                  </label></>)}
+                  {/* Sold Below Cost and VCP Jump moved to the Sales and Bills tabs'
+                      own flag panels respectively -- both are really about
+                      historical sale/bill data, not the live tap-to-sell grid,
+                      and that's also where the actual fix happens. */}
                   {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
@@ -5816,11 +5825,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Unlinked ({liveUnlinkedCount})</span>
-                  </label></>)}
-                  {liveVcpJumpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'vcpJump'} onChange={() => { setLiveSaleViolationFilter('vcpJump'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>VCP Jump ({liveVcpJumpCount})</span>
                   </label></>)}
                   {liveEmptyRowCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">

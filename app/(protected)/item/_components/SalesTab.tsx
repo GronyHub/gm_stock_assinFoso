@@ -320,6 +320,7 @@ function SalesTab({
     if (violation === 'no_cash') return new Set<number>((flags.noCash ?? []).map((r: any) => r.id))
     if (violation === 'high_wnw') return new Set<number>((flags.highWnw ?? []).map((r: any) => r.id))
     if (violation === 'no_attachment') return new Set<number>((flags.noAttachment ?? []).map((r: any) => r.id))
+    if (violation === 'sold_below_cost') return new Set<number>((flags.costGteSell ?? []).map((r: any) => r.receipt_id))
     return null
   }, [violation, flags])
   // Viewing one of those violation-filtered lists always collapses down to
