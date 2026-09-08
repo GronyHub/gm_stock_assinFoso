@@ -5512,15 +5512,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </SidePaneContainer>
         )}
         {/* Restore button while the pane is hidden -- floats over the
-            content area's own top-left corner rather than taking a layout
-            slot of its own, same reasoning as SidePaneToggle's onHide button
-            above (no extra border/column either way). */}
+            content area's own bottom-left corner rather than taking a
+            layout slot of its own, same reasoning as SidePaneToggle's onHide
+            button above (no extra border/column either way). Sits at the
+            bottom, not the top, so it doesn't cover PresentStaffBar/the tab
+            switcher's own top-left content on a narrow (mobile) screen. */}
         {sidePaneHidden && (
           <button
             type="button"
             onClick={() => setSidePaneHidden(false)}
             title="Show sidebar"
-            className="absolute top-1.5 left-1.5 z-20 w-5 h-5 rounded-full bg-gray-800/80 hover:bg-gray-800 text-white text-[10px] flex items-center justify-center shadow transition"
+            className="absolute bottom-1.5 left-1.5 z-20 w-5 h-5 rounded-full bg-gray-800/80 hover:bg-gray-800 text-white text-[10px] flex items-center justify-center shadow transition"
           >
             ▶
           </button>

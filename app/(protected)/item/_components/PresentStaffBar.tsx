@@ -21,10 +21,14 @@ function fmtHrMin(totalMinutes: number): string {
 // Sits right above the mode-switch tabs: shows staff who have clocked in
 // today, both currently clocked in and clocked out, displaying
 // "Joe(2hr/5hr 10min)" for clocked-in and "Jane (out)(1hr/3hr)" for
-// clocked-out. Worked time comes from /api/staff-times/worked-today, which
-// sums today's announcements' estimated_duration_seconds; total time is
-// from clock-in to now (or to clock-out time if already logged out). Polls
-// for new activity/clock changes and ticks its own clock every 30 seconds.
+// clocked-out. No "Present" label any more -- a staff name showing up here
+// at all already means present, the word was redundant. Worked time comes
+// from /api/staff-times/worked-today, which sums today's announcements'
+// estimated_duration_seconds; total time is from clock-in to now (or to
+// clock-out time if already logged out). A trailing "Total" entry sums both
+// figures across everyone shown, same format as each person's own entry.
+// Polls for new activity/clock changes and ticks its own clock every 30
+// seconds.
 export default function PresentStaffBar() {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
@@ -68,28 +72,38 @@ export default function PresentStaffBar() {
   // the device viewing this bar happens to be set to.
   const nowMins = now.getUTCHours() * 60 + now.getUTCMinutes()
 
+  // Computed once per render (rather than inline in the .map() below) so
+  // the same per-person worked/total minutes can also feed the "Total"
+  // summary's sums without recomputing them a second time.
+  const computed = staff.map(s => {
+    const inMins = parseTimeMins(s.actual_in)
+    const isLoggedOut = s.actual_out != null
+    const totalMins = isLoggedOut
+      ? (outMins => outMins != null && inMins != null ? outMins - inMins : null)(parseTimeMins(s.actual_out))
+      : (inMins != null ? Math.max(0, nowMins - inMins) : null)
+    const workedMins = s.worked_seconds / 60
+    return { staff_name: s.staff_name, isLoggedOut, totalMins, workedMins }
+  })
+  const totalWorkedMins = computed.reduce((sum, c) => sum + c.workedMins, 0)
+  const totalPresentMins = computed.reduce((sum, c) => sum + (c.totalMins ?? 0), 0)
+
   return (
     <>
       <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-2.5 flex-wrap text-[10px] shrink-0">
-        <span className="font-semibold text-gray-400 shrink-0">Present</span>
-        {staff.map(s => {
-          const inMins = parseTimeMins(s.actual_in)
-          const isLoggedOut = s.actual_out != null
-          const totalMins = isLoggedOut
-            ? (outMins => outMins != null && inMins != null ? outMins - inMins : null)(parseTimeMins(s.actual_out))
-            : (inMins != null ? Math.max(0, nowMins - inMins) : null)
-          const workedMins = s.worked_seconds / 60
-          return (
-            <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
-              title="View time details" className={`whitespace-nowrap hover:underline ${isLoggedOut ? 'opacity-60' : ''}`}>
-              <span className="font-semibold text-gray-700">{s.staff_name}</span>
-              {isLoggedOut && <span className="text-gray-400"> (out)</span>}
-              {totalMins != null && (
-                <span className="text-gray-400">({fmtHrMin(workedMins)}/{fmtHrMin(totalMins)})</span>
-              )}
-            </button>
-          )
-        })}
+        {computed.map(s => (
+          <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
+            title="View time details" className={`whitespace-nowrap hover:underline ${s.isLoggedOut ? 'opacity-60' : ''}`}>
+            <span className="font-semibold text-gray-700">{s.staff_name}</span>
+            {s.isLoggedOut && <span className="text-gray-400"> (out)</span>}
+            {s.totalMins != null && (
+              <span className="text-gray-400">({fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)})</span>
+            )}
+          </button>
+        ))}
+        <span className="whitespace-nowrap border-l border-gray-300 pl-2.5">
+          <span className="font-semibold text-gray-700">Total</span>
+          <span className="text-gray-400">({fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)})</span>
+        </span>
       </div>
       {selectedStaff && (
         <StaffTimeDetailModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} />
