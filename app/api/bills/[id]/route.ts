@@ -47,6 +47,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
                 COALESCE(attachments, '[]'::jsonb) AS attachments
     `
     if (!row) return notFound()
+
+    // A bill created by receiving a Purchase Order has its own, separate
+    // "received on" date in purchase_order_receipts (shown as the PO's
+    // Receiving History) -- editing the bill's date here left that row
+    // pointing at the old date, so the two screens disagreed about when the
+    // delivery actually happened. Keep them in lockstep.
+    if (bill_date) {
+      await sql`UPDATE purchase_order_receipts SET received_date = ${bill_date} WHERE bill_id = ${billId}`
+    }
+
     const actor = getActorName(session)
     // 10 minutes flat, same as 'added bill' -- see app/api/bills/route.ts's own
     // comment on the "typing" duration convention.
