@@ -3683,7 +3683,7 @@ function ItemHubPageInner() {
   async function recordInlineTap(item: LiveItem) {
     const qty = liveInlineQtyByItemId[item.id]
     if (!qty) return
-    const price = liveInlinePriceByItemId[item.id] ?? String(item.selling_price)
+    const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
     await recordTap(item, false, qty, price)
     setLiveInlineQtyByItemId(prev => {
       if (!(item.id in prev)) return prev
@@ -7398,7 +7398,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         <span className="text-[9px] text-gray-400">₵</span>
                                         <input
                                           type="number" inputMode="decimal"
-                                          value={liveInlinePriceByItemId[item.id] ?? String(item.selling_price)}
+                                          value={liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)}
                                           onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                           onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                           onClick={e => e.stopPropagation()}
