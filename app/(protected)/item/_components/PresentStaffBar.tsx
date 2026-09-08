@@ -89,21 +89,30 @@ export default function PresentStaffBar() {
 
   return (
     <>
-      <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-2.5 flex-wrap text-[10px] shrink-0">
+      {/* Each entry is a small two-line chip (name, then worked/total on its
+          own smaller line beneath) rather than one long inline string --
+          stacking is what lets everyone plus Total actually fit on one row
+          on a narrow phone screen instead of wrapping. flex-nowrap +
+          overflow-x-auto is the fallback for whenever there are enough
+          people clocked in at once that they still don't all fit -- scrolls
+          sideways instead of wrapping to a second row either way. */}
+      <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0">
         {computed.map(s => (
           <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
-            title="View time details" className={`whitespace-nowrap hover:underline ${s.isLoggedOut ? 'opacity-60' : ''}`}>
-            <span className="font-semibold text-gray-700">{s.staff_name}</span>
-            {s.isLoggedOut && <span className="text-gray-400"> (out)</span>}
+            title="View time details"
+            className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.isLoggedOut ? 'opacity-60' : ''}`}>
+            <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">
+              {s.staff_name}{s.isLoggedOut ? ' (out)' : ''}
+            </span>
             {s.totalMins != null && (
-              <span className="text-gray-400">({fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)})</span>
+              <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
             )}
           </button>
         ))}
-        <span className="whitespace-nowrap border-l border-gray-300 pl-2.5">
-          <span className="font-semibold text-gray-700">Total</span>
-          <span className="text-gray-400">({fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)})</span>
-        </span>
+        <div className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100">
+          <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
+          <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
+        </div>
       </div>
       {selectedStaff && (
         <StaffTimeDetailModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} />
