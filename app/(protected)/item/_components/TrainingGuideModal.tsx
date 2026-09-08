@@ -65,16 +65,17 @@ const TOPICS: Topic[] = [
     id: 'tapping-a-sale',
     title: 'How to record a walk-in sale',
     group: 'Live tab',
-    keywords: 'tap sale record wic quantity price sell customer',
+    keywords: 'tap sale record wic quantity price sell customer qty checkmark inline card',
     body: (
       <div className="space-y-3">
+        <p className="text-sm text-gray-700">Every item card has its own <strong>Qty</strong> and <strong>Price</strong> boxes right on it -- no need to open anything first.</p>
         <Steps items={[
           <>Find the item in the grid (use the search box or the type/group filters if the list is long).</>,
-          <>Tap its <MiniIconBtn tone="blue">+</MiniIconBtn> button. A sheet opens with the item name, selling price, cost price, and current stock.</>,
-          <>Enter the quantity sold. If the item has a custom selling price for this sale, you can override the price too.</>,
-          <>Confirm. The tap is recorded immediately and rolls into today sales receipt.</>,
+          <>Tap the <strong>Qty</strong> box on its card and type how many were sold. The <strong>Price</strong> box is already filled in with the normal selling price -- only change it if this sale is at a different price.</>,
+          <>A green <strong>✓</strong> appears next to the boxes once you've typed a quantity -- tap it (or press Enter) to record the sale.</>,
         ]} />
         <p className="text-sm text-gray-700">Every walk-in sale you tap this way lands on <strong>one combined receipt for the day</strong> -- you don't need to open a separate receipt per customer.</p>
+        <Callout>Tapping the item <strong>name</strong> instead of the boxes opens its full details (price history, stock, edit) -- that's the only thing that still opens a separate screen.</Callout>
       </div>
     ),
   },
@@ -101,7 +102,7 @@ const TOPICS: Topic[] = [
     group: 'Live tab',
     keywords: 'custom quantity amount preset number type',
     body: (
-      <p className="text-sm text-gray-700">Every tap sheet has a plain quantity field -- type any number, it does not have to match a suggested amount. There is no separate "custom" mode; you always type the exact quantity being sold.</p>
+      <p className="text-sm text-gray-700">The Qty box on each card is a plain number field -- type any amount, it does not have to match a suggested quantity. There is no separate "custom" mode or preset buttons; you always type the exact quantity being sold.</p>
     ),
   },
   {

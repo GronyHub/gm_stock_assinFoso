@@ -1333,6 +1333,19 @@ function ItemHubPageInner() {
   // per-tap interruption.
   const [clockGateDismissed, setClockGateDismissed] = useState(false)
   const pendingTapItemRef = useRef<LiveItem | undefined>(undefined)
+  // Carried alongside pendingTapItemRef so a tap made straight from the
+  // card's own Qty/Price boxes (see liveInlineQtyByItemId below) survives
+  // the clock-in gate too -- recordTap's overrideQty/overridePrice params
+  // aren't in React state, so without this the gate's resume call would
+  // have nothing to fall back to and silently do nothing.
+  const pendingTapQtyRef = useRef<string | undefined>(undefined)
+  const pendingTapPriceRef = useRef<string | undefined>(undefined)
+  // Per-card quantity/price typed directly into the grid (the "tap straight
+  // into a card" flow) -- keyed by item id since many cards can be mid-entry
+  // at once. Price is seeded from the item's own selling_price only once the
+  // user actually edits it; until then the input just displays that default.
+  const [liveInlineQtyByItemId, setLiveInlineQtyByItemId] = useState<Record<number, string>>({})
+  const [liveInlinePriceByItemId, setLiveInlinePriceByItemId] = useState<Record<number, string>>({})
   const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
 
   // Per-page green task-count badges (opposite corner from the red flags
@@ -3527,29 +3540,33 @@ function ItemHubPageInner() {
     if (clockedIn) setMyClockedInToday(true)
     setClockGateDismissed(true)
     setClockGateOpen(false)
-    recordTap(pendingTapItemRef.current, true)
+    recordTap(pendingTapItemRef.current, true, pendingTapQtyRef.current, pendingTapPriceRef.current)
   }
 
-  async function recordTap(item?: LiveItem, bypassGate = false) {
+  async function recordTap(item?: LiveItem, bypassGate = false, overrideQty?: string, overridePrice?: string) {
     if (!bypassGate && !clockGateDismissed && myClockedInToday === false) {
       pendingTapItemRef.current = item
+      pendingTapQtyRef.current = overrideQty
+      pendingTapPriceRef.current = overridePrice
       setClockGateOpen(true)
       return
     }
     addTapStatus('STARTED - checking item & quantity')
     const tapItem = item || liveSelectedItem
-    if (!tapItem || !liveQty) {
+    const qtyStr = overrideQty ?? liveQty
+    if (!tapItem || !qtyStr) {
       const missing = !tapItem ? 'item' : 'quantity'
       addTapStatus(`ERROR: Missing ${missing}`)
       showToast(`Missing: ${missing}`, 'error')
       return
     }
-    addTapStatus(`✓ Item: ${tapItem.name}, Qty: ${liveQty}`)
+    addTapStatus(`✓ Item: ${tapItem.name}, Qty: ${qtyStr}`)
     setLiveSaving(true)
     setLiveTapError('')
 
-    const qtyNum = Number(liveQty)
-    const priceNum = livePrice ? Number(livePrice) : Number(tapItem.selling_price)
+    const qtyNum = Number(qtyStr)
+    const priceStr = overridePrice ?? livePrice
+    const priceNum = priceStr ? Number(priceStr) : Number(tapItem.selling_price)
 
     if (qtyNum <= 0) {
       addTapStatus('ERROR: Quantity must be > 0')
@@ -3576,7 +3593,7 @@ function ItemHubPageInner() {
         body: JSON.stringify({
           itemId: tapItem.id,
           quantity: qtyNum,
-          customPrice: livePrice ? priceNum : undefined,
+          customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
           tapTime: liveTapTime,
         }),
@@ -3640,7 +3657,11 @@ function ItemHubPageInner() {
         }
       }
 
-      alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
+      // Only the modal-driven tap (Qty/Price typed into the sheet) gets this
+      // extra blocking confirmation on top of the toast above -- a card
+      // tapped straight from the grid is meant to be a single quick action,
+      // and a native "OK" dialog on every sale would defeat that.
+      if (overrideQty === undefined) alert(`✓ Tap Recorded!\n${tapItem.name} × ${qtyNum}`)
     } catch (e) {
       const errMsg = e instanceof Error && e.name === 'AbortError'
         ? 'Request timed out - server not responding'
@@ -3653,6 +3674,23 @@ function ItemHubPageInner() {
       clearTimeout(timeoutId)
       setLiveSaving(false)
     }
+  }
+
+  // The card's own Qty/Price boxes (Live tab, default view) -- tap the
+  // checkmark to record straight from the grid, no sheet needed. Reuses
+  // recordTap's existing guards (clock-in gate, qty/price validation, count-
+  // overdue block from the API) so this isn't a second, divergent code path.
+  async function recordInlineTap(item: LiveItem) {
+    const qty = liveInlineQtyByItemId[item.id]
+    if (!qty) return
+    const price = liveInlinePriceByItemId[item.id] ?? String(item.selling_price)
+    await recordTap(item, false, qty, price)
+    setLiveInlineQtyByItemId(prev => {
+      if (!(item.id in prev)) return prev
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
   }
 
   async function recordCountAndSale() {
@@ -7221,8 +7259,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           </div>
                         )}
                         <div
-                          onClick={() => openEditGridItem(item.id)}
-                          className={`relative flex flex-col border-r-2 border-b-2 group cursor-pointer ${cardBgCls} transition`}
+                          // The default Live view now taps straight into the
+                          // card's own Qty/Price boxes below -- opening the
+                          // edit sheet on any tap would fight that, so this
+                          // whole-card handler only applies to the other
+                          // (diagnostic/violation) filters, same as before.
+                          // Items due for a count are the one exception even
+                          // in the default view: they still need the sheet's
+                          // own count-entry field (see the Help Guide's
+                          // "COUNT NOW banner" topic), so those keep the old
+                          // tap-opens-sheet behavior no matter which filter
+                          // is selected.
+                          onClick={(liveSaleViolationFilter === 'noViolations' && !due) ? undefined : () => openEditGridItem(item.id)}
+                          className={`relative flex flex-col border-r-2 border-b-2 group ${(liveSaleViolationFilter === 'noViolations' && !due) ? '' : 'cursor-pointer'} ${cardBgCls} transition`}
                         >
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
@@ -7303,7 +7352,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                                   {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                                 </div>
-                                {liveSaleViolationFilter === 'noViolations' ? (
+                                {liveSaleViolationFilter === 'noViolations' && due ? (
+                                  // Due-for-count items keep the old plain-price line even
+                                  // in the default view -- tapping the card still needs to
+                                  // open the sheet for its count-entry field, so it can't
+                                  // also carry the inline Qty/Price boxes (see the onClick
+                                  // comment on the card's outer div above).
                                   <p className="text-[9px] text-gray-600 leading-tight">
                                     <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                                     {item.product_type !== 'service' && (
@@ -7315,6 +7369,55 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                       </>
                                     )}
                                   </p>
+                                ) : liveSaleViolationFilter === 'noViolations' ? (
+                                  <>
+                                    {item.product_type !== 'service' && (
+                                      <p className="text-[9px] text-gray-600 leading-tight">
+                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                        <span className="text-gray-400"> · </span>
+                                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                      </p>
+                                    )}
+                                    {/* Tap straight into the card: no plain-text price any
+                                        more, the Price box below is the only place it shows
+                                        up (pre-filled, so most sales never need to touch it).
+                                        Typing a Qty reveals the confirm checkmark; Enter in
+                                        either box also submits. */}
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        <input
+                                          type="number" inputMode="decimal" placeholder="Qty"
+                                          value={liveInlineQtyByItemId[item.id] ?? ''}
+                                          onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                          onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                          onClick={e => e.stopPropagation()}
+                                          className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                        />
+                                      </label>
+                                      <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        <span className="text-[9px] text-gray-400">₵</span>
+                                        <input
+                                          type="number" inputMode="decimal"
+                                          value={liveInlinePriceByItemId[item.id] ?? String(item.selling_price)}
+                                          onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                          onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                          onClick={e => e.stopPropagation()}
+                                          className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                        />
+                                      </label>
+                                      {!!liveInlineQtyByItemId[item.id] && (
+                                        <button
+                                          type="button"
+                                          disabled={liveSaving}
+                                          onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
+                                          aria-label={`Record sale for ${item.name}`}
+                                          className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
+                                        >
+                                          ✓
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
                                 ) : (
                                   <p className="text-[9px] text-gray-600 leading-tight">
                                     <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
