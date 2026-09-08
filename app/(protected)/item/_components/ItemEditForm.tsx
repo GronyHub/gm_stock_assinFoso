@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
-import { trimZeros } from '@/lib/fmtNumber'
+import { trimZeros, formatACP } from '@/lib/fmtNumber'
 import { formatDuration } from '@/lib/fmtDuration'
 
 // The item-fields-only edit form (name/group/prices/units/conversion/count
@@ -245,7 +245,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               VCP above. */}
           <label className={s.label}>Cost price (ACP)</label>
           <div className={s.readOnly} title="VCP + Shared Expenses from that bill -- add expenses on the bill to change it">
-            {acp ? trimZeros(String(acp)) : '—'}
+            {acp ? formatACP(acp) : '—'}
           </div>
         </div>
         <div>

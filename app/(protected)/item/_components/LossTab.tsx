@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, Fragment, memo, type ReactNode, type CSSProperties } from 'react'
 import { fmtDate, fmtTime } from '@/lib/fmtDate'
+import { formatACP } from '@/lib/fmtNumber'
 import type { ItemDayRow as DayRow, CountRevision } from '@/lib/itemDayRows'
 import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
@@ -1637,7 +1638,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
-                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">
@@ -1764,7 +1765,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
-                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? fmtN(parseFloat(row.acp)) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">

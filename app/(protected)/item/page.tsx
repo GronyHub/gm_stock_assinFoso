@@ -6,7 +6,7 @@ import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsM
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import { isOwnerLevel } from '@/lib/roles'
 import { fmtDate, fmtTime } from '@/lib/fmtDate'
-import { trimZeros } from '@/lib/fmtNumber'
+import { trimZeros, formatACP } from '@/lib/fmtNumber'
 import { formatGapMins } from '@/lib/fmtGap'
 import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
@@ -7356,7 +7356,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   <>
                                     {item.product_type !== 'service' && (
                                       <p className="text-[9px] text-gray-600 leading-tight">
-                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                        <span className="text-green-600 font-semibold">ACP ₵{formatACP(item.acp_price ?? item.cost_price)}</span>
                                         <span className="text-gray-400"> · </span>
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                                       </p>
@@ -7407,7 +7407,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     <span className="text-gray-400"> · </span>
                                     {item.product_type !== 'service' && (
                                       <>
-                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
+                                        <span className="text-green-600 font-semibold">ACP ₵{formatACP(item.acp_price ?? item.cost_price)}</span>
                                         <span className="text-gray-400"> · </span>
                                       </>
                                     )}
