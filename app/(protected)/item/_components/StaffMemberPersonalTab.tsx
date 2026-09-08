@@ -1,14 +1,25 @@
 'use client'
 import { useState, useEffect } from 'react'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
 import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
+
+type TabKey = 'tasks' | 'mentions' | 'dressCode' | 'training' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
+
+const TABS: { key: TabKey; icon: string; label: string }[] = [
+  { key: 'tasks', icon: '✅', label: 'Tasks' },
+  { key: 'mentions', icon: '🔍', label: 'Mentions' },
+  { key: 'dressCode', icon: '👕', label: 'Dress Code' },
+  { key: 'training', icon: '📖', label: 'Training' },
+  { key: 'behaviour', icon: '🚦', label: 'Behaviour' },
+  { key: 'assessment', icon: '📝', label: 'Assessment' },
+  { key: 'meeting', icon: '🗣️', label: 'Meeting' },
+  { key: 'display', icon: '📌', label: 'Display' },
+  { key: 'laws', icon: '⚖️', label: 'Laws' },
+]
 
 export default function StaffMemberPersonalTab({
   staffName, username, role, canManage, staffRoster, routablePages, categoryIds,
@@ -21,24 +32,15 @@ export default function StaffMemberPersonalTab({
   routablePages: string[]
   categoryIds: Record<string, number>
 }) {
+  const [activeTab, setActiveTab] = useState<TabKey>('tasks')
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<any>(null)
   const [searchLoading, setSearchLoading] = useState(false)
 
-  const myTasksPanel = useLawsPanel(`show${staffName}MyTasksLaws`)
-  const myMentionsPanel = useLawsPanel(`show${staffName}MyMentionsLaws`)
-  const myDressCodeLaws = useLawsPanel(`show${staffName}MyDressCodeLaws`)
-  const myTrainingLaws = useLawsPanel(`show${staffName}MyTrainingLaws`)
-  const myBehaviourLaws = useLawsPanel(`show${staffName}MyBehaviourLaws`)
-  const myAssessmentLaws = useLawsPanel(`show${staffName}MyAssessmentLaws`)
-  const myMeetingLaws = useLawsPanel(`show${staffName}MyMeetingLaws`)
-  const myDisplayLaws = useLawsPanel(`show${staffName}MyDisplayLaws`)
-  const myLawsPanel = useLawsPanel(`show${staffName}MyLawsPanel`)
-
   // Fetch tasks assigned to this staff member
   useEffect(() => {
-    if (!myTasksPanel.show) return
+    if (activeTab !== 'tasks') return
     setTasksLoading(true)
     fetch(`/api/tasks?assigned_to=${encodeURIComponent(staffName)}`)
       .then(r => r.ok ? r.json() : [])
@@ -47,11 +49,11 @@ export default function StaffMemberPersonalTab({
         setTasksLoading(false)
       })
       .catch(() => setTasksLoading(false))
-  }, [staffName, myTasksPanel.show])
+  }, [staffName, activeTab])
 
   // Search for mentions of this staff member
   useEffect(() => {
-    if (!myMentionsPanel.show) return
+    if (activeTab !== 'mentions') return
     setSearchLoading(true)
     fetch(`/api/search?q=${encodeURIComponent(staffName)}`)
       .then(r => r.ok ? r.json() : null)
@@ -60,46 +62,7 @@ export default function StaffMemberPersonalTab({
         setSearchLoading(false)
       })
       .catch(() => setSearchLoading(false))
-  }, [staffName, myMentionsPanel.show])
-
-  // Every section on this page used to show ONLY the small "⚖️" laws-panel
-  // toggle as its entire visible UI -- no text anywhere saying what the
-  // button opened (the "My Tasks"/"My Behaviour"/etc labels were JSX
-  // comments, never rendered). A staff member's own page was, for real, a
-  // column of identical unlabeled icons. SectionHeader is the actual visible
-  // control now: tapping it opens/closes the section, and its own label
-  // replaces the need to guess. The "⚖️" bar (rules/tasks for this page)
-  // still renders once open, unchanged.
-  function SectionHeader({ icon, label, panel }: { icon: string; label: string; panel: ReturnType<typeof useLawsPanel> }) {
-    return (
-      <button type="button" onClick={() => panel.setShow(v => !v)}
-        className="w-full flex items-center justify-between px-2.5 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl transition">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
-          <span>{icon}</span>{label}
-        </span>
-        <span className="text-gray-400 text-[10px]">{panel.show ? '▴' : '▾'}</span>
-      </button>
-    )
-  }
-
-  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
-    return (
-      <div className="mt-2">
-        <LawsToggleBar show={panel.show} setShow={panel.setShow}
-          openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
-        {panel.show && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mt-2">
-            <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={() => {}}
-              openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-              hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-              activeFilters={panel.activeFilters} />
-          </div>
-        )}
-      </div>
-    )
-  }
+  }, [staffName, activeTab])
 
   function TasksView() {
     return (
@@ -166,127 +129,44 @@ export default function StaffMemberPersonalTab({
   }
 
   return (
-    <div className="px-2 space-y-2 pt-2">
-      {/* My Tasks */}
-      <div>
-        <SectionHeader icon="✅" label="My Tasks" panel={myTasksPanel} />
-        {myTasksPanel.show && (
-          <div className="mt-2 space-y-2">
-            <LawsToggleBar show={myTasksPanel.show} setShow={myTasksPanel.setShow}
-              openForm={myTasksPanel.openForm} setOpenForm={myTasksPanel.setOpenForm}
-              hideZeroFlags={myTasksPanel.hideZeroFlags} setHideZeroFlags={myTasksPanel.setHideZeroFlags}
-              activeFilters={myTasksPanel.activeFilters} toggleFilter={myTasksPanel.toggleFilter}
-              dark={false} />
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <TasksView />
-            </div>
-          </div>
-        )}
+    <div className="px-2 pt-2 space-y-2">
+      <div className="flex gap-1 overflow-x-auto pb-0.5">
+        {TABS.map(t => (
+          <button key={t.key} type="button" onClick={() => setActiveTab(t.key)}
+            className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
+              activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}>
+            <span>{t.icon}</span>{t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Mentions */}
-      <div>
-        <SectionHeader icon="🔍" label="Mentions" panel={myMentionsPanel} />
-        {myMentionsPanel.show && (
-          <div className="mt-2 space-y-2">
-            <LawsToggleBar show={myMentionsPanel.show} setShow={myMentionsPanel.setShow}
-              openForm={myMentionsPanel.openForm} setOpenForm={myMentionsPanel.setOpenForm}
-              hideZeroFlags={myMentionsPanel.hideZeroFlags} setHideZeroFlags={myMentionsPanel.setHideZeroFlags}
-              activeFilters={myMentionsPanel.activeFilters} toggleFilter={myMentionsPanel.toggleFilter}
-              dark={false} />
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <MentionsView />
-            </div>
+      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        {activeTab === 'tasks' && <div className="p-3"><TasksView /></div>}
+        {activeTab === 'mentions' && <div className="p-3"><MentionsView /></div>}
+        {activeTab === 'dressCode' && (<>
+          <DressCodeFlagsPanel filterStaff={staffName} />
+          <div className="p-3 border-t border-gray-100">
+            <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" filterStaff={staffName} />
           </div>
+        </>)}
+        {activeTab === 'training' && (
+          <div className="p-3"><ContentPage contentKey="training_tutorial" title="📖 My Tutorial" submenu="My Tutorial" /></div>
         )}
-      </div>
-
-      {/* My Dress Code */}
-      <div>
-        <SectionHeader icon="👕" label="My Dress Code" panel={myDressCodeLaws} />
-        {myDressCodeLaws.show && (
-          <div className="mt-2 space-y-2">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-              <DressCodeFlagsPanel filterStaff={staffName} />
-            </div>
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" filterStaff={staffName} />
-            </div>
-          </div>
+        {activeTab === 'behaviour' && (
+          <div className="p-3"><ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} /></div>
         )}
-      </div>
-
-      {/* My Training */}
-      <div>
-        <SectionHeader icon="📖" label="My Training" panel={myTrainingLaws} />
-        {myTrainingLaws.show && (
-          <div className="mt-2 space-y-2">
-            {inlineLaws('My Training', myTrainingLaws)}
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ContentPage contentKey="training_tutorial" title="📖 My Tutorial" submenu="My Tutorial" />
-            </div>
-          </div>
+        {activeTab === 'assessment' && (
+          <div className="p-3"><AssessmentPanel staffName={staffName} /></div>
         )}
-      </div>
-
-      {/* My Behaviour */}
-      <div>
-        <SectionHeader icon="🚦" label="My Behaviour" panel={myBehaviourLaws} />
-        {myBehaviourLaws.show && (
-          <div className="mt-2 space-y-2">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} />
-            </div>
-          </div>
+        {activeTab === 'meeting' && (
+          <div className="p-3"><StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} filterStaff={staffName} /></div>
         )}
-      </div>
-
-      {/* My Assessment */}
-      <div>
-        <SectionHeader icon="📝" label="My Assessment" panel={myAssessmentLaws} />
-        {myAssessmentLaws.show && (
-          <div className="mt-2 space-y-2">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <AssessmentPanel staffName={staffName} />
-            </div>
-          </div>
+        {activeTab === 'display' && (
+          <div className="p-3"><ManageLogPanel category="staff_display" label="My Display" icon="📌" filterAboutStaff={staffName} /></div>
         )}
-      </div>
-
-      {/* My Meeting */}
-      <div>
-        <SectionHeader icon="🗣️" label="My Meeting" panel={myMeetingLaws} />
-        {myMeetingLaws.show && (
-          <div className="mt-2 space-y-2">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} filterStaff={staffName} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* My Display */}
-      <div>
-        <SectionHeader icon="📌" label="My Display" panel={myDisplayLaws} />
-        {myDisplayLaws.show && (
-          <div className="mt-2 space-y-2">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ManageLogPanel category="staff_display" label="My Display" icon="📌" filterAboutStaff={staffName} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* My Laws */}
-      <div>
-        <SectionHeader icon="⚖️" label="My Laws" panel={myLawsPanel} />
-        {myLawsPanel.show && (
-          <div className="mt-2 space-y-2">
-            {inlineLaws('My Laws', myLawsPanel)}
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ContentPage contentKey="training_laws" title="⚖️ My Company Laws Agreement" submenu="My Laws" />
-            </div>
-          </div>
+        {activeTab === 'laws' && (
+          <div className="p-3"><ContentPage contentKey="training_laws" title="⚖️ My Company Laws Agreement" submenu="My Laws" /></div>
         )}
       </div>
     </div>
