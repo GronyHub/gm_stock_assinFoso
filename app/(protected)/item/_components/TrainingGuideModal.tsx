@@ -62,7 +62,7 @@ const TOPICS: Topic[] = [
         <div className="space-y-2">
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Cash</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Items (which also holds Sale, Log, Sales, Bills, and Expenses as its own tab switcher, with Purchase Orders and Vendors radio-buttoned inside Bills, Customers radio-buttoned inside Sales, and Expense Orders radio-buttoned inside Expenses -- see the next topic), P&amp;L (owner and Joe only), CAB.</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Items -- one tab switcher holding Sale, Log, Sales, Bills, Expenses, and P&amp;L (owner and Joe only). Purchase Orders and Vendors are radio-buttoned inside Bills, Customers inside Sales, Expense Orders inside Expenses, and CAB inside P&amp;L -- see the next topic.</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Manage</p>
