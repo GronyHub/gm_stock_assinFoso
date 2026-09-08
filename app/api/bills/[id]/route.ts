@@ -3,7 +3,7 @@ import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
-import { ensureBillAttachmentsColumn, normalizeAttachments } from '@/lib/billAttachments'
+import { ensureBillAttachmentsColumn, ensureBillEnteredByColumn, normalizeAttachments } from '@/lib/billAttachments'
 import { syncVcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
 
@@ -34,6 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     await ensureBillAttachmentsColumn()
+    await ensureBillEnteredByColumn()
     const [row] = await sql`
       UPDATE bills
       SET

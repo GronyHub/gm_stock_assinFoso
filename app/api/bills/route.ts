@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
+import { ensureBillAttachmentsColumn, ensureBillEnteredByColumn } from '@/lib/billAttachments'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { syncVcpForItems } from '@/lib/vcpSync'
 import { NextRequest } from 'next/server'
@@ -9,6 +9,7 @@ import { NextRequest } from 'next/server'
 export async function GET(req: NextRequest) {
   await ensureDbInitialized()
   await ensureBillAttachmentsColumn()
+  await ensureBillEnteredByColumn()
 
   const url = new URL(req.url)
   // BillsTab fetches this with no limit/offset -- it wants every bill (it
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
         -- PO-receipts among them) -- resolved the same way
         -- /api/purchase-orders' own GET already does for POTab's list.
         COALESCE(v.display_name, b.vendor_name) AS vendor_name,
-        b.total, b.status
+        b.total, b.status, b.entered_by
       FROM bills b
       LEFT JOIN vendors v ON v.id = b.vendor_id
       -- 'live_sale' bills are /api/sales/live-tap's own "Internal
@@ -83,6 +84,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
+  await ensureBillEnteredByColumn()
 
   const { date, lines } = (await req.json()) as {
     date: string
@@ -142,21 +144,11 @@ export async function POST(req: NextRequest) {
         const billNumber = `APP-BILL-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}-${i}`
         const vendorName = l.vendorName || null
 
-        let bill
-        try {
-          [bill] = await sql`
-            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
-            VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${enteredBy}, ${billNumber})
-            RETURNING id
-          `
-        } catch (e) {
-          console.error('bills insert with entered_by failed, retrying without it:', e)
-          ;[bill] = await sql`
-            INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, zoho_bill_id)
-            VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${billNumber})
-            RETURNING id
-          `
-        }
+        const [bill] = await sql`
+          INSERT INTO bills (bill_number, bill_date, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
+          VALUES (${billNumber}, ${date}, ${vendorName}, ${l.total}, ${l.total}, 'paid', 'app', ${enteredBy}, ${billNumber})
+          RETURNING id
+        `
         return { id: bill.id, billNumber, lineIndex: i }
       })
     )

@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { syncVcpForItems } from '@/lib/vcpSync'
+import { ensureBillEnteredByColumn } from '@/lib/billAttachments'
 import { NextRequest } from 'next/server'
 
 type ReceiveLine = { poLineId: number; qty: number; price: number }
@@ -15,6 +16,7 @@ type ReceiveLine = { poLineId: number; qty: number; price: number }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { session, error } = await requireAuth()
   if (error) return error
+  await ensureBillEnteredByColumn()
 
   try {
     const { id } = await params
@@ -61,21 +63,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const billNumber = `PO-BILL-${date.replace(/-/g, '')}-${Date.now().toString().slice(-4)}`
     const actor = (session.user as any)?.username || session.user?.name || 'Unknown'
 
-    let bill
-    try {
-      [bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
-        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${actor}, ${billNumber})
-        RETURNING id
-      `
-    } catch (e) {
-      console.error('bills insert with entered_by failed, retrying without it:', e)
-      ;[bill] = await sql`
-        INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, zoho_bill_id)
-        VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${billNumber})
-        RETURNING id
-      `
-    }
+    const [bill] = await sql`
+      INSERT INTO bills (bill_number, bill_date, vendor_id, vendor_name, total, subtotal, status, source, entered_by, zoho_bill_id)
+      VALUES (${billNumber}, ${date}, ${po.vendor_id ?? null}, ${po.vendor_name ?? null}, ${total}, ${total}, 'paid', 'po', ${actor}, ${billNumber})
+      RETURNING id
+    `
 
     for (const l of received) {
       const line = poLineById.get(l.poLineId)!
