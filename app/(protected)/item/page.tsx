@@ -16,7 +16,7 @@ import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 import { HelpButton } from './_components/HelpButton'
 import ClockInGateModal from './_components/ClockInGateModal'
-import { LawsTasksModal } from './_components/LawsTasksModal'
+import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
@@ -842,7 +842,6 @@ function ItemHubPageInner() {
   const expenseOrdersLaws = useLawsPanel('showExpenseOrdersLaws')
   const aliasWideTableLaws = useLawsPanel('showAliasWideTableLaws')
   const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
-  const liveSaleLaws = useLawsPanel('showLiveSaleLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
   const rawLiveProductType = searchParams.get('liveType')
   const initialLiveProductType = (rawLiveProductType === 'goods' || rawLiveProductType === 'services') ? rawLiveProductType : 'all'
@@ -852,9 +851,7 @@ function ItemHubPageInner() {
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
-  const [liveShowLawsTasksModal, setLiveShowLawsTasksModal] = useState(false)
-  const [liveSalesShowLawsTasksModal, setLiveSalesShowLawsTasksModal] = useState(false)
-  const [liveBillsShowLawsTasksModal, setLiveBillsShowLawsTasksModal] = useState(false)
+  const [liveGlobalLawsModalOpen, setLiveGlobalLawsModalOpen] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -2164,15 +2161,6 @@ function ItemHubPageInner() {
   const [liveItemPickerResults, setLiveItemPickerResults] = useState<LiveItem[]>([])
   const [liveShowItemPicker, setLiveShowItemPicker] = useState(false)
   const [livePickedItemId, setLivePickedItemId] = useState<number | null>(null)
-  // Sales/Bills/Loss by Date each kept their own laws/notes/tasks under
-  // their own scopeKey (from back when each was its own page) -- still
-  // sitting in the database under those same scope keys, so each tab gets
-  // its own laws icon here to reach them, same as Sale mode's own
-  // (liveSaleLaws, declared above).
-  const salesLaws = useLawsPanel('showSalesLaws')
-  const billsLaws = useLawsPanel('showBillsLaws')
-  const expensesLaws = useLawsPanel('showExpensesLaws')
-
   // The standalone "Count" mode (its own due-count queues/badges/entry-form
   // as a second grid mode) was removed once Sale mode grew its own pinned
   // "COUNT NOW" block and inline count field for due items (below) -- those
@@ -2340,7 +2328,6 @@ function ItemHubPageInner() {
   const [liveExpensesAccountFilter, setLiveExpensesAccountFilter] = useState<string | null>(null)
   const [liveExpensesAccountOptions, setLiveExpensesAccountOptions] = useState<string[]>([])
   const [liveExpensesShowAccountsManager, setLiveExpensesShowAccountsManager] = useState(false)
-  const [liveExpensesShowLawsTasksModal, setLiveExpensesShowLawsTasksModal] = useState(false)
   // Columns moved into the Filter dropdown (see renderExpensesFiltersBar) --
   // this just tracks whether that panel is open, since ColumnsPickerButton
   // no longer renders its own trigger for Expenses (hideTrigger + controlled
@@ -4488,45 +4475,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  // Sales tab filter bar (Laws & Tasks only)
-  function renderSalesFiltersBar() {
-    return (
-      <select
-        value=""
-        onChange={e => {
-          const v = e.target.value
-          if (v === 'help:laws') {
-            setLiveSalesShowLawsTasksModal(true)
-          }
-        }}
-        className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
-      >
-        <option value="">Filter</option>
-        <option value="help:laws">⚖️ Laws & Tasks</option>
-      </select>
-    )
-  }
-
-  // Bills tab filter bar (Laws & Tasks only -- violations moved to their own
-  // radio buttons in the header, same as Sales' filter bar)
-  function renderBillsFiltersBar() {
-    return (
-      <select
-        value=""
-        onChange={e => {
-          const v = e.target.value
-          if (v === 'help:laws') {
-            setLiveBillsShowLawsTasksModal(true)
-          }
-        }}
-        className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
-      >
-        <option value="">Filter</option>
-        <option value="help:laws">⚖️ Laws & Tasks</option>
-      </select>
-    )
-  }
-
   // Expenses' Filter dropdown -- houses everything except the radios kept
   // standalone (All Expenses/By Account/By Vendor/By Property Type/All
   // Properties/Non-Properties and the four flag violations) and "+ New
@@ -4550,7 +4498,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           if (v === 'analytics') { setLiveExpensesShowAnalytics(a => !a); return }
           if (v === 'accounts') { setLiveExpensesShowAccountsManager(true); return }
           if (v === 'columns') { setLiveExpensesColumnsOpen(true); return }
-          if (v === 'help:laws') { setLiveExpensesShowLawsTasksModal(true); return }
           if (v === 'help:guide') { setLiveHelpModalOpen(true); return }
           selectLiveExpensesRadio(v || 'all')
         }}
@@ -4565,7 +4512,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <option value="analytics">Analytics</option>
         <option value="accounts">Accounts</option>
         <option value="columns">Columns</option>
-        <option value="help:laws">⚖️ Laws &amp; Tasks</option>
         <option value="help:guide">❓ Help</option>
       </select>
     )
@@ -5713,10 +5659,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         // Opens the Help Guide modal
                         setLiveHelpModalOpen(true)
                         selectEl.value = ''
-                      } else if (v === 'help:laws') {
-                        // Opens the Laws & Tasks modal
-                        setLiveShowLawsTasksModal(true)
-                        selectEl.value = ''
                       } else if (v === 'settings:sortorder') {
                         setLiveSortOrderModalOpen(true)
                         selectEl.value = ''
@@ -5732,7 +5674,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <option value="">Filter</option>
                     <optgroup label="Help">
                       <option value="help:help">❓ Help Guide</option>
-                      <option value="help:laws">⚖️ Laws & Tasks</option>
                     </optgroup>
                     <optgroup label="Settings">
                       <option value="settings:sortorder">⇅ Arrange Item Order</option>
@@ -6295,7 +6236,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
-                {renderSalesFiltersBar()}
                 <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveSalesShowAnalytics} onClick={() => setLiveSalesShowAnalytics(a => !a)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -6437,7 +6377,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
-                {renderBillsFiltersBar()}
                 <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveBillsShowAnalytics} onClick={() => setLiveBillsShowAnalytics(a => !a)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
@@ -6703,9 +6642,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         } else if (v === 'help:help') {
                           setLiveHelpModalOpen(true)
                           selectEl.value = ''
-                        } else if (v === 'help:laws') {
-                          setLiveShowLawsTasksModal(true)
-                          selectEl.value = ''
                         } else if (v === 'settings:sortorder') {
                           setLiveSortOrderModalOpen(true)
                           selectEl.value = ''
@@ -6718,7 +6654,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option value="">⚖️ Flags</option>
                       <optgroup label="Help">
                         <option value="help:help">❓ Help Guide</option>
-                        <option value="help:laws">⚖️ Laws & Tasks</option>
                       </optgroup>
                       <optgroup label="Settings">
                         <option value="settings:sortorder">⇅ Arrange Item Order</option>
@@ -8293,16 +8228,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
-          <div className="fixed bottom-4 right-4 z-40">
+          <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+            <button onClick={() => setLiveGlobalLawsModalOpen(true)} title="Laws & Tasks" aria-label="Laws & Tasks"
+              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
+              ⚖️ Laws & Tasks
+            </button>
             <HelpButton onClick={() => setLiveHelpModalOpen(true)} className="bg-blue-600 text-white hover:text-white hover:bg-blue-700 rounded-full shadow-lg px-3 py-2" />
           </div>
+          <GlobalLawsTasksModal isOpen={liveGlobalLawsModalOpen} onClose={() => setLiveGlobalLawsModalOpen(false)} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
           )}
-          <LawsTasksModal isOpen={liveShowLawsTasksModal} onClose={() => setLiveShowLawsTasksModal(false)} lawsPanel={liveSaleLaws} scopeKey="Items" />
-          <LawsTasksModal isOpen={liveSalesShowLawsTasksModal} onClose={() => setLiveSalesShowLawsTasksModal(false)} lawsPanel={salesLaws} scopeKey="Sales" />
-          <LawsTasksModal isOpen={liveBillsShowLawsTasksModal} onClose={() => setLiveBillsShowLawsTasksModal(false)} lawsPanel={billsLaws} scopeKey="Bills" />
-          <LawsTasksModal isOpen={liveExpensesShowLawsTasksModal} onClose={() => setLiveExpensesShowLawsTasksModal(false)} lawsPanel={expensesLaws} scopeKey="Expenses" />
 
           {liveSortOrderModalOpen && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setLiveSortOrderModalOpen(false)}>
