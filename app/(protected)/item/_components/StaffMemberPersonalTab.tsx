@@ -7,13 +7,12 @@ import ClosingReportLogView from './ClosingReportLogView'
 import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
 
-type TabKey = 'tasks' | 'mentions' | 'dressCode' | 'training' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
+type TabKey = 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'tasks', icon: '✅', label: 'Tasks' },
   { key: 'mentions', icon: '🔍', label: 'Mentions' },
   { key: 'dressCode', icon: '👕', label: 'Dress Code' },
-  { key: 'training', icon: '📖', label: 'Training' },
   { key: 'behaviour', icon: '🚦', label: 'Behaviour' },
   { key: 'assessment', icon: '📝', label: 'Assessment' },
   { key: 'meeting', icon: '🗣️', label: 'Meeting' },
@@ -150,9 +149,6 @@ export default function StaffMemberPersonalTab({
             <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" filterStaff={staffName} />
           </div>
         </>)}
-        {activeTab === 'training' && (
-          <div className="p-3"><ContentPage contentKey="training_tutorial" title="📖 My Tutorial" submenu="My Tutorial" /></div>
-        )}
         {activeTab === 'behaviour' && (
           <div className="p-3"><ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} /></div>
         )}

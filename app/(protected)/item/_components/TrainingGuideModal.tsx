@@ -35,6 +35,133 @@ type Topic = { id: string; title: string; group: string; keywords: string; body:
 
 const TOPICS: Topic[] = [
   {
+    id: 'app-layout',
+    title: 'How is the app laid out?',
+    group: 'Getting Started',
+    keywords: 'layout navigation biz uk ch sidebar pane daily home',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">There's no row of tabs across the top any more -- everything opens from one scrollable side pane (it collapses out of the way on a phone; tap the menu icon to bring it back).</p>
+        <p className="text-sm text-gray-700">At the bottom of that pane are the area buttons. Almost everyone only ever sees one:</p>
+        <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
+          <li><MiniPill text="💰 Biz" tone="blue" /> -- the shop's day-to-day work: sales, stock, bills, staff, everything covered in this guide.</li>
+          <li><MiniPill text="🇬🇧 UK" /> and <MiniPill text="🏢 C&amp;H" /> -- separate, private areas that only appear for a couple of specific accounts. If you don't see these buttons, you don't have access to them, and that's expected -- they're outside what this guide covers.</li>
+        </ul>
+        <p className="text-sm text-gray-700">There's also a <strong>📅 Daily</strong> button pinned just above the area buttons, always there regardless of which area you're in -- it opens the end-of-day Daily Summary report.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'biz-pane',
+    title: "What's inside Biz?",
+    group: 'Getting Started',
+    keywords: 'biz cash manage team pane sidebar items purchase orders vendors cab customers opener closer grony checks advert staff members payslips profile settings',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Biz is one continuous pane, top to bottom. Scroll down and you'll find, in this order:</p>
+        <div className="space-y-2">
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Cash</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Items (which also holds Sale, Log, Sales, Bills, and Expenses as its own tab switcher -- see the next topic), Purchase Orders, Vendors, P&amp;L (owner and Joe only), CAB, Customers, Expense Orders.</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Manage</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Opener, Closer, Grony Checks (Arrangement, Cleanliness, Customer Display, Repair Works, and more, nested inside it), Advert (Audio, Advert Status, Jingle Log, Equipment Check, and more, nested inside it), Future, Quality Assurance, Unfortunate Events, App info.</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Team</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Team Times, Team Payments, Team Penalty Points, Team Behaviour, Team Dress Code, Team Display, Team Meeting, Team Company Laws Agreement, Team Assessment, Team Rota, Team Logs -- everything about staff as a whole.</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Staff Members</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">One row per active staff member -- tap a name to open that person's own page (their tasks, assessment scores, meeting attendance, and more).</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Personal</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Payslips, and your own Profile.</p>
+          </div>
+          <div className="border border-gray-200 rounded-lg p-2">
+            <p className="text-xs font-bold text-gray-800">Settings / Sign out</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Right at the bottom, above the area buttons.</p>
+          </div>
+        </div>
+        <Callout>An owner can reorder, rename, or regroup any of these rows from Settings → "Reorder &amp; Rename Lists" -- so the exact order you see may not match this list exactly.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'home-feed',
+    title: "Where's the news feed?",
+    group: 'Getting Started',
+    keywords: 'home feed announcements photos voice notes news',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Open Items, then tap the <strong>🏠 Home</strong> button in the small switcher above the grid (next to Sale/Log/Sales/Bills/Expenses) -- that's the activity feed: announcements, photos, and voice notes, newest first. A red badge shows how many you haven't seen yet.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'clocking-in-out',
+    title: 'How do I clock in/out, and who are the Opener and Closer?',
+    group: 'Getting Started',
+    keywords: 'clock in out opener closer gps location closing report time',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Clock in and out from <strong>Team → Team Times</strong>. It's GPS-checked -- you have to actually be at the shop, or it won't let you.</p>
+        <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
+          <li><strong>Opener 🌅</strong> -- whoever clocks in earliest that day.</li>
+          <li><strong>Closer 🌙</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire (was the advert played, any property issue, a new customer, etc).</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'role-bar-gone',
+    title: 'What happened to the Joe / Bino / Opener / Closer buttons at the bottom of the screen?',
+    group: 'Getting Started',
+    keywords: 'role bar joe bino opener closer removed badges flags',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">That row (the "Role Bar") doesn't exist any more. It used to be the one place every outstanding issue count showed up.</p>
+        <p className="text-sm text-gray-700">Those counts didn't disappear -- they moved to sit directly on whatever they're actually about: Opener and Closer are now their own rows under Manage (each showing its own badge), and every other flag/violation count shows up right on the page it belongs to (Items, Sales, Bills, and so on).</p>
+      </div>
+    ),
+  },
+  {
+    id: 'account-menu-gone',
+    title: 'Where did the account menu (person icon) go?',
+    group: 'Getting Started',
+    keywords: 'account menu person icon users profile customers vendors receipts counts sign out',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">There's no separate account menu any more -- everything that used to live there is now a normal row inside the Biz pane instead:</p>
+        <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+          <li><strong>Users &amp; Roles</strong> → Settings</li>
+          <li><strong>Profile</strong> → Personal section</li>
+          <li><strong>Customers, Vendors</strong> → Cash section</li>
+          <li><strong>Cust. Receipts</strong> → a tab inside Customers</li>
+          <li><strong>Sign out</strong> → the very bottom of the pane</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    id: 'staff-roles',
+    title: 'What are the staff roles?',
+    group: 'Getting Started',
+    keywords: 'roles staff manager owner permissions access',
+    body: (
+      <div className="space-y-3">
+        <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
+          <li><strong>Staff</strong> -- the default. Covers the day-to-day work: sales, bills, counts, and most of the app.</li>
+          <li><strong>Manager</strong> -- staff, plus can handle certain assignments and removals (e.g. deleting a post, assigning penalty points) that a plain Staff account can't.</li>
+          <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- full access everywhere, including Roles &amp; Permissions itself, private payslip/profile data, and reordering the whole menu.</li>
+        </ul>
+        <Callout>Beyond role, an owner can also grant one person access to a specific extra area (P&amp;L, Team, UK, etc) individually -- so two people with the same role won't always see exactly the same things.</Callout>
+      </div>
+    ),
+  },
+  {
     id: 'overview',
     title: 'What is Live Sale, and what do the tabs do?',
     group: 'Overview',

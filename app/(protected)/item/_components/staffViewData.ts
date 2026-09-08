@@ -8,7 +8,7 @@
 export type StaffView =
   | 'staffPayslips' | 'staffProfile'
   | 'teamTimes' | 'team_payments' | 'allStaff' | 'team_behaviour' | 'users' | 'roles'
-  | 'staff_meeting' | 'staff_display' | 'rota' | 'assessment' | 'tutorial' | 'training_laws' | 'logs' | 'staff_dress'
+  | 'staff_meeting' | 'staff_display' | 'rota' | 'assessment' | 'training_laws' | 'logs' | 'staff_dress'
   | 'teamPayslips' | 'teamProfiles'
 
 // Times/Violations/Ana used to live here too -- dropped so Personal is just
@@ -26,11 +26,14 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
 // Staff Payments and the Times tab's flag page, respectively), so its label
 // reflects what it actually shows.
 //
-// Team Rota/Team Dress Code/Team Display/Team Meeting/Team Tutorial/Team
-// Company Laws Agreement/Team Assessment/Team Logs used to sit in Manage's
-// own section -- moved here since they're all about staff/the team as a
-// whole rather than shop operations, so they now live behind the same
-// canSeeTeam gate as the rest of this list instead of Manage's canSeeManage.
+// Team Rota/Team Dress Code/Team Display/Team Meeting/Team Company Laws
+// Agreement/Team Assessment/Team Logs used to sit in Manage's own section --
+// moved here since they're all about staff/the team as a whole rather than
+// shop operations, so they now live behind the same canSeeTeam gate as the
+// rest of this list instead of Manage's canSeeManage. Team Tutorial used to
+// be here too -- its content (the general app-orientation guide) moved into
+// the Help Guide instead, since that's the one place meant to cover
+// everything staff need to know, not a Team-only destination.
 //
 // Team Payslips/Team Profiles are NOT in this list -- see
 // STAFF_ADMIN_TEAM_ITEMS below. Everything here is visible to anyone
@@ -39,11 +42,11 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
 // restricted to owner-level (Grony/Joe) only and tucked into Settings
 // instead of sitting in this shared section.
 //
-// Every row's label carries "Team" now, and Tutorial/Company Laws/
-// Assessment lost their separate "Training" sub-header -- this whole
-// section is about staff as a group, not one person, so there's no reason
-// for three of its twelve rows to read as a breakaway sub-topic instead of
-// just three more Team pages. No `group` tag left on anything here means
+// Every row's label carries "Team" now, and Company Laws/Assessment lost
+// their separate "Training" sub-header -- this whole section is about staff
+// as a group, not one person, so there's no reason for two of its eleven
+// rows to read as a breakaway sub-topic instead of just two more Team
+// pages. No `group` tag left on anything here means
 // STAFF_TEAM_ITEMS renders as one flat, fully-dividered list (see
 // item/page.tsx's Team section) -- unlike Manage, which still splits Advert
 // and Grony 1 to 10 checks out (see MANAGE_GROUP_LABELS/buildPaneRuns in
@@ -56,7 +59,6 @@ export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[]
   { key: 'staff_dress', label: 'Team Dress Code', icon: '👕' },
   { key: 'staff_display', label: 'Team Display', icon: '📌' },
   { key: 'staff_meeting', label: 'Team Meeting', icon: '🗣️' },
-  { key: 'tutorial', label: 'Team Tutorial', icon: '📖' },
   { key: 'training_laws', label: 'Team Company Laws Agreement', icon: '⚖️' },
   { key: 'assessment', label: 'Team Assessment', icon: '📝' },
   { key: 'rota', label: 'Team Rota', icon: '🗓️' },
