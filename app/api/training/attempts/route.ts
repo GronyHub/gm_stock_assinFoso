@@ -2,16 +2,21 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureTrainingTables } from '../quizzes/route'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-// Attempt history -- everyone sees their own; owner-level (Grony/Joe) sees
+// Attempt history. `staff_name` asks for one specific person's attempts --
+// used by that person's own profile page, viewable by any signed-in staff
+// member (quiz scores aren't sensitive here, same visibility as their tasks
+// or time record). With no `staff_name`, falls back to the original
+// behaviour: everyone sees their own; owner-level (Grony/Joe) sees
 // everyone's, so they can tell who has (and hasn't) taken a given quiz.
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
 
-  const staffName = (session.user as any)?.username || session.user?.name || 'Unknown'
-  const seeAll = isOwnerLevel(session.user as any)
+  const requestedStaff = req.nextUrl.searchParams.get('staff_name')
+  const staffName = requestedStaff || (session.user as any)?.username || session.user?.name || 'Unknown'
+  const seeAll = !requestedStaff && isOwnerLevel(session.user as any)
 
   try {
     await ensureTrainingTables()
@@ -27,7 +32,7 @@ export async function GET() {
           SELECT a.id, a.quiz_id, q.title AS quiz_title, a.staff_name, a.score, a.total, a.taken_at::text
           FROM training_attempts a
           JOIN training_quizzes q ON q.id = a.quiz_id
-          WHERE a.staff_name = ${staffName}
+          WHERE LOWER(a.staff_name) = LOWER(${staffName})
           ORDER BY a.taken_at DESC
           LIMIT 200
         `

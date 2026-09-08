@@ -25,6 +25,14 @@ async function ensureManageLogsImpl() {
       ADD COLUMN IF NOT EXISTS end_time TIME,
       ADD COLUMN IF NOT EXISTS grony_section INTEGER
   `.catch(() => {})
+  // team_behaviour_log/staff_display-only: which staff member the entry is
+  // ABOUT, as opposed to logged_by (who wrote it). Without this there was no
+  // way to show one person's own behaviour/display history separately from
+  // the shop-wide log -- every staff member's "My Behaviour" page ended up
+  // showing the exact same full list as the shared Team Behaviour page.
+  // Null on every entry logged before this column existed, and on every
+  // other category's entries, which never send it.
+  await sql`ALTER TABLE manage_logs ADD COLUMN IF NOT EXISTS about_staff TEXT`.catch(() => {})
 }
 
 export const ensureManageLogs = once(ensureManageLogsImpl)

@@ -16,7 +16,9 @@ function fmtDate(d: string) {
 // /api/violations/auto-check) -- so unlike the other Manage flag panels this
 // has no AssignWidget, just the two read-only flag lists the auto-penalty
 // check acts on directly.
-export default function DressCodeFlagsPanel() {
+// Personal page only: this staff member's own name, to filter down from
+// "everyone's flags" to just theirs.
+export default function DressCodeFlagsPanel({ filterStaff }: { filterStaff?: string } = {}) {
   const lawsPanel = useLawsPanel('showDressCodeLaws')
   const [notWorn, setNotWorn] = useState<ShirtNotWorn[] | null>(null)
   const [overdue, setOverdue] = useState<ShirtOverdue[] | null>(null)
@@ -30,9 +32,12 @@ export default function DressCodeFlagsPanel() {
 
   if (notWorn === null || overdue === null) return <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>
 
+  const scopedNotWorn = filterStaff ? notWorn.filter(r => r.staff_name.toLowerCase() === filterStaff.toLowerCase()) : notWorn
+  const scopedOverdue = filterStaff ? overdue.filter(r => r.staff_name.toLowerCase() === filterStaff.toLowerCase()) : overdue
+
   // Group "not worn" instances by staff so repeat lapses are obvious at a glance.
   const byStaff = new Map<string, string[]>()
-  for (const r of notWorn) {
+  for (const r of scopedNotWorn) {
     if (!byStaff.has(r.staff_name)) byStaff.set(r.staff_name, [])
     byStaff.get(r.staff_name)!.push(r.work_date)
   }
@@ -42,7 +47,7 @@ export default function DressCodeFlagsPanel() {
   // separate fix view to jump to), so clicking just scrolls to it.
   const flagButtons: { id: string; letter: string; label: string; count: number }[] = [
     { id: 'dress-not-worn', letter: 'W', label: 'Dress Code (Not Worn)', count: byStaff.size },
-    { id: 'dress-overdue', letter: 'O', label: 'Dress Code (T-Shirt Overdue)', count: overdue.length },
+    { id: 'dress-overdue', letter: 'O', label: 'Dress Code (T-Shirt Overdue)', count: scopedOverdue.length },
   ]
 
   return (
@@ -50,34 +55,39 @@ export default function DressCodeFlagsPanel() {
       {/* Law/Notes/Tasks + this page's own flag pills, together in one row
           -- rendered here (not in StaffPersonTab.tsx above this component)
           so they share the same row instead of PageToolIcons sitting alone
-          above it. */}
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList
-            scopeKey="Team Dress Code"
-            isItemsLaws={true}
-            onChange={lawsPanel.bumpRefresh}
-            flags={flagButtons.map(({ id, label, count }) => ({
-              key: id, label, count,
-              onViewClick: () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-            }))}
-            openForm={lawsPanel.openForm}
-            setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags}
-            setHideZeroFlags={lawsPanel.setHideZeroFlags}
-            activeFilters={lawsPanel.activeFilters}
-          />
+          above it. Skipped on a personal page -- these are Team Dress
+          Code's own rules/tasks, not this one person's data. */}
+      {!filterStaff && (<>
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
+          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
+            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
+            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
+            activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
         </div>
-      )}
+        {lawsPanel.show && (
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+            <PageLawsList
+              scopeKey="Team Dress Code"
+              isItemsLaws={true}
+              onChange={lawsPanel.bumpRefresh}
+              flags={flagButtons.map(({ id, label, count }) => ({
+                key: id, label, count,
+                onViewClick: () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+              }))}
+              openForm={lawsPanel.openForm}
+              setOpenForm={lawsPanel.setOpenForm}
+              hideZeroFlags={lawsPanel.hideZeroFlags}
+              setHideZeroFlags={lawsPanel.setHideZeroFlags}
+              activeFilters={lawsPanel.activeFilters}
+            />
+          </div>
+        )}
+      </>)}
       <div id="dress-not-worn" className="space-y-2">
         <p className="text-xs text-gray-400">
-          Staff who own a company t-shirt but were logged by the Closer as not wearing it. Penalty points build up automatically once someone racks up repeat lapses.
+          {filterStaff
+            ? 'Days logged by the Closer as not wearing the company t-shirt. Penalty points build up automatically after repeat lapses.'
+            : 'Staff who own a company t-shirt but were logged by the Closer as not wearing it. Penalty points build up automatically once someone racks up repeat lapses.'}
         </p>
         {byStaff.size === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-green-600 font-semibold">Nothing flagged ✓</div>
@@ -101,12 +111,14 @@ export default function DressCodeFlagsPanel() {
       </div>
 
       <div id="dress-overdue" className="space-y-2">
-        <p className="text-xs text-gray-400">Staff who don&apos;t yet own a company t-shirt, past their given due date.</p>
-        {overdue.length === 0 ? (
+        <p className="text-xs text-gray-400">
+          {filterStaff ? "Flagged if they don't yet own a company t-shirt, past their given due date." : "Staff who don't yet own a company t-shirt, past their given due date."}
+        </p>
+        {scopedOverdue.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-green-600 font-semibold">Nothing flagged ✓</div>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-            {overdue.map(r => (
+            {scopedOverdue.map(r => (
               <div key={r.staff_name} className="flex items-center justify-between px-4 py-3">
                 <span className="text-sm font-semibold text-gray-700">{r.staff_name}</span>
                 <span className="text-[10px] text-red-600 font-semibold">due {fmtDate(r.due_date)}</span>

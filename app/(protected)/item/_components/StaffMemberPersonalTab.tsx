@@ -206,9 +206,11 @@ export default function StaffMemberPersonalTab({
         <SectionHeader icon="👕" label="My Dress Code" panel={myDressCodeLaws} />
         {myDressCodeLaws.show && (
           <div className="mt-2 space-y-2">
-            {inlineLaws('My Dress Code', myDressCodeLaws)}
+            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+              <DressCodeFlagsPanel filterStaff={staffName} />
+            </div>
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" />
+              <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" filterStaff={staffName} />
             </div>
           </div>
         )}
@@ -232,9 +234,8 @@ export default function StaffMemberPersonalTab({
         <SectionHeader icon="🚦" label="My Behaviour" panel={myBehaviourLaws} />
         {myBehaviourLaws.show && (
           <div className="mt-2 space-y-2">
-            {inlineLaws('My Behaviour', myBehaviourLaws)}
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" />
+              <ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} />
             </div>
           </div>
         )}
@@ -245,9 +246,8 @@ export default function StaffMemberPersonalTab({
         <SectionHeader icon="📝" label="My Assessment" panel={myAssessmentLaws} />
         {myAssessmentLaws.show && (
           <div className="mt-2 space-y-2">
-            {inlineLaws('My Assessment', myAssessmentLaws)}
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <AssessmentPanel />
+              <AssessmentPanel staffName={staffName} />
             </div>
           </div>
         )}
@@ -258,9 +258,8 @@ export default function StaffMemberPersonalTab({
         <SectionHeader icon="🗣️" label="My Meeting" panel={myMeetingLaws} />
         {myMeetingLaws.show && (
           <div className="mt-2 space-y-2">
-            {inlineLaws('My Meeting', myMeetingLaws)}
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />
+              <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} filterStaff={staffName} />
             </div>
           </div>
         )}
@@ -271,9 +270,8 @@ export default function StaffMemberPersonalTab({
         <SectionHeader icon="📌" label="My Display" panel={myDisplayLaws} />
         {myDisplayLaws.show && (
           <div className="mt-2 space-y-2">
-            {inlineLaws('My Display', myDisplayLaws)}
             <div className="border border-gray-200 rounded-xl bg-white overflow-hidden p-3">
-              <ManageLogPanel category="staff_display" label="My Display" icon="📌" />
+              <ManageLogPanel category="staff_display" label="My Display" icon="📌" filterAboutStaff={staffName} />
             </div>
           </div>
         )}

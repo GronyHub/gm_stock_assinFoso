@@ -69,18 +69,32 @@ export async function GET(req: NextRequest) {
 
   // Regular category view
   if (!category) return badRequest('Missing category')
+  // Restricts to one staff member's own entries (who the entry is ABOUT,
+  // not who wrote it) -- used by a staff member's personal page so it shows
+  // a filtered slice of team_behaviour_log/staff_display instead of the
+  // exact same full list as the shared Team page.
+  const aboutStaff = req.nextUrl.searchParams.get('about_staff')
 
   try {
     await ensureDbInitialized()
     await ensureManageLogs()
-    const rows = await sql`
-      SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
-        attendees, start_time::text, end_time::text, grony_section
-      FROM manage_logs
-      WHERE category = ${category}
-      ORDER BY log_date DESC, created_at DESC
-      LIMIT 90
-    `
+    const rows = aboutStaff
+      ? await sql`
+          SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
+            attendees, start_time::text, end_time::text, grony_section, about_staff
+          FROM manage_logs
+          WHERE category = ${category} AND LOWER(about_staff) = LOWER(${aboutStaff})
+          ORDER BY log_date DESC, created_at DESC
+          LIMIT 90
+        `
+      : await sql`
+          SELECT id, category, log_date::text, notes, photo_url, logged_by, created_at,
+            attendees, start_time::text, end_time::text, grony_section, about_staff
+          FROM manage_logs
+          WHERE category = ${category}
+          ORDER BY log_date DESC, created_at DESC
+          LIMIT 90
+        `
     return success(rows)
   } catch (e) {
     console.error('manage-logs GET error:', e)
@@ -92,7 +106,7 @@ export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
 
-  const { category, notes, photo_url, attendees, start_time, end_time } = await req.json()
+  const { category, notes, photo_url, attendees, start_time, end_time, about_staff } = await req.json()
   if (!category || typeof category !== 'string') {
     return badRequest('Missing category')
   }
@@ -106,11 +120,12 @@ export async function POST(req: NextRequest) {
     await ensureDbInitialized()
     await ensureManageLogs()
     const [row] = await sql`
-      INSERT INTO manage_logs (category, notes, photo_url, logged_by, attendees, start_time, end_time)
+      INSERT INTO manage_logs (category, notes, photo_url, logged_by, attendees, start_time, end_time, about_staff)
       VALUES (${category}, ${notes || null}, ${photo_url || null}, ${loggedBy},
-        ${Array.isArray(attendees) && attendees.length ? attendees : null}, ${start_time || null}, ${end_time || null})
+        ${Array.isArray(attendees) && attendees.length ? attendees : null}, ${start_time || null}, ${end_time || null},
+        ${about_staff || null})
       RETURNING id, category, log_date::text, notes, photo_url, logged_by, created_at,
-        attendees, start_time::text, end_time::text
+        attendees, start_time::text, end_time::text, about_staff
     `
     await logActivity(loggedBy, `logged ${category.replace(/_/g, ' ')}`, notes || '(photo only)')
     return success(row)

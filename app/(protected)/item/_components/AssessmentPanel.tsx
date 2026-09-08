@@ -169,11 +169,17 @@ function TakeQuiz({ quizId, onDone }: { quizId: number; onDone: () => void }) {
   )
 }
 
-export default function AssessmentPanel() {
+// `staffName`: when set, this is one specific staff member's profile page --
+// their attempt history only, regardless of who's viewing (see
+// /api/training/attempts' own comment on that visibility choice). Taking a
+// quiz or creating/deleting one only makes sense from your OWN page, so
+// those stay hidden unless staffName matches the viewer's own name.
+export default function AssessmentPanel({ staffName }: { staffName?: string } = {}) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
-  const canManage = role === 'owner' || username.toLowerCase() === 'joe'
+  const isOwnPage = !staffName || staffName.toLowerCase() === username.toLowerCase()
+  const canManage = isOwnPage && (role === 'owner' || username.toLowerCase() === 'joe')
 
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -183,9 +189,10 @@ export default function AssessmentPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   function load() {
+    const attemptsUrl = staffName ? `/api/training/attempts?staff_name=${encodeURIComponent(staffName)}` : '/api/training/attempts'
     Promise.all([
       fetch('/api/training/quizzes').then(r => r.ok ? r.json() : []),
-      fetch('/api/training/attempts').then(r => r.ok ? r.json() : []),
+      fetch(attemptsUrl).then(r => r.ok ? r.json() : []),
     ]).then(([q, a]) => {
       setQuizzes(Array.isArray(q) ? q : [])
       setAttempts(Array.isArray(a) ? a : [])
@@ -193,7 +200,7 @@ export default function AssessmentPanel() {
     }).catch(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [staffName])
 
   async function deleteQuiz(id: number) {
     await fetch(`/api/training/quizzes/${id}`, { method: 'DELETE' })
@@ -231,9 +238,11 @@ export default function AssessmentPanel() {
                 <p className="text-[9px] text-gray-400">{q.question_count} question{q.question_count !== 1 ? 's' : ''} · by <span className="capitalize">{q.created_by}</span></p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => setTakingId(q.id)} className="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded px-2 py-1">
-                  Take
-                </button>
+                {isOwnPage && (
+                  <button onClick={() => setTakingId(q.id)} className="text-[10px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded px-2 py-1">
+                    Take
+                  </button>
+                )}
                 {canManage && (confirmDeleteId === q.id ? (
                   <>
                     <button onClick={() => deleteQuiz(q.id)} className="text-[9px] font-bold text-white bg-red-600 rounded px-1.5 py-1">Yes</button>
@@ -249,7 +258,7 @@ export default function AssessmentPanel() {
       )}
 
       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide pt-1">
-        {canManage ? 'All Attempts' : 'My Attempts'}
+        {!staffName ? (canManage ? 'All Attempts' : 'My Attempts') : isOwnPage ? 'My Attempts' : `${staffName}'s Attempts`}
       </p>
       {attempts.length === 0 ? (
         <p className="text-[11px] text-gray-400 text-center py-4">No attempts yet.</p>

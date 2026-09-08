@@ -85,7 +85,13 @@ function MentionButtons({ notes, roster }: { notes: string; roster: string[] }) 
 // separate "discuss on another page" widget that does the same thing for a
 // whole page instead of a person. Outgrew the generic ManageLogPanel, which
 // is why it's its own component instead of another LOG_CATEGORIES entry.
-export default function StaffMeetingPanel({ staffRoster, routablePages }: { staffRoster: string[]; routablePages: string[] }) {
+// `filterStaff`: personal page mode -- shows only meetings this one staff
+// member was marked present at (a plain read of the existing `attendees`
+// list, no schema change needed), and hides the compose form/"discuss on
+// another page" tool, since those are shared team actions, not this
+// person's own data. Without it, renders the full shared log + composer,
+// as before (Team Meeting).
+export default function StaffMeetingPanel({ staffRoster, routablePages, filterStaff }: { staffRoster: string[]; routablePages: string[]; filterStaff?: string }) {
   const [entries, setEntries] = useState<MeetingEntry[]>([])
   const [loading, setLoading] = useState(true)
   const lawsPanel = useLawsPanel('showTeamMeetingLaws')
@@ -214,6 +220,7 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
 
   return (
     <div className="py-2 px-2 space-y-2">
+      {!filterStaff && (<>
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
         <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
           openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
@@ -311,14 +318,23 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
           {routeSaving ? 'Sending…' : routeSent ? `✓ Sent to ${routePage}` : `Send to ${routePage || 'page'} →`}
         </button>
       </div>
+      </>)}
 
-      {loading ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
-      ) : entries.length === 0 ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">No meetings logged yet.</p>
-      ) : (
+      {(() => {
+        const visibleEntries = filterStaff
+          ? entries.filter(e => (e.attendees ?? []).some(n => n.toLowerCase() === filterStaff.toLowerCase()))
+          : entries
+        if (loading) return <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        if (visibleEntries.length === 0) {
+          return (
+            <p className="text-[11px] text-gray-400 text-center py-6">
+              {filterStaff ? `No meetings recorded with ${filterStaff} present yet.` : 'No meetings logged yet.'}
+            </p>
+          )
+        }
+        return (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
-          {entries.map(e => (
+          {visibleEntries.map(e => (
             <div key={e.id} className="px-2.5 py-1.5 space-y-1">
               <div className="flex items-start gap-2">
                 {e.photo_url && (
@@ -334,20 +350,21 @@ export default function StaffMeetingPanel({ staffRoster, routablePages }: { staf
                   )}
                   {e.notes && <Linkify text={e.notes} as="p" className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug" />}
                 </div>
-                {confirmDeleteId === e.id ? (
+                {!filterStaff && (confirmDeleteId === e.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => remove(e.id)} className="text-[9px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5">Yes</button>
                     <button onClick={() => setConfirmDeleteId(null)} className="text-[9px] font-semibold text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">No</button>
                   </div>
                 ) : (
                   <button onClick={() => setConfirmDeleteId(e.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>
-                )}
+                ))}
               </div>
               {e.notes && <MentionButtons notes={e.notes} roster={staffRoster} />}
             </div>
           ))}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

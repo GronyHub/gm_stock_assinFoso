@@ -145,14 +145,14 @@ export default function StaffContent({
     {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
     {canSeeTeam && view === 'team_behaviour' && (<>
       <ContentPage contentKey="team_behaviour_laws" title="🚦 Team Behaviour Laws" submenu="Team Behaviour" />
-      <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" />
+      <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" aboutStaffRoster={staffRoster} />
     </>)}
     {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2">{inlineLaws('Team Rota', rotaLaws)}<RotaTab canManage={canManage} /></div>}
     {canSeeTeam && view === 'staff_dress' && (<>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Team Dress Code" icon="👕" />
     </>)}
-    {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Team Display" icon="📌" />}
+    {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Team Display" icon="📌" aboutStaffRoster={staffRoster} />}
     {canSeeTeam && view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
     {canSeeTeam && view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 Team Tutorial" submenu="Team Tutorial" />}
     {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Team Company Laws Agreement" submenu="Team Company Laws Agreement" />}

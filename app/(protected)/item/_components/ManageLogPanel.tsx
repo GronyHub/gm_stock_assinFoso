@@ -15,6 +15,7 @@ type LogEntry = {
   photo_url: string | null
   logged_by: string
   created_at: string
+  about_staff: string | null
 }
 
 // Most recent required equipment-check day (every Monday and Thursday) on
@@ -38,12 +39,26 @@ function lastRequiredEquipmentCheckDate(): string {
 // audio_equipment_check use the same log but also carry an overdue flag
 // (Jingle: nothing logged yet this month; Equipment: last logged entry is
 // older than the most recent required Mon/Thu check).
-export default function ManageLogPanel({ category, label, icon, headerExtra }: { category: string; label: string; icon: string; headerExtra?: React.ReactNode }) {
+export default function ManageLogPanel({
+  category, label, icon, headerExtra, aboutStaffRoster, filterAboutStaff,
+}: {
+  category: string; label: string; icon: string; headerExtra?: React.ReactNode
+  // Team-wide page only: offers an "About" picker on the entry form so a
+  // behaviour/display note records WHICH staff member it concerns (as
+  // opposed to `logged_by`, who wrote it) -- lets a personal page filter to
+  // just that person's own entries instead of the full shared log.
+  aboutStaffRoster?: string[]
+  // Personal page only: restricts the list to entries about this one staff
+  // member, and hides the add-entry composer (adding still happens from the
+  // Team-wide page, where the "About" picker lives).
+  filterAboutStaff?: string
+}) {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const lawsPanel = useLawsPanel(`showManageLogLaws_${category}`)
   const [notes, setNotes] = useState('')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [aboutStaff, setAboutStaff] = useState('')
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -51,13 +66,16 @@ export default function ManageLogPanel({ category, label, icon, headerExtra }: {
   const [justSaved, setJustSaved] = useState(false)
 
   function load() {
-    fetch(`/api/manage-logs?category=${category}`)
+    const url = filterAboutStaff
+      ? `/api/manage-logs?category=${category}&about_staff=${encodeURIComponent(filterAboutStaff)}`
+      : `/api/manage-logs?category=${category}`
+    fetch(url)
       .then(r => r.ok ? r.json() : [])
       .then(d => { setEntries(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [category])
+  useEffect(() => { load() }, [category, filterAboutStaff])
   usePolling(load, 600000)
 
   async function handleFile(file: File) {
@@ -79,16 +97,18 @@ export default function ManageLogPanel({ category, label, icon, headerExtra }: {
 
   async function save() {
     if (!notes.trim() && !photoUrl) { setError('Add a note or a photo'); return }
+    if (aboutStaffRoster && !aboutStaff) { setError('Choose who this is about'); return }
     setSaving(true)
     setError('')
     try {
       const res = await fetch('/api/manage-logs', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, notes: notes.trim() || null, photo_url: photoUrl }),
+        body: JSON.stringify({ category, notes: notes.trim() || null, photo_url: photoUrl, about_staff: aboutStaff || null }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed to save') }
       setNotes('')
       setPhotoUrl(null)
+      setAboutStaff('')
       load()
       setJustSaved(true)
       setTimeout(() => setJustSaved(false), 2500)
@@ -136,37 +156,48 @@ export default function ManageLogPanel({ category, label, icon, headerExtra }: {
           </p>
         </div>
       )}
-      <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder={`Notes about ${label.toLowerCase()}…`} rows={2}
-          className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
-        {photoUrl && (
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-200" />
-            <button onClick={() => setPhotoUrl(null)} className="text-[10px] text-red-500 font-semibold">Remove photo</button>
+      {!filterAboutStaff && (
+        <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
+          {aboutStaffRoster && (
+            <select value={aboutStaff} onChange={e => setAboutStaff(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400">
+              <option value="">Who is this about?</option>
+              {aboutStaffRoster.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          )}
+          <textarea value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder={`Notes about ${label.toLowerCase()}…`} rows={2}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+          {photoUrl && (
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-200" />
+              <button onClick={() => setPhotoUrl(null)} className="text-[10px] text-red-500 font-semibold">Remove photo</button>
+            </div>
+          )}
+          {error && <p className="text-[10px] text-red-500">{error}</p>}
+          <div className="flex items-center gap-1.5">
+            <label className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
+              {uploading ? 'Uploading…' : '📷 Photo'}
+              <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            </label>
+            <button onClick={save} disabled={saving || uploading || (!notes.trim() && !photoUrl)}
+              className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white transition">
+              {saving ? 'Saving…' : 'Add Entry'}
+            </button>
+            <SavedFlash show={justSaved} />
           </div>
-        )}
-        {error && <p className="text-[10px] text-red-500">{error}</p>}
-        <div className="flex items-center gap-1.5">
-          <label className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
-            {uploading ? 'Uploading…' : '📷 Photo'}
-            <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading}
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-          </label>
-          <button onClick={save} disabled={saving || uploading || (!notes.trim() && !photoUrl)}
-            className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white transition">
-            {saving ? 'Saving…' : 'Add Entry'}
-          </button>
-          <SavedFlash show={justSaved} />
         </div>
-      </div>
+      )}
 
       {loading ? (
         <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
       ) : entries.length === 0 ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">No {label.toLowerCase()} entries yet.</p>
+        <p className="text-[11px] text-gray-400 text-center py-6">
+          {filterAboutStaff ? `No ${label.toLowerCase()} entries about ${filterAboutStaff} yet.` : `No ${label.toLowerCase()} entries yet.`}
+        </p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
           {entries.map(e => (

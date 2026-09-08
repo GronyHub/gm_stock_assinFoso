@@ -17,10 +17,14 @@ type ClosingReport = {
 // (closing_reports). This just surfaces that same history filtered to one
 // field, so Grony Manage doesn't end up with a second, conflicting record of
 // the same thing.
-export default function ClosingReportLogView({ field, label, icon }: {
+export default function ClosingReportLogView({ field, label, icon, filterStaff }: {
   field: 'advert_played' | 'no_tshirt_staff'
   label: string
   icon: string
+  // Personal page only: restricts the "no company T-shirt" history to
+  // reports that actually cite this one staff member, instead of the full
+  // closing-report history for everyone.
+  filterStaff?: string
 }) {
   const [reports, setReports] = useState<ClosingReport[] | null>(null)
 
@@ -46,13 +50,21 @@ export default function ClosingReportLogView({ field, label, icon }: {
         </p>
       </div>
 
-      {reports === null ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
-      ) : reports.length === 0 ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">No closing reports yet.</p>
-      ) : (
+      {(() => {
+        if (reports === null) return <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        const visible = filterStaff
+          ? reports.filter(r => (r.no_tshirt_staff?.split(',').map(s => s.trim().toLowerCase()) ?? []).includes(filterStaff.toLowerCase()))
+          : reports
+        if (visible.length === 0) {
+          return (
+            <p className="text-[11px] text-gray-400 text-center py-6">
+              {filterStaff ? `No company T-shirt lapses recorded for ${filterStaff}.` : 'No closing reports yet.'}
+            </p>
+          )
+        }
+        return (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
-          {reports.map(r => {
+          {visible.map(r => {
             const noTshirt = r.no_tshirt_staff?.split(',').map(s => s.trim()).filter(Boolean) ?? []
             return (
               <div key={r.id} className="px-2.5 py-1.5">
@@ -63,6 +75,8 @@ export default function ClosingReportLogView({ field, label, icon }: {
                       {r.advert_played ? 'Yes' : 'No'}
                     </span>
                   </p>
+                ) : filterStaff ? (
+                  <p className="text-[11px] text-red-500 font-semibold">Cited for no company T-shirt</p>
                 ) : (
                   <p className="text-[11px] text-gray-800">
                     No company T-shirt: {noTshirt.length
@@ -74,7 +88,8 @@ export default function ClosingReportLogView({ field, label, icon }: {
             )
           })}
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
