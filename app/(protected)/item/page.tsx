@@ -5549,7 +5549,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar -- appears above the tab switcher */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
-            <PresentStaffBar />
+            <PresentStaffBar onTotalClick={() => { setLiveShowHome(true); setUnreadAnnouncements(0) }} />
           )}
 
           {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView

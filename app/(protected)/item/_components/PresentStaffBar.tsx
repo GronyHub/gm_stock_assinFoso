@@ -26,10 +26,13 @@ function fmtHrMin(totalMinutes: number): string {
 // from /api/staff-times/worked-today, which sums today's announcements'
 // estimated_duration_seconds; total time is from clock-in to now (or to
 // clock-out time if already logged out). A trailing "Total" entry sums both
-// figures across everyone shown, same format as each person's own entry.
+// figures across everyone shown, same format as each person's own entry --
+// clicking it opens Home (via onTotalClick) rather than a per-person detail
+// modal, since Home's own announcement feed is the actual activity record
+// the worked-time half of every figure here is summed from.
 // Polls for new activity/clock changes and ticks its own clock every 30
 // seconds.
-export default function PresentStaffBar() {
+export default function PresentStaffBar({ onTotalClick }: { onTotalClick?: () => void }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
@@ -109,10 +112,11 @@ export default function PresentStaffBar() {
             )}
           </button>
         ))}
-        <div className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100">
+        <button type="button" onClick={onTotalClick} disabled={!onTotalClick} title="Open Home"
+          className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition disabled:hover:bg-gray-100">
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
-        </div>
+        </button>
       </div>
       {selectedStaff && (
         <StaffTimeDetailModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} />
