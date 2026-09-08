@@ -127,7 +127,13 @@ export async function GET() {
   // Return cached flags if still fresh
   const now = Date.now()
   if (cachedFlags && now - cachedFlagsTime < FLAGS_CACHE_TTL) {
-    return cachedFlags
+    // A NextResponse's body is a one-shot stream -- it was being cached and
+    // re-returned as-is here, which serves a corrupted/empty body on every
+    // request after the first within the cache window (this is almost
+    // always what's actually running, since the whole point of a 30-minute
+    // cache is to be hit repeatedly). Cache the plain data instead and
+    // build a fresh response from it every time.
+    return success(cachedFlags)
   }
 
   await ensureSalesAttachmentsColumn()
@@ -577,15 +583,16 @@ export async function GET() {
     .filter((p: any) => !p.has_company_tshirt && p.tshirt_due_date && p.tshirt_due_date < todayStr)
     .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
 
-  const result = success({
+  const data = {
     noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
-  })
+  }
 
-  // Cache the result
-  cachedFlags = result
+  // Cache the plain data, not a Response object (see the comment above the
+  // cache-hit check) -- every serve builds its own fresh response.
+  cachedFlags = data
   cachedFlagsTime = now
-  return result
+  return success(data)
 }
