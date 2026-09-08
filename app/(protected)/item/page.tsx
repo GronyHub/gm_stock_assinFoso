@@ -7365,41 +7365,48 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         more, the Price box below is the only place it shows
                                         up (pre-filled, so most sales never need to touch it).
                                         Typing a Qty reveals the confirm checkmark; Enter in
-                                        either box also submits. */}
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
-                                        <input
-                                          type="number" inputMode="decimal" placeholder="Qty"
-                                          value={liveInlineQtyByItemId[item.id] ?? ''}
-                                          onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                          onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
-                                          onClick={e => e.stopPropagation()}
-                                          className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
-                                        />
-                                      </label>
-                                      <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
-                                        <span className="text-[9px] text-gray-400">₵</span>
-                                        <input
-                                          type="number" inputMode="decimal"
-                                          value={liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)}
-                                          onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                          onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
-                                          onClick={e => e.stopPropagation()}
-                                          className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
-                                        />
-                                      </label>
-                                      {!!liveInlineQtyByItemId[item.id] && (
-                                        <button
-                                          type="button"
-                                          disabled={liveSaving}
-                                          onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
-                                          aria-label={`Record sale for ${item.name}`}
-                                          className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
-                                        >
-                                          ✓
-                                        </button>
-                                      )}
-                                    </div>
+                                        either box also submits. A Goods item sitting at 0
+                                        stock has nothing to sell, so the boxes are hidden --
+                                        this reads item.soh live, so they come back on their
+                                        own the moment a bill brings stock back in, no extra
+                                        wiring needed. Services never carry stock, so they
+                                        always keep the boxes regardless of soh. */}
+                                    {(item.product_type === 'service' || Number(item.soh) > 0) && (
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                          <input
+                                            type="number" inputMode="decimal" placeholder="Qty"
+                                            value={liveInlineQtyByItemId[item.id] ?? ''}
+                                            onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                            onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                            onClick={e => e.stopPropagation()}
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                          />
+                                        </label>
+                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                          <span className="text-[9px] text-gray-400">₵</span>
+                                          <input
+                                            type="number" inputMode="decimal"
+                                            value={liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)}
+                                            onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                            onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                            onClick={e => e.stopPropagation()}
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                          />
+                                        </label>
+                                        {!!liveInlineQtyByItemId[item.id] && (
+                                          <button
+                                            type="button"
+                                            disabled={liveSaving}
+                                            onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
+                                            aria-label={`Record sale for ${item.name}`}
+                                            className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
+                                          >
+                                            ✓
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
                                   </>
                                 ) : (
                                   <p className="text-[9px] text-gray-600 leading-tight">
