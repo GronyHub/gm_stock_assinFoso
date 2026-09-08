@@ -134,19 +134,6 @@ const TOPICS: Topic[] = [
     ),
   },
   {
-    id: 'count-guard',
-    title: 'Why is a sale or bill being blocked?',
-    group: 'Live tab',
-    keywords: 'blocked cannot record error guard needs counted overdue prevent',
-    body: (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-700">If an item is overdue for a count, the system will refuse to record a new sale, live tap, or bill against it until it is counted. This is deliberate: letting transactions pile up on stale stock numbers is exactly how stock records quietly drift away from what is really on the shelf.</p>
-        <p className="text-sm text-gray-700">The fix is always the same: count the item first (see "COUNT NOW banner" above), then try the transaction again.</p>
-        <Callout>Purchase Orders are not blocked by this -- restocking an item is allowed even if it is overdue for a count.</Callout>
-      </div>
-    ),
-  },
-  {
     id: 'attention-banners',
     title: 'What do the colored warning banners mean, and how do I clear them?',
     group: 'Live tab',

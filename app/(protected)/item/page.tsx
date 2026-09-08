@@ -7264,14 +7264,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           // edit sheet on any tap would fight that, so this
                           // whole-card handler only applies to the other
                           // (diagnostic/violation) filters, same as before.
-                          // Items due for a count are the one exception even
-                          // in the default view: they still need the sheet's
-                          // own count-entry field (see the Help Guide's
-                          // "COUNT NOW banner" topic), so those keep the old
-                          // tap-opens-sheet behavior no matter which filter
-                          // is selected.
-                          onClick={(liveSaleViolationFilter === 'noViolations' && !due) ? undefined : () => openEditGridItem(item.id)}
-                          className={`relative flex flex-col border-r-2 border-b-2 group ${(liveSaleViolationFilter === 'noViolations' && !due) ? '' : 'cursor-pointer'} ${cardBgCls} transition`}
+                          // Selling is no longer blocked on items due for a
+                          // count, so unlike the first version of this
+                          // change, due items get the same inline boxes as
+                          // everything else here -- counting them still
+                          // works via the Count Due filter/tab, just not
+                          // from a tap on this default view's card any more.
+                          onClick={liveSaleViolationFilter === 'noViolations' ? undefined : () => openEditGridItem(item.id)}
+                          className={`relative flex flex-col border-r-2 border-b-2 group ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} transition`}
                         >
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
                             <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
@@ -7352,24 +7352,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                                   {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                                 </div>
-                                {liveSaleViolationFilter === 'noViolations' && due ? (
-                                  // Due-for-count items keep the old plain-price line even
-                                  // in the default view -- tapping the card still needs to
-                                  // open the sheet for its count-entry field, so it can't
-                                  // also carry the inline Qty/Price boxes (see the onClick
-                                  // comment on the card's outer div above).
-                                  <p className="text-[9px] text-gray-600 leading-tight">
-                                    <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
-                                    {item.product_type !== 'service' && (
-                                      <>
-                                        <span className="text-gray-400"> · </span>
-                                        <span className="text-green-600 font-semibold">ACP ₵{formatPrice(item.acp_price ?? item.cost_price)}</span>
-                                        <span className="text-gray-400"> · </span>
-                                        <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                      </>
-                                    )}
-                                  </p>
-                                ) : liveSaleViolationFilter === 'noViolations' ? (
+                                {liveSaleViolationFilter === 'noViolations' ? (
                                   <>
                                     {item.product_type !== 'service' && (
                                       <p className="text-[9px] text-gray-600 leading-tight">
