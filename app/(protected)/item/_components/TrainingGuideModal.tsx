@@ -62,7 +62,7 @@ const TOPICS: Topic[] = [
         <div className="space-y-2">
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Cash</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Items (which also holds Sale, Log, Sales, Bills, and Expenses as its own tab switcher -- see the next topic), Purchase Orders, Vendors, P&amp;L (owner and Joe only), CAB, Customers, Expense Orders.</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Items (which also holds Sale, Log, Sales, Bills, and Expenses as its own tab switcher, with Purchase Orders and Vendors radio-buttoned inside Bills, Customers radio-buttoned inside Sales, and Expense Orders radio-buttoned inside Expenses -- see the next topic), P&amp;L (owner and Joe only), CAB.</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Manage</p>
@@ -138,7 +138,8 @@ const TOPICS: Topic[] = [
         <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Users &amp; Roles</strong> → Settings</li>
           <li><strong>Profile</strong> → Personal section</li>
-          <li><strong>Customers, Vendors</strong> → Cash section</li>
+          <li><strong>Customers</strong> → a radio button inside Items' Sales tab</li>
+          <li><strong>Vendors</strong> → a radio button inside Items' Bills tab</li>
           <li><strong>Cust. Receipts</strong> → a tab inside Customers</li>
           <li><strong>Sign out</strong> → the very bottom of the pane</li>
         </ul>

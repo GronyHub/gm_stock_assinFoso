@@ -255,13 +255,17 @@ const REPORT_VIEWS = new Set<LossView>([
 // parent row, which is itself inside these same sections. Expenses moved
 // off this pane entirely -- it's a liveMode tab now, same as Sales/Bills
 // (see the tab switcher and jumpToLiveSaleTab).
+// Purchase Orders/Vendors/Customers dropped out of this list -- each is now
+// a radio-button sub-view inside the tab it's actually about instead of its
+// own pane row (Purchase Orders + Vendors inside Bills, Customers inside
+// Sales -- see liveBillsShowPurchaseOrders/liveBillsShowVendors/
+// liveSalesShowCustomers), cutting a tap and keeping related things
+// together. P&L and CAB stay here since neither belongs to just one mode --
+// both summarize across Sales+Bills+Expenses at once.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
-  { key: 'purchaseOrders',   label: 'Purchase Ord',   icon: '🛒' },
-  { key: 'vendors',   label: 'Vendors',   icon: '🏭' },
   { key: 'pl',       label: 'P&L',      icon: '📈' },
   { key: 'cab',      label: 'CAB',      icon: '🗂️' },
-  { key: 'customers', label: 'Customers', icon: '👥' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -270,8 +274,13 @@ const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }
 // name (including ones an owner-level account types fresh in Settings).
 const IDENTITY_GROUP_LABELS: Record<string, string> = new Proxy({}, { get: (_, prop: string) => prop })
 // Used to bounce someone off a Cash view the moment their permissions load
-// and turn out not to include it (see the canSeeCash effect below).
-const CASH_VIEW_KEYS = new Set<LossView>(CASH_ITEMS.map(v => v.key))
+// and turn out not to include it (see the canSeeCash effect below). Vendors/
+// Customers/Purchase Orders dropped out of CASH_ITEMS itself (see above) but
+// are still Cash-gated content, still reachable by deep link (?view=) and by
+// the "+"/global-search jumps that call pickLossView('vendors' | 'customers'
+// | 'purchaseOrders') directly -- listed here explicitly so this bounce
+// still catches an account without Cash access landing on one of them.
+const CASH_VIEW_KEYS = new Set<LossView>([...CASH_ITEMS.map(v => v.key), 'vendors', 'customers', 'purchaseOrders'])
 // Feeds the green bar's search placeholder ("Search Items", "Search
 // Sales", ...) so it reads as this page's own filter box, distinct from
 // the unrelated global search (magnifying glass icon, bottom of the
@@ -1337,13 +1346,12 @@ function ItemHubPageInner() {
   usePolling(loadTaskCounts, 600000)
   const taskCountFor = (scopeKey: string) => taskCounts[scopeKey] ?? 0
   // A few pane rows' PageToolIcons scopeKey differs from their own pane
-  // label (either because the label was later shortened for the pane -- see
-  // 'Purchase Ord' -- or because the content page hardcodes its own
-  // scopeKey independent of CASH_LABEL) -- see each page's own
-  // <PageToolIcons scopeKey=.../> call for the authoritative string.
-  const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {
-    purchaseOrders: 'Purchase Orders',
-  }
+  // label (because the content page hardcodes its own scopeKey independent
+  // of CASH_LABEL) -- see each page's own <PageToolIcons scopeKey=.../> call
+  // for the authoritative string. Empty now that Purchase Orders (the one
+  // row that needed this) dropped out of CASH_ITEMS -- kept as a mechanism
+  // in case a future row needs it again.
+  const CASH_TASK_SCOPE_OVERRIDES: Partial<Record<LossView, string>> = {}
   const cashTaskScopeKey = (key: LossView) => CASH_TASK_SCOPE_OVERRIDES[key] ?? CASH_LABEL.get(key) ?? key
   // Every remaining Manage row's scopeKey already equals its own label
   // (ManageLogPanel is called with scopeKey={label} directly) -- Daily Log
@@ -2223,6 +2231,11 @@ function ItemHubPageInner() {
   // screen, but rendered inline here instead of navigating away (so the
   // Bills tab underneath isn't unmounted/lost).
   const [liveBillsShowPurchaseOrders, setLiveBillsShowPurchaseOrders] = useState(false)
+  // Vendors radio -- same treatment as Purchase Orders just above. Vendors
+  // no longer has its own Cash pane row (see CASH_ITEMS) since bills are
+  // what vendors are actually for; this + Purchase Orders together are its
+  // only two entry points now.
+  const [liveBillsShowVendors, setLiveBillsShowVendors] = useState(false)
   // Expenses has no internal "add new" of its own either -- same pattern as
   // Bills, reusing the standalone /expenses/new form as a sibling.
   const [liveExpensesAddingNew, setLiveExpensesAddingNew] = useState(false)
@@ -2238,6 +2251,11 @@ function ItemHubPageInner() {
   // this component's own header row instead of a second row of their own.
   const [liveSalesShowHistory, setLiveSalesShowHistory] = useState(false)
   const [liveSalesBarsOnly, setLiveSalesBarsOnly] = useState(false)
+  // Customers radio -- same "swap the content area, stay on this tab"
+  // treatment as Bills' Purchase Orders/Vendors radios. Customers no longer
+  // has its own Cash pane row (see CASH_ITEMS) since a sale is always to a
+  // customer; this is its only entry point now.
+  const [liveSalesShowCustomers, setLiveSalesShowCustomers] = useState(false)
   const [liveSalesShowW, setLiveSalesShowW] = useState(true)
   const [liveSalesShowG, setLiveSalesShowG] = useState(true)
   // Period (month/year), the Columns picker, and the bulk-attach toggle,
@@ -2360,6 +2378,7 @@ function ItemHubPageInner() {
   // is the one place that changes it, always clearing every other option.
   const liveSalesRadioValue = liveSalesShowHistory ? 'history'
     : liveSalesBarsOnly ? 'bars_only'
+    : liveSalesShowCustomers ? 'customers'
     : liveSalesViolationFilter ? liveSalesViolationFilter
     : (liveSalesShowW && !liveSalesShowG) ? 'wic'
     : (!liveSalesShowW && liveSalesShowG) ? 'gmc'
@@ -2368,6 +2387,7 @@ function ItemHubPageInner() {
     const violationKeys = ['no_cash', 'missing_days', 'dup_receipt', 'high_wnw', 'no_attachment', 'sold_below_cost']
     setLiveSalesShowHistory(value === 'history')
     setLiveSalesBarsOnly(value === 'bars_only')
+    setLiveSalesShowCustomers(value === 'customers')
     setLiveSalesViolationFilter(violationKeys.includes(value) ? value : null)
     setLiveSalesShowW(value !== 'gmc')
     setLiveSalesShowG(value !== 'wic')
@@ -2381,6 +2401,7 @@ function ItemHubPageInner() {
   const liveBillsRadioValue = liveBillsShowHistory ? 'history'
     : liveBillsAddingNew ? 'new_bill'
     : liveBillsShowPurchaseOrders ? 'purchase_orders'
+    : liveBillsShowVendors ? 'vendors'
     : liveBillsBarsOnly ? 'bars_only'
     : liveBillsViolationFilter ? liveBillsViolationFilter
     : liveBillsGmcFilter === 'gmc' ? 'gmc_only'
@@ -2391,6 +2412,7 @@ function ItemHubPageInner() {
     setLiveBillsShowHistory(value === 'history')
     setLiveBillsAddingNew(value === 'new_bill')
     setLiveBillsShowPurchaseOrders(value === 'purchase_orders')
+    setLiveBillsShowVendors(value === 'vendors')
     setLiveBillsBarsOnly(value === 'bars_only')
     setLiveBillsViolationFilter(violationKeys.includes(value) ? value : null)
     setLiveBillsGmcFilter(value === 'gmc_only' ? 'gmc' : value === 'vendor_only' ? 'vendor' : 'all')
@@ -5261,25 +5283,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                     active={paneActive(cashItemActive(v.key))} divider
                     badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + countsFlagsCount + lossByDateFlagsCount)
-                      // Expenses moved off its own CASH_ITEMS row onto the Items
-                      // row's badge -- 'items' is the real, reachable entry point
-                      // into the Sale/Log/Sales/Bills/Expenses tab switcher now
-                      // (there's no CASH_ITEMS row with key 'sales' any more), so
-                      // that's where its flag count needs to actually show up.
-                      : v.key === 'items' ? (itemsFlagsCount + expensesFlagsCount)
+                      // Expenses/Vendors/Customers all moved off their own
+                      // CASH_ITEMS row onto the Items row's badge -- 'items'
+                      // is the real, reachable entry point into the whole
+                      // Sale/Log/Sales/Bills/Expenses tab switcher now (none
+                      // of them has its own CASH_ITEMS row any more), so
+                      // that's where their combined flag count needs to show.
+                      : v.key === 'items' ? (itemsFlagsCount + expensesFlagsCount + vendorsFlagsCount + customersFlagsCount)
                       : v.key === 'cab' ? cabFlagsCount
-                      : v.key === 'customers' ? customersFlagsCount
-                      : v.key === 'vendors' ? vendorsFlagsCount
                       : undefined}
                     taskBadge={taskCountFor(cashItemTaskScope(v.key))}
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {/* Expense Orders */}
-              <SidePaneButton icon="🧾" label="Expense Orders" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'expenseOrders')}
-                taskBadge={taskCountFor('Expense Orders')}
-                onClick={() => pickLossView('expenseOrders')} />
             </div>
             )}
 
@@ -6248,6 +6264,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   GMC
                 </label>
+                {/* Swaps Sales' own content area for CustomersPage rendered
+                    inline (same "exclusive view selector" treatment as
+                    Bills' Purchase Orders/Vendors radios), rather than
+                    navigating to the separate lossView==='customers'
+                    destination. */}
+                <label title="Customers, opened inline"
+                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'customers'} onChange={() => selectLiveSalesRadio('customers')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Customers
+                </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
@@ -6269,6 +6296,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
+              ) : liveSalesShowCustomers ? (
+                <div className="px-4 pt-2 flex-1 overflow-auto space-y-2">
+                  <CustomersPage initialSearch={liveEmbeddedSearch} onFlagCountChange={setCustomersFlagsCount}
+                    jumpToTabSeq={customersJumpSeq} jumpToTab={customersJumpTab} />
+                </div>
               ) : (
                 <div className="flex-1 overflow-auto">
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
@@ -6385,6 +6417,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   Purchase Orders
                 </label>
+                {/* Swaps Bills' own content area for VendorsPage rendered
+                    inline, same treatment as Purchase Orders just above --
+                    rather than navigating to the separate
+                    lossView==='vendors' destination. */}
+                <label title="Vendors, opened inline"
+                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'vendors'} onChange={() => selectLiveBillsRadio('vendors')}
+                    className="cursor-pointer w-2.5 h-2.5" />
+                  Vendors
+                </label>
               </div>
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
                 {[
@@ -6412,6 +6454,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="px-3 pt-3 flex-1 overflow-auto"><BillsAnalyticsSection /></div>
               ) : liveBillsShowPurchaseOrders ? (
                 <div className="flex-1 min-h-0"><POTab search={liveEmbeddedSearch} /></div>
+              ) : liveBillsShowVendors ? (
+                <div className="px-4 pt-2 flex-1 overflow-auto space-y-2">
+                  <VendorsPage openAddSignal={vendorSignal} initialSearch={liveEmbeddedSearch} onFlagCountChange={setVendorsFlagsCount} />
+                </div>
               ) : (
                 <div className="flex-1 overflow-auto">
                   <BillsTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={liveBillsViolationFilter}
