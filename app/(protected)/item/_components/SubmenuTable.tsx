@@ -1,8 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import { containsUrl, Linkify } from '@/lib/linkify'
 import type { UKColumn, UKRow, UKSubmenu } from './ukViewData'
@@ -317,25 +314,8 @@ export default function SubmenuTable({ submenu, columns, rows, editCell, saveCel
   addRow: () => void
   toggleColumnWide: (id: number, isWide: boolean) => void
 }) {
-  const lawsPanel = useLawsPanel(`showSubmenuLaws_${submenu.id}`)
-  const scopeKey = `${submenu.person} ${submenu.name}`
   return (
     <div className="space-y-4 pb-10 px-3 pt-3">
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
-        </div>
-      )}
       <SubmenuFiles submenuId={submenu.id} />
       <SubmenuGrid key={submenu.id} submenu={submenu} columns={columns} rows={rows}
         editCell={editCell} saveCell={saveCell} deleteRow={deleteRow} addRow={addRow} toggleColumnWide={toggleColumnWide} />

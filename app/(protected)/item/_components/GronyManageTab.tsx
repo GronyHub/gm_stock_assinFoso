@@ -1,9 +1,6 @@
 'use client'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
@@ -46,46 +43,17 @@ export default function GronyManageContent({
   const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView | null>(null)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
-  const openerLaws = useLawsPanel('showOpenerLaws')
-  const closerLaws = useLawsPanel('showCloserLaws')
-  const advertLaws = useLawsPanel('showAdvertLaws')
-  const gronyChecksLaws = useLawsPanel('showGronyChecksLaws')
-
-  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
-    return (<>
-      <div className="px-2 pt-2 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={panel.show} setShow={panel.setShow}
-          openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
-      </div>
-      {panel.show && (
-        <div className="px-2">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
-              openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-              hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-
-              activeFilters={panel.activeFilters} />
-          </div>
-        </div>
-      )}
-    </>)
-  }
 
   return (<>
-    {view === 'opener' && (<>
-      {inlineLaws('Opener', openerLaws)}
+    {view === 'opener' && (
       <OpenerView violations={openerViolations}
         assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
         onGoToViolation={onGoToViolation} />
-    </>)}
-    {view === 'closer' && (<>
-      {inlineLaws('Closer', closerLaws)}
+    )}
+    {view === 'closer' && (
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
-    </>)}
+    )}
     {view === 'advert' && (<>
-      {inlineLaws('Advert', advertLaws)}
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
       {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
@@ -106,7 +74,6 @@ export default function GronyManageContent({
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
     {view === 'grony_checks' && (<>
-      {inlineLaws('Grony Checks', gronyChecksLaws)}
       {selectedGronyCheckItem === 'grony_checks' && <GronyChecksGrid />}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
       {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}

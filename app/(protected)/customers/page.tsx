@@ -3,9 +3,6 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
-import PageLawsList from '../item/_components/PageLawsList'
-import LawsToggleBar from '../item/_components/LawsToggleBar'
-import { useLawsPanel } from '../item/_components/useLawsPanel'
 import NewCustomerForm from '../item/_components/NewCustomerForm'
 
 // Cust. Receipts and New Customer folded in here as tabs (same treatment
@@ -249,9 +246,6 @@ export default function CustomersPage({
   const [selected, setSelected] = useState<Customer | null>(null)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
-  const lawsPanel = useLawsPanel('showCustomersLaws')
-  const receiptsLaws = useLawsPanel('showReceiptsLaws')
-  const newCustomerLaws = useLawsPanel('showNewCustomerLaws')
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the global search (page.tsx) landing here already knowing
@@ -340,19 +334,7 @@ export default function CustomersPage({
         {renderModeSwitcher()}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-lg font-bold text-gray-900">Cust. Receipts</h1>
-          <LawsToggleBar show={receiptsLaws.show} setShow={receiptsLaws.setShow}
-            openForm={receiptsLaws.openForm} setOpenForm={receiptsLaws.setOpenForm}
-            hideZeroFlags={receiptsLaws.hideZeroFlags} setHideZeroFlags={receiptsLaws.setHideZeroFlags}
-            activeFilters={receiptsLaws.activeFilters} toggleFilter={receiptsLaws.toggleFilter} dark={false} />
         </div>
-        {receiptsLaws.show && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-3">
-            <PageLawsList scopeKey="Receipts" isItemsLaws={true} onChange={receiptsLaws.bumpRefresh}
-              openForm={receiptsLaws.openForm} setOpenForm={receiptsLaws.setOpenForm}
-              hideZeroFlags={receiptsLaws.hideZeroFlags} setHideZeroFlags={receiptsLaws.setHideZeroFlags}
-              activeFilters={receiptsLaws.activeFilters} />
-          </div>
-        )}
         <ReceiptsPage />
       </div>
     )
@@ -364,19 +346,7 @@ export default function CustomersPage({
         {renderModeSwitcher()}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-lg font-bold text-gray-900">New Customer</h1>
-          <LawsToggleBar show={newCustomerLaws.show} setShow={newCustomerLaws.setShow}
-            openForm={newCustomerLaws.openForm} setOpenForm={newCustomerLaws.setOpenForm}
-            hideZeroFlags={newCustomerLaws.hideZeroFlags} setHideZeroFlags={newCustomerLaws.setHideZeroFlags}
-            activeFilters={newCustomerLaws.activeFilters} toggleFilter={newCustomerLaws.toggleFilter} dark={false} />
         </div>
-        {newCustomerLaws.show && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mb-3">
-            <PageLawsList scopeKey="New Customer" isItemsLaws={true} onChange={newCustomerLaws.bumpRefresh}
-              openForm={newCustomerLaws.openForm} setOpenForm={newCustomerLaws.setOpenForm}
-              hideZeroFlags={newCustomerLaws.hideZeroFlags} setHideZeroFlags={newCustomerLaws.setHideZeroFlags}
-              activeFilters={newCustomerLaws.activeFilters} />
-          </div>
-        )}
         <NewCustomerForm
           onCreated={() => { loadCustomers(); setMode('customers') }}
           onCancel={() => setMode('customers')} />
@@ -394,18 +364,18 @@ export default function CustomersPage({
   return (
     <div className="space-y-4 pb-10">
       {renderModeSwitcher()}
-      {/* Law/Notes/Tasks + this page's own flag pills, together in one row
-          at the very top -- same treatment as Items/Sales/Bills' own green
-          header row. One small button per category (🚩/🏳️ + letter +
-          count), clicking narrows the table below to just that category's
-          flagged customers. "New customers this week" is a shop-wide
-          threshold, not a per-customer problem, so it's a plain banner
-          instead of a filter. */}
+      {/* This page's own flag pills, one small button per category
+          (🚩/🏳️ + letter + count), clicking narrows the table below to
+          just that category's flagged customers. "New customers this week"
+          is a shop-wide threshold, not a per-customer problem, so it's a
+          plain banner instead of a filter. */}
       <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
+        {FLAG_TYPES.map(({ key, label }) => flagCounts[key] > 0 && (
+          <button key={key} onClick={() => setActiveFlag(activeFlag === key ? null : key)}
+            className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg transition ${activeFlag === key ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+            🚩 {label} ({flagCounts[key]})
+          </button>
+        ))}
         <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
           ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
           title="New customers added in the last 7 days">
@@ -422,22 +392,6 @@ export default function CustomersPage({
           </button>
         )}
       </div>
-
-      {lawsPanel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList
-            scopeKey="Customers"
-            isItemsLaws={true}
-            onChange={lawsPanel.bumpRefresh}
-            flags={FLAG_TYPES.map(({ key, label }) => ({ key, label, count: flagCounts[key], onViewClick: () => setActiveFlag(key as FlagKey) }))}
-            openForm={lawsPanel.openForm}
-            setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags}
-            setHideZeroFlags={lawsPanel.setHideZeroFlags}
-            activeFilters={lawsPanel.activeFilters}
-          />
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">

@@ -1,9 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { usePolling } from '@/lib/usePolling'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 type Property = {
   id: number
@@ -56,7 +53,6 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<PropTab>(initialTab ?? 'all')
   const [search, setSearch] = useState('')
-  const lawsPanel = useLawsPanel('showPropertiesLaws')
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -127,27 +123,12 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="px-2 shrink-0 space-y-2">
-          {propertiesWithoutLocation.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-2">
-              <p className="text-[9px] font-bold text-red-700">
-                ⚠ {propertiesWithoutLocation.length} available {propertiesWithoutLocation.length === 1 ? 'property' : 'properties'} without location assigned
-              </p>
-            </div>
-          )}
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList scopeKey="Properties" isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
+      {propertiesWithoutLocation.length > 0 && (
+        <div className="px-2 pt-2 shrink-0">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-2">
+            <p className="text-[9px] font-bold text-red-700">
+              ⚠ {propertiesWithoutLocation.length} available {propertiesWithoutLocation.length === 1 ? 'property' : 'properties'} without location assigned
+            </p>
           </div>
         </div>
       )}

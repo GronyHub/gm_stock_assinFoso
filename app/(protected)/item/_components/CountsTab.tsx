@@ -5,9 +5,6 @@ import dynamic from 'next/dynamic'
 import { usePolling } from '@/lib/usePolling'
 import { isOwnerLevel } from '@/lib/roles'
 import HistoryPanel from './HistoryPanel'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import { AnalyticsToggle } from './analyticsShared'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import { LossDialog, PairingDialog, type LossExtra, type LossPrompt, type PackRef, type PairingPrompt } from './CountDialogs'
@@ -269,14 +266,6 @@ type Props = {
   onGoToViolation?: (key: string) => void
 }
 
-// Counts' 3 flag categories -- same treatment as Sales/Items' own flag
-// buttons, just rendered in Counts' own toolbar instead of the shared bar.
-const COUNTS_FLAG_TYPES: { key: 'daily' | '7day' | '15day'; letter: string; label: string }[] = [
-  { key: 'daily', letter: 'D', label: 'Daily Counts' },
-  { key: '7day', letter: '7', label: '7-Day Counts' },
-  { key: '15day', letter: '15', label: '15-Day Counts' },
-]
-
 function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
@@ -284,7 +273,6 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const [loading, setLoading] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
-  const lawsPanel = useLawsPanel('showCountsLaws')
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editQty, setEditQty] = useState('')
   const [editNotes, setEditNotes] = useState('')
@@ -507,39 +495,6 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
     <div className="flex flex-col h-full min-h-0">
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
-      {/* Law/Notes/Tasks + this page's own flag pills, together in one row,
-          same treatment as Items/Sales/Bills -- pulled up out of the mixed
-          view-controls row below (Manual Count/History/Columns/Analytics
-          stay there, those are view controls, not flags). */}
-      {!showAnalytics && (
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-2 pt-2">
-          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        </div>
-      )}
-      {!showAnalytics && lawsPanel.show && (
-        <div className="px-2">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList
-              scopeKey="Counts"
-              isItemsLaws={true}
-              onChange={lawsPanel.bumpRefresh}
-              flags={COUNTS_FLAG_TYPES.map(({ key, label }) => ({
-                key, label,
-                count: key === 'daily' ? filteredDaily.length : key === '7day' ? filteredGmcWeekly.length : filteredOverdue.length,
-                onViewClick: () => onGoToViolation?.(key),
-              }))}
-              openForm={lawsPanel.openForm}
-              setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags}
-              setHideZeroFlags={lawsPanel.setHideZeroFlags}
-              activeFilters={lawsPanel.activeFilters}
-            />
-          </div>
-        </div>
-      )}
       <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>

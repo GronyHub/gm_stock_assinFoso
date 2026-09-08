@@ -8,7 +8,6 @@ import { isOwnerLevel } from '@/lib/roles'
 import { fmtDate, fmtTime } from '@/lib/fmtDate'
 import { trimZeros, formatACP } from '@/lib/fmtNumber'
 import { formatGapMins } from '@/lib/fmtGap'
-import PageLawsList, { type LawFormKind } from './_components/PageLawsList'
 import ItemDetailModal from './_components/ItemDetailModal'
 import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt, type GainExtra, type GainPrompt, type PairingPrompt } from './_components/CountDialogs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
@@ -45,8 +44,6 @@ import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutBu
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import AssignWidget from './_components/AssignWidget'
-import LawsToggleBar from './_components/LawsToggleBar'
-import { useLawsPanel, useLawFilterState } from './_components/useLawsPanel'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
 import { COLUMNS as BILLS_COLUMNS, type ColKey as BillsColKey } from './_components/billsTabColumns'
@@ -823,25 +820,6 @@ function ItemHubPageInner() {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
   })
-  const [itemsLawsRefresh, setItemsLawsRefresh] = useState(0)
-  const [itemsLawsOpenForm, setItemsLawsOpenForm] = useState<LawFormKind>(null)
-  const [hideZeroFlags, setHideZeroFlags] = useState(false)
-  const itemsFilters = useLawFilterState()
-  // The rest of this page's many smaller panes (P&L, Receipts, Purchase
-  // Orders, ...) each get their own inline law panel too, same as Items
-  // above -- one useLawsPanel() per scope, rendered through the
-  // inlineLaws() helper below instead of hand-rolling the toggle+panel
-  // JSX repeatedly. Sales/Bills/Loss by Date no longer need one of their
-  // own -- all three live inside Live Sale's own laws panel now.
-  const plLaws = useLawsPanel('showPLLaws')
-  const dailyLaws = useLawsPanel('showDailyLaws')
-  const purchaseOrdersLaws = useLawsPanel('showPurchaseOrdersLaws')
-  const servicesLaws = useLawsPanel('showServicesLaws')
-  const viewPortalAsLaws = useLawsPanel('showViewPortalAsLaws')
-  const reorderListsLaws = useLawsPanel('showReorderListsLaws')
-  const expenseOrdersLaws = useLawsPanel('showExpenseOrdersLaws')
-  const aliasWideTableLaws = useLawsPanel('showAliasWideTableLaws')
-  const serviceMatchesLaws = useLawsPanel('showServiceMatchesLaws')
   const [liveExpanded, setLiveExpanded] = useState(false)
   const rawLiveProductType = searchParams.get('liveType')
   const initialLiveProductType = (rawLiveProductType === 'goods' || rawLiveProductType === 'services') ? rawLiveProductType : 'all'
@@ -946,23 +924,6 @@ function ItemHubPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
-    return (<>
-      <LawsToggleBar show={panel.show} setShow={panel.setShow}
-        openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-        hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
-      {panel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden mt-2">
-          <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
-            openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-            hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-
-              activeFilters={panel.activeFilters} />
-        </div>
-      )}
-    </>)
-  }
   const groupRef     = useRef<HTMLDivElement>(null)
   const searchRef    = useRef<HTMLDivElement>(null)
 
@@ -8277,7 +8238,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2">{inlineLaws('P&L', plLaws)}</div>
             <ProfitLossTab />
           </TabErrorBoundary>
         )}
@@ -8301,13 +8261,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
         {outerTab === 'loss' && lossView === 'dailySummary' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-2">{inlineLaws('Daily', dailyLaws)}</div>
             <DailySummaryTab />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'purchaseOrders' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2">{inlineLaws('Purchase Orders', purchaseOrdersLaws)}<PurchaseOrdersPage /></div>
+            <div className="px-4 pt-4 space-y-2"><PurchaseOrdersPage /></div>
           </TabErrorBoundary>
         )}
         {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
@@ -8316,7 +8275,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">
-              {inlineLaws('View Portal As', viewPortalAsLaws)}
               <h1 className="text-lg font-bold text-gray-900">View Portal As</h1>
               <ViewPortalAsButton extraAllowed={canViewPortalAs} />
             </div>
@@ -8325,7 +8283,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {outerTab === 'loss' && lossView === 'reorderLists' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-2">
-              {inlineLaws('Reorder Lists', reorderListsLaws)}
               <ReorderListsPanel cashItems={combinedCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
                 paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels}
                 paneGroups={paneGroups} setPaneGroups={setPaneGroups} paneHidden={paneHidden} setPaneHidden={setPaneHidden} />
@@ -8392,7 +8349,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
         {outerTab === 'loss' && lossView === 'expenseOrders' && (
           <TabErrorBoundary>
-            <div className="px-3 pt-2">{inlineLaws('Expense Orders', expenseOrdersLaws)}</div>
             <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>
           </TabErrorBoundary>
         )}
@@ -8404,12 +8360,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             key (SalesTab/CountsTab), or via the kind prop (LossFeedTab). */}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'aliasWide' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2">{inlineLaws('Alias Wide Table', aliasWideTableLaws)}<AliasWidePage /></div>
+            <div className="px-4 pt-4 space-y-2"><AliasWidePage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'serviceMatches' && (
           <TabErrorBoundary>
-            <div className="px-4 pt-4 space-y-2">{inlineLaws('Service Matches', serviceMatchesLaws)}<ServiceMatchesPage /></div>
+            <div className="px-4 pt-4 space-y-2"><ServiceMatchesPage /></div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'items' && itemsExtraView === 'gmcPacks' && (

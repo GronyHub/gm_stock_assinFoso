@@ -3,9 +3,6 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
 import SavedFlash from './SavedFlash'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 type Content = { key: string; body: string; updated_by: string | null; updated_at: string | null }
 
@@ -53,7 +50,6 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
   const canEdit = role === 'owner' || username.toLowerCase() === 'joe'
 
   const [content, setContent] = useState<Content | null>(null)
-  const lawsPanel = useLawsPanel(`showContentLaws_${contentKey}`)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
@@ -99,24 +95,6 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
 
   return (
     <div className="py-2 px-2 space-y-2">
-      {submenu && (<>
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        </div>
-        {lawsPanel.show && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList scopeKey={submenu} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
-          </div>
-        )}
-      </>)}
-
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
         <div className="flex items-center gap-2">

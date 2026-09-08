@@ -4,9 +4,6 @@ import {
   TimesTab, PayslipsTab, TeamProfilesTab, ViolationsTab, RotaTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
@@ -109,29 +106,6 @@ export default function StaffContent({
   openAddSignal?: number
 }) {
   const isSelf = viewingName.toLowerCase() === username.toLowerCase()
-  const rotaLaws = useLawsPanel('showTeamRotaLaws')
-  const assessmentLaws = useLawsPanel('showTeamAssessmentLaws')
-  const logsLaws = useLawsPanel('showTeamLogsLaws')
-
-  function inlineLaws(scopeKey: string, panel: ReturnType<typeof useLawsPanel>) {
-    return (<>
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={panel.show} setShow={panel.setShow}
-          openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-          hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-          activeFilters={panel.activeFilters} toggleFilter={panel.toggleFilter} dark={false} />
-      </div>
-      {panel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList scopeKey={scopeKey} isItemsLaws={true} onChange={panel.bumpRefresh}
-            openForm={panel.openForm} setOpenForm={panel.setOpenForm}
-            hideZeroFlags={panel.hideZeroFlags} setHideZeroFlags={panel.setHideZeroFlags}
-
-              activeFilters={panel.activeFilters} />
-        </div>
-      )}
-    </>)
-  }
 
   return (<>
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
@@ -147,7 +121,7 @@ export default function StaffContent({
       <ContentPage contentKey="team_behaviour_laws" title="🚦 Team Behaviour Laws" submenu="Team Behaviour" />
       <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" aboutStaffRoster={staffRoster} />
     </>)}
-    {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2">{inlineLaws('Team Rota', rotaLaws)}<RotaTab canManage={canManage} /></div>}
+    {canSeeTeam && view === 'rota' && <div className="px-2 space-y-2 pt-2"><RotaTab canManage={canManage} /></div>}
     {canSeeTeam && view === 'staff_dress' && (<>
       <DressCodeFlagsPanel />
       <ClosingReportLogView field="no_tshirt_staff" label="Team Dress Code" icon="👕" />
@@ -156,8 +130,8 @@ export default function StaffContent({
     {canSeeTeam && view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
     {canSeeTeam && view === 'tutorial' && <ContentPage contentKey="training_tutorial" title="📖 Team Tutorial" submenu="Team Tutorial" />}
     {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Team Company Laws Agreement" submenu="Team Company Laws Agreement" />}
-    {canSeeTeam && view === 'assessment' && (<div className="px-2 pt-2">{inlineLaws('Team Assessment', assessmentLaws)}<AssessmentPanel /></div>)}
-    {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2">{inlineLaws('Team Logs', logsLaws)}<LogsPage /></div>}
+    {canSeeTeam && view === 'assessment' && (<div className="px-2 pt-2"><AssessmentPanel /></div>)}
+    {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2"><LogsPage /></div>}
     {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
       <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />
     )}

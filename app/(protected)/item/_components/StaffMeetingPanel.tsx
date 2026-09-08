@@ -4,9 +4,6 @@ import { usePolling } from '@/lib/usePolling'
 import { fmtDate } from '@/lib/fmtDate'
 import { Linkify } from '@/lib/linkify'
 import SavedFlash from './SavedFlash'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 type MeetingEntry = {
   id: number
@@ -94,7 +91,6 @@ function MentionButtons({ notes, roster }: { notes: string; roster: string[] }) 
 export default function StaffMeetingPanel({ staffRoster, routablePages, filterStaff }: { staffRoster: string[]; routablePages: string[]; filterStaff?: string }) {
   const [entries, setEntries] = useState<MeetingEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const lawsPanel = useLawsPanel('showTeamMeetingLaws')
   const [notes, setNotes] = useState('')
   const [attendees, setAttendees] = useState<string[]>([])
   const [startTime, setStartTime] = useState('')
@@ -221,21 +217,6 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
   return (
     <div className="py-2 px-2 space-y-2">
       {!filterStaff && (<>
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList scopeKey="Team Meeting" isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
-        </div>
-      )}
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🗣️ Team Meeting</p>

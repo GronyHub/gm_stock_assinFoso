@@ -1,8 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 type ShirtNotWorn = { staff_name: string; work_date: string }
 type ShirtOverdue = { staff_name: string; due_date: string }
@@ -19,7 +16,6 @@ function fmtDate(d: string) {
 // Personal page only: this staff member's own name, to filter down from
 // "everyone's flags" to just theirs.
 export default function DressCodeFlagsPanel({ filterStaff }: { filterStaff?: string } = {}) {
-  const lawsPanel = useLawsPanel('showDressCodeLaws')
   const [notWorn, setNotWorn] = useState<ShirtNotWorn[] | null>(null)
   const [overdue, setOverdue] = useState<ShirtOverdue[] | null>(null)
 
@@ -42,47 +38,8 @@ export default function DressCodeFlagsPanel({ filterStaff }: { filterStaff?: str
     byStaff.get(r.staff_name)!.push(r.work_date)
   }
 
-  // Same 🚩/🏳️ + letter + count treatment as Sales/Items/Counts' flag
-  // buttons -- both sections already show together on this page (no
-  // separate fix view to jump to), so clicking just scrolls to it.
-  const flagButtons: { id: string; letter: string; label: string; count: number }[] = [
-    { id: 'dress-not-worn', letter: 'W', label: 'Dress Code (Not Worn)', count: byStaff.size },
-    { id: 'dress-overdue', letter: 'O', label: 'Dress Code (T-Shirt Overdue)', count: scopedOverdue.length },
-  ]
-
   return (
     <div className="p-3 space-y-4">
-      {/* Law/Notes/Tasks + this page's own flag pills, together in one row
-          -- rendered here (not in StaffPersonTab.tsx above this component)
-          so they share the same row instead of PageToolIcons sitting alone
-          above it. Skipped on a personal page -- these are Team Dress
-          Code's own rules/tasks, not this one person's data. */}
-      {!filterStaff && (<>
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-            activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        </div>
-        {lawsPanel.show && (
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList
-              scopeKey="Team Dress Code"
-              isItemsLaws={true}
-              onChange={lawsPanel.bumpRefresh}
-              flags={flagButtons.map(({ id, label, count }) => ({
-                key: id, label, count,
-                onViewClick: () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-              }))}
-              openForm={lawsPanel.openForm}
-              setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags}
-              setHideZeroFlags={lawsPanel.setHideZeroFlags}
-              activeFilters={lawsPanel.activeFilters}
-            />
-          </div>
-        )}
-      </>)}
       <div id="dress-not-worn" className="space-y-2">
         <p className="text-xs text-gray-400">
           {filterStaff

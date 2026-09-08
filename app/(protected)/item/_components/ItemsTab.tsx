@@ -6,9 +6,6 @@ import { usePolling } from '@/lib/usePolling'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab, { type Tab as AliasTab } from './AliasesTab'
 import AssignWidget from './AssignWidget'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 import ItemDetailModal from './ItemDetailModal'
 
 // Each of these 6 checks is its own flag pill on the Items page, and each
@@ -405,7 +402,6 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
   const [lossMap, setLossMap] = useState<Record<number, DayRow[]>>({})
   const [lossLoading, setLossLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const lawsPanel = useLawsPanel('showItemsFlagsLaws')
   // Item 360 popup -- own local state since ItemsTab is reused in several
   // shells, not just item/page.tsx's, so it can't rely on a parent to own
   // this. Both the "360°" button and DuplicateFix's item-name links (see
@@ -923,40 +919,8 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       { type: 'unlinked_named', count: flags?.unlinkedNamed?.length ?? 0, label: 'sale name(s) not linked to their item', assignable: false, viewable: true, loading: flagsLoading || !flags },
       { type: 'service_violation', count: serviceViolations.length, label: 'service item(s) awaiting GMC data migration', assignable: false, viewable: true, loading: lossSummaryLoading || !lossSummary },
     ]
-    const toolsPanelFlags = [
-      { key: 'neg_soh', letter: 'N', label: 'Negative Stock Items', count: rows.find(r => r.type === 'neg_soh')?.count ?? 0, description: 'Item(s) with negative stock on hand' },
-      { key: 'no_sp', letter: 'S', label: 'Missing Selling Prices', count: rows.find(r => r.type === 'no_sp')?.count ?? 0, description: 'Item(s) with no selling price' },
-      { key: 'no_cp', letter: 'C', label: 'Missing Cost Prices', count: rows.find(r => r.type === 'no_cp')?.count ?? 0, description: 'Item(s) with no cost price' },
-      { key: 'no_group', letter: 'G', label: 'Item Groups', count: rows.find(r => r.type === 'no_group')?.count ?? 0, description: 'Item(s) with no group assigned' },
-      { key: 'duplicates', letter: 'D', label: 'Duplicate Items', count: rows.find(r => r.type === 'duplicates')?.count ?? 0, description: 'Possible duplicate item pair(s)' },
-      { key: 'unlinked_named', letter: 'U', label: 'Unlinked Sales', count: rows.find(r => r.type === 'unlinked_named')?.count ?? 0, description: 'Sale name(s) not linked to their item' },
-      { key: 'service_violation', letter: 'V', label: 'Service Violations', count: rows.find(r => r.type === 'service_violation')?.count ?? 0, description: 'Service item(s) awaiting GMC data migration' },
-    ]
     return (
       <div className="flex flex-col h-full min-h-0">
-        <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-          <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-        </div>
-        {lawsPanel.show && (
-          <div className="px-2 shrink-0">
-            <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-              <PageLawsList
-                scopeKey="Items"
-                isItemsLaws={true}
-                onChange={lawsPanel.bumpRefresh}
-                flags={toolsPanelFlags.map(({ key, label, count, description }) => ({ key, label, count, description, onViewClick: () => setFlagsSummary(key as ItemsFlagType) }))}
-                openForm={lawsPanel.openForm}
-                setOpenForm={lawsPanel.setOpenForm}
-                hideZeroFlags={lawsPanel.hideZeroFlags}
-                setHideZeroFlags={lawsPanel.setHideZeroFlags}
-                activeFilters={lawsPanel.activeFilters}
-              />
-            </div>
-          </div>
-        )}
         <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
           <button onClick={() => setFlagsSummary(null)}
             className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">

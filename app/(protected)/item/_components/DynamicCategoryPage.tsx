@@ -5,9 +5,6 @@ import ContentPage from './ContentPage'
 import DynamicTasksSection from './DynamicTasksSection'
 import PayslipFlagsPanel from './PayslipFlagsPanel'
 import SavedFlash from './SavedFlash'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 type ContentType = 'log' | 'notes' | 'tasks' | 'payslip_flags'
 type CategoryTab = { id: number; category_id: number; label: string; content_type: ContentType }
@@ -34,7 +31,6 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
 }) {
   const [tabs, setTabs] = useState<CategoryTab[]>([])
   const [loading, setLoading] = useState(true)
-  const lawsPanel = useLawsPanel(`showCategoryLaws_${categoryLabel}`)
   const [activeTabId, setActiveTabId] = useState<number | null>(null)
   const [showAddTab, setShowAddTab] = useState(false)
   const [newLabel, setNewLabel] = useState('')
@@ -84,23 +80,6 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="px-2 pt-2 shrink-0 flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="px-2 shrink-0">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-            <PageLawsList scopeKey={categoryLabel} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-              openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-              hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
-          </div>
-        </div>
-      )}
       {tabs.length > 0 && (
         <div className="flex items-center gap-1 px-2 py-0.5 bg-white border-b border-gray-100 overflow-x-auto shrink-0">
           {tabs.map(t => (

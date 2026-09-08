@@ -2,9 +2,6 @@
 import { useState, useEffect } from 'react'
 import UsersPanel, { type User, type Role } from '../../users/UsersPanel'
 import RolesPanel, { type RoleUser } from '../../roles/RolesPanel'
-import PageLawsList from './PageLawsList'
-import LawsToggleBar from './LawsToggleBar'
-import { useLawsPanel } from './useLawsPanel'
 
 // Users and Roles & Permissions used to be two separate pages you had to
 // navigate between for one connected task -- assign someone a role here,
@@ -21,7 +18,6 @@ export default function AccessPage({ initialTab, canSeeUsers, canSeeRoles }: {
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
-  const lawsPanel = useLawsPanel('showAccessLaws')
 
   useEffect(() => {
     Promise.all([
@@ -40,21 +36,6 @@ export default function AccessPage({ initialTab, canSeeUsers, canSeeRoles }: {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        <LawsToggleBar show={lawsPanel.show} setShow={lawsPanel.setShow}
-          openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-          hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-          activeFilters={lawsPanel.activeFilters} toggleFilter={lawsPanel.toggleFilter} dark={false} />
-      </div>
-      {lawsPanel.show && (
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <PageLawsList scopeKey={tab === 'roles' ? 'Roles' : 'Users'} isItemsLaws={true} onChange={lawsPanel.bumpRefresh}
-            openForm={lawsPanel.openForm} setOpenForm={lawsPanel.setOpenForm}
-            hideZeroFlags={lawsPanel.hideZeroFlags} setHideZeroFlags={lawsPanel.setHideZeroFlags}
-
-              activeFilters={lawsPanel.activeFilters} />
-        </div>
-      )}
       {canSeeUsers && canSeeRoles && (
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           <button onClick={() => setTab('users')}
