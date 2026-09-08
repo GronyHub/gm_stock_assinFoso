@@ -2417,7 +2417,7 @@ function ItemHubPageInner() {
     : (!liveSalesShowW && liveSalesShowG) ? 'gmc'
     : 'all'
   function selectLiveSalesRadio(value: string) {
-    const violationKeys = ['no_cash', 'missing_days', 'dup_receipt', 'high_wnw', 'no_attachment']
+    const violationKeys = ['no_cash', 'missing_days', 'dup_receipt', 'high_wnw', 'no_attachment', 'sold_below_cost']
     setLiveSalesShowHistory(value === 'history')
     setLiveSalesBarsOnly(value === 'bars_only')
     setLiveSalesViolationFilter(violationKeys.includes(value) ? value : null)
@@ -2439,7 +2439,7 @@ function ItemHubPageInner() {
     : liveBillsGmcFilter === 'vendor' ? 'vendor_only'
     : 'all'
   function selectLiveBillsRadio(value: string) {
-    const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense']
+    const violationKeys = ['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'vcp_jump']
     setLiveBillsShowHistory(value === 'history')
     setLiveBillsAddingNew(value === 'new_bill')
     setLiveBillsShowPurchaseOrders(value === 'purchase_orders')
@@ -6355,6 +6355,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
                   { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
                   { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
+                  { key: 'sold_below_cost', label: 'Sold Below Cost', count: globalFlags?.costGteSell?.length ?? 0 },
                 ].sort((a, b) => b.count - a.count).map((v, i) => (
                   <Fragment key={v.key}>
                     {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
@@ -6492,6 +6493,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   { key: 'bill_total_mismatch', label: 'Total Mismatch', count: globalFlags?.billTotalMismatch?.length ?? 0 },
                   { key: 'bill_no_attachment', label: 'No Attachment', count: globalFlags?.billNoAttachment?.length ?? 0 },
                   { key: 'bill_no_expense', label: 'No Expense', count: globalFlags?.billNoExpense?.length ?? 0 },
+                  { key: 'vcp_jump', label: 'VCP Jump', count: globalFlags?.vcpJumps?.length ?? 0 },
                 ].sort((a, b) => b.count - a.count).map((v, i) => (
                   <Fragment key={v.key}>
                     {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
