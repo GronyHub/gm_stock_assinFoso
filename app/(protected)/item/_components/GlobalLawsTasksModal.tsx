@@ -1,8 +1,17 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import PageLawsList, { type LawFormKind } from './PageLawsList'
+import ContentPage from './ContentPage'
 
 type ScopeSummary = { scope: string; lawCount: number; taskCount: number }
+
+// A standalone policy document (content_pages, not the page_laws
+// list/task system every other section here is built on) -- shown as its
+// own fixed entry above the per-page sections rather than folded into the
+// scope list, since it isn't a scope at all. Was its own separate "⚖️"
+// button on the Team Times page; moved here so there's truly only one
+// laws/tasks entry point in the whole app.
+const COMPANY_LAWS_TIME_KEY = '__staff_times_laws__'
 
 // The one global "⚖️" entry point, replacing every page's own separate
 // laws/tasks icon -- every scope_key that has ever had a law or an
@@ -75,6 +84,20 @@ export default function GlobalLawsTasksModal({ isOpen, onClose }: { isOpen: bool
 
         <div className="flex-1 min-w-0 overflow-y-auto bg-slate-50">
           <div className="p-4 space-y-2">
+            {!search.trim() && (
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => toggle(COMPANY_LAWS_TIME_KEY)}
+                  className="w-full flex items-center gap-2 text-left px-3 py-2.5">
+                  <span className="text-slate-400 text-[10px] shrink-0">{expanded.has(COMPANY_LAWS_TIME_KEY) ? '▴' : '▾'}</span>
+                  <span className="text-sm font-semibold text-slate-800">📖 Company Laws — Time</span>
+                </button>
+                {expanded.has(COMPANY_LAWS_TIME_KEY) && (
+                  <div className="border-t border-slate-100">
+                    <ContentPage contentKey="staff_times_laws" title="⚖️ Company Laws — Time" />
+                  </div>
+                )}
+              </div>
+            )}
             {scopes === null ? (
               <p className="text-sm text-slate-400 text-center py-12">Loading…</p>
             ) : visibleScopes.length === 0 ? (

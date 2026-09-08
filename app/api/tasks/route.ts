@@ -43,8 +43,22 @@ export async function GET(req: NextRequest) {
     const submenu = req.nextUrl.searchParams.get('submenu')
     const lawIds = req.nextUrl.searchParams.get('lawIds')
     const flagKeys = req.nextUrl.searchParams.get('flagKeys')
+    const assignedTo = req.nextUrl.searchParams.get('assigned_to')
 
-    if (lawIds || flagKeys) {
+    if (assignedTo) {
+      // A staff member's own "My Tasks" -- this was never actually wired up
+      // server-side (the param was silently ignored and fell through to the
+      // unfiltered "all tasks" branch below), so every staff member's page
+      // showed the exact same full task list regardless of who it was
+      // assigned to.
+      const rows = await sql`
+        SELECT id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, done, created_by, created_at, completed_at, assigned_to, completed_by
+        FROM custom_tasks
+        WHERE LOWER(assigned_to) = LOWER(${assignedTo})
+        ORDER BY done ASC, due_date NULLS LAST, created_at DESC
+      `
+      return success(rows)
+    } else if (lawIds || flagKeys) {
       // Batched form for PageLawsList, which otherwise fires one request per
       // law/flag on every mount (34 mount sites x dozens of laws each was a
       // meaningful chunk of Vercel's Observability Events volume).
