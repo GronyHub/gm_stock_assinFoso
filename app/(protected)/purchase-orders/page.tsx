@@ -12,7 +12,7 @@ export default function PurchaseOrdersPage() {
   const [search, setSearch] = useState('')
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 56px - 60px)' }}>
+    <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 28px - 60px)' }}>
       <div className="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-200 bg-white">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search…"

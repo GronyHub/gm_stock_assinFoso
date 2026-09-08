@@ -37,7 +37,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex flex-col">
       <div className="print:hidden">
         <ImpersonationBar />
-        <Nav user={session.user as any} />
+        <Nav />
       </div>
       <MainContainer>{children}</MainContainer>
       <PushSubscriber />

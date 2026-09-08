@@ -168,7 +168,7 @@ function CountsHistoryPageInner() {
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
   return (
-    <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-60px)] md:h-[calc(100dvh-56px)]">
+    <div className="-mx-4 -mt-4 flex flex-col h-[calc(100dvh-60px)] md:h-[calc(100dvh-28px)]">
 
       {/* Top bar */}
       <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-white shrink-0">

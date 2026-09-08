@@ -5270,7 +5270,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   }
 
   return (
-    <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-56px)]">
+    <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-28px)]">
 
       {/* ── Body ── No separate header row any more -- Grony Cash/UK/C&H
           (formerly the top tab row) and global search now live inside the
