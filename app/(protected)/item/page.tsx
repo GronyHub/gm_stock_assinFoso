@@ -87,6 +87,7 @@ const StaffMemberPersonalTab = dynamic(() => import('./_components/StaffMemberPe
 const UKTab = dynamic(() => import('./_components/UKTab'), { ssr: false, loading: () => loading('Loading…') })
 const CHTab = dynamic(() => import('./_components/CHTab'), { ssr: false, loading: () => loading('Loading…') })
 const ReorderListsPanel = dynamic(() => import('./_components/ReorderListsPanel'), { ssr: false, loading: () => loading('Loading…') })
+const ActivityDurationsPanel = dynamic(() => import('./_components/ActivityDurationsPanel'), { ssr: false, loading: () => loading('Loading…') })
 // Sales/Bills/Loss by Date -- folded into Live Sale's own switcher (same
 // treatment Count 2 and Log got) since none of them had anything left
 // that justified a separate sidebar destination once the "New Sale" flow
@@ -146,7 +147,7 @@ type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'custome
   // destination too now that Settings is its own side-by-side pane instead
   // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
   // block below.
-  | 'viewPortalAs' | 'reorderLists'
+  | 'viewPortalAs' | 'reorderLists' | 'activityDurations'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
 // they're now reached from inside Items itself (see ItemsExtraView below),
@@ -209,7 +210,7 @@ const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'expenseOrders', 'dailySummary',
-  'purchaseOrders', 'viewPortalAs', 'reorderLists', 'services',
+  'purchaseOrders', 'viewPortalAs', 'reorderLists', 'activityDurations', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 
@@ -1978,6 +1979,7 @@ function ItemHubPageInner() {
     ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
     ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
     ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
+    ...(canManage ? [{ label: 'Activity Times', action: () => pickLossView('activityDurations') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
     ...(canSeeCH ? [
       { label: 'C&H', action: () => changeTab('ch') },
@@ -8520,6 +8522,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <ReorderListsPanel cashItems={combinedCashItems} manageItems={MANAGE_LIST_ITEMS} staffItems={STAFF_TEAM_ITEMS}
                 paneOrder={paneOrder} setPaneOrder={setPaneOrder} paneLabels={paneLabels} setPaneLabels={setPaneLabels}
                 paneGroups={paneGroups} setPaneGroups={setPaneGroups} paneHidden={paneHidden} setPaneHidden={setPaneHidden} />
+            </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'activityDurations' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-4 max-w-sm">
+              <ActivityDurationsPanel />
             </div>
           </TabErrorBoundary>
         )}

@@ -12,7 +12,7 @@ import { STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './staffViewData'
 // same dark background) rather than a full-screen takeover, so switching
 // between "normal navigation" and "Settings navigation" is just picking a
 // row on either side, not leaving and re-entering a whole different screen.
-type SettingsDestination = StaffView | 'viewPortalAs' | 'reorderLists'
+type SettingsDestination = StaffView | 'viewPortalAs' | 'reorderLists' | 'activityDurations'
 
 type Props = {
   mode: DisplayMode
@@ -90,6 +90,10 @@ export default function SettingsPane({
             {canManageRoles && (
               <SidePaneButton icon="↕️" label="Reorder & Rename Lists" mode={mode} divider={canSeeUsers || canManageRoles || canViewPortalAs}
                 active={activeView === 'reorderLists'} onClick={() => pickLossView('reorderLists', { keepSettingsOpen: true })} />
+            )}
+            {canManageRoles && (
+              <SidePaneButton icon="⏱️" label="Activity Times" mode={mode} divider
+                active={activeView === 'activityDurations'} onClick={() => pickLossView('activityDurations', { keepSettingsOpen: true })} />
             )}
           </div>
         )}

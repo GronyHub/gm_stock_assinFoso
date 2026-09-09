@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
+import { getActivityDurationOverrides } from '@/lib/activityDurations'
 import { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return badRequest('date must be YYYY-MM-DD')
 
   try {
-    const [rowsRaw, [times]] = await Promise.all([
+    const [rowsRaw, [times], durationOverrides] = await Promise.all([
       sql`
         SELECT id, body, category, estimated_duration_seconds, created_at
         FROM announcements
@@ -33,12 +34,13 @@ export async function GET(req: NextRequest) {
         FROM staff_times
         WHERE work_date = ${date} AND LOWER(staff_name) = LOWER(${staff})
       `,
+      getActivityDurationOverrides(),
     ])
     const rows = rowsRaw as unknown as { id: number; body: string; category: string | null; estimated_duration_seconds: number | null; created_at: string }[]
 
     let runningTotal = 0
     const activity = rows.map(r => {
-      const durationSeconds = effectiveDurationSeconds(r.category, r.estimated_duration_seconds)
+      const durationSeconds = effectiveDurationSeconds(r.category, r.estimated_duration_seconds, durationOverrides)
       runningTotal += durationSeconds
       return {
         id: r.id, body: r.body, created_at: r.created_at,

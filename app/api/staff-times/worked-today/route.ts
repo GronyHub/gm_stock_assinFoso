@@ -1,6 +1,7 @@
 import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
+import { getActivityDurationOverrides } from '@/lib/activityDurations'
 import { once } from '@/lib/once'
 
 export const dynamic = 'force-dynamic'
@@ -21,8 +22,8 @@ const ensureBreakCol = once(async () => {
 // set); PresentStaffBar merges that against the full roster client-side to
 // mark anyone missing here as absent. Also carries how much of a present
 // person's time was actually spent on recorded work -- summed from today's
-// announcements' estimated_duration_seconds (real for live sale taps, a flat
-// minute for counts/violation fixes per FLAT_MINUTE_ACTIONS, zero for
+// announcements' estimated_duration_seconds (real for live sale taps, an
+// owner-configurable default -- see lib/activityDurations.ts -- for
 // everything else, e.g. a bill/expense entered by hand with no timed
 // estimate). on_break is a separate, purely-display status flag (see
 // /api/staff-times/break) -- it doesn't affect this worked-time math at all.
@@ -35,7 +36,7 @@ export async function GET() {
   try {
     const today = new Date().toISOString().slice(0, 10)
 
-    const [present, activity] = await Promise.all([
+    const [present, activity, durationOverrides] = await Promise.all([
       sql`
         SELECT staff_name, actual_in, actual_out, on_break
         FROM staff_times
@@ -48,6 +49,7 @@ export async function GET() {
         FROM announcements
         WHERE created_at::date = ${today} AND author IS NOT NULL
       `,
+      getActivityDurationOverrides(),
     ])
 
     // Keyed lowercase -- announcements.author comes from whatever
@@ -61,7 +63,7 @@ export async function GET() {
     const workedSeconds: Record<string, number> = {}
     for (const a of activity as { author: string; category: string | null; estimated_duration_seconds: number | null }[]) {
       const key = a.author.toLowerCase()
-      const seconds = effectiveDurationSeconds(a.category, a.estimated_duration_seconds)
+      const seconds = effectiveDurationSeconds(a.category, a.estimated_duration_seconds, durationOverrides)
       workedSeconds[key] = (workedSeconds[key] ?? 0) + seconds
     }
 

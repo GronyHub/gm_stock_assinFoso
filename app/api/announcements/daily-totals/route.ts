@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { effectiveDurationSeconds } from '@/lib/workedDuration'
+import { getActivityDurationOverrides } from '@/lib/activityDurations'
 import { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -29,17 +30,21 @@ export async function GET(req: NextRequest) {
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return badRequest('date must be YYYY-MM-DD')
 
   try {
-    const rows = await sql`
-      SELECT id, author, category, estimated_duration_seconds
-      FROM announcements
-      WHERE created_at::date = ${date} AND author IS NOT NULL
-      ORDER BY author, created_at ASC, id ASC
-    ` as { id: number; author: string; category: string | null; estimated_duration_seconds: number | null }[]
+    const [rowsRaw, durationOverrides] = await Promise.all([
+      sql`
+        SELECT id, author, category, estimated_duration_seconds
+        FROM announcements
+        WHERE created_at::date = ${date} AND author IS NOT NULL
+        ORDER BY author, created_at ASC, id ASC
+      `,
+      getActivityDurationOverrides(),
+    ])
+    const rows = rowsRaw as unknown as { id: number; author: string; category: string | null; estimated_duration_seconds: number | null }[]
 
     const runningByAuthor: Record<string, number> = {}
     const runningTotals: Record<number, number> = {}
     for (const r of rows) {
-      const seconds = effectiveDurationSeconds(r.category, r.estimated_duration_seconds)
+      const seconds = effectiveDurationSeconds(r.category, r.estimated_duration_seconds, durationOverrides)
       const total = (runningByAuthor[r.author] ?? 0) + seconds
       runningByAuthor[r.author] = total
       runningTotals[r.id] = total
