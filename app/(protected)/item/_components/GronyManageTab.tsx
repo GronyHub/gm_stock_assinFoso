@@ -54,6 +54,26 @@ export default function GronyManageContent({
       <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} />
     )}
     {view === 'advert' && (<>
+      {/* Picker for ADVERT_ITEMS' 8 sub-pages, always visible above whichever
+          one is selected -- this used to live behind a per-page "Laws &
+          Tasks" toggle and got deleted along with it when that toggle was
+          replaced by one global icon, leaving this whole view permanently
+          blank (selectedAdvertItem had no way left to ever become
+          non-null). Restored as a plain always-on list, no back button --
+          picking a different item just swaps what's shown below directly. */}
+      <div className="px-2 pt-2">
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <div className="divide-y">
+            {ADVERT_ITEMS.map(item => (
+              <button key={item.key} onClick={() => setSelectedAdvertItem(item.key)}
+                className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 ${selectedAdvertItem === item.key ? 'bg-blue-50' : ''}`}>
+                <span className="text-lg">{item.icon}</span>
+                <span className="text-sm font-medium text-gray-900">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
       {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
@@ -74,6 +94,23 @@ export default function GronyManageContent({
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
     {view === 'grony_checks' && (<>
+      {/* Same restoration as Advert's picker just above -- GRONY_CHECKS_ITEMS'
+          16 sub-pages (the grid itself plus each individual check category)
+          were only ever reachable through a picker that got deleted along
+          with the old per-page laws toggle it happened to be nested inside. */}
+      <div className="px-2 pt-2">
+        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+          <div className="divide-y">
+            {GRONY_CHECKS_ITEMS.map(item => (
+              <button key={item.key} onClick={() => setSelectedGronyCheckItem(item.key)}
+                className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 ${selectedGronyCheckItem === item.key ? 'bg-blue-50' : ''}`}>
+                <span className="text-lg">{item.icon}</span>
+                <span className="text-sm font-medium text-gray-900">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       {selectedGronyCheckItem === 'grony_checks' && <GronyChecksGrid />}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
       {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}
