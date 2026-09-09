@@ -5517,14 +5517,36 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <div className="shrink-0 bg-white border-b border-gray-200">
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
-                  centered in the row even when the right-side controls
-                  aren't there (most lossViews) or are (Items' columns
-                  picker), instead of always hugging the left edge. */}
+                  centered in the row when the right-side controls are there
+                  (Items' columns picker) or, on mobile where every pixel of
+                  width matters for this row, sit flush against a genuinely
+                  empty left column (most lossViews) instead of leaving a
+                  wasted equal-width gap opposite nothing.
+                  The two outer columns are `auto` (shrink to their own
+                  content, 0px when the placeholder div is empty), NOT `1fr`
+                  -- `1fr` on all three columns used to hand the empty left
+                  spacer and the middle tab row an equal one-third share each
+                  regardless of whether the right column had anything in it,
+                  which left the switcher scrolling within barely a third of
+                  the screen on a phone even before this row grew to 8 tabs.
+                  The middle column is `minmax(0, 1fr)`, not plain `auto` --
+                  with plain `auto`, justify-self-center used to size this
+                  column to its own max-content width (fitting every tab
+                  button with no clipping at all) instead of the space
+                  actually available, so overflow-x-auto below never had
+                  anything to scroll: the row just grew past the screen edge
+                  instead of scrolling, silently hiding whichever tabs didn't
+                  fit (worse the more tabs got added -- Manage/Advert/Grony
+                  1-10 checks is what made it visible on a phone).
+                  minmax(0, 1fr) caps the track at the space actually left
+                  over after the two outer columns and lets it shrink to 0,
+                  so the child below is properly width-constrained and its
+                  own overflow-x-auto can do its job. */}
               <div className="px-6 py-1.5 border-b border-gray-200">
                 {liveMode === 'sale' && renderModeProgressSummary(true, true)}
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 min-w-0">
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 min-w-0">
                   <div />
-                  <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 justify-self-center">
+                  <div className="flex items-center justify-center gap-1.5 overflow-x-auto min-w-0">
                     {renderTabSwitcher(true)}
                   </div>
                   <div className="flex items-center gap-3 shrink-0 justify-self-end">
