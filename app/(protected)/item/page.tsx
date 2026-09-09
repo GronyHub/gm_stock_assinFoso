@@ -660,7 +660,7 @@ function itemAttentionFlags(
   duplicateItemIds: Set<number>,
   unlinkedNamedIds: Set<number>,
   serviceViolationIds: Set<number>,
-  gainCountByItemId: Map<number, number>,
+  netGainByItemId: Map<number, { qty: number; amt: number }>,
   emptyRowCountByItemId: Map<number, number>,
   soldBelowCostDatesByItemId: Map<number, string[]>,
   vcpJumpDatesByItemId: Map<number, string[]>
@@ -673,15 +673,17 @@ function itemAttentionFlags(
   const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
   const flags: { label: string; bg: string }[] = []
   if (item.product_type !== 'service' && soh < 0) flags.push({ label: '⚠ NEGATIVE STOCK', bg: 'bg-red-600' })
-  // A gain (count came in ABOVE what records support) is just as much a
-  // violation as a loss -- it always means a bill/GMC take was never
-  // entered or an earlier count was wrong. It doesn't fix itself, so it
-  // has to surface the same way negative stock/duplicates do until a
-  // staff member finds the missing record (or corrects the count). The
-  // count rides along on the banner itself -- it used to also show as
-  // "Gain N" in the CP/SP/loss line, which just repeated the same number.
-  const gainCount = gainCountByItemId.get(item.id) ?? 0
-  if (gainCount > 0) flags.push({ label: `🔺 STOCK GAIN: ${gainCount}`, bg: 'bg-red-600' })
+  // Net Gain replaces the old "STOCK GAIN" flag (any single gain count
+  // event, regardless of the item's overall position) -- this only fires
+  // once the item's TOTAL counted gains actually outweigh its total
+  // losses (see liveNetGainByItemId, sourced from /api/losses/summary's
+  // signed lgAmt), which should never happen under normal operation: it
+  // always means a bill/GMC take was never entered or a count was wrong.
+  // An item with some gains that still nets an overall loss is not
+  // flagged here at all -- that's just the plain "Net Loss" view instead,
+  // not a violation.
+  const netGain = netGainByItemId.get(item.id)
+  if (netGain) flags.push({ label: `🔺 NET GAIN: ${fmtN(netGain.qty)} · ₵${fmtN(netGain.amt)}`, bg: 'bg-red-600' })
   if (duplicateItemIds.has(item.id)) flags.push({ label: '⚠ DUPLICATE ITEM', bg: 'bg-red-600' })
   if (serviceViolationIds.has(item.id)) flags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-rose-600' })
   if (unlinkedNamedIds.has(item.id)) flags.push({ label: '⚠ UNLINKED SALE', bg: 'bg-orange-600' })
@@ -902,7 +904,7 @@ function ItemHubPageInner() {
   // same state anyway rather than a separate one, since it already means
   // "which exclusive view is this radio row on" and every other value here
   // already resets cleanly to it via its own onChange.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2604,10 +2606,14 @@ function ItemHubPageInner() {
   // directly by liveDuplicateItemIds/liveUnlinkedNamedIds/
   // liveServiceViolationIdSet/liveCatalogueItems below instead of crossing
   // a prop boundary.
+  // no_sp/no_cp match itemAttentionFlags' own rule exactly (ACP-aware,
+  // catches negative values too, not just falsy/exact-zero) -- these two
+  // used to disagree with the on-card badge, so an item could count as
+  // flagged in one place but not the other.
   const liveItemsWithViolations = useMemo(() => ({
     neg_soh: liveAllItems.filter(i => Number(i.soh) < 0 && i.product_type !== 'service').map(i => i.id),
-    no_sp: liveAllItems.filter(i => !i.selling_price || parseFloat(String(i.selling_price)) === 0).map(i => i.id),
-    no_cp: liveAllItems.filter(i => i.product_type !== 'service' && (!i.cost_price || parseFloat(String(i.cost_price)) === 0)).map(i => i.id),
+    no_sp: liveAllItems.filter(i => (parseFloat(String(i.selling_price)) || 0) <= 0).map(i => i.id),
+    no_cp: liveAllItems.filter(i => i.product_type !== 'service' && (parseFloat(String(i.acp_price ?? i.cost_price)) || 0) <= 0).map(i => i.id),
     no_group: liveAllItems.filter(i => !i.group).map(i => i.id),
     // Both sides of every non-dismissed duplicate pair -- ids only, same as
     // the other four keys here.
@@ -2767,12 +2773,12 @@ function ItemHubPageInner() {
   // is built from (/api/losses/summary), shown inline next to price/cost/
   // stock/count-interval so a loss-prone item is visible without opening
   // its Item 360 detail. Fetched once, same as the GMC id set above.
-  const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; gainCount: number; emptyRowCount: number }>>(new Map())
+  const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; lgQty: number; gainCount: number; emptyRowCount: number }>>(new Map())
   useEffect(() => {
     fetch('/api/losses/summary')
       .then(r => r.json())
-      .then((d: { item_id: number; lossCount: number; lgAmt: number; gainCount: number; emptyRowCount: number }[]) => {
-        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, gainCount: r.gainCount, emptyRowCount: r.emptyRowCount }]) : []))
+      .then((d: { item_id: number; lossCount: number; lgAmt: number; lgQty: number; gainCount: number; emptyRowCount: number }[]) => {
+        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, lgQty: r.lgQty, gainCount: r.gainCount, emptyRowCount: r.emptyRowCount }]) : []))
       })
       .catch(() => {})
   }, [])
@@ -2801,6 +2807,20 @@ function ItemHubPageInner() {
   const liveDuplicateItemIds = useMemo(() => new Set<number>(liveItemsWithViolations.duplicates ?? []), [liveItemsWithViolations])
   const liveUnlinkedNamedIds = useMemo(() => new Set<number>(liveItemsWithViolations.unlinked_named ?? []), [liveItemsWithViolations])
   const liveServiceViolationIdSet = useMemo(() => new Set<number>(liveItemsWithViolations.service_violation ?? []), [liveItemsWithViolations])
+  // Negative Stock/Missing Selling Price/Missing Cost Price/Missing Group --
+  // same source (liveItemsWithViolations) as the three above, just Set-ified
+  // for O(1) membership tests in the grid filter below. Cost>=Selling Price
+  // has no equivalent in liveItemsWithViolations (it's specific to Sale
+  // mode's own pricing checks), so it's built directly here instead.
+  const liveNegSohIds = useMemo(() => new Set<number>(liveItemsWithViolations.neg_soh ?? []), [liveItemsWithViolations])
+  const liveNoSpIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_sp ?? []), [liveItemsWithViolations])
+  const liveNoCpIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_cp ?? []), [liveItemsWithViolations])
+  const liveNoGroupIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_group ?? []), [liveItemsWithViolations])
+  const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
+    const sp = parseFloat(String(item.selling_price)) || 0
+    const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
+    return item.product_type !== 'service' && sp > 0 && cp > 0 && cp >= sp
+  }).map(item => item.id)), [liveAllItems])
   // Item id -> every date it had a past sale line at or under today's cost
   // price -- sourced from /api/flags' costGteSell. This is now the only
   // place this violation lives (the old Sales tab flag of the same query
@@ -2833,15 +2853,22 @@ function ItemHubPageInner() {
     for (const dates of m.values()) dates.sort()
     return m
   }, [globalFlags])
-  // Fourth cross-item check: any item with an outstanding count gain (see
-  // liveLossByItemId above), fed straight off the same per-item loss/gain
-  // map the grid already fetches for its Loss/Gain badge. Keeps the actual
-  // count (not just a Set of flagged ids) so the STOCK GAIN banner can show
-  // "STOCK GAIN: N" instead of just flagging the item.
-  const liveGainCountByItemId = useMemo(() => {
-    const counts = new Map<number, number>()
-    liveLossByItemId.forEach((v, id) => { if ((v.gainCount ?? 0) > 0) counts.set(id, v.gainCount ?? 0) })
-    return counts
+  // Fourth cross-item check: net gain, i.e. an item whose TOTAL counted
+  // gains actually outweigh its total losses (lgAmt < 0 -- see
+  // /api/losses/summary's signed net figure). This is the one direction
+  // that should never happen under normal operation, so it's the only one
+  // of the two that's a real violation -- the opposite direction (Net
+  // Loss, lgAmt > 0) is just ordinary shrinkage/wastage, browsable as its
+  // own plain view further down, not something needing a fix.
+  const liveNetGainByItemId = useMemo(() => {
+    const m = new Map<number, { qty: number; amt: number }>()
+    liveLossByItemId.forEach((v, id) => { if (v.lgAmt < -0.005) m.set(id, { qty: -v.lgQty, amt: -v.lgAmt }) })
+    return m
+  }, [liveLossByItemId])
+  const liveNetLossIds = useMemo(() => {
+    const s = new Set<number>()
+    liveLossByItemId.forEach((v, id) => { if (v.lgAmt > 0.005) s.add(id) })
+    return s
   }, [liveLossByItemId])
   // Fifth cross-item check: any item with day rows that are entirely
   // blank/zero (count, WIC, GMC, bills, converted-in all empty) -- a
@@ -2856,22 +2883,22 @@ function ItemHubPageInner() {
   const liveDuplicateCount = liveDuplicateItemIds.size
   const liveUnlinkedCount = liveUnlinkedNamedIds.size
   const liveServiceViolationCount = liveServiceViolationIdSet.size
-  const liveGainCount = liveGainCountByItemId.size
+  const liveNetGainCount = liveNetGainByItemId.size
+  const liveNetLossCount = liveNetLossIds.size
   const liveSoldBelowCostCount = liveSoldBelowCostDatesByItemId.size
   const liveVcpJumpCount = liveVcpJumpDatesByItemId.size
   const liveEmptyRowCount = liveEmptyRowCountByItemId.size
-
-  // Items with any loss or gain records needing trade-off resolution
-  const liveItemsWithLossOrGainIds = useMemo(() => {
-    const ids = new Set<number | null>()
-    for (const rec of liveCountRecords) {
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        ids.add(rec.item_id)
-      }
-    }
-    return ids
-  }, [liveCountRecords])
-  const liveItemsWithLossOrGainCount = liveItemsWithLossOrGainIds.size
+  // Negative Stock/Cost>=Selling Price/Missing Selling Price/Missing Cost
+  // Price/Missing Group used to only be visible via the retired All(V)
+  // filter -- now each is its own dedicated radio (see liveItemsWithViolations
+  // above for no_sp/no_cp/no_group/neg_soh's own consistent definitions,
+  // matched to itemAttentionFlags' rule), same "count > 0, count-gated"
+  // treatment as Duplicates/Service/Unlinked/Empty Row already got.
+  const liveNegSohCount = liveNegSohIds.size
+  const liveAcpGteSpCount = liveAcpGteSpIds.size
+  const liveNoSpCount = liveNoSpIds.size
+  const liveNoCpCount = liveNoCpIds.size
+  const liveNoGroupCount = liveNoGroupIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3218,54 +3245,6 @@ function ItemHubPageInner() {
       .catch(() => setLiveGmcTargetItem(null))
   }, [liveSelectedItem])
 
-  const liveItemsWithTradeOffs = useMemo(() => {
-    const byItemId = new Map<number | null, ItemTradeOff>()
-
-    for (const rec of liveCountRecords) {
-      if (rec.kind === 'loss' || rec.kind === 'gain') {
-        const key = rec.item_id
-        if (!byItemId.has(key)) {
-          byItemId.set(key, {
-            itemId: key,
-            itemName: rec.item_name,
-            lossQty: 0,
-            gainQty: 0,
-            net: 0,
-            tradeOffRecords: []
-          })
-        }
-        const entry = byItemId.get(key)!
-        entry.tradeOffRecords.push(rec)
-
-        const qty = Math.abs(rec.loss_qty ?? 0)
-        if (rec.kind === 'loss') {
-          entry.lossQty += qty
-        } else {
-          entry.gainQty += qty
-        }
-      }
-    }
-
-    // Calculate net and filter to only items that have both loss and gain
-    const result: ItemTradeOff[] = []
-    for (const entry of byItemId.values()) {
-      if (entry.lossQty > 0 && entry.gainQty > 0) {
-        entry.net = entry.lossQty - entry.gainQty
-        result.push(entry)
-      }
-    }
-
-    return result.sort((a, b) => Math.abs(b.net) - Math.abs(a.net))
-  }, [liveCountRecords])
-
-  const liveTradeOffByItemId = useMemo(() => {
-    const map = new Map<number | null, ItemTradeOff>()
-    for (const item of liveItemsWithTradeOffs) {
-      map.set(item.itemId, item)
-    }
-    return map
-  }, [liveItemsWithTradeOffs])
-
   const liveCountsByDate = useMemo(() => {
     const q = liveEmbeddedSearch.trim().toLowerCase()
     const filtered = liveCountRecords.filter(rec => {
@@ -3328,8 +3307,8 @@ function ItemHubPageInner() {
     // Filter records by Loss/Gain violation and search
     const filtered = liveCountRecords.filter(rec => {
       // Show different record types based on the active filter
-      if (liveSaleViolationFilter === 'lossGain') {
-        // Loss/Gain filter: show only loss/gain records
+      if (liveSaleViolationFilter === 'netLoss' || liveSaleViolationFilter === 'netGain') {
+        // Net Loss/Net Gain: show only loss/gain records
         if (rec.kind !== 'loss' && rec.kind !== 'gain') return false
       } else if (liveSaleViolationFilter === 'counts') {
         // Counts filter: show ALL records (loss/gain/ok)
@@ -3376,16 +3355,6 @@ function ItemHubPageInner() {
     return withTradeOffs.sort((a, b) => b.count_date.localeCompare(a.count_date))
   }, [liveCountRecords, liveSaleViolationFilter, liveEmbeddedSearch])
 
-  // Identify items with trade-off opportunities and calculate their net position
-  type ItemTradeOff = {
-    itemId: number | null
-    itemName: string
-    lossQty: number
-    gainQty: number
-    net: number // positive = net loss, negative = net gain
-    tradeOffRecords: CountRecord[]
-  }
-
   // All-Time/Yesterday/This Week/Month/Year loss totals -- same period
   // summary the old Loss by Date tab pinned above its own table, computed
   // from every record regardless of liveCountRecordFilter/search so it
@@ -3427,10 +3396,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -3448,8 +3417,10 @@ function ItemHubPageInner() {
         const status = liveCountStatus.get(item.id)
         return status && status.level === 'overdue'
       })
-    } else if (liveSaleViolationFilter === 'lossGain') {
-      itemsToSort = liveCatalogueItems.filter(item => liveItemsWithLossOrGainIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'netLoss') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNetLossIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'netGain') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNetGainByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'duplicates') {
       itemsToSort = liveCatalogueItems.filter(item => liveDuplicateItemIds.has(item.id))
     } else if (liveSaleViolationFilter === 'unlinked') {
@@ -3462,8 +3433,16 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveVcpJumpDatesByItemId.has(item.id))
     } else if (liveSaleViolationFilter === 'emptyRow') {
       itemsToSort = liveCatalogueItems.filter(item => liveEmptyRowCountByItemId.has(item.id))
-    } else if (liveSaleViolationFilter === 'withViolations') {
-      itemsToSort = liveCatalogueItems.filter(item => liveViolationCountByItemId.has(item.id) && (liveViolationCountByItemId.get(item.id) ?? 0) > 0)
+    } else if (liveSaleViolationFilter === 'negSoh') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNegSohIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'acpGteSp') {
+      itemsToSort = liveCatalogueItems.filter(item => liveAcpGteSpIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'noSp') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNoSpIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'noCp') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNoCpIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'noGroup') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNoGroupIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3498,7 +3477,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveItemsWithTradeOffs, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -4908,16 +4887,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
   function getViolationDescription(filterType: typeof liveSaleViolationFilter) {
     const descriptions: Record<string, { title: string; description: string; steps: string[] }> = {
-      all: {
-        title: 'All Items',
-        description: 'Showing all items in the catalogue. Items may have different violation statuses.',
-        steps: [
-          'Use the filter buttons above to narrow down to specific violations',
-          'Click on any item card to view details and fix violations',
-          'Check the violation badges on each item for quick status',
-          'Items with no violations show no violation headers'
-        ]
-      },
       countDue: {
         title: '🔄 Count Due',
         description: 'Items that are scheduled or overdue for physical inventory counting based on their count cadence. Focus on these first to keep inventory current.',
@@ -4942,17 +4911,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           '6. Archive or delete counts only after they have been reconciled'
         ]
       },
-      lossGain: {
-        title: '↔️ Loss/Gain/TradeOff',
-        description: 'Items with inventory discrepancies showing losses or gains. "Net Gain" should NEVER exist — if present, it indicates a counting or data entry error that must be investigated. Losses occur when physical counts fall short of expected quantities; gains (rare) indicate over-counting or prior documentation errors. Trade-offs allow matching losses against gains on different dates to net zero.',
+      netLoss: {
+        title: '📉 Net Loss',
+        description: 'Items whose total losses across all counts outweigh their total gains. This is not a violation to fix one-by-one — it\'s simply how the item\'s stock has trended overall, kept here as a view so it\'s easy to see which items are worth watching.',
+        steps: []
+      },
+      netGain: {
+        title: '🔺 Net Gain',
+        description: 'Items whose total gains across all counts outweigh their total losses. Gains should never legitimately exceed losses — this points to a miscount, an unrecorded receipt, or a data entry error, and is the one case in this list that genuinely needs someone to look into it.',
         steps: [
-          '1. Review each item showing losses or gains',
-          '2. Identify the total net loss/gain amount for the item (shown in currency)',
-          '3. If any "Net Gain" exists, investigate the root cause immediately',
-          '4. Use Trade-Off suggestions to match losses from one date against gains from another',
-          '5. Work through matches until each item\'s discrepancies are reconciled',
-          '6. Unmatched losses represent actual inventory write-offs that impact margin',
-          '7. All net losses across items should total to the physical variance to investigate'
+          '1. Open the item and review its recent count history',
+          '2. Compare counted quantity vs expected quantity on each date',
+          '3. Look for a miscount, an unrecorded receipt, or a duplicate/incorrect entry',
+          '4. Correct the record that caused the gain (a fresh count, or fixing the wrong one)',
+          '5. The item drops off this list once its net gain is resolved'
         ]
       },
       duplicates: {
@@ -5039,15 +5011,51 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           '6. Save changes - the empty row marker will clear once data is complete'
         ]
       },
-      withViolations: {
-        title: '🚩 Items with Violations',
-        description: 'Showing only items that have one or more violations. Each violation type is shown as a badge on the item.',
+      negSoh: {
+        title: '🔻 Negative Stock',
+        description: 'Items whose stock-on-hand has gone below zero, usually from a sale or bill being recorded against the wrong item, or a count that was never reconciled.',
         steps: [
-          'Items are grouped by violation type for easier navigation',
-          'Each item shows all violations it has as separate badges',
-          'Click on a violation badge to jump to that specific violation type filter',
-          'Click the item card to view details and start fixing violations',
-          'Work through items from top to bottom to resolve all violations'
+          '1. Open the item and review recent sales/bills/counts',
+          '2. Look for a sale or bill that should have gone against a different item',
+          '3. Fix or reassign the wrong record, or enter a correcting count',
+          '4. The item drops off this list once its stock is zero or positive'
+        ]
+      },
+      acpGteSp: {
+        title: '⚖️ Cost ≥ Selling Price',
+        description: 'Items whose average cost price is the same as or higher than their selling price, meaning every sale of that item currently loses money.',
+        steps: [
+          '1. Open the item and check its ACP (Average Cost Price) and Selling Price',
+          '2. Decide whether the selling price needs raising, or the cost is wrong',
+          '3. Update the selling price (or fix the bill that set the cost)',
+          '4. The item drops off this list once its selling price is above cost'
+        ]
+      },
+      noSp: {
+        title: '💲 Missing Selling Price',
+        description: 'Items with no selling price set (or a price of zero), so they can\'t be sold correctly.',
+        steps: [
+          '1. Open the item',
+          '2. Set a selling price for the item',
+          '3. Save changes - the item drops off this list once a price is set'
+        ]
+      },
+      noCp: {
+        title: '💰 Missing Cost Price',
+        description: 'Items with no cost price set (or a price of zero), so margin and loss figures for it can\'t be trusted.',
+        steps: [
+          '1. Open the item',
+          '2. Set a cost price for the item, or record a bill that establishes one',
+          '3. Save changes - the item drops off this list once a cost is set'
+        ]
+      },
+      noGroup: {
+        title: '📁 Missing Group',
+        description: 'Items with no group assigned, making them harder to find and excluded from group-based reporting.',
+        steps: [
+          '1. Open the item',
+          '2. Assign it to the correct group',
+          '3. Save changes - the item drops off this list once a group is set'
         ]
       },
       noViolations: {
@@ -5679,12 +5687,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* Sale mode filter bar */}
               {showControls && liveMode === 'sale' && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
-                  {/* View-only filters (black) */}
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'withViolations'} onChange={() => { setLiveSaleViolationFilter('withViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>All(V)</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                  {/* View-only filters (black) -- All(V) retired: bundling
+                      every violation into one button made it impossible to
+                      point a staff member at just the one thing to fix.
+                      Every violation it used to be the only way to see is
+                      now its own dedicated button in the red "action-
+                      required" group below instead. */}
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Live</span>
@@ -5718,6 +5726,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
+                  {/* Net Loss replaces the old combined "Loss/Gain/TradeOff" --
+                      an item whose total counted losses outweigh its total
+                      gains is just ordinary shrinkage/wastage, not something
+                      requiring a fix, so it's a plain browsable view here
+                      (black) rather than a red action-required flag. The
+                      opposite direction (Net Gain, gains outweighing losses)
+                      is the one that's actually abnormal -- see that radio
+                      in the action-required group below. */}
+                  {liveNetLossCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'netLoss'} onChange={() => { setLiveSaleViolationFilter('netLoss'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Net Loss ({liveNetLossCount})</span>
+                  </label></>)}
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
@@ -5725,11 +5746,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
+                  {/* Net Gain -- total counted gains outweighing total losses
+                      should never happen under normal operation, so unlike
+                      Net Loss above, this stays a real violation needing
+                      investigation (a missing bill/GMC record, or a wrong
+                      count). */}
+                  {liveNetGainCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossGain'} onChange={() => { setLiveSaleViolationFilter('lossGain'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss/Gain/TradeOff{liveItemsWithLossOrGainCount > 0 && ` (${liveItemsWithLossOrGainCount})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'netGain'} onChange={() => { setLiveSaleViolationFilter('netGain'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Net Gain ({liveNetGainCount})</span>
+                  </label></>)}
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
@@ -5753,6 +5779,37 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
+                  </label></>)}
+                  {/* Negative Stock/Cost>=Selling Price/Missing Selling Price/
+                      Missing Cost Price/Missing Group used to only be
+                      reachable through the retired All(V) filter -- promoted
+                      to their own buttons here, same "count > 0, count-gated"
+                      treatment as Duplicates/Service/Unlinked/Empty Row
+                      above. */}
+                  {liveNegSohCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'negSoh'} onChange={() => { setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Negative Stock ({liveNegSohCount})</span>
+                  </label></>)}
+                  {liveAcpGteSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'acpGteSp'} onChange={() => { setLiveSaleViolationFilter('acpGteSp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
+                  </label></>)}
+                  {liveNoSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noSp'} onChange={() => { setLiveSaleViolationFilter('noSp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Missing Selling Price ({liveNoSpCount})</span>
+                  </label></>)}
+                  {liveNoCpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noCp'} onChange={() => { setLiveSaleViolationFilter('noCp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Missing Cost Price ({liveNoCpCount})</span>
+                  </label></>)}
+                  {liveNoGroupCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noGroup'} onChange={() => { setLiveSaleViolationFilter('noGroup'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>Missing Group ({liveNoGroupCount})</span>
                   </label></>)}
                 </div>
               )}
@@ -7324,21 +7381,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               ) : (
               <div className="flex-1 overflow-y-auto">
                 {/* Violation Description Panel - scrolls with items */}
-                {liveSaleViolationFilter !== 'all' && liveSaleViolationFilter !== 'noViolations' && (
+                {liveSaleViolationFilter !== 'noViolations' && (
                   (() => {
                     const violation = getViolationDescription(liveSaleViolationFilter)
                     return violation ? (
                       <div className="bg-white border-l-4 border-blue-400 p-4 mx-2 my-2 rounded text-sm">
                         <h3 className="font-semibold text-blue-900 mb-2">{violation.title}</h3>
-                        <p className="text-blue-800 mb-3">{violation.description}</p>
-                        <div className="text-blue-900">
-                          <p className="font-semibold mb-2">How to fix:</p>
-                          <ol className="list-decimal list-inside space-y-1">
-                            {violation.steps.map((step, i) => (
-                              <li key={i} className="text-blue-800 text-xs">{step}</li>
-                            ))}
-                          </ol>
-                        </div>
+                        <p className={`text-blue-800 ${violation.steps.length > 0 ? 'mb-3' : ''}`}>{violation.description}</p>
+                        {violation.steps.length > 0 && (
+                          <div className="text-blue-900">
+                            <p className="font-semibold mb-2">How to fix:</p>
+                            <ol className="list-decimal list-inside space-y-1">
+                              {violation.steps.map((step, i) => (
+                                <li key={i} className="text-blue-800 text-xs">{step}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
                       </div>
                     ) : null
                   })()
@@ -7361,7 +7420,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -7396,51 +7455,54 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <span className="truncate">{due.label} {overdue ? 'OVERDUE' : 'DUE'}</span>
                             </div>
                           )}
-                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && liveSaleViolationFilter !== 'lossGain' && (() => {
-                            let filteredFlags = flags
+                          {/* Net Loss has no badge at all (see itemAttentionFlags --
+                              it's not a violation, just a view), so it falls
+                              through to the final `else filteredFlags = []`
+                              below same as every other unhandled filter --
+                              no per-card banner shows in that view, just the
+                              plain Loss/Gain line further down the card. */}
+                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter !== 'countDue' && (() => {
+                            let filteredFlags: typeof flags = []
                             if (liveSaleViolationFilter === 'duplicates') filteredFlags = flags.filter(f => f.label.includes('DUPLICATE'))
                             else if (liveSaleViolationFilter === 'unlinked') filteredFlags = flags.filter(f => f.label.includes('UNLINKED'))
                             else if (liveSaleViolationFilter === 'service') filteredFlags = flags.filter(f => f.label.includes('SERVICE'))
                             else if (liveSaleViolationFilter === 'soldBelowCost') filteredFlags = flags.filter(f => f.label.includes('SOLD BELOW COST'))
                             else if (liveSaleViolationFilter === 'vcpJump') filteredFlags = flags.filter(f => f.label.includes('VCP JUMP'))
                             else if (liveSaleViolationFilter === 'emptyRow') filteredFlags = flags.filter(f => f.label.includes('EMPTY DATA'))
-                            else if (liveSaleViolationFilter !== 'withViolations') filteredFlags = []
+                            else if (liveSaleViolationFilter === 'netGain') filteredFlags = flags.filter(f => f.label.includes('NET GAIN'))
+                            else if (liveSaleViolationFilter === 'negSoh') filteredFlags = flags.filter(f => f.label.includes('NEGATIVE STOCK'))
+                            else if (liveSaleViolationFilter === 'acpGteSp') filteredFlags = flags.filter(f => f.label.includes('ACP > SP'))
+                            else if (liveSaleViolationFilter === 'noSp') filteredFlags = flags.filter(f => f.label.includes('MISSING SELLING PRICE'))
+                            else if (liveSaleViolationFilter === 'noCp') filteredFlags = flags.filter(f => f.label.includes('MISSING COST PRICE'))
+                            else if (liveSaleViolationFilter === 'noGroup') filteredFlags = flags.filter(f => f.label.includes('MISSING GROUP'))
                             return filteredFlags.map((f, i) => {
+                              // Strip the violation's own name down to just
+                              // its number/detail (if it has one) -- picking
+                              // this specific filter already says what the
+                              // problem is, repeating the name on every card
+                              // is redundant. Pure yes/no flags (no number
+                              // attached) end up blank and render nothing at
+                              // all -- the card's own tinted background
+                              // already shows something's flagged.
                               let displayLabel = f.label
-                              // Only strip violation name prefix when on a specific filter, not on All(V)
-                              if (liveSaleViolationFilter !== 'withViolations') {
-                                if (f.label.includes('DUPLICATE')) displayLabel = ''
-                                else if (f.label.includes('UNLINKED')) displayLabel = ''
-                                else if (f.label.includes('SERVICE')) displayLabel = ''
-                                else if (f.label.includes('NEGATIVE STOCK')) displayLabel = ''
-                                else if (f.label.includes('STOCK GAIN:')) displayLabel = f.label.replace('🔺 STOCK GAIN: ', '')
-                                else if (f.label.includes('SOLD BELOW COST')) displayLabel = f.label.replace('⚠ SOLD BELOW COST (history): ', '')
-                                else if (f.label.includes('VCP JUMP')) displayLabel = f.label.replace('⚠ VCP JUMP (history): ', '')
-                                else if (f.label.includes('MISSING SELLING PRICE')) displayLabel = ''
-                                else if (f.label.includes('MISSING COST PRICE')) displayLabel = ''
-                                else if (f.label.includes('MISSING GROUP')) displayLabel = ''
-                                else if (f.label.includes('EMPTY DATA')) displayLabel = f.label.replace('⚠ EMPTY DATA: ', '')
-                              }
+                              if (f.label.includes('DUPLICATE')) displayLabel = ''
+                              else if (f.label.includes('UNLINKED')) displayLabel = ''
+                              else if (f.label.includes('SERVICE')) displayLabel = ''
+                              else if (f.label.includes('NEGATIVE STOCK')) displayLabel = ''
+                              else if (f.label.includes('NET GAIN:')) displayLabel = f.label.replace('🔺 NET GAIN: ', '')
+                              else if (f.label.includes('SOLD BELOW COST')) displayLabel = f.label.replace('⚠ SOLD BELOW COST (history): ', '')
+                              else if (f.label.includes('VCP JUMP')) displayLabel = f.label.replace('⚠ VCP JUMP (history): ', '')
+                              else if (f.label.includes('ACP > SP')) displayLabel = ''
+                              else if (f.label.includes('MISSING SELLING PRICE')) displayLabel = ''
+                              else if (f.label.includes('MISSING COST PRICE')) displayLabel = ''
+                              else if (f.label.includes('MISSING GROUP')) displayLabel = ''
+                              else if (f.label.includes('EMPTY DATA')) displayLabel = f.label.replace('⚠ EMPTY DATA: ', '')
                               return displayLabel ? (
                                 <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
                                   {displayLabel}
                                 </div>
                               ) : null
                             })
-                          })()}
-                          {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'lossGain' && liveTradeOffByItemId.has(item.id) && (() => {
-                            const tradeOff = liveTradeOffByItemId.get(item.id)!
-                            const costPrice = Number(item.acp_price ?? item.cost_price ?? 0)
-                            const netAmount = Math.abs(tradeOff.net) * costPrice
-                            const isLoss = tradeOff.net > 0
-                            return (
-                              <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide ${isLoss ? 'bg-red-600' : 'bg-amber-600'}`}>
-                                <div className="text-[9px] font-bold">Current Status</div>
-                                <div className="truncate">{isLoss ? 'Loss' : 'Gain'} of {Math.abs(tradeOff.net)} units · ₵{formatPrice(netAmount)}</div>
-                                <div className="text-[9px] font-bold mt-0.5">Target Status</div>
-                                <div className="truncate">{isLoss ? 'Loss' : 'Gain'} of 0 units (Resolved)</div>
-                              </div>
-                            )
                           })()}
                           <div className="px-1 py-0.5 flex flex-col">
                             {liveSaleViolationFilter === 'countDue' ? (
@@ -7539,23 +7601,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     {item.product_type !== 'service' && (
                                       <>
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
-                                        {item.count_interval && liveSaleViolationFilter !== 'lossGain' && (
+                                        {item.count_interval && (
                                           <>
                                             <span className="text-gray-400"> · </span>
                                             <span className="text-gray-500">{shortCountInterval(item.count_interval)}</span>
                                           </>
                                         )}
-                                        {liveSaleViolationFilter !== 'lossGain' && (
-                                          <span className="text-gray-400"> · </span>
-                                        )}
+                                        <span className="text-gray-400"> · </span>
                                       </>
                                     )}
-                                    {item.product_type !== 'service' && liveSaleViolationFilter !== 'lossGain' && (
+                                    {item.product_type !== 'service' && (
                                       <>
                                         <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
                                       </>
                                     )}
-                                    {item.gmc_type && liveSaleViolationFilter !== 'lossGain' && (
+                                    {item.gmc_type && (
                                       <>
                                         <span className="text-gray-400"> · </span>
                                         <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
@@ -7591,7 +7651,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveGainCountByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected

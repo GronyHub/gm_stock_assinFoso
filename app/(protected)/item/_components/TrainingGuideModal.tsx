@@ -262,12 +262,12 @@ const TOPICS: Topic[] = [
     id: 'attention-banners',
     title: 'What do the colored warning banners mean, and how do I clear them?',
     group: 'Live tab',
-    keywords: 'negative stock duplicate service violation unlinked sale missing price cost group banner warning flag fix solve resolve merge link edit save tap click where',
+    keywords: 'negative stock duplicate service violation unlinked sale missing price cost group net gain net loss cost greater than selling price banner warning flag fix solve resolve merge link edit save tap click where all violations',
     body: (
       <div className="space-y-4">
-        <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. Only the single most serious one shows on the card (plus a "+N more" if there is more than one) -- worst first. Each one below has the exact taps to clear it.</p>
+        <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. There is no single "All violations" button any more -- each warning below is its own dedicated filter in the row above the grid, showing only items with that one problem and only that problem's badge on the card. Pick the specific one you want to work through; each one below has the exact taps to clear it.</p>
 
-        <Callout kind="warn">Tapping one of these flags in the current view flags panel only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, go to the <strong>Items</strong> tab to reach the fix buttons.</Callout>
+        <Callout kind="warn">Tapping one of these flags in the filter row only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, go to the <strong>Items</strong> tab to reach the fix buttons.</Callout>
 
         <div className="space-y-3">
           <div>
@@ -284,6 +284,28 @@ const TOPICS: Topic[] = [
               <>Fill in the empty <strong>Selling price</strong> / <strong>Cost price</strong> field, or pick/type a <strong>Group</strong>.</>,
               <>Tap <strong>Save</strong>. The banner clears immediately.</>,
             ]} />
+          </div>
+
+          <div>
+            <MiniBanner text="⚠ ACP > SP" bg="bg-red-600" />
+            <p className="text-xs text-gray-600 mt-1">Cost is the same as or higher than the selling price -- every sale of this item currently loses money.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
+            <Steps items={[
+              <>Open the item and compare its <strong>ACP (Average Cost Price)</strong> against its <strong>Selling Price</strong>.</>,
+              <>Either raise the selling price, or fix the bill that set the cost too high.</>,
+              <>The item drops off this list once the selling price is back above cost.</>,
+            ]} />
+          </div>
+
+          <div>
+            <MiniBanner text="🔺 NET GAIN: 4 · ₵120" bg="bg-red-600" />
+            <p className="text-xs text-gray-600 mt-1">Across all its counts, this item's total gains outweigh its total losses -- gains should never legitimately beat losses, so this is the one discrepancy that genuinely needs someone to look into it.</p>
+            <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
+            <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+              <li>Open the item and review its count history -- look for a miscount, an unrecorded receipt, or a duplicate/incorrect entry.</li>
+              <li>Correct whichever record caused the gain (a fresh count, or fixing the wrong one). The item drops off this list once resolved.</li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-2">The opposite case -- an item's total losses outweighing its gains -- is just ordinary shrinkage, not a violation. It shows up under the plain <strong>Net Loss</strong> view (black text, not red) instead, for browsing rather than fixing one by one.</p>
           </div>
 
           <div>
