@@ -1,8 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
 import StaffMemberModal, { type StaffMemberModalProps } from './StaffMemberModal'
+
+const TodayContent = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-gray-400 text-xs">Loading…</p> })
 
 type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; on_break: boolean; worked_seconds: number }
 type RosterEntry = { username: string; active: boolean }
@@ -33,23 +36,24 @@ function fmtHrMin(totalMinutes: number): string {
 // clock-in to now (or to clock-out time if already logged out) -- neither
 // applies to someone absent, so their chip has no second line. A trailing
 // "Total" entry sums both figures across everyone actually present today,
-// same format as each person's own entry -- clicking it opens Home (via
-// onTotalClick) rather than a per-person detail modal, since Home's own
-// announcement feed is the actual activity record the worked-time half of
-// every figure here is summed from. Tapping a person's own chip instead
-// opens their whole personal page (StaffMemberModal -- the same page the
-// pane's own "Staff Members" row opens, just as a modal here), landing on
-// its Times tab, rather than a narrow detail-only modal -- this works
-// identically whether they're present or absent today. Polls for new
-// activity/clock/break changes and ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ onTotalClick, roster, staffMemberModalProps }: {
-  onTotalClick?: () => void
+// same format as each person's own entry -- clicking it opens Home as an
+// inline modal (same treatment as a per-person chip below) rather than
+// navigating away to it, since Home's own announcement feed is the actual
+// activity record the worked-time half of every figure here is summed
+// from. Tapping a person's own chip instead opens their whole personal
+// page (StaffMemberModal -- the same page the pane's own "Staff Members"
+// row opens, just as a modal here), landing on its Times tab, rather than
+// a narrow detail-only modal -- this works identically whether they're
+// present or absent today. Polls for new activity/clock/break changes and
+// ticks its own clock every 30 seconds.
+export default function PresentStaffBar({ roster, staffMemberModalProps }: {
   roster: RosterEntry[]
   staffMemberModalProps: StaffMemberModalProps
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
+  const [homeModalOpen, setHomeModalOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -134,14 +138,27 @@ export default function PresentStaffBar({ onTotalClick, roster, staffMemberModal
             )}
           </button>
         ))}
-        <button type="button" onClick={onTotalClick} disabled={!onTotalClick} title="Open Home"
-          className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition disabled:hover:bg-gray-100">
+        <button type="button" onClick={() => setHomeModalOpen(true)} title="Open Home"
+          className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition">
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
         </button>
       </div>
       {selectedStaff && (
         <StaffMemberModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
+      )}
+      {homeModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setHomeModalOpen(false)}>
+          <div onClick={e => e.stopPropagation()} className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 shrink-0">
+              <p className="text-sm font-bold text-gray-900">🏠 Home</p>
+              <button onClick={() => setHomeModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2">
+              <TodayContent />
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
