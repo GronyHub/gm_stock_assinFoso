@@ -6557,7 +6557,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               Checks/Advert/Future/Quality Assurance/Unfortunate Events/App
               info) and "Team" (Team Times/Payments/Pen. Pts/Behaviour/Dress
               Code/Display/Meeting/Comp. Laws/Assessment/Rota/Logs) left-pane
-              sections into one radio list here, visually grouped, same "own
+              sections into one flat button row here -- one combined list, no
+              Manage/Team split, styled and arranged exactly like the outer
+              Sale/Log/Sales/Bills/Expenses/Manage tab switcher itself (only
+              one open at a time, content swaps in below), same "own
               liveMode tab" treatment Vendors/Customers/Purchase Orders/P&L/
               CAB already got. GronyManageContent/StaffContent are reused
               as-is -- neither reads lossView directly, both are driven
@@ -6579,77 +6582,64 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
-                <div className="md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto p-2 space-y-3">
-                  {canSeeManage && (
-                    <div>
-                      <p className="px-1 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">⚙️ Manage</p>
-                      <div className="space-y-0.5">
-                        {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => {
-                          const badge = item.key === 'opener' ? openerBadgeCount
-                            : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                            : undefined
-                          return (
-                            <label key={item.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-semibold">
-                              <input type="radio" name="liveManageRadio" className="cursor-pointer w-3 h-3 shrink-0"
-                                checked={liveManageSection === item.key} onChange={() => setLiveManageSection(item.key)} />
-                              <span>{item.icon}</span>
-                              <span className="flex-1 truncate">{item.label}</span>
-                              {!!badge && <span className="text-[9px] font-bold text-red-600">({badge})</span>}
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {canSeeTeam && (
-                    <div>
-                      <p className="px-1 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">👥 Team</p>
-                      <div className="space-y-0.5">
-                        {STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => (
-                          <label key={t.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-semibold">
-                            <input type="radio" name="liveManageRadio" className="cursor-pointer w-3 h-3 shrink-0"
-                              checked={liveManageSection === t.key} onChange={() => setLiveManageSection(t.key)} />
-                            <span>{t.icon}</span>
-                            <span className="flex-1 truncate">{t.label}</span>
-                            {(t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0) > 0 && (
-                              <span className="text-[9px] font-bold text-red-600">
-                                ({t.key === 'staff_dress' ? dressFlagsCount : staffTimesFlagsCount})
-                              </span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-h-0 overflow-y-auto p-2">
-                  {canSeeManage && MANAGE_VIEW_KEYS.has(liveManageSection) && (
+              <div className="px-1.5 py-1.5 bg-white border-b border-gray-200 flex items-center gap-1.5 flex-wrap">
+                {canSeeManage && applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => {
+                  const badge = item.key === 'opener' ? openerBadgeCount
+                    : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                    : 0
+                  const active = liveManageSection === item.key
+                  return (
+                    <button key={item.key} type="button" onClick={() => setLiveManageSection(item.key)}
+                      className={`font-bold rounded-md border transition whitespace-nowrap shrink-0 px-2 py-1 text-[10px] flex items-center gap-1 ${
+                        active ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+                      }`}>
+                      <span>{item.icon}</span>
+                      <span>{item.label}</span>
+                      {!!badge && <span className={active ? 'text-red-200' : 'text-red-600'}>({badge})</span>}
+                    </button>
+                  )
+                })}
+                {canSeeTeam && STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => {
+                  const badge = t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0
+                  const active = liveManageSection === t.key
+                  return (
+                    <button key={t.key} type="button" onClick={() => setLiveManageSection(t.key)}
+                      className={`font-bold rounded-md border transition whitespace-nowrap shrink-0 px-2 py-1 text-[10px] flex items-center gap-1 ${
+                        active ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
+                      }`}>
+                      <span>{t.icon}</span>
+                      <span>{t.label}</span>
+                      {badge > 0 && <span className={active ? 'text-red-200' : 'text-red-600'}>({badge})</span>}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                {canSeeManage && MANAGE_VIEW_KEYS.has(liveManageSection) && (
+                  <TabErrorBoundary>
+                    <GronyManageContent view={liveManageSection as ManageView}
+                      canManage={canManage} categoryIds={fixedCategoryIds}
+                      openerViolations={openerViolations}
+                      assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+                      onGoToViolation={goToViolation}
+                      missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+                      onOpenStaff={() => setLiveManageSection('teamTimes')}
+                      propertiesInitialTab={propertiesInitialTab} />
+                  </TabErrorBoundary>
+                )}
+                {canSeeTeam && STAFF_TEAM_ITEMS.some(t => t.key === liveManageSection) && (
+                  myStaffName ? (
                     <TabErrorBoundary>
-                      <GronyManageContent view={liveManageSection as ManageView}
-                        canManage={canManage} categoryIds={fixedCategoryIds}
-                        openerViolations={openerViolations}
-                        assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
-                        onGoToViolation={goToViolation}
-                        missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
-                        onOpenStaff={() => setLiveManageSection('teamTimes')}
-                        propertiesInitialTab={propertiesInitialTab} />
+                      <StaffContent key={liveManageSection} view={liveManageSection as StaffView}
+                        viewingName={viewingName} role={role} username={username}
+                        canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
+                        staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
+                        openAddSignal={staffTimeSignal} />
                     </TabErrorBoundary>
-                  )}
-                  {canSeeTeam && STAFF_TEAM_ITEMS.some(t => t.key === liveManageSection) && (
-                    myStaffName ? (
-                      <TabErrorBoundary>
-                        <StaffContent key={liveManageSection} view={liveManageSection as StaffView}
-                          viewingName={viewingName} role={role} username={username}
-                          canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
-                          staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
-                          openAddSignal={staffTimeSignal} />
-                      </TabErrorBoundary>
-                    ) : (
-                      <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
-                    )
-                  )}
-                </div>
+                  ) : (
+                    <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
+                  )
+                )}
               </div>
             </div>
           )}
