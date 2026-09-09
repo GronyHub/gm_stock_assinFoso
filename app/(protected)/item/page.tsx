@@ -256,12 +256,12 @@ const REPORT_VIEWS = new Set<LossView>([
 // off this pane entirely -- it's a liveMode tab now, same as Sales/Bills
 // (see the tab switcher and jumpToLiveSaleTab).
 // Purchase Orders/Vendors/Customers/P&L/CAB all dropped out of this list --
-// each is now a tab (or a radio sub-view of one) inside Items' own tab
-// switcher instead of its own pane row (Purchase Orders + Vendors inside
-// Bills, Customers inside Sales, P&L as its own tab with CAB folded in as
-// its radio sub-view -- see liveBillsShowPurchaseOrders/liveBillsShowVendors/
-// liveSalesShowCustomers/livePlShowCab), cutting a tap and keeping related
-// things together. Items is the only row left here as a result.
+// each is now a radio sub-view of a tab inside Items' own tab switcher
+// instead of its own pane row (Purchase Orders + Vendors inside Bills,
+// Customers inside Sales, P&L + CAB both inside Sale itself -- see
+// liveBillsShowPurchaseOrders/liveBillsShowVendors/liveSalesShowCustomers/
+// liveSaleFinanceView), cutting a tap and keeping related things together.
+// Items is the only row left here as a result.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
 ]
@@ -848,9 +848,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'pl'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -2241,11 +2241,13 @@ function ItemHubPageInner() {
   // <ExpenseOrdersPanel> the sidebar's menu item opens full-screen, but
   // rendered inline here instead of navigating away.
   const [liveExpensesShowOrders, setLiveExpensesShowOrders] = useState(false)
-  // CAB radio inside the P&L tab -- CAB has no CASH_ITEMS row of its own
-  // any more either (see CASH_ITEMS), and it's just one simple view (not a
-  // whole tab's worth of content), so it folds into P&L as a sub-view
-  // rather than getting its own liveMode.
-  const [livePlShowCab, setLivePlShowCab] = useState(false)
+  // P&L/CAB radio inside Sale mode -- P&L no longer has its own liveMode tab
+  // (see renderTabSwitcher); both it and CAB fold in here instead as
+  // mutually-exclusive radios alongside the tap-to-sell grid, same
+  // "exclusive view selector" treatment as Bills' Purchase Orders/Vendors
+  // radios. null means the normal Sale grid; otherwise which finance view
+  // replaces it. Owner/Joe-only, same gate the old P&L tab used.
+  const [liveSaleFinanceView, setLiveSaleFinanceView] = useState<'pl' | 'cab' | null>(null)
   const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
   const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
   const [liveExpensesShowAnalytics, setLiveExpensesShowAnalytics] = useState(false)
@@ -4300,12 +4302,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
-        {/* P&L has no CASH_ITEMS row of its own any more (see CASH_ITEMS)
-            -- it's a tab here instead, same as Sales/Bills/Expenses. Still
-            owner/Joe-only, same gate the old pane row used. */}
-        {canSeePL && (
-          <button type="button" onClick={() => { setItemsPageMode('pl'); setLiveMode('pl') }} title="P&L" className={btnCls(itemsPageMode === 'pl', 'bg-purple-600')}>P&amp;L</button>
-        )}
       </div>
     )
   }
@@ -6570,43 +6566,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
 
-          {/* P&L tab -- moved here from its own sidebar destination (Grony
-              Cash's left pane), same "own liveMode tab" treatment
-              Sales/Bills/Expenses already got. CAB folds in as a radio
-              sub-view of P&L rather than getting its own liveMode -- it's
-              one simple view, not a whole tab's worth of content, and it's
-              closely related (both are money-position summaries). */}
-          {canSeePL && liveMode === 'pl' && (
-            <div className={liveRootClassName}>
-              {liveExpanded && (
-                <button
-                  type="button"
-                  onClick={() => setLiveExpanded(false)}
-                  title="Exit large screen"
-                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
-                >
-                  ✕
-                </button>
-              )}
-              {renderModeToggleRow()}
-              <div className="px-1.5 py-1 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
-                  <input type="radio" name="livePlRadio" checked={!livePlShowCab} onChange={() => setLivePlShowCab(false)} className="cursor-pointer w-2.5 h-2.5" />
-                  <span>P&amp;L</span>
-                </label>
-                <label title="Cash at Bank, opened inline" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="livePlRadio" checked={livePlShowCab} onChange={() => setLivePlShowCab(true)} className="cursor-pointer w-2.5 h-2.5" />
-                  CAB
-                </label>
-              </div>
-              {livePlShowCab ? (
-                <div className="flex-1 overflow-auto"><CABTab openConfirmSignal={cabConfirmSignal} /></div>
-              ) : (
-                <div className="flex-1 overflow-auto"><ProfitLossTab /></div>
-              )}
-            </div>
-          )}
-
           {/* Every count-related view that used to only be reachable through the
               laws panel (⚖️) on Sale mode: Daily/Every Nd/Dormant/etc
               (liveCountIntervalFlags), Count Records (the full all-time history
@@ -6632,6 +6591,36 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </button>
             )}
             {renderModeToggleRow()}
+
+            {/* P&L/CAB radios -- neither has its own liveMode tab any more
+                (see renderTabSwitcher); both fold in here instead as
+                mutually-exclusive radios alongside the tap-to-sell grid,
+                same "exclusive view selector" treatment as Bills' Purchase
+                Orders/Vendors radios. Owner/Joe-only, same gate the old P&L
+                tab used -- regular staff never see this row, so Sale mode
+                looks exactly as it always has for them. */}
+            {canSeePL && (
+              <div className="px-1.5 py-1 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
+                  <input type="radio" name="liveSaleFinanceRadio" checked={!liveSaleFinanceView} onChange={() => setLiveSaleFinanceView(null)} className="cursor-pointer w-2.5 h-2.5" />
+                  <span>Sale</span>
+                </label>
+                <label title="Profit & Loss, opened inline" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSaleFinanceRadio" checked={liveSaleFinanceView === 'pl'} onChange={() => setLiveSaleFinanceView('pl')} className="cursor-pointer w-2.5 h-2.5" />
+                  P&amp;L
+                </label>
+                <label title="Cash at Bank, opened inline" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
+                  <input type="radio" name="liveSaleFinanceRadio" checked={liveSaleFinanceView === 'cab'} onChange={() => setLiveSaleFinanceView('cab')} className="cursor-pointer w-2.5 h-2.5" />
+                  CAB
+                </label>
+              </div>
+            )}
+            {liveSaleFinanceView ? (
+              <div className="flex-1 overflow-auto">
+                {liveSaleFinanceView === 'cab' ? <CABTab openConfirmSignal={cabConfirmSignal} /> : <ProfitLossTab />}
+              </div>
+            ) : (
+            <div className="contents">
 
             {/* Filter Bar -- Green bar at top, shown only while liveExpanded
                 (this component's own top green bar already covers the
@@ -7875,6 +7864,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             })()}
 
             </>)}
+            </div>
+            )}
           </div>
 
           {/* Item detail popup -- opened by tapping an item's name, instead of
