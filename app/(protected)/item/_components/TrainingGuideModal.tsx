@@ -62,15 +62,11 @@ const TOPICS: Topic[] = [
         <div className="space-y-2">
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Cash</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Items -- one tab switcher holding Sale, Log, Sales, Bills, and Expenses. Purchase Orders and Vendors are radio-buttoned inside Bills, Customers inside Sales, Expense Orders inside Expenses, and P&amp;L + CAB inside Sale itself (owner and Joe only) -- see the next topic.</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">Items -- one tab switcher holding Sale, Log, Sales, Bills, Expenses, and Manage. Purchase Orders and Vendors are radio-buttoned inside Bills, Customers inside Sales, Expense Orders inside Expenses, P&amp;L + CAB inside Sale itself (owner and Joe only), and Manage/Team inside Manage -- see the next topic.</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Manage</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Opener, Closer, Grony Checks (Arrangement, Cleanliness, Customer Display, Repair Works, and more, nested inside it), Advert (Audio, Advert Status, Jingle Log, Equipment Check, and more, nested inside it), Future, Quality Assurance, Unfortunate Events, App info.</p>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Team</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Team Times, Team Payments, Team Penalty Points, Team Behaviour, Team Dress Code, Team Display, Team Meeting, Team Company Laws Agreement, Team Assessment, Team Rota, Team Logs -- everything about staff as a whole.</p>
+            <p className="text-xs font-bold text-gray-800">Manage (a tab, not a pane row)</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">One radio list split into two groups. Manage: Opener, Closer, Grony Checks (Arrangement, Cleanliness, Customer Display, Repair Works, and more, nested inside it), Advert (Audio, Advert Status, Jingle Log, Equipment Check, and more, nested inside it), Future, Quality Assurance, Unfortunate Events, App info. Team: Team Times, Team Payments, Team Penalty Points, Team Behaviour, Team Dress Code, Team Display, Team Meeting, Team Company Laws Agreement, Team Assessment, Team Rota, Team Logs -- everything about staff as a whole.</p>
           </div>
           <div className="border border-gray-200 rounded-lg p-2">
             <p className="text-xs font-bold text-gray-800">Staff Members</p>
@@ -107,7 +103,7 @@ const TOPICS: Topic[] = [
     keywords: 'clock in out opener closer gps location closing report time break',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Clock in and out from <strong>Team → Team Times</strong>. It's GPS-checked -- you have to actually be at the shop, or it won't let you.</p>
+        <p className="text-sm text-gray-700">Clock in and out from <strong>Manage → Team Times</strong> (the Manage tab on Items' own tab switcher). It's GPS-checked -- you have to actually be at the shop, or it won't let you.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Opener 🌅</strong> -- whoever clocks in earliest that day.</li>
           <li><strong>Closer 🌙</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire (was the advert played, any property issue, a new customer, etc).</li>
@@ -124,7 +120,7 @@ const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <p className="text-sm text-gray-700">That row (the "Role Bar") doesn't exist any more. It used to be the one place every outstanding issue count showed up.</p>
-        <p className="text-sm text-gray-700">Those counts didn't disappear -- they moved to sit directly on whatever they're actually about: Opener and Closer are now their own rows under Manage (each showing its own badge), and every other flag/violation count shows up right on the page it belongs to (Items, Sales, Bills, and so on).</p>
+        <p className="text-sm text-gray-700">Those counts didn't disappear -- they moved to sit directly on whatever they're actually about: Opener and Closer are now their own radio buttons under the Manage tab (each showing its own badge), and every other flag/violation count shows up right on the page it belongs to (Items, Sales, Bills, and so on).</p>
       </div>
     ),
   },

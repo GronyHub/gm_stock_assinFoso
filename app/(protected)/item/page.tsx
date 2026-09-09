@@ -849,9 +849,19 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage'>(initialLiveMode)
+  // Manage tab -- folds the old "Manage"/"Team" left-pane sections into one
+  // radio-list here (see MANAGE_LIST_ITEMS/STAFF_TEAM_ITEMS below), same
+  // "own liveMode tab" treatment Vendors/Customers/Purchase Orders/P&L/CAB
+  // already got. Holds whichever key (a ManageView or a STAFF_TEAM_ITEMS
+  // key) is currently selected; GronyManageContent/StaffContent are the
+  // exact same content components the old lossView-driven routes still use
+  // (kept intact for pickLossView-based quick actions/search results and
+  // the permission-bounce guard) -- this just drives them from local state
+  // instead of lossView so switching stays inside the Manage tab.
+  const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -1271,9 +1281,6 @@ function ItemHubPageInner() {
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
   const countsFlagsCount = violationCountByType(['daily', '7day', '15day'])
   const lossByDateFlagsCount = violationCountByType(['gains'])
-  const jingleFlagsCount = violationCountByType(['jingle_overdue'])
-  const equipmentFlagsCount = violationCountByType(['equipment_check_overdue'])
-  const advertStatusFlagsCount = violationCountByType(['no_advert'])
   // These three pages' own flags (Expenses' similar-account/bundled-
   // description/no-vendor, Customers' and Vendors' missing-contact-info)
   // never went through the centralized violations system above -- they're
@@ -4302,6 +4309,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
         <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => { setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
+        {(canSeeManage || canSeeTeam) && (
+          <button type="button" onClick={() => { setItemsPageMode('manage'); setLiveMode('manage') }} title="Manage" className={btnCls(itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
+        )}
       </div>
     )
   }
@@ -5290,56 +5300,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
             )}
 
-            {canSeeManage && (
-            <div className="mt-1 pt-1 border-t border-white/30">
-              {(() => {
-                const orderedItems = applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key])
-                const runs = buildPaneRuns(orderedItems)
-                const flatRows = flattenPaneRuns(runs, MANAGE_GROUP_LABELS)
-                return flatRows.map((row, idx) => {
-                  const entry = row.item
-                  const badge = entry.key === 'opener' ? openerBadgeCount
-                    : entry.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                    : entry.key === 'jingle' ? jingleFlagsCount
-                    : entry.key === 'equipment' ? equipmentFlagsCount
-                    : entry.key === 'audio_status' ? advertStatusFlagsCount
-                    : undefined
-                  return (
-                    <Fragment key={`${entry.key}-${idx}`}>
-                      {row.header && (
-                        <div className="flex items-center gap-1.5 px-1 py-1 text-[9px] font-bold text-blue-200 uppercase tracking-wide">
-                          <span className="text-sm">{MANAGE_GROUP_ICONS[row.header] || '•'}</span>
-                          <span>{row.header}</span>
-                        </div>
-                      )}
-                      <SidePaneButton icon={entry.icon} label={paneLabel(entry.key, entry.label)} mode={cashDisplayMode} divider={row.divider}
-                        active={paneActive(lossView === entry.key)} badge={badge}
-                        taskBadge={taskCountFor(entry.label)}
-                        onClick={() => pickLossView(entry.key)} />
-                    </Fragment>
-                  )
-                })
-              })()}
-            </div>
-            )}
-
-            {/* Team -- everyone's records, as opposed to Personal's just-
-                your-own. Used to live tucked inside Settings' "Viewing"
-                section; pulled out into its own labeled block here so the
-                four kinds of thing in this pane (Cash/Manage/Team/Personal)
-                read as four distinct sections instead of two of them being
-                hidden behind a gear icon. */}
-            {canSeeTeam && (
-              <div className="mt-1 pt-1 border-t border-white/30">
-                {STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map((t, i) => (
-                  <SidePaneButton key={t.key} icon={t.icon} label={paneLabel(t.key, t.label)} mode={cashDisplayMode} divider={i > 0}
-                    active={paneActive(lossView === t.key)}
-                    badge={t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : undefined}
-                    taskBadge={taskCountFor(t.label)}
-                    onClick={() => pickLossView(t.key)} />
-                ))}
-              </div>
-            )}
+            {/* Manage/Team pane rows retired -- both folded into the "Manage"
+                tab on the Items hub's own internal tab switcher (see
+                liveMode === 'manage' above), same move Cash's
+                Vendors/Customers/Purchase Orders/P&L/CAB rows already made.
+                GronyManageContent/StaffContent are the same components,
+                just driven by liveManageSection there instead of lossView
+                here -- pickLossView(...) quick actions/search results and
+                the permission-bounce guard above still target these
+                MANAGE_VIEW_KEYS/STAFF_TEAM_ITEMS keys directly, so those and
+                the lossView-driven render blocks lower in this file are
+                left intact. */}
 
             {canSeeTeam && activeStaff.length > 0 && (
               <div className="mt-1 pt-1 border-t border-white/30">
@@ -6579,6 +6550,107 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onAccountOptionsChange={setLiveExpensesAccountOptions} />
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Manage tab -- folds the old "Manage" (Opener/Closer/Grony
+              Checks/Advert/Future/Quality Assurance/Unfortunate Events/App
+              info) and "Team" (Team Times/Payments/Pen. Pts/Behaviour/Dress
+              Code/Display/Meeting/Comp. Laws/Assessment/Rota/Logs) left-pane
+              sections into one radio list here, visually grouped, same "own
+              liveMode tab" treatment Vendors/Customers/Purchase Orders/P&L/
+              CAB already got. GronyManageContent/StaffContent are reused
+              as-is -- neither reads lossView directly, both are driven
+              purely by their `view` prop plus the other explicit props
+              below, so this just points `view` at liveManageSection instead
+              of lossView. onOpenStaff (Closer's "Go to Staff →" button) is
+              rewired to flip liveManageSection to Team Times locally rather
+              than navigating away via pickLossView. */}
+          {liveMode === 'manage' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
+                <div className="md:w-52 shrink-0 border-b md:border-b-0 md:border-r border-gray-200 overflow-y-auto p-2 space-y-3">
+                  {canSeeManage && (
+                    <div>
+                      <p className="px-1 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">⚙️ Manage</p>
+                      <div className="space-y-0.5">
+                        {applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => {
+                          const badge = item.key === 'opener' ? openerBadgeCount
+                            : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                            : undefined
+                          return (
+                            <label key={item.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-semibold">
+                              <input type="radio" name="liveManageRadio" className="cursor-pointer w-3 h-3 shrink-0"
+                                checked={liveManageSection === item.key} onChange={() => setLiveManageSection(item.key)} />
+                              <span>{item.icon}</span>
+                              <span className="flex-1 truncate">{item.label}</span>
+                              {!!badge && <span className="text-[9px] font-bold text-red-600">({badge})</span>}
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {canSeeTeam && (
+                    <div>
+                      <p className="px-1 mb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">👥 Team</p>
+                      <div className="space-y-0.5">
+                        {STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => (
+                          <label key={t.key} className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs cursor-pointer hover:bg-gray-100 has-[:checked]:bg-indigo-50 has-[:checked]:text-indigo-700 has-[:checked]:font-semibold">
+                            <input type="radio" name="liveManageRadio" className="cursor-pointer w-3 h-3 shrink-0"
+                              checked={liveManageSection === t.key} onChange={() => setLiveManageSection(t.key)} />
+                            <span>{t.icon}</span>
+                            <span className="flex-1 truncate">{t.label}</span>
+                            {(t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0) > 0 && (
+                              <span className="text-[9px] font-bold text-red-600">
+                                ({t.key === 'staff_dress' ? dressFlagsCount : staffTimesFlagsCount})
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                  {canSeeManage && MANAGE_VIEW_KEYS.has(liveManageSection) && (
+                    <TabErrorBoundary>
+                      <GronyManageContent view={liveManageSection as ManageView}
+                        canManage={canManage} categoryIds={fixedCategoryIds}
+                        openerViolations={openerViolations}
+                        assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+                        onGoToViolation={goToViolation}
+                        missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+                        onOpenStaff={() => setLiveManageSection('teamTimes')}
+                        propertiesInitialTab={propertiesInitialTab} />
+                    </TabErrorBoundary>
+                  )}
+                  {canSeeTeam && STAFF_TEAM_ITEMS.some(t => t.key === liveManageSection) && (
+                    myStaffName ? (
+                      <TabErrorBoundary>
+                        <StaffContent key={liveManageSection} view={liveManageSection as StaffView}
+                          viewingName={viewingName} role={role} username={username}
+                          canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
+                          staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
+                          openAddSignal={staffTimeSignal} />
+                      </TabErrorBoundary>
+                    ) : (
+                      <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
+                    )
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
