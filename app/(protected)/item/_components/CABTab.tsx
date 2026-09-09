@@ -1,8 +1,6 @@
 'use client'
-import { useState, useEffect, useMemo, Fragment } from 'react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, useMemo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
-import { CATEGORIES, CAT_ICON, CAT_COLOR, CHILDREN_SUBCATEGORIES, type PersonalEntry } from './PersonalTab'
 import AssignWidget from './AssignWidget'
 
 type Row = {
@@ -63,11 +61,15 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
   )
 }
 
+// Grony's personal spending used to have its own embedded "Personal"
+// checkbox/view right here (add/edit/delete/split against
+// grony_personal_ledger) -- moved out entirely to C&H's own "Personal
+// Expenses" row (CHTab.tsx, reusing PersonalTab.tsx), since it's Grony's own
+// money, not the shop's. The GP In/GP Out columns below are untouched by
+// that move -- they read from cash_at_bank_view, which already aggregates
+// grony_personal_ledger by date regardless of which screen an entry was
+// typed in from.
 export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: number } = {}) {
-  const { data: session } = useSession()
-  const role = (session?.user as any)?.role ?? 'staff'
-  const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
-  const isOwnerOrJoe = role === 'owner' || username === 'joe'
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [flags, setFlags] = useState<any | null>(null)
@@ -76,10 +78,6 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
-  const [gpOutOnly, setGpOutOnly] = useState(false)
-  const [personalDirection, setPersonalDirection] = useState<'out' | 'in'>('out')
-  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set())
-  const [byCategory, setByCategory] = useState(false)
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -87,26 +85,6 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
   const [confirmPhysical, setConfirmPhysical] = useState('')
   const [confirmSaving, setConfirmSaving] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
-  const [personalEntries, setPersonalEntries] = useState<PersonalEntry[]>([])
-  const [showAddPersonal, setShowAddPersonal] = useState(false)
-  const [addDate, setAddDate] = useState('')
-  const [addDesc, setAddDesc] = useState('')
-  const [addAmt, setAddAmt] = useState('')
-  const [addDir, setAddDir] = useState<'out' | 'in'>('out')
-  const [addCat, setAddCat] = useState('Other')
-  const [addCatCustom, setAddCatCustom] = useState(false)
-  const [addSubcat, setAddSubcat] = useState('')
-  const [addNotes, setAddNotes] = useState('')
-  const [addSaving, setAddSaving] = useState(false)
-  const [editEntryId, setEditEntryId] = useState<number | null>(null)
-  const [editEntryCat, setEditEntryCat] = useState('')
-  const [editEntryCatCustom, setEditEntryCatCustom] = useState(false)
-  const [editEntrySubcat, setEditEntrySubcat] = useState('')
-  const [deleteEntryConfirmId, setDeleteEntryConfirmId] = useState<number | null>(null)
-  const [openEntryRow, setOpenEntryRow] = useState<number | null>(null)
-  const [splitEntryId, setSplitEntryId] = useState<number | null>(null)
-  const [splitParts, setSplitParts] = useState<{ description: string; amount: string }[]>([])
-  const [splitSaving, setSplitSaving] = useState(false)
 
   function loadRows() {
     fetch('/api/cash-at-bank')
@@ -114,48 +92,6 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
       .then(d => { setRows(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }
-
-  useEffect(() => {
-    if (!isOwnerOrJoe) return
-    fetch('/api/personal')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => setPersonalEntries(Array.isArray(d) ? d : []))
-      .catch(() => {})
-  }, [isOwnerOrJoe])
-
-  // Personal entries for the selected direction, keyed by date -- lets the
-  // Personal view show which entries (item + category) made up that day's
-  // total. The In/Out toggle is what keeps this in sync with what Personal
-  // itself shows (both directions), not just GP Out.
-  const personalOutByDate = useMemo(() => {
-    const map = new Map<string, PersonalEntry[]>()
-    for (const e of personalEntries) {
-      if (e.direction !== personalDirection) continue
-      const d = String(e.entry_date).slice(0, 10)
-      if (!map.has(d)) map.set(d, [])
-      map.get(d)!.push(e)
-    }
-    return map
-  }, [personalEntries, personalDirection])
-
-  // The Personal (GP Out only) view is built straight from
-  // grony_personal_ledger, not from cash_at_bank rows -- cash_at_bank only
-  // has a row for a date when some other shop transaction (sale/expense/
-  // bill/etc.) "ensured" one, and it's capped to the last 90 days, so
-  // driving this view off it silently dropped Personal entries on days
-  // with no other activity, or older than 90 days.
-  const personalOutRows = useMemo(() => {
-    return Array.from(personalOutByDate.entries())
-      .map(([date, entries]) => ({ date, total: entries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0), entries }))
-      .sort((a, b) => b.date.localeCompare(a.date))
-  }, [personalOutByDate])
-
-  // Fixed CATEGORIES plus any custom category already in use, so a category
-  // typed in via "+ Add new category…" stays selectable/filterable.
-  const personalAllCategories = useMemo(() => {
-    const custom = personalEntries.map(e => e.category).filter((c): c is string => !!c && !CATEGORIES.includes(c))
-    return [...CATEGORIES, ...Array.from(new Set(custom)).sort()]
-  }, [personalEntries])
 
   useEffect(() => { loadRows() }, [])
 
@@ -234,225 +170,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
   const visibleWeeks = onlyUnconfirmed ? weeks.filter(w => !w.confirmed) : weeks
   const confirmedRows = rows.filter(r => r.cab_total != null && Number(r.cab_total) !== 0)
   const baseDailyRows = confirmedColsOnly ? confirmedRows : rows
-  function toggleCategory(cat: string) {
-    setCategoryFilter(prev => {
-      const next = new Set(prev)
-      if (next.has(cat)) next.delete(cat); else next.add(cat)
-      return next
-    })
-  }
-
-  function openAddPersonal() {
-    setAddDate(new Date().toISOString().slice(0, 10))
-    setAddDesc(''); setAddAmt(''); setAddDir(personalDirection); setAddCat('Other'); setAddCatCustom(false); setAddSubcat(''); setAddNotes('')
-    setShowAddPersonal(true)
-  }
-
-  async function addPersonalEntry() {
-    if (!addDate || !addDesc || !addAmt) return
-    setAddSaving(true)
-    const subcategory = addCat === 'Children' ? (addSubcat || null) : null
-    const res = await fetch('/api/personal', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entry_date: addDate, description: addDesc, amount: parseFloat(addAmt), direction: addDir, category: addCat, subcategory, notes: addNotes || null }),
-    })
-    const data = await res.json()
-    setAddSaving(false)
-    if (data.id) {
-      setPersonalEntries(prev => [{ id: data.id, entry_date: addDate, description: addDesc, amount: addAmt, direction: addDir, category: addCat, subcategory, notes: addNotes || null, needs_review: false }, ...prev])
-      setShowAddPersonal(false)
-    }
-  }
-
-  async function saveEntryCategory(id: number) {
-    const subcategory = editEntryCat === 'Children' ? (editEntrySubcat || null) : null
-    await fetch('/api/personal', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, category: editEntryCat, subcategory }),
-    })
-    setPersonalEntries(prev => prev.map(e => e.id === id ? { ...e, category: editEntryCat, subcategory } : e))
-    setEditEntryId(null)
-    setEditEntryCatCustom(false)
-  }
-
-  async function deleteEntry(id: number) {
-    await fetch('/api/personal', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    setPersonalEntries(prev => prev.filter(e => e.id !== id))
-    setDeleteEntryConfirmId(null)
-  }
-
-  function toggleEntryRow(id: number) {
-    setOpenEntryRow(prev => prev === id ? null : id)
-    setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null); setSplitEntryId(null)
-  }
-
-  // Some ledger entries were bulk-imported with two or three items merged
-  // into one description/amount (e.g. "Maa Julie TNT = 100, Children's
-  // Coupon = 140"). Splitting keeps the original id for the first part
-  // (so its history stays attached) and creates a fresh entry per
-  // additional part on the same date/direction/category.
-  function openSplit(e: PersonalEntry) {
-    setSplitEntryId(e.id)
-    setSplitParts([{ description: e.description, amount: e.amount }, { description: '', amount: '' }])
-    setEditEntryId(null); setEditEntryCatCustom(false); setDeleteEntryConfirmId(null)
-  }
-
-  function updateSplitPart(i: number, field: 'description' | 'amount', value: string) {
-    setSplitParts(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p))
-  }
-
-  async function saveSplit(entry: PersonalEntry) {
-    const valid = splitParts.filter(p => p.description.trim() && p.amount.trim())
-    if (valid.length < 2) return
-    setSplitSaving(true)
-    const [first, ...rest] = valid
-    await fetch('/api/personal', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: entry.id, description: first.description, amount: parseFloat(first.amount), needs_review: false }),
-    })
-    const newEntries: PersonalEntry[] = []
-    for (const part of rest) {
-      const res = await fetch('/api/personal', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entry_date: entry.entry_date, description: part.description, amount: parseFloat(part.amount),
-          direction: entry.direction, category: entry.category ?? 'Other', subcategory: entry.subcategory, notes: entry.notes, needs_review: false,
-        }),
-      })
-      const data = await res.json()
-      if (data.id) {
-        newEntries.push({
-          id: data.id, entry_date: entry.entry_date, description: part.description, amount: part.amount,
-          direction: entry.direction, category: entry.category, subcategory: entry.subcategory, notes: entry.notes, needs_review: false,
-        })
-      }
-    }
-    setPersonalEntries(prev => [
-      ...prev.map(e => e.id === entry.id ? { ...e, description: first.description, amount: first.amount, needs_review: false } : e),
-      ...newEntries,
-    ])
-    setSplitSaving(false)
-    setSplitEntryId(null)
-    setSplitParts([])
-  }
-
-  // Shared by both the By Category cell panel and the plain GP Out row
-  // panel -- same Recategorize/Split/Remove controls either way, just
-  // triggered from a different tap target.
-  function renderEntryEditor(e: PersonalEntry) {
-    const cat = e.category ?? 'Other'
-    if (splitEntryId === e.id) {
-      return (
-        <div key={e.id} className="bg-white border border-blue-200 rounded-lg px-2 py-2 space-y-1.5">
-          <p className="text-[10px] font-semibold text-gray-600">
-            Split into {splitParts.length} — total {fmtn(splitParts.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0))}
-            {' '}(original {fmtn(parseFloat(e.amount))})
-          </p>
-          {splitParts.map((p, pi) => (
-            <div key={pi} className="flex items-center gap-1">
-              <input value={p.description} onChange={ev => updateSplitPart(pi, 'description', ev.target.value)} placeholder="Description"
-                className="flex-1 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
-              <input type="number" min="0" step="any" value={p.amount} onChange={ev => updateSplitPart(pi, 'amount', ev.target.value)} placeholder="Amount"
-                className="w-20 border border-gray-200 rounded px-1.5 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
-              {splitParts.length > 2 && (
-                <button onClick={() => setSplitParts(prev => prev.filter((_, idx) => idx !== pi))}
-                  className="text-[10px] text-gray-400 hover:text-red-500">✕</button>
-              )}
-            </div>
-          ))}
-          <div className="flex items-center gap-2">
-            <button onClick={() => setSplitParts(prev => [...prev, { description: '', amount: '' }])}
-              className="text-[10px] text-blue-600 hover:underline">+ Add part</button>
-            <button onClick={() => saveSplit(e)} disabled={splitSaving || splitParts.filter(p => p.description.trim() && p.amount.trim()).length < 2}
-              className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold disabled:opacity-40">
-              {splitSaving ? 'Saving…' : 'Save Split'}
-            </button>
-            <button onClick={() => { setSplitEntryId(null); setSplitParts([]) }}
-              className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">Cancel</button>
-          </div>
-        </div>
-      )
-    }
-    return (
-      <div key={e.id} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-800">{e.description}{e.subcategory ? ` (${e.subcategory})` : ''}</p>
-          <p className="text-[10px] text-gray-400">{fmtn(parseFloat(e.amount))}</p>
-          {e.needs_review && (
-            <span className="inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
-          )}
-        </div>
-        {editEntryId === e.id ? (
-          editEntryCatCustom ? (
-            <div className="flex items-center gap-1 shrink-0">
-              <input value={editEntryCat} onChange={ev => setEditEntryCat(ev.target.value)} placeholder="New category" autoFocus
-                className="w-28 border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none" />
-              <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
-              <button onClick={() => { setEditEntryId(null); setEditEntryCatCustom(false) }} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-              <select value={editEntryCat} onChange={ev => {
-                  if (ev.target.value === '__new__') { setEditEntryCatCustom(true); setEditEntryCat('') } else setEditEntryCat(ev.target.value)
-                  setEditEntrySubcat('')
-                }}
-                className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
-                {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                <option value="__new__">+ Add new category…</option>
-              </select>
-              {editEntryCat === 'Children' && (
-                <select value={editEntrySubcat} onChange={ev => setEditEntrySubcat(ev.target.value)}
-                  className="border border-blue-300 rounded px-1.5 py-0.5 text-[10px] outline-none">
-                  <option value="">Which child?</option>
-                  {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              )}
-              <button onClick={() => saveEntryCategory(e.id)} className="text-[10px] px-1.5 py-0.5 bg-blue-600 text-white rounded font-semibold">Save</button>
-              <button onClick={() => setEditEntryId(null)} className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
-            </div>
-          )
-        ) : (
-          <div className="flex items-center gap-1.5 shrink-0">
-            {deleteEntryConfirmId === e.id ? (
-              <>
-                <span className="text-[10px] text-gray-500">Remove?</span>
-                <button onClick={() => deleteEntry(e.id)} className="text-[10px] text-red-600 font-semibold hover:underline">Yes</button>
-                <button onClick={() => setDeleteEntryConfirmId(null)} className="text-[10px] text-gray-500 hover:underline">No</button>
-              </>
-            ) : (
-              <>
-                <button onClick={() => { setEditEntryId(e.id); setEditEntryCat(cat); setEditEntryCatCustom(false); setEditEntrySubcat(e.subcategory ?? '') }}
-                  className="text-[10px] text-blue-600 hover:underline">Recategorize</button>
-                <button onClick={() => openSplit(e)} className="text-[10px] text-purple-600 hover:underline">Split</button>
-                <button onClick={() => setDeleteEntryConfirmId(e.id)} className="text-[10px] text-red-500 hover:underline">Remove</button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-
   const displayRows = baseDailyRows
-  const personalAmountLabel = personalDirection === 'out' ? 'GP Out' : 'Received'
-  const personalAmountCls = personalDirection === 'out' ? 'text-orange-500' : 'text-green-600'
-
-  // Flattened one row per entry -- entries sharing a date (most visibly two
-  // parts of the same Split) used to get summed into one row/cell, which
-  // undid the whole point of splitting them apart. Each entry keeps its own
-  // row everywhere in this view now; only which entries show is filtered.
-  const personalOutEntryRows = personalOutRows.flatMap(r => r.entries.map(e => ({ date: r.date, entry: e })))
-  const filteredPersonalOutEntryRows = categoryFilter.size === 0
-    ? personalOutEntryRows
-    : personalOutEntryRows.filter(({ entry: e }) => categoryFilter.has(e.category ?? 'Other'))
-
-  // By Category pivots the same entries into one column per category -- the
-  // checkbox filter picks which categories become columns instead of
-  // narrowing which rows show, since every column here is one category.
-  const pivotCategories = categoryFilter.size === 0
-    ? personalAllCategories.filter(cat => personalOutRows.some(r => r.entries.some(e => (e.category ?? 'Other') === cat)))
-    : personalAllCategories.filter(cat => categoryFilter.has(cat))
-  const pivotEntryRows = personalOutEntryRows.filter(({ entry: e }) => pivotCategories.includes(e.category ?? 'Other'))
 
   // Per confirmed day: does prior confirmed total + net movement since then
   // (a running total spanning only that one gap) land on this day's
@@ -533,125 +251,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
             Confirmed CAB check
           </label>
         )}
-        {!showWeekly && !confirmedColsOnly && (
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-            <input type="checkbox" checked={gpOutOnly} onChange={() => setGpOutOnly(o => !o)}
-              className="w-3 h-3 accent-blue-600" />
-            Personal
-          </label>
-        )}
       </div>
-
-      {!showWeekly && gpOutOnly && (
-        <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50 shrink-0">
-          <button onClick={openAddPersonal}
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-blue-600 text-white hover:bg-blue-700">
-            + Add
-          </button>
-          <div className="flex gap-1 bg-gray-100 rounded p-0.5">
-            <button onClick={() => setPersonalDirection('out')}
-              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${personalDirection === 'out' ? 'bg-orange-500 text-white' : 'text-gray-600'}`}>
-              Out
-            </button>
-            <button onClick={() => setPersonalDirection('in')}
-              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${personalDirection === 'in' ? 'bg-green-600 text-white' : 'text-gray-600'}`}>
-              In
-            </button>
-          </div>
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-            <input type="checkbox" checked={byCategory} onChange={() => setByCategory(o => !o)}
-              className="w-3 h-3 accent-blue-600" />
-            By Category
-          </label>
-          {personalAllCategories.map(cat => (
-            <label key={cat} className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
-              <input type="checkbox" checked={categoryFilter.has(cat)} onChange={() => toggleCategory(cat)}
-                className="w-3 h-3 accent-blue-600" />
-              {CAT_ICON[cat] ?? '🏷️'} {cat}
-            </label>
-          ))}
-          {categoryFilter.size > 0 && (
-            <button onClick={() => setCategoryFilter(new Set())}
-              className="text-[9px] font-semibold text-blue-600 hover:underline">
-              Clear
-            </button>
-          )}
-        </div>
-      )}
-
-      {!showWeekly && gpOutOnly && showAddPersonal && (
-        <div className="px-2 py-2 border-b border-gray-200 bg-blue-50/60 shrink-0 space-y-1.5">
-          <p className="text-[10px] font-semibold text-gray-700">New Personal Entry</p>
-          <div className="flex flex-wrap items-end gap-1.5">
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
-              <input type="date" value={addDate} onChange={e => setAddDate(e.target.value)}
-                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
-            </div>
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
-              <input value={addDesc} onChange={e => setAddDesc(e.target.value)} placeholder="Description"
-                className="w-40 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
-            </div>
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Amount</p>
-              <input type="number" min="0" step="any" value={addAmt} onChange={e => setAddAmt(e.target.value)}
-                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
-            </div>
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Direction</p>
-              <select value={addDir} onChange={e => setAddDir(e.target.value as 'out' | 'in')}
-                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
-                <option value="out">Out (expense)</option>
-                <option value="in">In (received)</option>
-              </select>
-            </div>
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Category</p>
-              {addCatCustom ? (
-                <div className="flex items-center gap-1">
-                  <input value={addCat} onChange={e => setAddCat(e.target.value)} placeholder="New category name" autoFocus
-                    className="w-32 bg-white border border-blue-300 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
-                  <button type="button" onClick={() => { setAddCatCustom(false); setAddCat('Other') }}
-                    className="text-[9px] text-gray-500 underline whitespace-nowrap">Existing</button>
-                </div>
-              ) : (
-                <select value={addCat} onChange={e => {
-                    if (e.target.value === '__new__') { setAddCatCustom(true); setAddCat('') } else setAddCat(e.target.value)
-                    setAddSubcat('')
-                  }}
-                  className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
-                  {personalAllCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option value="__new__">+ Add new category…</option>
-                </select>
-              )}
-            </div>
-            {addCat === 'Children' && !addCatCustom && (
-              <div>
-                <p className="text-[9px] text-gray-400 mb-0.5">Which child?</p>
-                <select value={addSubcat} onChange={e => setAddSubcat(e.target.value)}
-                  className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400">
-                  <option value="">Optional</option>
-                  {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            )}
-            <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Notes</p>
-              <input value={addNotes} onChange={e => setAddNotes(e.target.value)} placeholder="Optional"
-                className="w-32 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
-            </div>
-            <button onClick={addPersonalEntry} disabled={addSaving || !addDate || !addDesc || !addAmt}
-              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
-              {addSaving ? 'Saving…' : 'Save'}
-            </button>
-            <button onClick={() => setShowAddPersonal(false)}
-              className="text-[9px] font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       {showConfirmForm && (
         <div className="px-2 py-2 border-b border-gray-200 bg-green-50/60 shrink-0 space-y-1.5">
@@ -743,21 +343,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-[11px]">
             <thead className="sticky top-0 z-10">
-              {gpOutOnly && byCategory ? (
-                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                  {pivotCategories.map(cat => (
-                    <th key={cat} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">{CAT_ICON[cat] ?? '🏷️'} {cat}</th>
-                  ))}
-                </tr>
-              ) : gpOutOnly ? (
-                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Date</th>
-                  <th className={`text-right px-3 py-0.5 font-bold border-b border-gray-200 ${personalAmountCls}`} title={personalDirection === 'out' ? "Cash taken out for Grony's personal use" : "Cash received by Grony personally"}>{personalAmountLabel}</th>
-                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Item</th>
-                  <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200">Category</th>
-                </tr>
-              ) : confirmedColsOnly ? (
+              {confirmedColsOnly ? (
                 <>
                   <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-0.5 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
@@ -805,67 +391,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
               )}
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {gpOutOnly && byCategory ? pivotEntryRows.map(({ date, entry: e }, i) => {
-                const cat = e.category ?? 'Other'
-                const isOpen = openEntryRow === e.id
-                return (
-                  <Fragment key={e.id}>
-                    <tr className={isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}>
-                      <td className="px-3 py-0 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
-                      {pivotCategories.map(pc => (
-                        <td key={pc}
-                          onClick={() => pc === cat && toggleEntryRow(e.id)}
-                          className={`px-3 py-0 text-right align-top ${pc === cat ? 'cursor-pointer hover:bg-blue-50/60' : ''}`}>
-                          {pc === cat && (
-                            <>
-                              <div className="font-semibold text-gray-800">{fmtn(parseFloat(e.amount))}</div>
-                              <div className="text-[9px] text-gray-400 font-normal">{e.description}{e.subcategory ? ` (${e.subcategory})` : ''}</div>
-                              {e.needs_review && <span className="text-[9px]" title="Needs split">⚠</span>}
-                            </>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    {isOpen && (
-                      <tr className="bg-blue-50/40">
-                        <td colSpan={1 + pivotCategories.length} className="px-3 py-3">
-                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(date)} · {CAT_ICON[cat] ?? '🏷️'} {cat}</p>
-                          {renderEntryEditor(e)}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              }) : gpOutOnly ? filteredPersonalOutEntryRows.map(({ date, entry: e }, i) => {
-                const isOpen = openEntryRow === e.id
-                return (
-                  <Fragment key={e.id}>
-                    <tr className={`cursor-pointer ${isOpen ? 'bg-blue-50' : i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'}`} onClick={() => toggleEntryRow(e.id)}>
-                      <td className="px-3 py-0 text-gray-600 whitespace-nowrap align-top">{fmtDate(date)}</td>
-                      <td className={`px-3 py-0 text-right align-top ${personalAmountCls}`}>{fmtn(parseFloat(e.amount))}</td>
-                      <td className="px-3 py-0 text-gray-800 border-l-2 border-gray-300 align-top">
-                        {e.description}
-                        {e.needs_review && (
-                          <span className="ml-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Needs split</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-0 align-top">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
-                          {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}{e.subcategory ? ` · ${e.subcategory}` : ''}
-                        </span>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="bg-blue-50/40">
-                        <td colSpan={4} className="px-3 py-3">
-                          <p className="text-[10px] font-semibold text-gray-700 mb-1.5">{fmtDate(date)}</p>
-                          {renderEntryEditor(e)}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              }) : displayRows.map((r, i) => {
+              {displayRows.map((r, i) => {
                 const hasConfirm = r.cab_total != null
                 const net = Number(r.daily_net)
                 const stripe = i % 2 === 1 ? 'bg-cyan-50' : 'bg-white'
@@ -927,9 +453,9 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
             </tbody>
           </table>
           </div>
-          {(gpOutOnly && byCategory ? pivotEntryRows.length === 0 : gpOutOnly ? filteredPersonalOutEntryRows.length === 0 : displayRows.length === 0) && (
+          {displayRows.length === 0 && (
             <p className="text-xs text-gray-400 text-center py-10">
-              {gpOutOnly ? `No ${personalAmountLabel} entries in range.` : confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
+              {confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}
             </p>
           )}
         </div>

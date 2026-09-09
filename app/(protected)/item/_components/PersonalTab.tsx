@@ -52,9 +52,12 @@ function fmtDate(iso: string) {
 const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-0'
 
-// Shared between the standalone /personal page and CAB's embedded Personal
-// panel -- embedded hides the page-level heading, since the host tab
-// already provides its own context/back-navigation.
+// Shared between the standalone /personal page and C&H's "Personal
+// Expenses" row (CHTab.tsx) -- embedded hides the page-level heading, since
+// the host tab already provides its own context/back-navigation. Used to
+// also be duplicated (not shared) inside Biz's CAB as an embedded "Personal"
+// checkbox -- moved out entirely once Grony's personal spending got its own
+// home in C&H, since it was never business money to begin with.
 export default function PersonalTab({ embedded = false }: { embedded?: boolean } = {}) {
   const [entries, setEntries]   = useState<Entry[]>([])
   const [loading, setLoading]   = useState(true)

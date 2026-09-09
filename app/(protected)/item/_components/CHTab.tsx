@@ -2,6 +2,7 @@
 import { useSession } from 'next-auth/react'
 import ManageLogPanel from './ManageLogPanel'
 import SubmenuTable from './SubmenuTable'
+import PersonalTab from './PersonalTab'
 import { CH_ITEMS, CH_CHILD_PERSON, type CHView } from './chViewData'
 import type { useUKData } from './ukViewData'
 
@@ -71,6 +72,15 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
         editCell={childData.editCell} saveCell={childData.saveCell} deleteRow={childData.deleteRow} addRow={childData.addRow}
         toggleColumnWide={childData.toggleColumnWide} />
     )
+  }
+
+  // Grony's own personal ledger -- moved here from a "Personal" checkbox
+  // embedded in Biz's CAB, since it's personal money, not shop business.
+  // Reuses the exact same component the standalone /personal route renders,
+  // rather than a second copy -- `embedded` just hides its own page-level
+  // heading since this tab already provides that context.
+  if (view === 'ch_personal') {
+    return <PersonalTab embedded />
   }
 
   const item = CH_ITEMS.find(i => i.key === view) ?? CH_ITEMS[0]

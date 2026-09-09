@@ -4,7 +4,7 @@
 export type CHView =
   | 'ch_fiifi' | 'ch_kuukua' | 'ch_ebo' | 'ch_odoye'
   | 'ch_inside_house' | 'ch_outside_house' | 'ch_other_land'
-  | 'ch_car_to_school' | 'ch_visitors'
+  | 'ch_car_to_school' | 'ch_visitors' | 'ch_personal'
 
 export const CH_ITEMS: { key: CHView; label: string; icon: string }[] = [
   { key: 'ch_fiifi', label: 'Fiifi', icon: '👦' },
@@ -16,6 +16,13 @@ export const CH_ITEMS: { key: CHView; label: string; icon: string }[] = [
   { key: 'ch_other_land', label: 'Other Land', icon: '🗺️' },
   { key: 'ch_car_to_school', label: 'Car to school', icon: '🚗' },
   { key: 'ch_visitors', label: 'Visitors', icon: '👥' },
+  // Grony's own personal spending (money taken out of/paid back into the
+  // shop for personal use) -- moved here from a "Personal" checkbox
+  // embedded in Biz's CAB, since it's personal, not business, money. CAB's
+  // GP In/GP Out summary columns are untouched by this move -- they read
+  // from cash_at_bank_view, which already aggregates grony_personal_ledger
+  // by date regardless of which screen entries were typed in from.
+  { key: 'ch_personal', label: 'Personal Expenses', icon: '💰' },
 ]
 
 // Fiifi/Kuukua/Ebo/Odoye moved here from UK (see git history/ukViewData.ts)
