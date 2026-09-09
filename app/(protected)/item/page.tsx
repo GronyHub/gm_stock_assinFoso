@@ -849,9 +849,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert'>(initialLiveMode)
   // Manage tab -- folds the old "Manage"/"Team" left-pane sections into one
   // radio-list here (see MANAGE_LIST_ITEMS/STAFF_TEAM_ITEMS below), same
   // "own liveMode tab" treatment Vendors/Customers/Purchase Orders/P&L/CAB
@@ -860,7 +860,9 @@ function ItemHubPageInner() {
   // exact same content components the old lossView-driven routes still use
   // (kept intact for pickLossView-based quick actions/search results and
   // the permission-bounce guard) -- this just drives them from local state
-  // instead of lossView so switching stays inside the Manage tab.
+  // instead of lossView so switching stays inside the Manage tab. Advert
+  // split off into its own tab (see liveMode === 'advert' below), so it's
+  // excluded from this list -- see MANAGE_LIST_ITEMS.filter below.
   const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
@@ -4312,6 +4314,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {(canSeeManage || canSeeTeam) && (
           <button type="button" onClick={() => { setItemsPageMode('manage'); setLiveMode('manage') }} title="Manage" className={btnCls(itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
         )}
+        {canSeeManage && (
+          <button type="button" onClick={() => { setItemsPageMode('advert'); setLiveMode('advert') }} title="Advert" className={btnCls(itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
+        )}
       </div>
     )
   }
@@ -6554,8 +6559,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
 
           {/* Manage tab -- folds the old "Manage" (Opener/Closer/Grony
-              Checks/Advert/Future/Quality Assurance/Unfortunate Events/App
-              info) and "Team" (Team Times/Payments/Pen. Pts/Behaviour/Dress
+              Checks/Future/Quality Assurance/Unfortunate Events/App info --
+              Advert split off into its own tab, see liveMode === 'advert'
+              below) and "Team" (Team Times/Payments/Pen. Pts/Behaviour/Dress
               Code/Display/Meeting/Comp. Laws/Assessment/Rota/Logs) left-pane
               sections into one flat button row here -- one combined list, no
               Manage/Team split, styled and arranged exactly like the outer
@@ -6591,7 +6597,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                 {(() => {
                   const options = [
-                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => ({
+                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert').map(item => ({
                       key: item.key as LossView,
                       label: item.label,
                       badge: item.key === 'opener' ? openerBadgeCount
@@ -6641,6 +6647,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <p className="py-10 text-center text-gray-400 text-sm px-4">No staff profile is set up for your account.</p>
                   )
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Advert tab -- split off from Manage's combined list since it has
+              its own 8-page sub-nav (Audio, Advert Status, Jingle Log,
+              Equipment Check, Photoshop, WhatsApp, Cuttings, Video). Just
+              renders GronyManageContent fixed at view="advert" -- that
+              component owns its own ADVERT_ITEMS radio row + selected
+              sub-page internally (see GronyManageTab.tsx), so there's
+              nothing else to drive from here. */}
+          {liveMode === 'advert' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                <TabErrorBoundary>
+                  <GronyManageContent view="advert"
+                    canManage={canManage} categoryIds={fixedCategoryIds}
+                    openerViolations={openerViolations}
+                    assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+                    onGoToViolation={goToViolation}
+                    missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+                    onOpenStaff={() => setLiveManageSection('teamTimes')}
+                    propertiesInitialTab={propertiesInitialTab} />
+                </TabErrorBoundary>
               </div>
             </div>
           )}

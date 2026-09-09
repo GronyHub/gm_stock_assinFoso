@@ -17,7 +17,7 @@ export type { ManageView }
 // now lives in item/page.tsx's single merged pane, alongside Cash's and
 // Staff's own rows, all driven by one shared `lossView` state (see
 // MANAGE_LIST_ITEMS in manageViewData.ts for the row data this switches on).
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 
 export default function GronyManageContent({
   view, canManage, categoryIds,
@@ -40,7 +40,11 @@ export default function GronyManageContent({
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
 }) {
   const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView | null>(null)
-  const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView | null>(null)
+  // Defaults to the first sub-page (rather than null) since Advert is now
+  // its own top-level tab (see item/page.tsx's liveMode === 'advert') --
+  // landing on it should show something immediately, same as every other
+  // tab, instead of an empty radio row with nothing picked yet.
+  const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(ADVERT_ITEMS[0].key)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -55,24 +59,26 @@ export default function GronyManageContent({
     )}
     {view === 'advert' && (<>
       {/* Picker for ADVERT_ITEMS' 8 sub-pages, always visible above whichever
-          one is selected -- this used to live behind a per-page "Laws &
-          Tasks" toggle and got deleted along with it when that toggle was
-          replaced by one global icon, leaving this whole view permanently
-          blank (selectedAdvertItem had no way left to ever become
-          non-null). Restored as a plain always-on list, no back button --
-          picking a different item just swaps what's shown below directly. */}
-      <div className="px-2 pt-2">
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <div className="divide-y">
-            {ADVERT_ITEMS.map(item => (
-              <button key={item.key} onClick={() => setSelectedAdvertItem(item.key)}
-                className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 ${selectedAdvertItem === item.key ? 'bg-blue-50' : ''}`}>
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-sm font-medium text-gray-900">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+          one is selected -- compact plain-text radios, same treatment as
+          Manage's own combined list and Expenses' filter row, now that
+          Advert is its own top-level tab (see item/page.tsx's
+          liveMode === 'advert') rather than one row buried in Manage's
+          list. This used to live behind a per-page "Laws & Tasks" toggle
+          and got deleted along with it when that toggle was replaced by one
+          global icon, leaving this whole view permanently blank
+          (selectedAdvertItem had no way left to ever change) -- restored
+          here, no back button needed: picking a different radio just swaps
+          what's shown below directly. */}
+      <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+        {ADVERT_ITEMS.map((item, i) => (
+          <Fragment key={item.key}>
+            {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
+              <input type="radio" name="advertItemRadio" checked={selectedAdvertItem === item.key} onChange={() => setSelectedAdvertItem(item.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
+              <span>{item.icon} {item.label}</span>
+            </label>
+          </Fragment>
+        ))}
       </div>
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
