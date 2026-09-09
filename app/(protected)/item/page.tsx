@@ -5537,17 +5537,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
                         ]} />
                     )}
-                    {/* One shared Global Search trigger for the whole Sale/
-                        Log/Sales/Bills/Expenses family, replacing the
-                        separate 🔍 button each of those used to render in
-                        its own header -- lives once, right here, next to
-                        the tab switcher itself. */}
-                    {lossView === 'sales' && (
-                      <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search"
-                        className="w-7 h-7 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center transition">
-                        🔍
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -8407,6 +8396,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </button>
             <HelpButton onClick={() => setLiveHelpModalOpen(true)} className="bg-blue-600 text-white hover:text-white hover:bg-blue-700 rounded-full shadow-lg px-3 py-2" />
           </div>
+          {/* Global Search's own permanent floating trigger -- mirrors Laws &
+              Tasks/Help's bottom-right pair, but bottom-left so it's never
+              squeezed out of view by however many buttons the tab switcher
+              above happens to have (it used to live inline in that row,
+              gated to lossView === 'sales' only, which also meant it never
+              showed at all while browsing via Items). Offset above the
+              sidebar-restore ▶ button's own bottom-left spot (only shown
+              while the sidebar is hidden) so the two never overlap. */}
+          <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search" aria-label="Global Search"
+            className="fixed bottom-16 left-4 z-40 w-11 h-11 rounded-full bg-gray-700 hover:bg-gray-800 text-white text-lg shadow-lg flex items-center justify-center transition">
+            🔍
+          </button>
           <GlobalLawsTasksModal isOpen={liveGlobalLawsModalOpen} onClose={() => setLiveGlobalLawsModalOpen(false)} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
