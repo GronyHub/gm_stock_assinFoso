@@ -4,6 +4,7 @@ import { formatDuration } from '@/lib/fmtDuration'
 import { fmtClockTime } from '@/lib/clockTime'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { fmtDate } from '@/lib/fmtDate'
+import ClockInOutPanel, { type Mine } from '../../staff/ClockInOutPanel'
 
 type ActivityRow = { id: number; body: string; created_at: string; duration_seconds: number; running_total_seconds: number }
 type Detail = {
@@ -53,12 +54,27 @@ function presentSeconds(detail: Detail, isToday: boolean): number | null {
 // tapping a name there opens this person's whole page instead (see
 // StaffMemberModal), this is just one more tab on it, with no modal chrome
 // of its own left to duplicate.
-export default function StaffTimesView({ staffName }: { staffName: string }) {
+//
+// When you're looking at your own page (isOwnPage), this also surfaces the
+// same Clock In/Out panel Team Times has -- one less trip there, since
+// everything about you (tasks, times, assessment, etc.) is meant to be
+// reachable from your own page. See ClockInOutPanel's own comment for why
+// this is the exact same shared component/rules rather than a second copy.
+export default function StaffTimesView({ staffName, username }: { staffName: string; username: string }) {
   const [date, setDate] = useState(ghanaToday())
   const [detail, setDetail] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
   const isToday = date === ghanaToday()
+  const isOwnPage = staffName.toLowerCase() === username.toLowerCase()
 
+  function loadDetail() {
+    setLoading(true)
+    return fetch(`/api/staff-times/worked-detail?staff=${encodeURIComponent(staffName)}&date=${date}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setDetail(d))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
   useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -70,8 +86,28 @@ export default function StaffTimesView({ staffName }: { staffName: string }) {
     return () => { cancelled = true }
   }, [staffName, date])
 
+  // Own clock status/today's Opener -- fetched independently of the day
+  // detail above (a different endpoint, and only needed for the panel,
+  // which only shows on your own page in the first place).
+  const [mine, setMine] = useState<Mine>(null)
+  const [opener, setOpener] = useState<string | null>(null)
+  useEffect(() => {
+    if (!isOwnPage) return
+    fetch('/api/staff-times/today').then(r => r.ok ? r.json() : null).then(d => {
+      setMine(d?.mine ?? null)
+      setOpener(d?.opener ?? null)
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwnPage])
+
   return (
     <div className="flex flex-col">
+      {isOwnPage && (
+        <div className="pb-2">
+          <ClockInOutPanel username={username} mine={mine} opener={opener}
+            onMineChange={setMine} afterAction={loadDetail} />
+        </div>
+      )}
       <div className="flex items-center justify-between px-1 py-1.5 border-b border-gray-100 shrink-0">
         <button onClick={() => setDate(d => shiftDate(d, -1))}
           className="text-gray-400 hover:text-gray-700 font-bold px-1.5 leading-none">‹</button>

@@ -147,7 +147,7 @@ export default function StaffMemberPersonalTab({
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-        {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} /></div>}
+        {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} username={username} /></div>}
         {activeTab === 'tasks' && <div className="p-3"><TasksView /></div>}
         {activeTab === 'mentions' && <div className="p-3"><MentionsView /></div>}
         {activeTab === 'dressCode' && (<>
