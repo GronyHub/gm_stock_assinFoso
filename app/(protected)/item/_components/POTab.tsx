@@ -138,9 +138,10 @@ export default function POTab({ search }: Props) {
   const [receivePrices, setReceivePrices] = useState<Record<number, string>>({})
   const [receiveError, setReceiveError] = useState('')
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
-  // Full edit (vendor/dates/notes/lines) -- only offered for still-draft
-  // POs, matching Send/Delete's own draft-only gating. Reuses the same
-  // add-item-by-search pattern as the New PO form.
+  // Full edit (vendor/dates/notes/lines) -- offered for a draft, and also
+  // for a sent PO as long as nothing's been received against it yet (see
+  // the Edit button's own gate below, and PATCH's matching server-side
+  // check). Reuses the same add-item-by-search pattern as the New PO form.
   const [editMode, setEditMode] = useState(false)
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [editOrderDate, setEditOrderDate] = useState('')
@@ -429,20 +430,31 @@ export default function POTab({ search }: Props) {
                 {!editMode && (
                   <div className="flex gap-1 pt-1 flex-wrap">
                     {detail.status === 'draft' && (
-                      <>
-                        <button onClick={() => setStatus('sent')} disabled={busy}
-                          className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
-                          Send
-                        </button>
-                        <button onClick={startEdit} disabled={busy}
-                          className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
-                          ✏️ Edit
-                        </button>
-                        <button onClick={deleteDraft} disabled={busy}
-                          className="text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
-                          Delete
-                        </button>
-                      </>
+                      <button onClick={() => setStatus('sent')} disabled={busy}
+                        className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
+                        Send
+                      </button>
+                    )}
+                    {/* Edit stays available after Send too, right up until
+                        the vendor actually delivers something -- e.g. they
+                        call ahead and say an item's out of stock, so it can
+                        be dropped or lowered here before it's ever received
+                        or turned into a Bill. Matches the server's own gate
+                        (see PATCH's line-replacement check) exactly: once
+                        anything's been received, editing is no longer safe
+                        (it would wipe qty_received), so it's cancel-and-
+                        redo from there instead, same as Delete already is. */}
+                    {(detail.status === 'draft' || detail.status === 'sent') && receivingState(detail.lines) === 'not_started' && (
+                      <button onClick={startEdit} disabled={busy}
+                        className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
+                        ✏️ Edit
+                      </button>
+                    )}
+                    {detail.status === 'draft' && (
+                      <button onClick={deleteDraft} disabled={busy}
+                        className="text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
+                        Delete
+                      </button>
                     )}
                     {detail.status === 'sent' && receivingState(detail.lines) !== 'complete' && (
                       <button onClick={openReceive} disabled={busy}

@@ -71,14 +71,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   try {
-    // Full line replacement -- only while still a draft, same rule as
-    // Delete: nothing's been sent to the vendor or received against it yet,
-    // so swapping the whole item list out is safe.
+    // Full line replacement -- allowed for a draft, and also for a sent PO
+    // right up until the vendor actually delivers something against it
+    // (e.g. they call ahead and say an item's out of stock -- drop or lower
+    // that line before it ever becomes a Bill). Once anything's been
+    // received, the swap-the-whole-list approach below would silently wipe
+    // qty_received (it isn't part of LineInput), corrupting that history --
+    // so from that point on the PO is locked the same way Delete already
+    // is: cancel it and start a new one instead.
     if (lines) {
       const [po] = await sql`SELECT status FROM purchase_orders WHERE id = ${poId}`
       if (!po) return notFound()
-      if (po.status !== 'draft') {
-        return badRequest('Only a draft purchase order can have its items changed -- cancel it and start a new one instead.')
+      if (po.status === 'cancelled') {
+        return badRequest('A cancelled purchase order can\'t have its items changed -- reopen it first.')
+      }
+      const [{ received }] = await sql`
+        SELECT COALESCE(SUM(qty_received), 0) AS received FROM purchase_order_lines WHERE po_id = ${poId}
+      `
+      if (Number(received) > 0) {
+        return badRequest('This purchase order already has items received -- cancel it and start a new one instead.')
       }
       if (!lines.length) return badRequest('A purchase order needs at least one item.')
       for (const l of lines) {
