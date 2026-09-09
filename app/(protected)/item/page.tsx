@@ -143,10 +143,9 @@ type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'custome
   // ExpensesTab. Its own real LossView instead, rendered as its own
   // content block below.
   | 'expenseOrders'
-  // Settings' own non-navigation row (View Portal As) becomes a real content
-  // destination too now that Settings is its own side-by-side pane instead
-  // of a full-screen takeover -- see SettingsPane.tsx and the settingsOpen
-  // block below.
+  // Settings' own non-navigation row (View Portal As) is a real content
+  // destination too -- see SettingsPane.tsx, now rendered inline in the
+  // main pane rather than a toggled second one.
   | 'viewPortalAs' | 'reorderLists' | 'activityDurations'
   | ManageView | StaffView | CHView
 // Alias Wide Table and Service Matches used to be their own lossViews --
@@ -1401,18 +1400,12 @@ function ItemHubPageInner() {
   // this jumps straight to a specific row regardless of which outer tab is
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
-  function pickLossView(view: LossView, opts?: { keepSettingsOpen?: boolean }) {
+  function pickLossView(view: LossView) {
     setOuterTab('loss')
     setLossView(view)
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
-    // Settings destinations (Team/Users/Manage Categories/View Portal As,
-    // reached through SettingsPane) pass keepSettingsOpen so browsing among
-    // them doesn't keep closing the pane you're browsing from -- everything
-    // else calling this is a main-pane row, which should always drop
-    // Settings the moment you jump away from it.
-    if (!opts?.keepSettingsOpen) setSettingsOpen(false)
   }
 
   // C&H's own rows used to route through pickLossView above, which
@@ -1431,7 +1424,6 @@ function ItemHubPageInner() {
     setViolation(null)
     setAddForm(null)
     setShowAnalytics(false)
-    setSettingsOpen(false)
   }
 
   // Global search's UK-submenu/UK-entry results (see below) come back
@@ -1882,9 +1874,10 @@ function ItemHubPageInner() {
   // longer counts here -- it moved out into its own main-pane section (see
   // below), so canSeeTeam alone no longer needs a reason to open Settings.
   const canOpenSettings = canManage || canSeeUsers || canViewPortalAs
-  // UK's own Settings is gated to isGrony, not canOpenSettings -- see the
-  // Settings-panel-swap render below.
-  const canOpenThisSettings = outerTab === 'uk' ? isGrony : canOpenSettings
+  // UK's own Settings (add a menu/add a column) is a content-area toggle,
+  // separate from Biz/C&H's Settings rows below (which are always inline,
+  // no toggle needed) -- gated to isGrony, not canOpenSettings.
+  const canOpenUkSettings = outerTab === 'uk' && isGrony
   // Drives the merged pane's own-name section AND which staff page it
   // opens -- "just like the user profile icon", it's always your own name,
   // not a generic "Staff" label or a pick-a-person screen. Falls back to
@@ -5272,7 +5265,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent}
             footer={<>
               <PaneDaily mode={cashDisplayMode}
-                onDaily={() => { setLossView('dailySummary'); setSettingsOpen(false) }}
+                onDaily={() => setLossView('dailySummary')}
                 dailyActive={paneActive(lossView === 'dailySummary')} />
               {/* Biz/UK/C&H/Search all moved out of this footer -- they now
                   live as small icons at the bottom of the content area (the
@@ -5419,25 +5412,34 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
             </>)}
 
-            {/* Settings (Viewing/Team/Users/Add Category/View Portal As) now
-                opens as a second pane alongside this one instead of taking
-                over the whole screen -- see SettingsPane.tsx below. Sign out
-                stays here, part of the scrollable list (pinned to the footer
-                before) so the footer stays just the paired shortcut rows
-                above. Not marked `active` even while open -- the settings
-                pane appearing right next to this one already shows that;
-                highlighting this row too just reads as two things selected
-                at once (this row AND whatever lossView is still showing,
-                e.g. Times), since "settings is open" and "this content is
-                showing" are independent, not mutually exclusive states. */}
+            {/* Settings (Viewing/Team/Users/View Portal As/Reorder & Rename
+                Lists/Activity Times) used to open as a second pane
+                alongside this one, toggled by a button here -- with the
+                main pane's own row count down a lot (Manage/Team/P&L/CAB/
+                Vendors/Customers/Purchase Orders all folded into tabs), a
+                whole second pane for a handful of rows read as more
+                navigation, not less. SettingsPane now just renders its own
+                sections as more of this same scrollable list instead,
+                always visible rather than behind a toggle -- see
+                SettingsPane.tsx below. UK is the one exception: its own
+                Settings (add a menu/add a column) replaces the *content*
+                area, not a sidebar, so it keeps its own toggle button. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              {canOpenThisSettings && (
+              {canOpenUkSettings && (
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenThisSettings}
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
+            {outerTab !== 'uk' && canOpenSettings && (
+              <SettingsPane mode={cashDisplayMode} activeView={lossView}
+                viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
+                pickViewing={pickViewing} pickLossView={pickLossView}
+                canSeeUsers={canSeeUsers}
+                canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
+              />
+            )}
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
             <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
@@ -5485,22 +5487,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </button>
         )}
 
-        {/* UK's own Settings (add a menu / add a column) is a completely
-            separate panel from Biz's SettingsPane (Viewing/Team/Users/
-            Portal-As) -- gated to isGrony specifically, matching UKTab's
-            own data gate, rather than canOpenSettings' broader Biz-role
-            checks (which say nothing about who's allowed to see or edit UK
-            data at all). */}
+        {/* UK's own Settings (add a menu / add a column) is a content-area
+            panel, unlike Biz/C&H's Settings rows (now inline in the pane
+            above, see SettingsPane.tsx) -- gated to isGrony specifically,
+            matching UKTab's own data gate, rather than canOpenSettings'
+            broader Biz-role checks (which say nothing about who's allowed
+            to see or edit UK data at all). */}
         {settingsOpen && outerTab === 'uk' && isGrony && (
           <UKSettingsPanel onChanged={() => setUkPaneRefresh(k => k + 1)} />
-        )}
-        {settingsOpen && outerTab !== 'uk' && canOpenSettings && (
-          <SettingsPane mode={cashDisplayMode} activeView={lossView}
-            viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
-            pickViewing={pickViewing} pickLossView={pickLossView}
-            canSeeUsers={canSeeUsers}
-            canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
-          />
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
