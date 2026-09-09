@@ -258,10 +258,11 @@ const REPORT_VIEWS = new Set<LossView>([
 // Purchase Orders/Vendors/Customers/P&L/CAB all dropped out of this list --
 // each is now a radio sub-view of a tab inside Items' own tab switcher
 // instead of its own pane row (Purchase Orders + Vendors inside Bills,
-// Customers inside Sales, P&L + CAB both inside Sale itself -- see
-// liveBillsShowPurchaseOrders/liveBillsShowVendors/liveSalesShowCustomers/
-// liveSaleFinanceView), cutting a tap and keeping related things together.
-// Items is the only row left here as a result.
+// Customers inside Sales, P&L + CAB both riding Sale's own filter radio row
+// -- see liveBillsShowPurchaseOrders/liveBillsShowVendors/
+// liveSalesShowCustomers/liveSaleViolationFilter), cutting a tap and
+// keeping related things together. Items is the only row left here as a
+// result.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
 ]
@@ -882,7 +883,13 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems'>('noViolations')
+  // 'pl'/'cab' are the odd ones out here -- every other value filters the
+  // same tap-to-sell grid, these two replace it entirely with ProfitLossTab/
+  // CABTab (see the liveRootClassName content below). They ride on this
+  // same state anyway rather than a separate one, since it already means
+  // "which exclusive view is this radio row on" and every other value here
+  // already resets cleanly to it via its own onChange.
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'all' | 'countDue' | 'counts' | 'lossGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'withViolations' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2241,13 +2248,6 @@ function ItemHubPageInner() {
   // <ExpenseOrdersPanel> the sidebar's menu item opens full-screen, but
   // rendered inline here instead of navigating away.
   const [liveExpensesShowOrders, setLiveExpensesShowOrders] = useState(false)
-  // P&L/CAB radio inside Sale mode -- P&L no longer has its own liveMode tab
-  // (see renderTabSwitcher); both it and CAB fold in here instead as
-  // mutually-exclusive radios alongside the tap-to-sell grid, same
-  // "exclusive view selector" treatment as Bills' Purchase Orders/Vendors
-  // radios. null means the normal Sale grid; otherwise which finance view
-  // replaces it. Owner/Joe-only, same gate the old P&L tab used.
-  const [liveSaleFinanceView, setLiveSaleFinanceView] = useState<'pl' | 'cab' | null>(null)
   const [liveSalesShowAnalytics, setLiveSalesShowAnalytics] = useState(false)
   const [liveBillsShowAnalytics, setLiveBillsShowAnalytics] = useState(false)
   const [liveExpensesShowAnalytics, setLiveExpensesShowAnalytics] = useState(false)
@@ -5707,6 +5707,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'counts'} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null); setLiveCountView(null) }} className="cursor-pointer w-3 h-3" />
                     <span>Counts{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
                   </label>
+                  {/* P&L/CAB replace this whole grid with ProfitLossTab/CABTab
+                      (see the liveRootClassName content below) rather than
+                      filtering it -- riding on this same radio row/state
+                      anyway since it's still "pick one exclusive view of
+                      this tab". Owner/Joe-only, same gate these two always had. */}
+                  {canSeePL && (<>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-blue-600 font-semibold">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'pl'} onChange={() => { setLiveSaleViolationFilter('pl'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>P&amp;L</span>
+                  </label>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-blue-600 font-semibold">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'cab'} onChange={() => { setLiveSaleViolationFilter('cab'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <span>CAB</span>
+                  </label>
+                  </>)}
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbydate'} onChange={() => { setLiveSaleViolationFilter('lossbydate'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_date' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Date</span>
@@ -6592,32 +6608,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
             {renderModeToggleRow()}
 
-            {/* P&L/CAB radios -- neither has its own liveMode tab any more
-                (see renderTabSwitcher); both fold in here instead as
-                mutually-exclusive radios alongside the tap-to-sell grid,
-                same "exclusive view selector" treatment as Bills' Purchase
-                Orders/Vendors radios. Owner/Joe-only, same gate the old P&L
-                tab used -- regular staff never see this row, so Sale mode
-                looks exactly as it always has for them. */}
-            {canSeePL && (
-              <div className="px-1.5 py-1 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
-                  <input type="radio" name="liveSaleFinanceRadio" checked={!liveSaleFinanceView} onChange={() => setLiveSaleFinanceView(null)} className="cursor-pointer w-2.5 h-2.5" />
-                  <span>Sale</span>
-                </label>
-                <label title="Profit & Loss, opened inline" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSaleFinanceRadio" checked={liveSaleFinanceView === 'pl'} onChange={() => setLiveSaleFinanceView('pl')} className="cursor-pointer w-2.5 h-2.5" />
-                  P&amp;L
-                </label>
-                <label title="Cash at Bank, opened inline" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSaleFinanceRadio" checked={liveSaleFinanceView === 'cab'} onChange={() => setLiveSaleFinanceView('cab')} className="cursor-pointer w-2.5 h-2.5" />
-                  CAB
-                </label>
-              </div>
-            )}
-            {liveSaleFinanceView ? (
+            {/* P&L/CAB now ride the Sale filter row's own radio group (see
+                liveSaleViolationFilter, just above the search bar below) --
+                selecting either replaces this whole grid with ProfitLossTab/
+                CABTab instead of filtering it. */}
+            {liveSaleViolationFilter === 'pl' || liveSaleViolationFilter === 'cab' ? (
               <div className="flex-1 overflow-auto">
-                {liveSaleFinanceView === 'cab' ? <CABTab openConfirmSignal={cabConfirmSignal} /> : <ProfitLossTab />}
+                {liveSaleViolationFilter === 'cab' ? <CABTab openConfirmSignal={cabConfirmSignal} /> : <ProfitLossTab />}
               </div>
             ) : (
             <div className="contents">
