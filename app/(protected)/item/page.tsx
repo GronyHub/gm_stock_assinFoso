@@ -849,9 +849,9 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | null) ?? 'sale'
-  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert'>(initialLiveMode)
-  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert'>(initialLiveMode)
+  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks' | null) ?? 'sale'
+  const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks'>(initialLiveMode)
+  const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks'>(initialLiveMode)
   // Manage tab -- folds the old "Manage"/"Team" left-pane sections into one
   // radio-list here (see MANAGE_LIST_ITEMS/STAFF_TEAM_ITEMS below), same
   // "own liveMode tab" treatment Vendors/Customers/Purchase Orders/P&L/CAB
@@ -860,9 +860,10 @@ function ItemHubPageInner() {
   // exact same content components the old lossView-driven routes still use
   // (kept intact for pickLossView-based quick actions/search results and
   // the permission-bounce guard) -- this just drives them from local state
-  // instead of lossView so switching stays inside the Manage tab. Advert
-  // split off into its own tab (see liveMode === 'advert' below), so it's
-  // excluded from this list -- see MANAGE_LIST_ITEMS.filter below.
+  // instead of lossView so switching stays inside the Manage tab. Advert and
+  // Grony Checks ("Grony 1-10 checks") split off into their own tabs (see
+  // liveMode === 'advert'/'gronyChecks' below), so both are excluded from
+  // this list -- see MANAGE_LIST_ITEMS.filter below.
   const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
@@ -4317,6 +4318,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {canSeeManage && (
           <button type="button" onClick={() => { setItemsPageMode('advert'); setLiveMode('advert') }} title="Advert" className={btnCls(itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
         )}
+        {canSeeManage && (
+          <button type="button" onClick={() => { setItemsPageMode('gronyChecks'); setLiveMode('gronyChecks') }} title="Grony 1-10 checks" className={btnCls(itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
+        )}
       </div>
     )
   }
@@ -6597,7 +6601,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
                 {(() => {
                   const options = [
-                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert').map(item => ({
+                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert' && item.key !== 'grony_checks').map(item => ({
                       key: item.key as LossView,
                       label: item.label,
                       badge: item.key === 'opener' ? openerBadgeCount
@@ -6674,6 +6678,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="flex-1 min-h-0 overflow-y-auto p-2">
                 <TabErrorBoundary>
                   <GronyManageContent view="advert"
+                    canManage={canManage} categoryIds={fixedCategoryIds}
+                    openerViolations={openerViolations}
+                    assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}
+                    onGoToViolation={goToViolation}
+                    missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0}
+                    onOpenStaff={() => setLiveManageSection('teamTimes')}
+                    propertiesInitialTab={propertiesInitialTab} />
+                </TabErrorBoundary>
+              </div>
+            </div>
+          )}
+
+          {/* Grony Checks tab ("Grony 1-10 checks") -- same split as Advert
+              just above, for the same reason (its own sub-nav: the Grony
+              Checks Grid table, plus Arrangement/Cleanliness/Customer
+              Display/Repair Works/Grony 1-10/Security chk). Just renders
+              GronyManageContent fixed at view="grony_checks" -- it owns its
+              own GRONY_CHECKS_ITEMS radio row + selected sub-page
+              internally. */}
+          {liveMode === 'gronyChecks' && (
+            <div className={liveRootClassName}>
+              {liveExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLiveExpanded(false)}
+                  title="Exit large screen"
+                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
+                >
+                  ✕
+                </button>
+              )}
+              {renderModeToggleRow()}
+              <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                <TabErrorBoundary>
+                  <GronyManageContent view="grony_checks"
                     canManage={canManage} categoryIds={fixedCategoryIds}
                     openerViolations={openerViolations}
                     assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings}

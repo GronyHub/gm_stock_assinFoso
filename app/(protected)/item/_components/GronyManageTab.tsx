@@ -39,11 +39,13 @@ export default function GronyManageContent({
   onOpenStaff: () => void
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
 }) {
-  const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView | null>(null)
-  // Defaults to the first sub-page (rather than null) since Advert is now
-  // its own top-level tab (see item/page.tsx's liveMode === 'advert') --
-  // landing on it should show something immediately, same as every other
-  // tab, instead of an empty radio row with nothing picked yet.
+  // Both default to their first sub-page (rather than null) since Advert and
+  // Grony Checks are now their own top-level tabs (see item/page.tsx's
+  // liveMode === 'advert'/'gronyChecks') -- landing on either should show
+  // something immediately, same as every other tab, instead of an empty
+  // radio row with nothing picked yet. Grony Checks' first item is the Grid
+  // table itself (GRONY_CHECKS_ITEMS[0].key === 'grony_checks').
+  const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView>(GRONY_CHECKS_ITEMS[0].key)
   const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(ADVERT_ITEMS[0].key)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
@@ -100,22 +102,25 @@ export default function GronyManageContent({
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.app_info]} categoryLabel="App info" canManage={canManage} />
     )}
     {view === 'grony_checks' && (<>
-      {/* Same restoration as Advert's picker just above -- GRONY_CHECKS_ITEMS'
-          16 sub-pages (the grid itself plus each individual check category)
-          were only ever reachable through a picker that got deleted along
-          with the old per-page laws toggle it happened to be nested inside. */}
-      <div className="px-2 pt-2">
-        <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-          <div className="divide-y">
-            {GRONY_CHECKS_ITEMS.map(item => (
-              <button key={item.key} onClick={() => setSelectedGronyCheckItem(item.key)}
-                className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition flex items-center gap-3 ${selectedGronyCheckItem === item.key ? 'bg-blue-50' : ''}`}>
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-sm font-medium text-gray-900">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Same restoration + compact-radio treatment as Advert's picker
+          above, now that this is also its own top-level tab ("Grony 1-10
+          checks", see item/page.tsx's liveMode === 'gronyChecks').
+          GRONY_CHECKS_ITEMS' 16 sub-pages (the grid itself plus each
+          individual check category) were only ever reachable through a
+          picker that got deleted along with the old per-page laws toggle it
+          happened to be nested inside -- restored here, no back button
+          needed: picking a different radio just swaps what's shown below
+          directly. */}
+      <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+        {GRONY_CHECKS_ITEMS.map((item, i) => (
+          <Fragment key={item.key}>
+            {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
+              <input type="radio" name="gronyCheckItemRadio" checked={selectedGronyCheckItem === item.key} onChange={() => setSelectedGronyCheckItem(item.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
+              <span>{item.icon} {item.label}</span>
+            </label>
+          </Fragment>
+        ))}
       </div>
       {selectedGronyCheckItem === 'grony_checks' && <GronyChecksGrid />}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
