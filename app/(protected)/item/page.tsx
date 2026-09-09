@@ -6582,37 +6582,38 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="px-1.5 py-1.5 bg-white border-b border-gray-200 flex items-center gap-1.5 flex-wrap">
-                {canSeeManage && applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => {
-                  const badge = item.key === 'opener' ? openerBadgeCount
-                    : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                    : 0
-                  const active = liveManageSection === item.key
-                  return (
-                    <button key={item.key} type="button" onClick={() => setLiveManageSection(item.key)}
-                      className={`font-bold rounded-md border transition whitespace-nowrap shrink-0 px-2 py-1 text-[10px] flex items-center gap-1 ${
-                        active ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
-                      }`}>
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                      {!!badge && <span className={active ? 'text-red-200' : 'text-red-600'}>({badge})</span>}
-                    </button>
-                  )
-                })}
-                {canSeeTeam && STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => {
-                  const badge = t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0
-                  const active = liveManageSection === t.key
-                  return (
-                    <button key={t.key} type="button" onClick={() => setLiveManageSection(t.key)}
-                      className={`font-bold rounded-md border transition whitespace-nowrap shrink-0 px-2 py-1 text-[10px] flex items-center gap-1 ${
-                        active ? 'bg-indigo-600 text-white border-transparent' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
-                      }`}>
-                      <span>{t.icon}</span>
-                      <span>{t.label}</span>
-                      {badge > 0 && <span className={active ? 'text-red-200' : 'text-red-600'}>({badge})</span>}
-                    </button>
-                  )
-                })}
+              {/* Plain-text radios, packed tightly with a "·" separator --
+                  same treatment as Expenses' own filter row (see
+                  liveExpensesMainRadios/renderLiveExpensesRadio above) --
+                  rather than the bordered button-pill look the outer tab
+                  switcher uses, so 19 options wrap into a few dense rows
+                  instead of a tall grid of buttons. */}
+              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+                {(() => {
+                  const options = [
+                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key]).map(item => ({
+                      key: item.key as LossView,
+                      label: item.label,
+                      badge: item.key === 'opener' ? openerBadgeCount
+                        : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+                        : 0,
+                    })) : []),
+                    ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => ({
+                      key: t.key as LossView,
+                      label: t.label,
+                      badge: t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0,
+                    })) : []),
+                  ]
+                  return options.map((v, i) => (
+                    <Fragment key={v.key}>
+                      {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+                      <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
+                        <input type="radio" name="liveManageRadio" checked={liveManageSection === v.key} onChange={() => setLiveManageSection(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
+                        <span>{v.label}{v.badge > 0 ? ` (${v.badge})` : ''}</span>
+                      </label>
+                    </Fragment>
+                  ))
+                })()}
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto p-2">
                 {canSeeManage && MANAGE_VIEW_KEYS.has(liveManageSection) && (
