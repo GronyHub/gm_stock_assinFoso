@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
         customer_name,
         total AS invoice_amount,
         cash_counted,
-        (cash_counted - total) AS wnw
+        (cash_counted - total) AS wnw,
+        COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
       ORDER BY receipt_date DESC, id DESC
       LIMIT ${limit}
@@ -53,7 +54,8 @@ export async function GET(req: NextRequest) {
           customer_name,
           total AS invoice_amount,
           cash_counted,
-          (cash_counted - total) AS wnw
+          (cash_counted - total) AS wnw,
+          COALESCE(attachments, '[]'::jsonb) AS attachments
         FROM sales_receipts
         ORDER BY receipt_date DESC, id DESC
         LIMIT ${limit}
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest) {
       const withOptional = rows.map((r: any) => ({
         ...r,
         entered_by: null,
-        attachments: []
+        attachments: r.attachments || []
       }))
       return success(withOptional)
     } catch (e2) {
