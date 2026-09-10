@@ -883,14 +883,15 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveSaleView = searchParams.get('liveSaleView')
-  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | null =
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | null =
     rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
     rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
     rawLiveSaleView === 'least_sales_services' ? { kind: 'least_sales_services' } :
     rawLiveSaleView === 'least_sales_goods' ? { kind: 'least_sales_goods' } :
     rawLiveSaleView === 'least_sales_groups' ? { kind: 'least_sales_groups' } :
+    rawLiveSaleView === 'count_due_chart' ? { kind: 'count_due_chart' } :
     null
-  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | null>(initialLiveSaleView)
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -1338,6 +1339,12 @@ function ItemHubPageInner() {
   // user actually edits it; until then the input just displays that default.
   const [liveInlineQtyByItemId, setLiveInlineQtyByItemId] = useState<Record<number, string>>({})
   const [liveInlinePriceByItemId, setLiveInlinePriceByItemId] = useState<Record<number, string>>({})
+  // Same idea, own map -- the Count Due chart's per-row qty box (see
+  // renderCountDueChart/recordInlineCount below). Kept separate from
+  // liveInlineQtyByItemId (a sale qty) rather than shared, since the same
+  // item could in principle be mid-entry in both places and a shared map
+  // would let one silently clobber the other.
+  const [liveInlineCountQtyByItemId, setLiveInlineCountQtyByItemId] = useState<Record<number, string>>({})
   const openerBadgeCount = (openerToday.opener && !openerToday.openerConfirmed ? 1 : 0) + openerViolationCount
 
   // Per-page green task-count badges (opposite corner from the red flags
@@ -3858,6 +3865,21 @@ function ItemHubPageInner() {
     }
   }
 
+  // The Count Due chart's own per-row qty box (see renderCountDueChart) --
+  // thin wrapper around submitCount so the row's onKeyDown/onClick share one
+  // validation path. Doesn't clear liveInlineCountQtyByItemId itself: on
+  // success the item drops out of liveDailyItems/liveGmcWeeklyItems/
+  // liveOverdueItems (see submitCount above), so the whole row -- and its
+  // input -- disappears anyway; on failure (a pack-pairing/loss-reason
+  // prompt, or a plain error) the typed value is exactly what should stay
+  // on screen, not get silently wiped.
+  function recordInlineCount(item: LiveItem) {
+    const raw = liveInlineCountQtyByItemId[item.id]
+    const qty = Number(raw)
+    if (!raw || isNaN(qty)) return
+    submitCount(item, qty)
+  }
+
   // Groups/conversion-target list ItemEditForm needs, derived from the
   // catalogue Live Sale already has loaded rather than a separate fetch.
   const liveEditGroups = useMemo(() =>
@@ -4639,6 +4661,100 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             ))}
           </div>
         )}
+      </div>
+    )
+  }
+
+  // Count Due as a chart-styled list rather than the usual card grid --
+  // recharts can't host a real, tappable <input> per bar (it's all SVG), so
+  // this builds the same visual language (a colored bar whose length shows
+  // severity, tiered Critical/High/Watch) out of plain HTML instead, with a
+  // real qty box beside each row for entering the count right there. Pulls
+  // straight from liveCatalogueItems + liveCountStatus rather than
+  // liveSortedCatalogueItems, since that memo's own 'countDue' branch only
+  // keeps items already at 'overdue' level -- this wants every due item,
+  // same as the "N items need counting" header already promises.
+  function renderCountDueChart() {
+    const scored = liveCatalogueItems
+      .filter(item => liveCountStatus.has(item.id))
+      .map(item => {
+        const status = liveCountStatus.get(item.id)!
+        // Never-counted items (no baseline to measure a day count from) are
+        // the worst case -- worse than any item merely N days overdue --
+        // same ranking submitCount/scoreFns.count_status already use.
+        const severity = status.days_overdue === null ? 2000 : (status.level === 'overdue' ? 1000 + status.days_overdue : status.days_overdue ?? 0)
+        return { item, status, severity }
+      })
+      .sort((a, b) => b.severity - a.severity || a.item.name.localeCompare(b.item.name))
+
+    if (scored.length === 0) {
+      return <div className="flex-1 flex items-center justify-center text-xs text-gray-400 py-10">Nothing due for counting right now.</div>
+    }
+
+    const maxSeverity = Math.max(...scored.map(s => s.severity), 1)
+
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+          {scored.length} item{scored.length !== 1 ? 's' : ''} need{scored.length === 1 ? 's' : ''} counting
+        </div>
+        <div className="divide-y divide-gray-100">
+          {scored.map(({ item, status, severity }, i) => {
+            const pct = scored.length <= 1 ? 0 : i / (scored.length - 1)
+            const tier: 'Critical' | 'High' | 'Watch' = pct < 1 / 3 ? 'Critical' : pct < 2 / 3 ? 'High' : 'Watch'
+            const tierColor = tier === 'Critical' ? '#ef4444' : tier === 'High' ? '#f97316' : '#eab308'
+            const barPct = Math.max(8, Math.round((severity / maxSeverity) * 100))
+            let expectedLabel = 'Never counted'
+            if (status.days_overdue !== null) {
+              const d = new Date()
+              if (status.days_overdue > 0) d.setDate(d.getDate() - status.days_overdue)
+              expectedLabel = `Expected ${fmtDate(d.toISOString())}`
+            }
+            const lastCounted = liveLastCountDateByItemId.get(item.id)
+            const qty = liveInlineCountQtyByItemId[item.id] ?? ''
+            return (
+              <div key={item.id} className="relative flex items-center gap-2 px-2 py-1.5">
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: tierColor }} />
+                <div className="flex-1 min-w-0 pl-2">
+                  <div className="flex items-center gap-1.5">
+                    {renderClickableItemName(item.name, 'text-[11px] font-semibold truncate')}
+                    <span className="shrink-0 text-[7px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: tierColor }}>{tier}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-500 truncate">
+                    {expectedLabel}
+                    <span className="text-gray-400"> · </span>
+                    {status.label}{status.level === 'overdue' ? ' overdue' : ''}
+                    <span className="text-gray-400"> · </span>
+                    Last ctd: {lastCounted ? fmtDate(lastCounted) : 'Never'}
+                    <span className="text-gray-400"> · </span>
+                    SOH: {Math.ceil(Number(item.soh))}
+                  </p>
+                  <div className="mt-1 h-1.5 w-full max-w-[160px] bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${barPct}%`, background: tierColor }} />
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-1">
+                  <input
+                    type="number" inputMode="decimal" placeholder="Qty"
+                    value={qty}
+                    onChange={e => setLiveInlineCountQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') recordInlineCount(item) }}
+                    className="w-14 text-[11px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                  />
+                  <button
+                    type="button"
+                    disabled={!qty || liveCountSaving}
+                    onClick={() => recordInlineCount(item)}
+                    aria-label={`Record count for ${item.name}`}
+                    className="shrink-0 w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold flex items-center justify-center disabled:opacity-30"
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
@@ -5766,7 +5882,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'countDue'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'count_due_chart' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
                   {/* Net Gain -- total counted gains outweighing total losses
@@ -7407,6 +7523,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="goods" /></div>
               ) : liveSaleView?.kind === 'least_sales_groups' ? (
                 <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="groups" /></div>
+              ) : liveSaleView?.kind === 'count_due_chart' ? (
+                renderCountDueChart()
               ) : (
               <div className="flex-1 overflow-y-auto">
                 {/* Violation Description Panel - scrolls with items */}
