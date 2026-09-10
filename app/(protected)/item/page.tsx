@@ -107,6 +107,7 @@ const BillsAnalyticsSection = dynamic(() => import('./_components/BillsAnalytics
 const LiveSaleAnalyticsSection = dynamic(() => import('./_components/LiveSaleAnalyticsSection'), { ssr: false })
 const LossFeedAnalyticsSection = dynamic(() => import('./_components/LossFeedAnalyticsSection'), { ssr: false })
 const LeastSalesChart = dynamic(() => import('./_components/LeastSalesChart'), { ssr: false })
+const LeastPurchasedChart = dynamic(() => import('./_components/LeastPurchasedChart'), { ssr: false })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -883,15 +884,16 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveSaleView = searchParams.get('liveSaleView')
-  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | null =
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null =
     rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
     rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
     rawLiveSaleView === 'least_sales_services' ? { kind: 'least_sales_services' } :
     rawLiveSaleView === 'least_sales_goods' ? { kind: 'least_sales_goods' } :
     rawLiveSaleView === 'least_sales_groups' ? { kind: 'least_sales_groups' } :
     rawLiveSaleView === 'count_due_chart' ? { kind: 'count_due_chart' } :
+    rawLiveSaleView === 'least_purchased' ? { kind: 'least_purchased' } :
     null
-  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | null>(initialLiveSaleView)
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -909,7 +911,7 @@ function ItemHubPageInner() {
   // same state anyway rather than a separate one, since it already means
   // "which exclusive view is this radio row on" and every other value here
   // already resets cleanly to it via its own onChange.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -5865,6 +5867,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => { setLiveSaleViolationFilter('leastSalesGroups'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_groups' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Groups: Least Sales</span>
                   </label>
+                  {/* Purchasing side of the same coin as the three Least
+                      Sales charts above -- how long since a good was last
+                      bought from a vendor, not how long since it sold. */}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastPurchased'} onChange={() => { setLiveSaleViolationFilter('leastPurchased'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_purchased' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Goods: Longest Unbought</span>
+                  </label>
                   {/* Net Loss replaces the old combined "Loss/Gain/TradeOff" --
                       an item whose total counted losses outweigh its total
                       gains is just ordinary shrinkage/wastage, not something
@@ -7525,6 +7535,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="groups" /></div>
               ) : liveSaleView?.kind === 'count_due_chart' ? (
                 renderCountDueChart()
+              ) : liveSaleView?.kind === 'least_purchased' ? (
+                <div className="flex-1 overflow-y-auto"><LeastPurchasedChart /></div>
               ) : (
               <div className="flex-1 overflow-y-auto">
                 {/* Violation Description Panel - scrolls with items */}
