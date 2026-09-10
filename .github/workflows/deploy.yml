@@ -11,6 +11,15 @@ on:
 # which is exactly what caused a live 502 on 2026-09-10. Queuing instead of
 # canceling: a cancelled mid-script deploy is just as likely to leave a
 # half-done state as an overlapping one would.
+#
+# Same incident, second half of the fix: a build interrupted mid-run leaves
+# Next.js's own build lock behind, so the NEXT deploy's `npm run build` then
+# fails immediately with "Another next build process is already running" --
+# and without `set -e`, that failure was silently ignored and pm2 restarted
+# into the stale/broken .next anyway, over and over, on every deploy after.
+# `set -e` makes a real build failure stop the script (and fail the Actions
+# run visibly) instead of restarting into a broken build; `rm -rf .next`
+# guarantees a clean build directory (and no stale lock) every single time.
 concurrency:
   group: deploy-vps
   cancel-in-progress: false
@@ -26,9 +35,11 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
             cd /root/app
             git pull origin main
             npm install
+            rm -rf .next
             npm run build
             pm2 restart grony-app
             mkdir -p /var/www/gronymultimedia
