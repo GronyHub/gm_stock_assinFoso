@@ -106,6 +106,7 @@ const BillsAnalyticsSection = dynamic(() => import('./_components/BillsAnalytics
 // computes for every count.
 const LiveSaleAnalyticsSection = dynamic(() => import('./_components/LiveSaleAnalyticsSection'), { ssr: false })
 const LossFeedAnalyticsSection = dynamic(() => import('./_components/LossFeedAnalyticsSection'), { ssr: false })
+const LeastSalesChart = dynamic(() => import('./_components/LeastSalesChart'), { ssr: false })
 
 // Every real staff member, including Grony -- the third top-level tab shows
 // whichever one of these matches the logged-in username, and that person's
@@ -882,11 +883,14 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveSaleView = searchParams.get('liveSaleView')
-  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null =
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | null =
     rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
     rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
+    rawLiveSaleView === 'least_sales_services' ? { kind: 'least_sales_services' } :
+    rawLiveSaleView === 'least_sales_goods' ? { kind: 'least_sales_goods' } :
+    rawLiveSaleView === 'least_sales_groups' ? { kind: 'least_sales_groups' } :
     null
-  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | null>(initialLiveSaleView)
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -904,7 +908,7 @@ function ItemHubPageInner() {
   // same state anyway rather than a separate one, since it already means
   // "which exclusive view is this radio row on" and every other value here
   // already resets cleanly to it via its own onChange.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -5726,6 +5730,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'lossbyitems'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
+                  {/* Three read-only charts, not tables -- see LeastSalesChart
+                      and /api/analysis/least-sales. All-time units sold,
+                      lowest first, so a never-sold item/group is the most
+                      visible bar rather than buried at the bottom of a list. */}
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesServices'} onChange={() => { setLiveSaleViolationFilter('leastSalesServices'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_services' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Services: Least Sales</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesGoods'} onChange={() => { setLiveSaleViolationFilter('leastSalesGoods'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_goods' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Goods: Least Sales</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => { setLiveSaleViolationFilter('leastSalesGroups'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_groups' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Groups: Least Sales</span>
+                  </label>
                   {/* Net Loss replaces the old combined "Loss/Gain/TradeOff" --
                       an item whose total counted losses outweigh its total
                       gains is just ordinary shrinkage/wastage, not something
@@ -7378,6 +7401,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 renderLossesByDateTable()
               ) : liveSaleView?.kind === 'loss_by_items' ? (
                 renderLossesByItemsTable()
+              ) : liveSaleView?.kind === 'least_sales_services' ? (
+                <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="services" /></div>
+              ) : liveSaleView?.kind === 'least_sales_goods' ? (
+                <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="goods" /></div>
+              ) : liveSaleView?.kind === 'least_sales_groups' ? (
+                <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="groups" /></div>
               ) : (
               <div className="flex-1 overflow-y-auto">
                 {/* Violation Description Panel - scrolls with items */}
