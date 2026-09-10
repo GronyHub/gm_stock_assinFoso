@@ -4,6 +4,17 @@ on:
   push:
     branches: [main]
 
+# Runs `git pull && npm install && npm run build && pm2 restart` straight on
+# the Droplet's working directory -- two of these overlapping (a quick
+# second push before the first deploy finishes) race on that same directory
+# and can leave a half-written .next build that pm2 then restarts into,
+# which is exactly what caused a live 502 on 2026-09-10. Queuing instead of
+# canceling: a cancelled mid-script deploy is just as likely to leave a
+# half-done state as an overlapping one would.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
