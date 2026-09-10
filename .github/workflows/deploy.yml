@@ -22,13 +22,17 @@ on:
 #
 # Third round, same incident: clearing the lock with a bare `rm -rf .next`
 # forced a fully-cold Turbopack build with no cache, which then ran past the
-# SSH action's 10-minute command_timeout and got killed mid-build (leaving
-# .next in a half-built state again, and possibly a still-running `next
-# build` process on the Droplet that a plain rebuild would collide with).
-# `pkill -f "next build"` clears out any such leftover process before a
-# fresh attempt starts, and the longer command_timeout gives a genuinely
-# slow cold build enough wall-clock time to finish instead of being killed
-# partway through.
+# SSH action's 10-minute command_timeout and got killed mid-build. Raised
+# command_timeout to 25m so a genuinely slow cold build has room to finish.
+#
+# Fourth round, same incident: added `pkill -f "next build"` as a defensive
+# cleanup step for a leftover build process -- this backfired immediately.
+# The whole script is passed to the remote shell as one command line, which
+# itself contains the literal substring "next build" (from that very pkill
+# line), so `pkill -f` matched the invoking shell's own command line and
+# SIGTERM'd the deploy script 2 seconds in, before it did anything. Removed
+# -- ssh session teardown already reaps the remote process group when a
+# command_timeout closes the connection, so it wasn't needed anyway.
 concurrency:
   group: deploy-vps
   cancel-in-progress: false
@@ -47,8 +51,6 @@ jobs:
           script: |
             set -e
             cd /root/app
-            pkill -f "next build" || true
-            sleep 2
             git pull origin main
             npm install
             rm -rf .next
