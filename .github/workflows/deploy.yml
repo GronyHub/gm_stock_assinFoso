@@ -18,8 +18,17 @@ on:
 # and without `set -e`, that failure was silently ignored and pm2 restarted
 # into the stale/broken .next anyway, over and over, on every deploy after.
 # `set -e` makes a real build failure stop the script (and fail the Actions
-# run visibly) instead of restarting into a broken build; `rm -rf .next`
-# guarantees a clean build directory (and no stale lock) every single time.
+# run visibly) instead of restarting into a broken build.
+#
+# Third round, same incident: clearing the lock with a bare `rm -rf .next`
+# forced a fully-cold Turbopack build with no cache, which then ran past the
+# SSH action's 10-minute command_timeout and got killed mid-build (leaving
+# .next in a half-built state again, and possibly a still-running `next
+# build` process on the Droplet that a plain rebuild would collide with).
+# `pkill -f "next build"` clears out any such leftover process before a
+# fresh attempt starts, and the longer command_timeout gives a genuinely
+# slow cold build enough wall-clock time to finish instead of being killed
+# partway through.
 concurrency:
   group: deploy-vps
   cancel-in-progress: false
@@ -34,9 +43,12 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 25m
           script: |
             set -e
             cd /root/app
+            pkill -f "next build" || true
+            sleep 2
             git pull origin main
             npm install
             rm -rf .next
