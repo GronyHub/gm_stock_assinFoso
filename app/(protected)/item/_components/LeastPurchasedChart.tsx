@@ -38,7 +38,7 @@ export default function LeastPurchasedChart() {
 
   return (
     <div className="px-3 pt-3">
-      <Card title="Goods: Longest Unbought" subtitle="Days since last purchased from a vendor, longest first. Not the same as Least Sales -- this is about restocking, not selling.">
+      <Card title="Goods: Longest Unbought" subtitle="Days since last purchased from a vendor, longest first. Out-of-stock goods are left off. Not the same as Least Sales -- this is about restocking, not selling.">
         <ResponsiveContainer width="100%" height={Math.max(180, data.length * 30)}>
           <BarChart data={data} layout="vertical" margin={{ left: 10, right: 70 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />

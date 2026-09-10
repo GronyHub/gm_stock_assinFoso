@@ -5,9 +5,7 @@ import { getCached } from '@/lib/cacheStore'
 // Backs Sale mode's read-only "Goods: Longest Unbought" chart -- how many
 // days since each good was last on a bill (a purchase from a vendor), not
 // how long since it last sold (that's the separate Least Sales/idle-value
-// chart). Unlike that one, a good with 0 SOH is NOT excluded here -- zero
-// stock plus a very long time since it was last bought is often exactly the
-// case worth surfacing (restocking neglected), not a case to hide.
+// chart). Zero-SOH goods are excluded, same as Least Sales.
 const LIMIT = 15
 
 type Tier = 'Critical' | 'High' | 'Watch'
@@ -63,6 +61,7 @@ export async function GET() {
       // (never billed, never sold, never counted) has nothing to measure
       // from, and is left out rather than given a made-up number.
       const items = rows
+        .filter(r => r.soh > 0)
         .map(r => {
           const neverBought = r.last_bill_date === null
           const staleSince = r.last_bill_date ?? r.first_activity_date
