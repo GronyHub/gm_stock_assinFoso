@@ -29,33 +29,48 @@ export async function GET() {
           JOIN bills b ON b.id = bl.bill_id
           WHERE bl.item_id IS NOT NULL
           GROUP BY bl.item_id
+        ),
+        first_activity AS (
+          SELECT item_id, MIN(d) AS first_activity_date
+          FROM (
+            SELECT item_id, receipt_date::date AS d FROM sales_receipt_lines WHERE item_id IS NOT NULL
+            UNION ALL
+            SELECT item_id, tapped_at::date AS d FROM live_sale_taps WHERE item_id IS NOT NULL
+            UNION ALL
+            SELECT item_id, count_date::date AS d FROM stock_counts WHERE item_id IS NOT NULL
+          ) combined
+          GROUP BY item_id
         )
         SELECT i.id, i.canonical_name AS name,
           COALESCE(iss.calculated_soh, 0)::float AS soh,
-          lb.last_bill_date
+          lb.last_bill_date,
+          fa.first_activity_date
         FROM items i
         LEFT JOIN item_stock_summary iss ON iss.item_id = i.id
         LEFT JOIN last_bill lb ON lb.item_id = i.id
+        LEFT JOIN first_activity fa ON fa.item_id = i.id
         WHERE (i.status IS NULL OR LOWER(i.status) <> 'inactive')
           AND COALESCE(i.product_type, 'goods') <> 'service'
-      ` as { id: number; name: string; soh: number; last_bill_date: string | null }[]
+      ` as { id: number; name: string; soh: number; last_bill_date: string | null; first_activity_date: string | null }[]
 
       const msPerDay = 1000 * 60 * 60 * 24
       const today = Date.now()
 
-      // Never-bought goods (no bill on record at all) rank above every
-      // specific day count -- there's no more extreme case than "not once".
+      // A good with no bill on record at all still gets a real, varying day
+      // count here -- measured from the earliest sale/tap/count on record
+      // for it instead (the longest we can prove it's existed without ever
+      // being bought). Only a good with truly zero history of any kind
+      // (never billed, never sold, never counted) has nothing to measure
+      // from, and is left out rather than given a made-up number.
       const items = rows
-        .map(r => ({
-          id: r.id, name: r.name, soh: r.soh,
-          days_unbought: r.last_bill_date ? Math.floor((today - new Date(r.last_bill_date).getTime()) / msPerDay) : null,
-        }))
-        .sort((a, b) => {
-          if (a.days_unbought === null && b.days_unbought === null) return a.name.localeCompare(b.name)
-          if (a.days_unbought === null) return -1
-          if (b.days_unbought === null) return 1
-          return b.days_unbought - a.days_unbought || a.name.localeCompare(b.name)
+        .map(r => {
+          const neverBought = r.last_bill_date === null
+          const staleSince = r.last_bill_date ?? r.first_activity_date
+          const days_unbought = staleSince ? Math.floor((today - new Date(staleSince).getTime()) / msPerDay) : null
+          return { id: r.id, name: r.name, soh: r.soh, days_unbought, neverBought }
         })
+        .filter((r): r is { id: number; name: string; soh: number; days_unbought: number; neverBought: boolean } => r.days_unbought !== null)
+        .sort((a, b) => b.days_unbought - a.days_unbought || a.name.localeCompare(b.name))
         .slice(0, LIMIT)
         .map((r, i, arr) => ({ ...r, tier: tierFor(i, arr.length) }))
 
