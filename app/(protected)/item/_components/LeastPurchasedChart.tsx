@@ -18,11 +18,13 @@ const TIER_COLOR: Record<Tier, string> = { Critical: '#ef4444', High: '#f97316',
 export default function LeastPurchasedChart() {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [loading, setLoading] = useState(true)
+  // TEMP diagnostic -- see the API route's own comment. Remove alongside it.
+  const [debug, setDebug] = useState<any>(null)
 
   useEffect(() => {
     fetch('/api/analysis/least-purchased')
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => { setRows(Array.isArray(d?.items) ? d.items : []); setLoading(false) })
+      .then(d => { setRows(Array.isArray(d?.items) ? d.items : []); setDebug(d?.debug ?? null); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 
@@ -34,7 +36,26 @@ export default function LeastPurchasedChart() {
   })), [rows])
 
   if (loading) return <div className="py-10 text-center text-gray-400 text-xs">Loading…</div>
-  if (!rows || rows.length === 0) return <div className="py-10 text-center text-gray-400 text-xs">No goods found.</div>
+  if (!rows || rows.length === 0) return (
+    <div className="py-10 text-center text-gray-400 text-xs space-y-2">
+      <p>No goods found.</p>
+      {debug && (
+        <div className="text-left max-w-xs mx-auto bg-gray-50 border border-gray-200 rounded p-2 text-[10px] leading-relaxed">
+          <p>Goods total: {debug.totalGoodsRows}</p>
+          <p>Goods with stock &gt; 0: {debug.withPositiveStock}</p>
+          <p>...with stock &amp; a purchase/sale/count on record: {debug.withStockAndHistory}</p>
+          {debug.sampleNoHistoryButStocked?.length > 0 && (
+            <>
+              <p className="mt-1">Stocked but no history at all, e.g.:</p>
+              <ul className="list-disc list-inside">
+                {debug.sampleNoHistoryButStocked.map((r: any) => <li key={r.id}>{r.name} (SOH: {r.soh})</li>)}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="px-3 pt-3">

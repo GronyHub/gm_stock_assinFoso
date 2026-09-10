@@ -54,6 +54,17 @@ export async function GET() {
       const msPerDay = 1000 * 60 * 60 * 24
       const today = Date.now()
 
+      // TEMP diagnostic -- "Goods: Longest Unbought" was coming back
+      // completely empty and it wasn't obvious from the UI alone which
+      // filter stage was eliminating everything. Remove once that's
+      // understood.
+      const debug = {
+        totalGoodsRows: rows.length,
+        withPositiveStock: rows.filter(r => r.soh > 0).length,
+        withStockAndHistory: rows.filter(r => r.soh > 0 && (r.last_bill_date !== null || r.first_activity_date !== null)).length,
+        sampleNoHistoryButStocked: rows.filter(r => r.soh > 0 && r.last_bill_date === null && r.first_activity_date === null).slice(0, 5).map(r => ({ id: r.id, name: r.name, soh: r.soh })),
+      }
+
       // A good with no bill on record at all still gets a real, varying day
       // count here -- measured from the earliest sale/tap/count on record
       // for it instead (the longest we can prove it's existed without ever
@@ -73,7 +84,7 @@ export async function GET() {
         .slice(0, LIMIT)
         .map((r, i, arr) => ({ ...r, tier: tierFor(i, arr.length) }))
 
-      return { items }
+      return { items, debug }
     })
 
     return success(data)
