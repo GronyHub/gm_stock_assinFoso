@@ -909,6 +909,12 @@ function ItemHubPageInner() {
   const rawLiveEmbeddedSearch = searchParams.get('liveSearch')
   const [liveEmbeddedSearch, setLiveEmbeddedSearch] = useState(rawLiveEmbeddedSearch ?? '')
   const [liveShowCountFullPage, setLiveShowCountFullPage] = useState(false)
+  // Which of P&L's own sub-views is showing (see lossView === 'pl' further
+  // down) -- Loss by Date/Loss by Items/Net Loss moved here from the Count
+  // tab since they're a financial-loss concern, not a counting one, reusing
+  // the same renderLossesByDateTable/renderLossesByItemsTable this
+  // component already has rather than building new ones.
+  const [plSubView, setPlSubView] = useState<'pl' | 'loss_by_date' | 'loss_by_items' | 'net_loss'>('pl')
   // 'pl'/'cab' are dead values now -- P&L/CAB moved to their own top-level
   // tabs (see pickLossView/canSeePL in renderTabSwitcher), so nothing sets
   // this to either any more. Left in the type rather than torn out, since
@@ -1750,19 +1756,20 @@ function ItemHubPageInner() {
 
   const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   // True while the Count tab owns the screen -- either because one of its
-  // full-page views (Records, Loss by Date/Items, Net Loss, or now Count
-  // Due) has replaced the tap-to-sell grid entirely (see the
-  // `!liveShowCountFullPage` gate further down and the loss_by_date/
-  // loss_by_items/net_loss/count_due_chart branches next to it), or because
-  // Negative Stock is selected -- that one is the odd one out, deliberately
-  // NOT full-page: fixing a negative-stock item means tapping it right on
-  // the grid, so it stays a liveSaleViolationFilter-driven grid filter same
-  // as it always was, just entered/exited through Count's own sub-nav now
-  // instead of Sale mode's generic filter row. Count is just a different
+  // full-page views (Records, or now Count Due) has replaced the tap-to-
+  // sell grid entirely (see the `!liveShowCountFullPage` gate further down
+  // and the count_due_chart branch next to it), or because Negative Stock
+  // is selected -- that one is the odd one out, deliberately NOT full-page:
+  // fixing a negative-stock item means tapping it right on the grid, so it
+  // stays a liveSaleViolationFilter-driven grid filter same as it always
+  // was, just entered/exited through Count's own sub-nav now instead of
+  // Sale mode's generic filter row. Loss by Date/Items/Net Loss used to
+  // live here too, but moved to P&L instead (see plSubView) -- they're a
+  // financial-loss concern, not a counting one. Count is just a different
   // way in rather than a new lossView (which would mean pulling all this
   // rendering out of Sale mode's own scope, a much bigger change than this
   // file's size makes worth it for what's otherwise a UI relabeling).
-  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items' || liveSaleView?.kind === 'net_loss' || liveSaleView?.kind === 'count_due_chart' || liveSaleViolationFilter === 'negSoh')
+  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'count_due_chart' || liveSaleViolationFilter === 'negSoh')
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
@@ -1860,6 +1867,7 @@ function ItemHubPageInner() {
     return lossView === key
   }
   function cashItemClick(key: string) {
+    if (key === 'pl') { pickPL(); return }
     pickLossView(key as LossView)
   }
   function cashItemTaskScope(key: string) {
@@ -1999,7 +2007,7 @@ function ItemHubPageInner() {
       { label: 'Customers', action: () => pickLossView('customers') },
       { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
       ...(canSeePL ? [
-        { label: 'P&L', action: () => pickLossView('pl') },
+        { label: 'P&L', action: () => pickPL() },
         { label: 'CAB', action: () => pickLossView('cab') },
       ] : []),
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
@@ -2986,7 +2994,7 @@ function ItemHubPageInner() {
   // Count Records -- fetched when viewing the Count Records view, showing full-page
   // count display in Sale mode, or viewing Loss by Date/Items views. Unlike the queues
   // above, this is the full all-time history, not a small due-today list.
-  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items' || liveSaleView?.kind === 'net_loss'
+  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage || (lossView === 'pl' && plSubView !== 'pl')
   useEffect(() => {
     if (!liveViewingCountRecords) {
       setLiveCountRecords([])
@@ -4390,6 +4398,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     selectLiveSalesRadio(key)
   }
 
+  // Always lands on the actual P&L report by default -- plSubView doesn't
+  // reset itself just because lossView left 'pl' and came back (e.g. via
+  // Manage then back to P&L), so without this a stale Loss by Date/Items/
+  // Net Loss selection would silently keep showing instead.
+  function pickPL() {
+    pickLossView('pl')
+    setPlSubView('pl')
+  }
+
   function renderTabSwitcher(compact: boolean) {
     // Each tab is its own standalone button (own background/border) rather
     // than a segment inside one shared pill -- an inactive tab used to be
@@ -4433,7 +4450,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             further down this same flex-col), not a mode within the Items/Sales
             grid, so active state reads off lossView instead. */}
         {canSeePL && (
-          <button type="button" onClick={() => pickLossView('pl')} title="P&L" className={btnCls(lossView === 'pl', 'bg-cyan-600')}>P&amp;L</button>
+          <button type="button" onClick={() => pickPL()} title="P&L" className={btnCls(lossView === 'pl', 'bg-cyan-600')}>P&amp;L</button>
         )}
         {canSeePL && (
           <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
@@ -6138,17 +6155,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   ))}
                 </div>
               )}
-              {/* Count tab's own small sub-nav -- picks between its six
-                  views (see inCountTab/pickCountMode above), replacing the
-                  Counts/Loss by Date/Loss by Items/Net Loss/Count Due/
-                  Negative Stock radios that used to live in Sale mode's own
-                  filter row above. Net Loss (an item whose total counted
-                  losses outweigh its total gains -- ordinary shrinkage/
-                  wastage, not something requiring a fix, hence black/
-                  browsable here rather than a red action-required flag) and
+              {/* Count tab's own small sub-nav -- picks between Records/
+                  Count Due/Negative Stock (see inCountTab/pickCountMode
+                  above). Loss by Date/Loss by Items/Net Loss used to live
+                  here too but moved to the P&L tab instead (see plSubView)
+                  -- they're a financial-loss concern, not a counting one.
                   Negative Stock (red/action-required, kept tappable-grid
-                  rather than full-page -- see inCountTab's own comment) each
-                  only show up when there's actually one to see. */}
+                  rather than full-page -- see inCountTab's own comment)
+                  only shows up when there's actually one to see. */}
               {inCountTab && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
@@ -6160,21 +6174,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'count_due_chart'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'count_due_chart' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
                   </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'loss_by_date'} onChange={() => { setLiveSaleViolationFilter('lossbydate'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_date' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Date</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'loss_by_items'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Items</span>
-                  </label>
-                  {liveNetLossCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'net_loss'} onChange={() => { setLiveSaleViolationFilter('netLoss'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'net_loss' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Net Loss ({liveNetLossCount})</span>
-                  </label></>)}
                   {liveNegSohCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="countSubView" checked={liveSaleViolationFilter === 'negSoh'} onChange={() => { setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
@@ -8893,7 +8892,40 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
           <TabErrorBoundary>
-            <ProfitLossTab />
+            <div className="flex-1 min-h-0 flex flex-col">
+              {/* P&L's own small sub-nav -- the actual report, plus Loss by
+                  Date/Loss by Items/Net Loss moved here from the Count tab
+                  (see pickPL/plSubView) since they're a financial-loss
+                  concern, not a counting one. Reuses the same
+                  renderLossesByDateTable/renderLossesByItemsTable Count used
+                  to call -- these two functions don't depend on anything
+                  Sale-mode-specific, just liveCountRecords (fetched via
+                  liveViewingCountRecords, which already covers this case). */}
+              <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
+                  <span>P&amp;L</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Date</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Items</span>
+                </label>
+                {liveNetLossCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
+                    <span>Net Loss ({liveNetLossCount})</span>
+                  </label>
+                )}
+              </div>
+              {plSubView === 'pl' ? <ProfitLossTab /> :
+                plSubView === 'loss_by_date' ? renderLossesByDateTable() :
+                plSubView === 'loss_by_items' ? renderLossesByItemsTable() :
+                renderLossesByItemsTable(true)}
+            </div>
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'vendors' && (
