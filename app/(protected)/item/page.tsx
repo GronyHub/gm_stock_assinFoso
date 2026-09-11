@@ -260,12 +260,11 @@ const REPORT_VIEWS = new Set<LossView>([
 // parent row, which is itself inside these same sections. Expenses moved
 // off this pane entirely -- it's a liveMode tab now, same as Sales/Bills
 // (see the tab switcher and jumpToLiveSaleTab).
-// Purchase Orders/Vendors/Customers/P&L/CAB all dropped out of this list --
-// each is now a radio sub-view of a tab inside Items' own tab switcher
-// instead of its own pane row (Purchase Orders + Vendors inside Bills,
-// Customers inside Sales, P&L + CAB both riding Sale's own filter radio row
-// -- see liveBillsShowPurchaseOrders/liveBillsShowVendors/
-// liveSalesShowCustomers/liveSaleViolationFilter), cutting a tap and
+// Purchase Orders/Vendors/P&L/CAB/Customers all dropped out of this list --
+// each is now its own top-level tab (Customers, P&L, CAB) or a radio sub-
+// view of one (Purchase Orders + Vendors inside Bills) instead of its own
+// pane row -- see liveBillsShowPurchaseOrders/liveBillsShowVendors/
+// pickPL/pickLossView('cab')/pickLossView('customers')), cutting a tap and
 // keeping related things together. Items is the only row left here as a
 // result.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
@@ -2315,11 +2314,6 @@ function ItemHubPageInner() {
   // this component's own header row instead of a second row of their own.
   const [liveSalesShowHistory, setLiveSalesShowHistory] = useState(false)
   const [liveSalesBarsOnly, setLiveSalesBarsOnly] = useState(false)
-  // Customers radio -- same "swap the content area, stay on this tab"
-  // treatment as Bills' Purchase Orders/Vendors radios. Customers no longer
-  // has its own Cash pane row (see CASH_ITEMS) since a sale is always to a
-  // customer; this is its only entry point now.
-  const [liveSalesShowCustomers, setLiveSalesShowCustomers] = useState(false)
   const [liveSalesShowW, setLiveSalesShowW] = useState(true)
   const [liveSalesShowG, setLiveSalesShowG] = useState(true)
   // Period (month/year), the Columns picker, and the bulk-attach toggle,
@@ -2442,7 +2436,6 @@ function ItemHubPageInner() {
   // is the one place that changes it, always clearing every other option.
   const liveSalesRadioValue = liveSalesShowHistory ? 'history'
     : liveSalesBarsOnly ? 'bars_only'
-    : liveSalesShowCustomers ? 'customers'
     : liveSalesViolationFilter ? liveSalesViolationFilter
     : (liveSalesShowW && !liveSalesShowG) ? 'wic'
     : (!liveSalesShowW && liveSalesShowG) ? 'gmc'
@@ -2451,7 +2444,6 @@ function ItemHubPageInner() {
     const violationKeys = ['no_cash', 'missing_days', 'dup_receipt', 'high_wnw', 'no_attachment', 'sold_below_cost']
     setLiveSalesShowHistory(value === 'history')
     setLiveSalesBarsOnly(value === 'bars_only')
-    setLiveSalesShowCustomers(value === 'customers')
     setLiveSalesViolationFilter(violationKeys.includes(value) ? value : null)
     setLiveSalesShowW(value !== 'gmc')
     setLiveSalesShowG(value !== 'wic')
@@ -4343,7 +4335,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // clicked button while the content underneath keeps showing the P&L/CAB
   // report instead. A no-op when already on 'items'/'sales'.
   function pickItemsMode(mode: 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks') {
-    if (lossView === 'pl' || lossView === 'cab') pickLossView('sales')
+    if (lossView === 'pl' || lossView === 'cab' || lossView === 'customers') pickLossView('sales')
     // Same problem, Count's own flavor -- inCountTab's three full-page
     // states (see its own comment above) don't clear themselves either, so
     // leaving the Count tab needs to undo them explicitly too or the grid
@@ -4363,7 +4355,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // (see the inCountTab block further down), same as they always were, just
   // relocated out of Sale mode's shared filter row.
   function pickCountMode() {
-    if (lossView === 'pl' || lossView === 'cab') pickLossView('sales')
+    if (lossView === 'pl' || lossView === 'cab' || lossView === 'customers') pickLossView('sales')
     setItemsPageMode('sale')
     setLiveMode('sale')
     setLiveSaleViolationFilter('counts')
@@ -4385,14 +4377,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveSaleView(view)
   }
 
-  // Receipts' own violation radios (No Cash/Missing Days/Dup Receipt/High
-  // WNW/No Attachment/Sold Below Cost) used to live only in Receipts' own
-  // dedicated violation row -- rendered here in the shared row instead, same
-  // reasoning as pickSaleFilter above: jump to itemsPageMode 'sales' (rather
-  // than 'sale') so the receipts list these actually filter is the one on
-  // screen, then hand off to the existing selectLiveSalesRadio (unchanged --
-  // still the one source of truth for liveSalesRadioValue).
-  function pickSalesViolation(key: string) {
+  // Receipts' own radios -- its violations (No Cash/Missing Days/Dup
+  // Receipt/High WNW/No Attachment/Sold Below Cost) and its RC History/RC
+  // Bars Only/RC WIC/RC GMC view toggles -- used to live only in Receipts'
+  // own dedicated rows, rendered here in the shared row instead. Same
+  // reasoning as pickSaleFilter above: jump to itemsPageMode 'sales'
+  // (rather than 'sale') so the receipts list these actually affect is the
+  // one on screen, then hand off to the existing selectLiveSalesRadio
+  // (unchanged -- still the one source of truth for liveSalesRadioValue).
+  function pickSalesView(key: string) {
     setItemsPageMode('sales')
     setLiveMode('sales')
     selectLiveSalesRadio(key)
@@ -4416,11 +4409,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       `font-bold rounded-md border transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white border-transparent` : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
       }`
-    // itemsPageMode itself doesn't change when P&L/CAB take over (see
-    // pickItemsMode above) -- without this, whichever mode was open right
-    // before would stay lit up underneath the P&L/CAB button that's
-    // actually showing.
-    const onItemsGrid = lossView !== 'pl' && lossView !== 'cab'
+    // itemsPageMode itself doesn't change when P&L/CAB/Customers take over
+    // (see pickItemsMode above) -- without this, whichever mode was open
+    // right before would stay lit up underneath the button that's actually
+    // showing.
+    const onItemsGrid = lossView !== 'pl' && lossView !== 'cab' && lossView !== 'customers'
     // Always one line -- scrolls horizontally rather than wrapping onto a
     // second row when there isn't room for all buttons.
     return (
@@ -4455,6 +4448,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {canSeePL && (
           <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
         )}
+        {/* Customers used to only be reachable as a radio inside Receipts'
+            own view-toggle row (liveSalesShowCustomers) -- promoted to a
+            full tab here instead, same lossView === 'customers'
+            destination CustomersPage already rendered on its own further
+            down this same flex-col (search results/shortcuts already
+            landed there too), just not previously reachable from this row. */}
+        <button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>
         {(canSeeManage || canSeeTeam) && (
           <button type="button" onClick={() => pickItemsMode('manage')} title="Manage" className={btnCls(onItemsGrid && itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
         )}
@@ -5785,11 +5785,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               unchanged -- Nav is hidden entirely below the md breakpoint
               (nothing to portal into), so both render in place exactly as
               before. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && !isDesktop && (
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && !isDesktop && (
             <PresentStaffBar roster={activeStaff}
               staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
           )}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && isDesktop && navSlotEl && createPortal(
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
             <>
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
@@ -5809,7 +5809,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               back to Sale/Log/etc. from either is one tap. Every other
               lossView (Vendors, Expenses, Opener, etc.) still has nothing
               to do with this switcher and doesn't show it. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && (
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && (
             <div className="shrink-0 bg-white border-b border-gray-200">
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
@@ -6148,8 +6148,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <Fragment key={v.key}>
                       <span className="text-gray-400 px-1">·</span>
                       <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                        <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales' && liveSalesRadioValue === v.key} onChange={() => pickSalesViolation(v.key)} className="cursor-pointer w-3 h-3" />
+                        <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales' && liveSalesRadioValue === v.key} onChange={() => pickSalesView(v.key)} className="cursor-pointer w-3 h-3" />
                         <span>{v.label} ({v.count})</span>
+                      </label>
+                    </Fragment>
+                  ))}
+                  {/* Receipts' own view toggles (not violations, hence
+                      gray/black not red) -- "RC" prefix distinguishes them
+                      from this row's other options now that they share it,
+                      same reasoning as Records/Log/Receipts already needing
+                      to read unambiguously alongside everything else here. */}
+                  {[
+                    { key: 'history', label: 'RC History' },
+                    { key: 'bars_only', label: 'RC Bars Only' },
+                    { key: 'gmc', label: 'RC GMC' },
+                    { key: 'wic', label: 'RC WIC' },
+                  ].map(v => (
+                    <Fragment key={v.key}>
+                      <span className="text-gray-400 px-1">·</span>
+                      <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                        <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales' && liveSalesRadioValue === v.key} onChange={() => pickSalesView(v.key)} className="cursor-pointer w-3 h-3" />
+                        <span>{v.label}</span>
                       </label>
                     </Fragment>
                   ))}
@@ -6652,60 +6671,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Help
                 </label>
               </div>
-              {/* Row 2: "All" plus the non-violation toggles (History/Bars
-                  Only/WIC/GMC/Customers) -- part of the same mutually-
-                  exclusive radio group as the violation filters, which now
-                  live in the shared row above (Sale mode's own filter bar,
-                  see pickSalesViolation) instead of a second row here, so
-                  they show up the same way regardless of whether Sale/Log/
-                  Receipts is open. Only one of the whole group (this row
-                  plus those violations) can be selected at a time; see
-                  liveSalesRadioValue/selectLiveSalesRadio above. */}
+              {/* Row 2: "All" -- part of the same mutually-exclusive radio
+                  group as everything else here (History/Bars Only/WIC/GMC's
+                  own "RC"-prefixed radios, the violation filters, Customers
+                  now its own tab) even though most of that group lives in
+                  the shared row above now (Sale mode's own filter bar, see
+                  pickSalesView); see liveSalesRadioValue/selectLiveSalesRadio
+                  above. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
                 </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'history'} onChange={() => selectLiveSalesRadio('history')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  History
-                </label>
-                <label title="Show only the date bars, hiding each receipt's item lines"
-                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'bars_only'} onChange={() => selectLiveSalesRadio('bars_only')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Bars Only
-                </label>
-                <label title="Show only Walk-In receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'wic'} onChange={() => selectLiveSalesRadio('wic')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  WIC
-                </label>
-                <label title="Show only Grony Multimedia receipts" className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'gmc'} onChange={() => selectLiveSalesRadio('gmc')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  GMC
-                </label>
-                {/* Swaps Sales' own content area for CustomersPage rendered
-                    inline (same "exclusive view selector" treatment as
-                    Bills' Purchase Orders/Vendors radios), rather than
-                    navigating to the separate lossView==='customers'
-                    destination. */}
-                <label title="Customers, opened inline"
-                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'customers'} onChange={() => selectLiveSalesRadio('customers')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Customers
-                </label>
               </div>
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
-              ) : liveSalesShowCustomers ? (
-                <div className="px-4 pt-2 flex-1 overflow-auto space-y-2">
-                  <CustomersPage initialSearch={liveEmbeddedSearch} onFlagCountChange={setCustomersFlagsCount}
-                    jumpToTabSeq={customersJumpSeq} jumpToTab={customersJumpTab} />
-                </div>
               ) : (
                 <div className="flex-1 overflow-auto">
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
