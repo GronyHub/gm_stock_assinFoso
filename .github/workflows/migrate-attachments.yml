@@ -1,0 +1,37 @@
+name: Migrate Attachments from Vercel Blob
+
+# One-off, manual only. Recovers every file attached before this app moved
+# off Vercel hosting (Sales/Bills/UK tab/Announcements all silently failed
+# to save once the move happened -- see lib/fileStorage.ts's own comment)
+# by pulling them out of the old Vercel Blob store and writing them into
+# /root/app-uploads, the same place the app now reads attachments from.
+#
+# Needs a real BLOB_READ_WRITE_TOKEN from the (frozen) Vercel project's
+# Storage tab, added first as the VERCEL_BLOB_MIGRATION_TOKEN repository
+# secret (Settings -> Secrets and variables -> Actions -> New repository
+# secret). Safe to re-run -- files are simply overwritten with a fresh
+# copy, and nothing is ever deleted from Vercel by this script.
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_BLOB_MIGRATION_TOKEN: ${{ secrets.VERCEL_BLOB_MIGRATION_TOKEN }}
+    steps:
+      - name: Run migration on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 20m
+          envs: VERCEL_BLOB_MIGRATION_TOKEN
+          script: |
+            set -e
+            cd /root/app
+            git pull origin main
+            npm install @vercel/blob@2.5.0 --no-save
+            node scripts/migrate-attachments.mjs
+            npm uninstall @vercel/blob --no-save
