@@ -887,16 +887,17 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveSaleView = searchParams.get('liveSaleView')
-  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null =
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null =
     rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
     rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
+    rawLiveSaleView === 'net_loss' ? { kind: 'net_loss' } :
     rawLiveSaleView === 'least_sales_services' ? { kind: 'least_sales_services' } :
     rawLiveSaleView === 'least_sales_goods' ? { kind: 'least_sales_goods' } :
     rawLiveSaleView === 'least_sales_groups' ? { kind: 'least_sales_groups' } :
     rawLiveSaleView === 'count_due_chart' ? { kind: 'count_due_chart' } :
     rawLiveSaleView === 'least_purchased' ? { kind: 'least_purchased' } :
     null
-  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null>(initialLiveSaleView)
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -1749,17 +1750,19 @@ function ItemHubPageInner() {
 
   const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   // True while the Count tab's own full-page content (Records, or one of
-  // the two loss-discrepancy browsers) has taken over Sale mode's own
-  // screen -- these three already fully replace the tap-to-sell grid (see
-  // the `!liveShowCountFullPage` gate further down and the loss_by_date/
-  // loss_by_items branches next to it), so Count is just a different way
-  // in rather than a new lossView (which would mean pulling that rendering
-  // out of Sale mode's own scope, a much bigger change than this file's
-  // size makes worth it for what's otherwise a UI relabeling). Net Loss is
-  // NOT included here -- unlike these three, it only filters the still-
-  // tappable grid rather than replacing it, so it stays a Sale-mode filter
-  // rather than moving into Count.
-  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items')
+  // the two loss-discrepancy browsers, or Net Loss) has taken over Sale
+  // mode's own screen -- these four already fully replace the tap-to-sell
+  // grid (see the `!liveShowCountFullPage` gate further down and the
+  // loss_by_date/loss_by_items/net_loss branches next to it), so Count is
+  // just a different way in rather than a new lossView (which would mean
+  // pulling that rendering out of Sale mode's own scope, a much bigger
+  // change than this file's size makes worth it for what's otherwise a UI
+  // relabeling). Net Loss used to be the odd one out here -- it only
+  // filtered the still-tappable grid rather than replacing it -- but now
+  // reuses renderLossesByItemsTable(true) (its per-record loss list,
+  // narrowed to just the net-loss items) to get the same full-page
+  // treatment as the other three instead of behaving differently.
+  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items' || liveSaleView?.kind === 'net_loss')
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
@@ -2983,7 +2986,7 @@ function ItemHubPageInner() {
   // Count Records -- fetched when viewing the Count Records view, showing full-page
   // count display in Sale mode, or viewing Loss by Date/Items views. Unlike the queues
   // above, this is the full all-time history, not a small due-today list.
-  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items'
+  const liveViewingCountRecords = liveCountView?.kind === 'records' || liveShowCountFullPage || liveSaleView?.kind === 'loss_by_date' || liveSaleView?.kind === 'loss_by_items' || liveSaleView?.kind === 'net_loss'
   useEffect(() => {
     if (!liveViewingCountRecords) {
       setLiveCountRecords([])
@@ -4382,13 +4385,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <button type="button" onClick={() => pickItemsMode('sale')} title="Sale" className={btnCls(onItemsGrid && itemsPageMode === 'sale' && !inCountTab, 'bg-blue-600')}>Sale</button>
         <button type="button" onClick={() => pickItemsMode('log')} title="Log" className={btnCls(onItemsGrid && itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
         <button type="button" onClick={() => pickItemsMode('sales')} title="Sales" className={btnCls(onItemsGrid && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        {/* Count groups the three full-page views that used to live only in
-            Sale mode's own filter row (Records/Loss by Date/Loss by Items --
-            see inCountTab/pickCountMode above) -- these are a stock-taking
-            concern, not a sales one, so they get their own tab rather than
-            staying buried under Sale. Net Loss stays put (see inCountTab's
-            comment) since it only filters the Sale grid, it doesn't replace
-            it the way these three do. */}
+        {/* Count groups the four full-page views that used to live only in
+            Sale mode's own filter row (Records/Loss by Date/Loss by Items/
+            Net Loss -- see inCountTab/pickCountMode above) -- these are a
+            stock-taking concern, not a sales one, so they get their own tab
+            rather than staying buried under Sale. */}
         <button type="button" onClick={() => pickCountMode()} title="Count" className={btnCls(onItemsGrid && inCountTab, 'bg-fuchsia-600')}>Count</button>
         <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
@@ -4925,13 +4926,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
-  function renderLossesByItemsTable() {
+  // netLossOnly narrows this same per-record loss list down to just the
+  // items in liveNetLossIds (total counted losses outweigh total gains) --
+  // Net Loss's own full-page view in the Count tab (see inCountTab), reusing
+  // this table rather than building a separate summary one from scratch.
+  function renderLossesByItemsTable(netLossOnly: boolean = false) {
     const COUNT_RECORDS_GRID = 'grid-cols-[minmax(7rem,1.4fr)_5rem_3rem_4rem_4rem_4rem_5rem_4rem_minmax(6rem,1fr)]'
+    const groups = netLossOnly
+      ? liveLossesByItem
+          .map(([itemName, recs]) => [itemName, recs.filter(rec => rec.item_id != null && liveNetLossIds.has(rec.item_id))] as const)
+          .filter(([, recs]) => recs.length > 0)
+      : liveLossesByItem
     return (
       <div className="flex-1 overflow-auto">
-        {liveLossesByItem.length === 0 ? (
+        {groups.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">
-            {liveCountRecords.length === 0 ? 'No counts recorded' : 'No losses found'}
+            {liveCountRecords.length === 0 ? 'No counts recorded' : netLossOnly ? 'No items with a net loss' : 'No losses found'}
           </p>
         ) : (
           <div className="inline-block min-w-full">
@@ -4946,7 +4956,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
               <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
             </div>
-            {liveLossesByItem.map(([itemName, itemRecs]) => (
+            {groups.map(([itemName, itemRecs]) => (
               <div key={itemName}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
                   <div className="col-span-9 px-2 py-1 text-[10px] font-semibold text-red-700">
@@ -5986,19 +5996,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastPurchased'} onChange={() => { setLiveSaleViolationFilter('leastPurchased'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_purchased' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Goods: Longest Unbought</span>
                   </label>
-                  {/* Net Loss replaces the old combined "Loss/Gain/TradeOff" --
-                      an item whose total counted losses outweigh its total
-                      gains is just ordinary shrinkage/wastage, not something
-                      requiring a fix, so it's a plain browsable view here
-                      (black) rather than a red action-required flag. The
-                      opposite direction (Net Gain, gains outweighing losses)
-                      is the one that's actually abnormal -- see that radio
-                      in the action-required group below. */}
-                  {liveNetLossCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'netLoss'} onChange={() => { setLiveSaleViolationFilter('netLoss'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>Net Loss ({liveNetLossCount})</span>
-                  </label></>)}
 
                   {/* Action-required filters (red) - arranged by priority */}
                   <span className="text-gray-400 px-1">·</span>
@@ -6073,10 +6070,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label></>)}
                 </div>
               )}
-              {/* Count tab's own small sub-nav -- picks between its three
+              {/* Count tab's own small sub-nav -- picks between its four
                   full-page views (see inCountTab/pickCountMode above),
-                  replacing the Counts/Loss by Date/Loss by Items radios that
-                  used to live in Sale mode's own filter row above. */}
+                  replacing the Counts/Loss by Date/Loss by Items/Net Loss
+                  radios that used to live in Sale mode's own filter row
+                  above. Net Loss (an item whose total counted losses
+                  outweigh its total gains -- ordinary shrinkage/wastage, not
+                  something requiring a fix, hence black/browsable here
+                  rather than a red action-required flag) only shows up when
+                  there's actually one to browse. */}
               {inCountTab && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
@@ -6093,6 +6095,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'loss_by_items'} onChange={() => { setLiveSaleViolationFilter('lossbyitems'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'loss_by_items' }) }} className="cursor-pointer w-3 h-3" />
                     <span>Loss by Items</span>
                   </label>
+                  {liveNetLossCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'net_loss'} onChange={() => { setLiveSaleViolationFilter('netLoss'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'net_loss' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Net Loss ({liveNetLossCount})</span>
+                  </label></>)}
                 </div>
               )}
               {/* Row 3: search bar + controls — hidden on report-style submenus, and on
@@ -7660,6 +7667,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 renderLossesByDateTable()
               ) : liveSaleView?.kind === 'loss_by_items' ? (
                 renderLossesByItemsTable()
+              ) : liveSaleView?.kind === 'net_loss' ? (
+                renderLossesByItemsTable(true)
               ) : liveSaleView?.kind === 'least_sales_services' ? (
                 <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="services" /></div>
               ) : liveSaleView?.kind === 'least_sales_goods' ? (
