@@ -14,18 +14,20 @@ function toPending(a: Attachment): PendingAttachment {
   return { ...a, localUrl: a.url, uploading: false }
 }
 
-const MAX_DIMENSION = 1800
-const JPEG_QUALITY = 0.82
-const SKIP_COMPRESSION_UNDER = 3 * 1024 * 1024 // already small enough, don't bother re-encoding
+const MAX_DIMENSION = 1400
+const JPEG_QUALITY = 0.7
+const SKIP_COMPRESSION_UNDER = 800 * 1024 // already small enough, don't bother re-encoding
 
 // A phone camera photo of a paper form can easily run 8-15MB at full
-// resolution -- comfortably over the request-body limit Vercel's serverless
-// functions enforce, which drops the connection before our upload route
-// ever runs (surfaces client-side as a bare "Failed to fetch", no server
-// error to show). Downscaling/re-encoding here keeps the form perfectly
-// legible while landing well under that ceiling. PDFs and already-small
-// images pass through untouched; any decode failure (e.g. an unsupported
-// format) just falls back to uploading the original file as-is.
+// resolution -- a form's handwriting/numbers are perfectly legible well
+// below that, so this downscales/re-encodes before upload to keep typical
+// attachments in the low hundreds of KB instead, both for faster uploads on
+// a weak connection and to keep the Droplet's own disk usage modest over
+// time (see lib/fileStorage.ts -- attachments live on the server's disk,
+// not a third-party service, so their total size is this app's own
+// problem now). PDFs and already-small images pass through untouched; any
+// decode failure (e.g. an unsupported format) just falls back to
+// uploading the original file as-is.
 async function compressIfNeeded(file: File): Promise<File> {
   if (!file.type.startsWith('image/') || file.type === 'image/gif' || file.size <= SKIP_COMPRESSION_UNDER) return file
   try {

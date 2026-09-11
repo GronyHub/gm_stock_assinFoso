@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
-import { del } from '@vercel/blob'
+import { deleteFile } from '@/lib/fileStorage'
 import { NextResponse } from 'next/server'
 
 function isAllowed(session: any) {
@@ -16,7 +16,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const [row] = await sql`DELETE FROM uk_submenu_files WHERE id = ${Number(id)} RETURNING file_url`
   if (row?.file_url) {
     const pathname = new URL(row.file_url, 'https://x').searchParams.get('p')
-    if (pathname) await del(pathname).catch(() => {})
+    if (pathname) await deleteFile(pathname).catch(() => {})
   }
   return NextResponse.json({ ok: true })
 }

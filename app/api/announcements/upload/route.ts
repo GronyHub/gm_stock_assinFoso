@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { put } from '@vercel/blob'
+import { saveFile } from '@/lib/fileStorage'
 
 const ALLOWED_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
@@ -28,11 +28,8 @@ export async function POST(req: NextRequest) {
   const filename = `announcements/${author}-${Date.now()}.${ext}`
 
   try {
-    // The store is provisioned as private-only, so blobs must be written with
-    // access: 'private' and read back through our own authenticated proxy route
-    // (app/api/announcements/media) rather than a direct public CDN URL.
-    const blob = await put(filename, file, { access: 'private' })
-    const url = `/api/announcements/media?p=${encodeURIComponent(blob.pathname)}`
+    const saved = await saveFile(filename, file, file.type)
+    const url = `/api/announcements/media?p=${encodeURIComponent(saved.pathname)}`
     return NextResponse.json({ url, contentType: file.type })
   } catch (e) {
     console.error('announcements upload error:', e)

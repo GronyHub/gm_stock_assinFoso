@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
-import { put } from '@vercel/blob'
+import { saveFile } from '@/lib/fileStorage'
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'])
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'pdf'])
@@ -27,12 +27,9 @@ export async function POST(req: NextRequest) {
   const filename = `sales/${author}-${Date.now()}.${ext || 'bin'}`
 
   try {
-    const blob = await Promise.race([
-      put(filename, file, { access: 'private' }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Upload service timed out, please try again.')), 8000)),
-    ])
-    const url = `/api/sales/media?p=${encodeURIComponent(blob.pathname)}`
-    return success({ url, contentType: blob.contentType || file.type, name: file.name })
+    const saved = await saveFile(filename, file, file.type)
+    const url = `/api/sales/media?p=${encodeURIComponent(saved.pathname)}`
+    return success({ url, contentType: saved.contentType, name: file.name })
   } catch (e) {
     return handleError('sales/upload', e)
   }

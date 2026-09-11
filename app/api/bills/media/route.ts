@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, badRequest } from '@/lib/api'
-import { get } from '@vercel/blob'
+import { readFile } from '@/lib/fileStorage'
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
@@ -10,13 +10,11 @@ export async function GET(req: NextRequest) {
   if (!pathname) return badRequest('Missing pathname')
 
   try {
-    const result = await get(pathname, { access: 'private' })
-    if (!result || result.statusCode !== 200) {
-      return badRequest('Not found')
-    }
+    const result = await readFile(pathname)
+    if (!result) return badRequest('Not found')
     return new NextResponse(result.stream, {
       headers: {
-        'Content-Type': result.blob.contentType,
+        'Content-Type': result.contentType,
         'Cache-Control': 'private, max-age=3600',
       },
     })

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { get } from '@vercel/blob'
+import { readFile } from '@/lib/fileStorage'
 
-// Streams a private announcement blob back to any logged-in staff member --
+// Streams a private announcement file back to any logged-in staff member --
 // matches the Announcements feed's own visibility (everyone can see posts,
 // only owner/manager can create/delete them).
 export async function GET(req: NextRequest) {
@@ -13,13 +13,11 @@ export async function GET(req: NextRequest) {
   if (!pathname) return NextResponse.json({ error: 'Missing pathname' }, { status: 400 })
 
   try {
-    const result = await get(pathname, { access: 'private' })
-    if (!result || result.statusCode !== 200) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
+    const result = await readFile(pathname)
+    if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return new NextResponse(result.stream, {
       headers: {
-        'Content-Type': result.blob.contentType,
+        'Content-Type': result.contentType,
         'Cache-Control': 'private, max-age=3600',
       },
     })

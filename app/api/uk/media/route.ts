@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { get } from '@vercel/blob'
+import { readFile } from '@/lib/fileStorage'
 
 function isAllowed(session: any) {
   const username = ((session?.user as any)?.username as string | undefined)?.toLowerCase()
   return username === 'grony'
 }
 
-// Streams a private UK file blob back -- gated to grony only, same as every
+// Streams a private UK file back -- gated to grony only, same as every
 // other /api/uk/* route, since this is real private user data.
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -17,13 +17,11 @@ export async function GET(req: NextRequest) {
   if (!pathname) return NextResponse.json({ error: 'Missing pathname' }, { status: 400 })
 
   try {
-    const result = await get(pathname, { access: 'private' })
-    if (!result || result.statusCode !== 200) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    }
+    const result = await readFile(pathname)
+    if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return new NextResponse(result.stream, {
       headers: {
-        'Content-Type': result.blob.contentType,
+        'Content-Type': result.contentType,
         'Cache-Control': 'private, max-age=3600',
       },
     })

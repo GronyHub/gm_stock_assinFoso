@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { put } from '@vercel/blob'
+import { saveFile } from '@/lib/fileStorage'
 
 function isAllowed(session: any) {
   const username = ((session?.user as any)?.username as string | undefined)?.toLowerCase()
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
   const filename = `uk/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`.slice(0, 200) || `uk/${Date.now()}.${ext}`
 
   try {
-    const blob = await put(filename, file, { access: 'private' })
-    const url = `/api/uk/media?p=${encodeURIComponent(blob.pathname)}`
+    const saved = await saveFile(filename, file, file.type)
+    const url = `/api/uk/media?p=${encodeURIComponent(saved.pathname)}`
     return NextResponse.json({ url, contentType: file.type, fileName: file.name })
   } catch (e) {
     console.error('uk upload error:', e)
