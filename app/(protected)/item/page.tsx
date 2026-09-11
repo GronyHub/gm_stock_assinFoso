@@ -5863,8 +5863,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               (nothing to portal into), so both render in place exactly as
               before. */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && !isDesktop && (
-            <PresentStaffBar roster={activeStaff}
-              staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+            <>
+              {/* Mobile has no Nav bar to portal into (Nav is `hidden
+                  md:block`) -- same bold total as the desktop navSlotEl
+                  portal below, just its own small row here instead since
+                  there's nothing to share it with. */}
+              <div className="px-2 py-1 border-b border-gray-200 bg-white flex items-center justify-center">
+                <span className="font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
+                  ₵{formatPrice(liveTodaySalesTotal)}
+                </span>
+              </div>
+              <PresentStaffBar roster={activeStaff}
+                staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+            </>
           )}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
             <>
