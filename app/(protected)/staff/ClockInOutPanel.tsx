@@ -110,11 +110,12 @@ export default function ClockInOutPanel({
     setRoleBanner(null)
     setSaving(true)
 
-    let latitude: number | null = null, longitude: number | null = null
+    let latitude: number | null = null, longitude: number | null = null, accuracy: number | null = null
     try {
       const pos = await getLocation()
       latitude = pos.coords.latitude
       longitude = pos.coords.longitude
+      accuracy = pos.coords.accuracy
     } catch (e: any) {
       setSaving(false)
       if (e?.code === 1) setErr('Location access was denied. Please enable location services for this site and try again.')
@@ -124,7 +125,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, latitude, longitude, closing_report: opts?.closingReport }),
+      body: JSON.stringify({ action, time, latitude, longitude, accuracy, closing_report: opts?.closingReport }),
     })
     setSaving(false)
     if (res.ok) {

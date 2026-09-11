@@ -45,11 +45,12 @@ export default function ClockInGateModal({ onClockedIn, onSkip }: { onClockedIn:
     setErr('')
     const time = pickingTime ? to12h(customTime) : to12h(nowAsHHMM())
 
-    let latitude: number, longitude: number
+    let latitude: number, longitude: number, accuracy: number
     try {
       const pos = await getLocation()
       latitude = pos.coords.latitude
       longitude = pos.coords.longitude
+      accuracy = pos.coords.accuracy
     } catch {
       setErr('Enable location services to clock in.')
       setSaving(false)
@@ -59,7 +60,7 @@ export default function ClockInGateModal({ onClockedIn, onSkip }: { onClockedIn:
     try {
       const res = await fetch('/api/staff-times/today', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'in', time, latitude, longitude }),
+        body: JSON.stringify({ action: 'in', time, latitude, longitude, accuracy }),
       })
       setSaving(false)
       if (res.ok) { onClockedIn(); return }

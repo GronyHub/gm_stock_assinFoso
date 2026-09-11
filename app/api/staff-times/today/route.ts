@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { distanceMeters, SHOP_LAT, SHOP_LNG, ALLOWED_RADIUS_METERS } from '@/lib/geo'
+import { distanceMeters, allowedRadiusMeters, SHOP_LAT, SHOP_LNG } from '@/lib/geo'
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports } from '@/lib/closingReports'
 import { NextRequest } from 'next/server'
@@ -29,6 +29,13 @@ const ensureSourceCols = once(async () => {
 // initial on_break value is correct on page load, not just after a toggle.
 const ensureBreakCol = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS on_break BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+})
+
+// clock_locations predates the accuracy-tolerance check (see lib/geo.ts's
+// allowedRadiusMeters) -- ensured here rather than requiring another manual
+// run of scripts/setup-clock-locations.mjs against production.
+const ensureAccuracyCol = once(async () => {
+  await sql`ALTER TABLE clock_locations ADD COLUMN IF NOT EXISTS accuracy_meters DOUBLE PRECISION`.catch(() => {})
 })
 
 export async function GET() {
@@ -130,7 +137,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time, latitude, longitude, closing_report } = await req.json()
+  const { action, time, latitude, longitude, accuracy, closing_report } = await req.json()
   if (!action || !time) return badRequest('Missing fields')
   if (!['in', 'out'].includes(action)) return badRequest('Invalid action')
 
@@ -140,14 +147,17 @@ export async function POST(req: NextRequest) {
 
   const lat = parseFloat(latitude)
   const lng = parseFloat(longitude)
+  const acc = parseFloat(accuracy)
   const hasLocation = !isNaN(lat) && !isNaN(lng)
   const distance = hasLocation ? distanceMeters(lat, lng, SHOP_LAT, SHOP_LNG) : null
-  const accepted = hasLocation && distance !== null && distance <= ALLOWED_RADIUS_METERS
+  const radius = allowedRadiusMeters(hasLocation && !isNaN(acc) ? acc : null)
+  const accepted = hasLocation && distance !== null && distance <= radius
 
   try {
+    await ensureAccuracyCol()
     await sql`
-      INSERT INTO clock_locations (staff_name, action, latitude, longitude, distance_meters, accepted)
-      VALUES (${username}, ${action}, ${hasLocation ? lat : null}, ${hasLocation ? lng : null}, ${distance}, ${accepted})
+      INSERT INTO clock_locations (staff_name, action, latitude, longitude, distance_meters, accuracy_meters, accepted)
+      VALUES (${username}, ${action}, ${hasLocation ? lat : null}, ${hasLocation ? lng : null}, ${distance}, ${hasLocation && !isNaN(acc) ? acc : null}, ${accepted})
     `
   } catch (e) {
     console.error('clock_locations insert failed (non-fatal):', e)

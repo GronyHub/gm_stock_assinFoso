@@ -16,6 +16,7 @@ await sql`
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
     distance_meters DOUBLE PRECISION,
+    accuracy_meters DOUBLE PRECISION,
     accepted BOOLEAN NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
   )
