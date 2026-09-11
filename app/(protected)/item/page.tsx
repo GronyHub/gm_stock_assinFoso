@@ -4364,6 +4364,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveCountView(null)
   }
 
+  // Sale mode's own violation-filter radios (Live/Least Sales/Duplicates/
+  // etc, further down) now share their row with Log/Receipts -- picking one
+  // of these needs to also jump back to the grid itself (itemsPageMode
+  // 'sale') in case Log/Receipts was showing, or the row would light up on
+  // a filter whose grid isn't the one actually on screen.
+  function pickSaleFilter(filter: typeof liveSaleViolationFilter, view: typeof liveSaleView = null) {
+    setItemsPageMode('sale')
+    setLiveMode('sale')
+    setLiveSaleViolationFilter(filter)
+    setLiveShowCountFullPage(false)
+    setLiveSaleView(view)
+  }
+
   function renderTabSwitcher(compact: boolean) {
     // Each tab is its own standalone button (own background/border) rather
     // than a segment inside one shared pill -- an inactive tab used to be
@@ -4384,10 +4397,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       <div className="flex gap-6 overflow-x-auto max-w-full">
         {/* Sale/Log/Sales used to be three separate tabs -- merged into one
             "Sales" tab since they're all the same domain (tap a sale,
-            review it, look up its record), with Sale/Log/Receipts now a
-            small radio switch inside Sales itself (see the standalone
-            switcher rendered just above the Content area further down) --
-            this button's own active state lights up for any of the three. */}
+            review it, look up its record). Log/Receipts are now just two
+            more radios in Sale mode's own filter row (see pickSaleFilter,
+            further down) rather than a separate switch of their own -- this
+            button's active state lights up for any of the three. */}
         <button type="button" onClick={() => pickItemsMode('sale')} title="Sales" className={btnCls(onItemsGrid && !inCountTab && (itemsPageMode === 'sale' || itemsPageMode === 'log' || itemsPageMode === 'sales'), 'bg-blue-600')}>Sales</button>
         {/* Count groups the views that used to live only in Sale mode's own
             filter row -- Records/Count Due/Loss by Date/Loss by Items/Net
@@ -4473,36 +4486,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {renderModeToggle(false)}
         </div>
       )}
-      {liveExpanded && renderSaleModeSwitch()}
     </>)
-  }
-
-  // Sale/Log/Receipts picker for the merged Sales tab (see renderTabSwitcher's
-  // "Sales" button) -- called both from its own permanent spot above the
-  // Content area (not expanded) and from renderModeToggleRow above (while
-  // liveExpanded, same reasoning as the main tab switcher's own copy there:
-  // the non-expanded spot sits behind Live Sale's `fixed inset-0` overlay).
-  // Returns null outside sale/log/sales or while inCountTab -- Count is
-  // reached through liveMode 'sale' under the hood too, but is its own
-  // separate tab, not a Sales sub-view.
-  function renderSaleModeSwitch() {
-    if (!(liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') || inCountTab) return null
-    return (
-      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700">
-        <label className="flex items-center gap-1 cursor-pointer">
-          <input type="radio" name="salesModeSwitch" checked={liveMode === 'sale'} onChange={() => pickItemsMode('sale')} className="cursor-pointer w-3 h-3" />
-          <span>Sale</span>
-        </label>
-        <label className="flex items-center gap-1 cursor-pointer">
-          <input type="radio" name="salesModeSwitch" checked={liveMode === 'log'} onChange={() => pickItemsMode('log')} className="cursor-pointer w-3 h-3" />
-          <span>Log</span>
-        </label>
-        <label className="flex items-center gap-1 cursor-pointer">
-          <input type="radio" name="salesModeSwitch" checked={liveMode === 'sales'} onChange={() => pickItemsMode('sales')} className="cursor-pointer w-3 h-3" />
-          <span>Receipts</span>
-        </label>
-      </div>
-    )
   }
 
   // All filters bar -- type, group, sale filters available on all tabs
@@ -5982,7 +5966,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </select>
                 </div>
               )}
-              {/* Sale mode filter bar */}
+              {/* Sale mode filter bar -- now Sale/Log/Receipts' shared row
+                  (see the merged "Sales" tab, renderTabSwitcher above): Live
+                  plus the rest of these filters only ever apply to the tap-
+                  to-sell grid, so picking one also jumps back to it via
+                  pickSaleFilter (in case Log/Receipts was showing) and each
+                  one's own checked state requires itemsPageMode === 'sale'
+                  too, so a stale filter value doesn't show as active while
+                  actually looking at Log or Receipts. */}
               {/* Records/Loss by Date/Loss by Items moved to Count's own
                   small sub-nav below (see inCountTab) -- this row is Sale
                   mode's own filter/browse row now, so it hides entirely
@@ -5990,7 +5981,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   rather than floating a second, unrelated filter row above
                   it (Count has nothing to filter by group/type/violation --
                   its sub-nav is the only picker it needs). */}
-              {showControls && liveMode === 'sale' && !inCountTab && (
+              {showControls && (liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') && !inCountTab && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   {/* View-only filters (black) -- All(V) retired: bundling
                       every violation into one button made it impossible to
@@ -5999,8 +5990,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       now its own dedicated button in the red "action-
                       required" group below instead. */}
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noViolations'} onChange={() => { setLiveSaleViolationFilter('noViolations'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noViolations'} onChange={() => pickSaleFilter('noViolations')} className="cursor-pointer w-3 h-3" />
                     <span>Live</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'log'} onChange={() => pickItemsMode('log')} className="cursor-pointer w-3 h-3" />
+                    <span>Log</span>
+                  </label>
+                  <span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales'} onChange={() => pickItemsMode('sales')} className="cursor-pointer w-3 h-3" />
+                    <span>Receipts</span>
                   </label>
                   {/* Three read-only charts, not tables -- see LeastSalesChart
                       and /api/analysis/least-sales. All-time units sold,
@@ -6008,17 +6009,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       visible bar rather than buried at the bottom of a list. */}
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesServices'} onChange={() => { setLiveSaleViolationFilter('leastSalesServices'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_services' }) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices'} onChange={() => pickSaleFilter('leastSalesServices', { kind: 'least_sales_services' })} className="cursor-pointer w-3 h-3" />
                     <span>Services: Least Sales</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesGoods'} onChange={() => { setLiveSaleViolationFilter('leastSalesGoods'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_goods' }) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGoods'} onChange={() => pickSaleFilter('leastSalesGoods', { kind: 'least_sales_goods' })} className="cursor-pointer w-3 h-3" />
                     <span>Goods: Least Sales</span>
                   </label>
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => { setLiveSaleViolationFilter('leastSalesGroups'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_sales_groups' }) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => pickSaleFilter('leastSalesGroups', { kind: 'least_sales_groups' })} className="cursor-pointer w-3 h-3" />
                     <span>Groups: Least Sales</span>
                   </label>
                   {/* Purchasing side of the same coin as the three Least
@@ -6026,7 +6027,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       bought from a vendor, not how long since it sold. */}
                   <span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'leastPurchased'} onChange={() => { setLiveSaleViolationFilter('leastPurchased'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'least_purchased' }) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased'} onChange={() => pickSaleFilter('leastPurchased', { kind: 'least_purchased' })} className="cursor-pointer w-3 h-3" />
                     <span>Goods: Longest Unbought</span>
                   </label>
 
@@ -6045,12 +6046,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       count). */}
                   {liveNetGainCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'netGain'} onChange={() => { setLiveSaleViolationFilter('netGain'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'netGain'} onChange={() => pickSaleFilter('netGain')} className="cursor-pointer w-3 h-3" />
                     <span>Net Gain ({liveNetGainCount})</span>
                   </label></>)}
                   {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'duplicates'} onChange={() => { setLiveSaleViolationFilter('duplicates'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'duplicates'} onChange={() => pickSaleFilter('duplicates')} className="cursor-pointer w-3 h-3" />
                     <span>Duplicates ({liveDuplicateCount})</span>
                   </label></>)}
                   {/* Sold Below Cost and VCP Jump moved to the Sales and Bills tabs'
@@ -6059,17 +6060,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       and that's also where the actual fix happens. */}
                   {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'service'} onChange={() => { setLiveSaleViolationFilter('service'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'service'} onChange={() => pickSaleFilter('service')} className="cursor-pointer w-3 h-3" />
                     <span>Service ({liveServiceViolationCount})</span>
                   </label></>)}
                   {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'unlinked'} onChange={() => { setLiveSaleViolationFilter('unlinked'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unlinked'} onChange={() => pickSaleFilter('unlinked')} className="cursor-pointer w-3 h-3" />
                     <span>Unlinked ({liveUnlinkedCount})</span>
                   </label></>)}
                   {liveEmptyRowCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'emptyRow'} onChange={() => { setLiveSaleViolationFilter('emptyRow'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'emptyRow'} onChange={() => pickSaleFilter('emptyRow')} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
                   {/* Cost>=Selling Price/Missing Selling Price/Missing Cost
@@ -6081,22 +6082,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       (see inCountTab). */}
                   {liveAcpGteSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'acpGteSp'} onChange={() => { setLiveSaleViolationFilter('acpGteSp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'acpGteSp'} onChange={() => pickSaleFilter('acpGteSp')} className="cursor-pointer w-3 h-3" />
                     <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
                   </label></>)}
                   {liveNoSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noSp'} onChange={() => { setLiveSaleViolationFilter('noSp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noSp'} onChange={() => pickSaleFilter('noSp')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Selling Price ({liveNoSpCount})</span>
                   </label></>)}
                   {liveNoCpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noCp'} onChange={() => { setLiveSaleViolationFilter('noCp'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noCp'} onChange={() => pickSaleFilter('noCp')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Cost Price ({liveNoCpCount})</span>
                   </label></>)}
                   {liveNoGroupCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={liveSaleViolationFilter === 'noGroup'} onChange={() => { setLiveSaleViolationFilter('noGroup'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noGroup'} onChange={() => pickSaleFilter('noGroup')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Group ({liveNoGroupCount})</span>
                   </label></>)}
                 </div>
@@ -6158,14 +6159,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
             </div>
           )}
-
-          {/* Sale/Log/Receipts switch (see renderSaleModeSwitch) -- the
-              merged Sales tab's own three-way picker, standing in for what
-              used to be three separate top-level tab buttons. Sits above
-              the Content area below (not while liveExpanded -- see
-              renderModeToggleRow's own copy for that case) so it stays put
-              regardless of which of the three is showing. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && !liveExpanded && renderSaleModeSwitch()}
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
