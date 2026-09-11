@@ -46,9 +46,15 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, staffMemberModalProps }: {
+export default function PresentStaffBar({ roster, staffMemberModalProps, embedded }: {
   roster: RosterEntry[]
   staffMemberModalProps: StaffMemberModalProps
+  // True when portaled into Nav's own top bar (desktop only -- see
+  // lib/navSlot.ts and item/page.tsx) instead of rendered as this
+  // component's usual standalone full-width row: drops the border/
+  // background/padding that made sense as a lone row but would otherwise
+  // read as a floating box sitting inside Nav's own strip.
+  embedded?: boolean
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
@@ -124,7 +130,9 @@ export default function PresentStaffBar({ roster, staffMemberModalProps }: {
           overflow-x-auto is the fallback for whenever there are enough
           people to show at once that they still don't all fit -- scrolls
           sideways instead of wrapping to a second row either way. */}
-      <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0">
+      <div className={embedded
+        ? 'flex items-stretch gap-1 flex-nowrap shrink-0'
+        : 'px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0'}>
         {computed.map(s => (
           <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}

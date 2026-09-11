@@ -1,6 +1,9 @@
 'use client'
 import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useNavSlotEl } from '@/lib/navSlot'
+import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
 import { usePresenceReporter } from '@/lib/usePresenceReporter'
@@ -1749,6 +1752,15 @@ function ItemHubPageInner() {
   // Services, whose own row IS the header and already navigates somewhere)
   // are left alone, since they already do something useful on tap.
   const { data: session } = useSession()
+  // Desktop-only: portals the staff bar + tab switcher (below) into Nav's
+  // own top strip instead of their usual spot under it -- see
+  // lib/navSlot.ts/lib/useIsDesktop.ts. navSlotEl is non-null on every
+  // protected page once Nav mounts (its slot div exists in the DOM
+  // regardless of viewport, just visually hidden on mobile via Nav's own
+  // `hidden md:block`), so isDesktop is what actually decides which layout
+  // renders -- not just whether the slot happens to exist.
+  const navSlotEl = useNavSlotEl()
+  const isDesktop = useIsDesktop()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
@@ -5628,10 +5640,26 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
 
         <div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
-          {/* Staff time bar -- appears above the tab switcher */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
+          {/* Staff time bar + tab switcher: on desktop these portal into
+              Nav's own top strip (see lib/navSlot.ts) instead of rendering
+              here, reclaiming the two rows they used to occupy so
+              everything below starts higher up the page. Mobile is
+              unchanged -- Nav is hidden entirely below the md breakpoint
+              (nothing to portal into), so both render in place exactly as
+              before. */}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && !isDesktop && (
             <PresentStaffBar roster={activeStaff}
               staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+          )}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && isDesktop && navSlotEl && createPortal(
+            <>
+              <PresentStaffBar embedded roster={activeStaff}
+                staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+              <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 shrink-0">
+                {renderTabSwitcher(true)}
+              </div>
+            </>,
+            navSlotEl
           )}
 
           {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView
@@ -5667,9 +5695,27 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   minmax(0, 1fr) caps the track at the space actually left
                   over after the two outer columns and lets it shrink to 0,
                   so the child below is properly width-constrained and its
-                  own overflow-x-auto can do its job. */}
+                  own overflow-x-auto can do its job.
+                  On desktop the tab buttons themselves live in Nav's bar
+                  (above), so this row only needs the Items columns picker;
+                  it drops out entirely (via the outer condition below) when
+                  there's nothing to show, which is the common case (Sales
+                  view, or Items view before customizing columns). */}
+              {(!isDesktop || lossView === 'items') && (
               <div className="px-6 py-1.5 border-b border-gray-200">
                 {liveMode === 'sale' && renderModeProgressSummary(true, true)}
+                {isDesktop ? (
+                  <div className="flex items-center justify-end gap-3">
+                    {lossView === 'items' && (
+                        <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
+                          { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
+                            onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
+                          { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
+                            onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
+                        ]} />
+                    )}
+                  </div>
+                ) : (
                 <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 min-w-0">
                   <div />
                   <div className="flex items-center justify-center gap-1.5 overflow-x-auto min-w-0">
@@ -5687,7 +5733,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     )}
                   </div>
                 </div>
+                )}
               </div>
+              )}
               {/* Row 2: filter bar — hidden on report-style submenus. Type/
                   Groups/Filter all share one row now -- Filter used to spill
                   onto its own row by itself since it lived in a separate
