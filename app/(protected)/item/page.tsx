@@ -4377,6 +4377,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveSaleView(view)
   }
 
+  // Receipts' own violation radios (No Cash/Missing Days/Dup Receipt/High
+  // WNW/No Attachment/Sold Below Cost) used to live only in Receipts' own
+  // dedicated violation row -- rendered here in the shared row instead, same
+  // reasoning as pickSaleFilter above: jump to itemsPageMode 'sales' (rather
+  // than 'sale') so the receipts list these actually filter is the one on
+  // screen, then hand off to the existing selectLiveSalesRadio (unchanged --
+  // still the one source of truth for liveSalesRadioValue).
+  function pickSalesViolation(key: string) {
+    setItemsPageMode('sales')
+    setLiveMode('sales')
+    selectLiveSalesRadio(key)
+  }
+
   function renderTabSwitcher(compact: boolean) {
     // Each tab is its own standalone button (own background/border) rather
     // than a segment inside one shared pill -- an inactive tab used to be
@@ -6100,6 +6113,29 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noGroup'} onChange={() => pickSaleFilter('noGroup')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Group ({liveNoGroupCount})</span>
                   </label></>)}
+                  {/* Receipts' own violations (No Cash/Missing Days/Dup
+                      Receipt/High WNW/No Attachment/Sold Below Cost) used to
+                      live only in Receipts' own dedicated violation row --
+                      folded in here instead, so there's one shared
+                      violations row for the whole merged Sales tab rather
+                      than a second, separate one that only showed up while
+                      Receipts itself was open. */}
+                  {[
+                    { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
+                    { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
+                    { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
+                    { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
+                    { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
+                    { key: 'sold_below_cost', label: 'Sold Below Cost', count: globalFlags?.costGteSell?.length ?? 0 },
+                  ].filter(v => v.count > 0).map(v => (
+                    <Fragment key={v.key}>
+                      <span className="text-gray-400 px-1">·</span>
+                      <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                        <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales' && liveSalesRadioValue === v.key} onChange={() => pickSalesViolation(v.key)} className="cursor-pointer w-3 h-3" />
+                        <span>{v.label} ({v.count})</span>
+                      </label>
+                    </Fragment>
+                  ))}
                 </div>
               )}
               {/* Count tab's own small sub-nav -- picks between its six
@@ -6617,13 +6653,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Help
                 </label>
               </div>
-              {/* Rows 2-3: one mutually-exclusive radio group, split across two fixed
-                  rows -- "All" plus the non-violation toggles (History/Bars Only/
-                  WIC/GMC) first, then the violation filters (red, with live counts,
-                  sorted by count descending) -- instead of one scrolling row, so
-                  every option stays visible with no horizontal scroll. Only one of
-                  the whole group can be selected at a time; see liveSalesRadioValue
-                  / selectLiveSalesRadio above. */}
+              {/* Row 2: "All" plus the non-violation toggles (History/Bars
+                  Only/WIC/GMC/Customers) -- part of the same mutually-
+                  exclusive radio group as the violation filters, which now
+                  live in the shared row above (Sale mode's own filter bar,
+                  see pickSalesViolation) instead of a second row here, so
+                  they show up the same way regardless of whether Sale/Log/
+                  Receipts is open. Only one of the whole group (this row
+                  plus those violations) can be selected at a time; see
+                  liveSalesRadioValue/selectLiveSalesRadio above. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
                 <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
                   <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
@@ -6661,24 +6699,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   Customers
                 </label>
-              </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
-                {[
-                  { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
-                  { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
-                  { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
-                  { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
-                  { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
-                  { key: 'sold_below_cost', label: 'Sold Below Cost', count: globalFlags?.costGteSell?.length ?? 0 },
-                ].sort((a, b) => b.count - a.count).map((v, i) => (
-                  <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
-                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
-                      <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === v.key} onChange={() => selectLiveSalesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
-                      <span>{v.label} ({v.count})</span>
-                    </label>
-                  </Fragment>
-                ))}
               </div>
               {liveSalesShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
