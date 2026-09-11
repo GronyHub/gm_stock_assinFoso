@@ -2770,16 +2770,24 @@ function ItemHubPageInner() {
       .catch(() => setLiveItemsLoading(false))
   }, [])
 
-  // Items with at least one past GMC (internal-use) sale on record -- the
-  // only existing definition of "GMC items" anywhere in the app (see
-  // /api/items/gmc-ids). Fetched once; when liveSaleType flips to GMC the
-  // grid narrows to this set so a walk-in item can't accidentally get
-  // tapped under an internal-use receipt.
+  // Items with at least one past GMC (internal-use) sale on record, and how
+  // many -- the only existing definition of "GMC items" anywhere in the app
+  // (see /api/items/gmc-ids). Fetched once. liveGmcItemIds still feeds the
+  // couple of spots that only need membership (BillsTab's gmcFilter, the
+  // service/GMC match picker); liveGmcUsageCounts is what ranks the GMC-mode
+  // grid by how often each item has actually been GMC'd before (see the
+  // liveFilteredSortedItems memo below) -- it no longer limits which items
+  // are pickable at all, just their order.
   const [liveGmcItemIds, setLiveGmcItemIds] = useState<Set<number>>(new Set())
+  const [liveGmcUsageCounts, setLiveGmcUsageCounts] = useState<Map<number, number>>(new Map())
   useEffect(() => {
     fetch('/api/items/gmc-ids')
       .then(r => r.json())
-      .then(d => setLiveGmcItemIds(new Set(Array.isArray(d) ? d : [])))
+      .then(d => {
+        const rows: { item_id: number; count: number }[] = Array.isArray(d) ? d : []
+        setLiveGmcItemIds(new Set(rows.map(r => r.item_id)))
+        setLiveGmcUsageCounts(new Map(rows.map(r => [r.item_id, r.count])))
+      })
       .catch(() => {})
   }, [])
 
@@ -3154,13 +3162,16 @@ function ItemHubPageInner() {
       }
     }
 
-    // GMC (internal use) only ever taps items with a GMC history -- keeps
-    // the browse grid from offering a normal walk-in item under an
-    // internal-use receipt. Doesn't apply to a deliberately searched-and-
-    // picked item above, since that's how an item gets its first-ever GMC
-    // record in the first place.
+    // GMC (internal use) used to only ever show items with a GMC history
+    // (liveGmcItemIds) -- kept the browse grid from offering a normal
+    // walk-in item under an internal-use receipt, but also meant an item
+    // that hadn't been GMC'd yet simply couldn't be found here at all.
+    // Every eligible good is offered now (GMC usage only decides order, see
+    // the sort below); still excludes services (never physically pulled
+    // for internal use the way a good is) and anything with no stock to
+    // actually take.
     if (liveMode === 'sale' && liveSaleType === 'GMC') {
-      filtered = filtered.filter(item => liveGmcItemIds.has(item.id))
+      filtered = filtered.filter(item => item.product_type !== 'service' && Number(item.soh) > 0)
       // GMC cannot tap "GMC only, no service" items -- they can only be
       // credited from a pack conversion, never directly purchased.
       filtered = filtered.filter(item => item.gmc_type !== 'gmc')
@@ -3221,9 +3232,22 @@ function ItemHubPageInner() {
       })
     }
 
+    // GMC mode: items GMC'd more often before come first (most likely to be
+    // wanted again), with the sales-count order below as the tiebreaker for
+    // everything else -- rather than sorting only within the old
+    // GMC-history-only list, this now also orders every other eligible good
+    // that's simply never been GMC'd yet.
+    if (liveMode === 'sale' && liveSaleType === 'GMC') {
+      return filtered.sort((a, b) => {
+        const gmcDiff = (liveGmcUsageCounts.get(b.id) ?? 0) - (liveGmcUsageCounts.get(a.id) ?? 0)
+        if (gmcDiff !== 0) return gmcDiff
+        return (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0)
+      })
+    }
+
     // Sort by sales count (highest to lowest)
     return filtered.sort((a, b) => (liveSalesCounts.get(b.id) ?? 0) - (liveSalesCounts.get(a.id) ?? 0))
-  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveItemPickerQuery, liveSaleViolationFilter, liveCountStatus])
+  }, [liveAllItems, liveSalesCounts, liveCurrentView, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, livePickedItemId, liveSaleType, liveGmcItemIds, liveGmcUsageCounts, liveMode, liveSaleFilter, liveLossByItemId, liveItemsWithViolations, liveDuplicateItemIds, liveServiceViolationIdSet, liveUnlinkedNamedIds, liveItemPickerQuery, liveSaleViolationFilter, liveCountStatus])
 
   // Log tab's two histories, grouped by date -- computed unconditionally
   // (not inside an `if (liveMode === 'log')` branch) since every mode
