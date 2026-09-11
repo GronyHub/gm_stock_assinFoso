@@ -536,7 +536,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
 type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
-type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
@@ -6437,6 +6437,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               }`}
                             >
                               <td className={`sticky left-0 z-[1] leading-none px-0.5 py-0 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                                {/* WIC/GMC badge -- same blue/purple pair as the
+                                    WIC/GMC toggle button above (renderModeToggleRow),
+                                    so a mixed list of taps (this table doesn't filter
+                                    by that toggle) still says which each one was. */}
+                                <span className={`inline-block rounded px-0.5 mr-0.5 text-[7px] font-bold leading-tight align-middle ${tap.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {tap.is_gmc ? 'GMC' : 'WIC'}
+                                </span>
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}
