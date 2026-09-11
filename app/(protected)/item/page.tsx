@@ -912,7 +912,7 @@ function ItemHubPageInner() {
   // tab since they're a financial-loss concern, not a counting one, reusing
   // the same renderLossesByDateTable/renderLossesByItemsTable this
   // component already has rather than building new ones.
-  const [plSubView, setPlSubView] = useState<'pl' | 'loss_by_date' | 'loss_by_items' | 'net_loss'>('pl')
+  const [plSubView, setPlSubView] = useState<'pl' | 'loss_by_date' | 'loss_by_items' | 'net_loss' | 'cost_gte_sp' | 'sold_below_cost'>('pl')
   // 'pl'/'cab' are dead values now -- P&L/CAB moved to their own top-level
   // tabs (see pickLossView/canSeePL in renderTabSwitcher), so nothing sets
   // this to either any more. Left in the type rather than torn out, since
@@ -5052,6 +5052,71 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  // Cost >= Selling Price and Sold Below Cost both mean actual money lost on
+  // every sale, not a data-hygiene issue -- unlike Duplicates/Empty Row/
+  // Missing SP/Missing CP, which only create the conditions for a loss. So
+  // they live in P&L's sub-nav (see plSubView) instead of the general Sales
+  // violations row.
+  function renderCostGteSpTable() {
+    const GRID = 'grid-cols-[minmax(10rem,2fr)_minmax(6rem,1fr)_5rem_5rem]'
+    const items = liveAllItems.filter(item => liveAcpGteSpIds.has(item.id))
+    return (
+      <div className="flex-1 overflow-auto">
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No items priced below cost</p>
+        ) : (
+          <div className="inline-block min-w-full">
+            <div className={`grid ${GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">ACP</div>
+              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">SP</div>
+            </div>
+            {items.map(item => {
+              const sp = parseFloat(String(item.selling_price)) || 0
+              const acp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
+              return (
+                <div key={item.id} className={`grid ${GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
+                  <div className="px-2 py-1">
+                    <button type="button" onClick={() => setLiveViewingItemId(item.id)} className="text-xs font-semibold text-gray-900 hover:underline truncate text-left">{item.name}</button>
+                  </div>
+                  <div className="px-2 py-1"><p className="text-xs text-gray-600 truncate">{item.group ?? '—'}</p></div>
+                  <div className="px-2 py-1 text-right"><p className="text-xs font-bold text-red-600">₵{formatPrice(acp)}</p></div>
+                  <div className="px-2 py-1 text-right"><p className="text-xs text-gray-900">₵{formatPrice(sp)}</p></div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Sold Below Cost is really about past sale lines (globalFlags.costGteSell),
+  // not the item catalogue, so this reuses SalesTab's own violation filter
+  // directly -- same component/props as the plain Sales tab call further
+  // down, just with the violation fixed rather than driven by
+  // liveSalesViolationFilter.
+  function renderSoldBelowCostTable() {
+    return (
+      <div className="flex-1 overflow-auto">
+        <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
+          violation="sold_below_cost"
+          jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
+          onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+          showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
+          barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
+          showW={liveSalesShowW} setShowW={setLiveSalesShowW}
+          showG={liveSalesShowG} setShowG={setLiveSalesShowG}
+          colPrefs={liveSalesColPrefs}
+          monthFilter={liveSalesMonthFilter} setMonthFilter={setLiveSalesMonthFilter}
+          yearFilter={liveSalesYearFilter} setYearFilter={setLiveSalesYearFilter}
+          showBulkAttach={liveSalesShowBulkAttach} setShowBulkAttach={setLiveSalesShowBulkAttach}
+          onAvailableYearsChange={setLiveSalesAvailableYears} />
+      </div>
+    )
+  }
+
   function renderCountIntervalsView() {
     const intervalGroups = liveCountIntervalFlags.map(flag => ({
       label: flag.label,
@@ -6083,10 +6148,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'duplicates'} onChange={() => pickSaleFilter('duplicates')} className="cursor-pointer w-3 h-3" />
                     <span>Duplicates ({liveDuplicateCount})</span>
                   </label></>)}
-                  {/* Sold Below Cost and VCP Jump moved to the Sales and Bills tabs'
-                      own flag panels respectively -- both are really about
-                      historical sale/bill data, not the live tap-to-sell grid,
-                      and that's also where the actual fix happens. */}
+                  {/* VCP Jump moved to the Bills tab's own flag panel -- it's
+                      really about historical bill data, not the live
+                      tap-to-sell grid, and that's also where the actual fix
+                      happens. Sold Below Cost moved to P&L's sub-nav instead
+                      (see renderSoldBelowCostTable) -- an actual realized
+                      loss, not a bill-data-hygiene concern. */}
                   {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'service'} onChange={() => pickSaleFilter('service')} className="cursor-pointer w-3 h-3" />
@@ -6102,18 +6169,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'emptyRow'} onChange={() => pickSaleFilter('emptyRow')} className="cursor-pointer w-3 h-3" />
                     <span>Empty Row ({liveEmptyRowCount})</span>
                   </label></>)}
-                  {/* Cost>=Selling Price/Missing Selling Price/Missing Cost
-                      Price/Missing Group used to only be reachable through
-                      the retired All(V) filter -- promoted to their own
-                      buttons here, same "count > 0, count-gated" treatment
-                      as Duplicates/Service/Unlinked/Empty Row above.
-                      Negative Stock moved to the Count tab's own sub-nav
-                      (see inCountTab). */}
-                  {liveAcpGteSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'acpGteSp'} onChange={() => pickSaleFilter('acpGteSp')} className="cursor-pointer w-3 h-3" />
-                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
-                  </label></>)}
+                  {/* Missing Selling Price/Missing Cost Price/Missing Group
+                      used to only be reachable through the retired All(V)
+                      filter -- promoted to their own buttons here, same
+                      "count > 0, count-gated" treatment as Duplicates/
+                      Service/Unlinked/Empty Row above. Negative Stock moved
+                      to the Count tab's own sub-nav (see inCountTab). Cost >=
+                      Selling Price moved to P&L's sub-nav instead (see
+                      renderCostGteSpTable) -- unlike these, it's an actual
+                      per-sale loss, not a data-hygiene gap. */}
                   {liveNoSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noSp'} onChange={() => pickSaleFilter('noSp')} className="cursor-pointer w-3 h-3" />
@@ -6130,19 +6194,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <span>Missing Group ({liveNoGroupCount})</span>
                   </label></>)}
                   {/* Receipts' own violations (No Cash/Missing Days/Dup
-                      Receipt/High WNW/No Attachment/Sold Below Cost) used to
-                      live only in Receipts' own dedicated violation row --
-                      folded in here instead, so there's one shared
-                      violations row for the whole merged Sales tab rather
-                      than a second, separate one that only showed up while
-                      Receipts itself was open. */}
+                      Receipt/High WNW/No Attachment) used to live only in
+                      Receipts' own dedicated violation row -- folded in here
+                      instead, so there's one shared violations row for the
+                      whole merged Sales tab rather than a second, separate
+                      one that only showed up while Receipts itself was
+                      open. Sold Below Cost moved out to P&L's sub-nav (see
+                      renderSoldBelowCostTable) -- it's an actual realized
+                      loss, not a bookkeeping gap like the rest of these. */}
                   {[
                     { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
                     { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
                     { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
                     { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
                     { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
-                    { key: 'sold_below_cost', label: 'Sold Below Cost', count: globalFlags?.costGteSell?.length ?? 0 },
                   ].filter(v => v.count > 0).map(v => (
                     <Fragment key={v.key}>
                       <span className="text-gray-400 px-1">·</span>
@@ -8776,8 +8841,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   renderLossesByDateTable/renderLossesByItemsTable Count used
                   to call -- these two functions don't depend on anything
                   Sale-mode-specific, just liveCountRecords (fetched via
-                  liveViewingCountRecords, which already covers this case). */}
-              <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700">
+                  liveViewingCountRecords, which already covers this case).
+                  Cost >= Selling Price/Sold Below Cost moved here from the
+                  Sales tab's own violations row for the same reason -- both
+                  are an actual per-sale loss rather than a data-hygiene gap
+                  (see renderCostGteSpTable/renderSoldBelowCostTable). */}
+              <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
                   <span>P&amp;L</span>
@@ -8796,11 +8865,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <span>Net Loss ({liveNetLossCount})</span>
                   </label>
                 )}
+                {liveAcpGteSpCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
+                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
+                  </label>
+                )}
+                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
+                    <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
+                  </label>
+                )}
               </div>
               {plSubView === 'pl' ? <ProfitLossTab /> :
                 plSubView === 'loss_by_date' ? renderLossesByDateTable() :
                 plSubView === 'loss_by_items' ? renderLossesByItemsTable() :
-                renderLossesByItemsTable(true)}
+                plSubView === 'net_loss' ? renderLossesByItemsTable(true) :
+                plSubView === 'cost_gte_sp' ? renderCostGteSpTable() :
+                renderSoldBelowCostTable()}
             </div>
           </TabErrorBoundary>
         )}
