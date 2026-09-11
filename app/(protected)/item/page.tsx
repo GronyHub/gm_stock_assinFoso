@@ -3029,6 +3029,19 @@ function ItemHubPageInner() {
 
   // Count sales by item (all historical taps)
   const liveToday = new Date().toISOString().slice(0, 10)
+  // Today's running sales total (cedis), shown boldly on the desktop Nav bar
+  // (see the navSlotEl portal below) so it's visible while staff are working,
+  // not just from a report. Same liveTaps.filter(!undone && today).reduce
+  // pattern the Log tab's per-date totals and the Daily Summary view already
+  // compute inline -- hoisted into one memo since this is now a third,
+  // always-visible consumer of the same figure. liveTaps is fetched
+  // unconditionally on mount, so this stays accurate regardless of which tab
+  // is open.
+  const liveTodaySalesTotal = useMemo(() => {
+    return (liveTaps || [])
+      .filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveToday))
+      .reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
+  }, [liveTaps, liveToday])
   const liveSalesCounts = useMemo(() => {
     const counts = new Map<number, number>()
     for (const tap of (liveTaps || [])) {
@@ -5855,6 +5868,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
             <>
+              {/* Today's running sales total (see liveTodaySalesTotal) --
+                  first in the slot so it's never scrolled out of view by
+                  overflow-x-auto once the staff bar/tab switcher get long,
+                  and bold since this is meant to be glanceable while
+                  staff are actively working, not tucked into a report. */}
+              <span className="shrink-0 font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
+                ₵{formatPrice(liveTodaySalesTotal)}
+              </span>
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
               <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 shrink-0">
