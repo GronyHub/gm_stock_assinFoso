@@ -1,0 +1,33 @@
+name: Diagnose Server
+
+# Manual, on-demand health check for the Droplet -- disk space, memory, and
+# how big the app's own working directory has grown. Doesn't touch the app
+# (no git pull/build/restart), so it's safe to run any time without any
+# deploy risk, and finishes in seconds rather than minutes.
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check disk/memory on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "=== Disk usage (all mounts) ==="
+            df -h
+            echo ""
+            echo "=== Memory ==="
+            free -h
+            echo ""
+            echo "=== App directory size ==="
+            du -sh /root/app 2>/dev/null
+            du -sh /root/app/.next 2>/dev/null
+            du -sh /root/app/node_modules 2>/dev/null
+            echo ""
+            echo "=== Largest top-level dirs on the whole disk ==="
+            du -h --max-depth=1 / 2>/dev/null | sort -rh | head -15
