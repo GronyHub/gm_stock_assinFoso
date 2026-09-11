@@ -46,7 +46,7 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, staffMemberModalProps, embedded }: {
+export default function PresentStaffBar({ roster, staffMemberModalProps, embedded, salesTotal }: {
   roster: RosterEntry[]
   staffMemberModalProps: StaffMemberModalProps
   // True when portaled into Nav's own top bar (desktop only -- see
@@ -55,6 +55,13 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
   // background/padding that made sense as a lone row but would otherwise
   // read as a floating box sitting inside Nav's own strip.
   embedded?: boolean
+  // Today's running sales total, already formatted (e.g. "₵1,014"). Desktop
+  // shows this as its own bold badge ahead of this whole bar (see
+  // item/page.tsx's navSlotEl portal) since Nav's strip has room to spare --
+  // mobile doesn't have an equivalent second place to put it, so on request
+  // it renders right here instead, next to the Total chip it's most related
+  // to, rather than costing its own extra row above this one.
+  salesTotal?: string
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
@@ -151,6 +158,11 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
         </button>
+        {salesTotal && (
+          <span className="shrink-0 self-center font-extrabold text-xs text-green-700 whitespace-nowrap tabular-nums pl-1" title="Today's total sales so far">
+            {salesTotal}
+          </span>
+        )}
       </div>
       {selectedStaff && (
         <StaffMemberModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
