@@ -4382,9 +4382,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // second row when there isn't room for all buttons.
     return (
       <div className="flex gap-6 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => pickItemsMode('sale')} title="Sale" className={btnCls(onItemsGrid && itemsPageMode === 'sale' && !inCountTab, 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => pickItemsMode('log')} title="Log" className={btnCls(onItemsGrid && itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
-        <button type="button" onClick={() => pickItemsMode('sales')} title="Sales" className={btnCls(onItemsGrid && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        {/* Sale/Log/Sales used to be three separate tabs -- merged into one
+            "Sales" tab since they're all the same domain (tap a sale,
+            review it, look up its record), with Sale/Log/Receipts now a
+            small radio switch inside Sales itself (see the standalone
+            switcher rendered just above the Content area further down) --
+            this button's own active state lights up for any of the three. */}
+        <button type="button" onClick={() => pickItemsMode('sale')} title="Sales" className={btnCls(onItemsGrid && !inCountTab && (itemsPageMode === 'sale' || itemsPageMode === 'log' || itemsPageMode === 'sales'), 'bg-blue-600')}>Sales</button>
         {/* Count groups the views that used to live only in Sale mode's own
             filter row -- Records/Count Due/Loss by Date/Loss by Items/Net
             Loss/Negative Stock (see inCountTab/pickCountMode above) -- these
@@ -4469,7 +4473,36 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {renderModeToggle(false)}
         </div>
       )}
+      {liveExpanded && renderSaleModeSwitch()}
     </>)
+  }
+
+  // Sale/Log/Receipts picker for the merged Sales tab (see renderTabSwitcher's
+  // "Sales" button) -- called both from its own permanent spot above the
+  // Content area (not expanded) and from renderModeToggleRow above (while
+  // liveExpanded, same reasoning as the main tab switcher's own copy there:
+  // the non-expanded spot sits behind Live Sale's `fixed inset-0` overlay).
+  // Returns null outside sale/log/sales or while inCountTab -- Count is
+  // reached through liveMode 'sale' under the hood too, but is its own
+  // separate tab, not a Sales sub-view.
+  function renderSaleModeSwitch() {
+    if (!(liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') || inCountTab) return null
+    return (
+      <div className="shrink-0 px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700">
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input type="radio" name="salesModeSwitch" checked={liveMode === 'sale'} onChange={() => pickItemsMode('sale')} className="cursor-pointer w-3 h-3" />
+          <span>Sale</span>
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input type="radio" name="salesModeSwitch" checked={liveMode === 'log'} onChange={() => pickItemsMode('log')} className="cursor-pointer w-3 h-3" />
+          <span>Log</span>
+        </label>
+        <label className="flex items-center gap-1 cursor-pointer">
+          <input type="radio" name="salesModeSwitch" checked={liveMode === 'sales'} onChange={() => pickItemsMode('sales')} className="cursor-pointer w-3 h-3" />
+          <span>Receipts</span>
+        </label>
+      </div>
+    )
   }
 
   // All filters bar -- type, group, sale filters available on all tabs
@@ -6125,6 +6158,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
             </div>
           )}
+
+          {/* Sale/Log/Receipts switch (see renderSaleModeSwitch) -- the
+              merged Sales tab's own three-way picker, standing in for what
+              used to be three separate top-level tab buttons. Sits above
+              the Content area below (not while liveExpanded -- see
+              renderModeToggleRow's own copy for that case) so it stays put
+              regardless of which of the three is showing. */}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && !liveExpanded && renderSaleModeSwitch()}
 
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">

@@ -482,19 +482,19 @@ const TOPICS: Topic[] = [
   },
   {
     id: 'log-tab',
-    title: 'The Log tab',
+    title: 'Sales: Log',
     group: 'Other tabs',
-    keywords: 'log history taps today past days list',
+    keywords: 'log history taps today past days list sales sale',
     body: (
-      <p className="text-sm text-gray-700">Shows every tap you have made, grouped by date, most recent day first. Use it to double-check today sales against your cash total, review a past day, or undo a tap that was not caught right away.</p>
+      <p className="text-sm text-gray-700">Inside the <strong>Sales</strong> tab, switch to <strong>Log</strong> (next to Sale/Receipts near the top) to see every tap you have made, grouped by date, most recent day first. Use it to double-check today sales against your cash total, review a past day, or undo a tap that was not caught right away.</p>
     ),
   },
   {
     id: 'sales-tab',
-    title: 'The Sales tab',
+    title: 'Sales: Receipts',
     group: 'Other tabs',
     keywords: 'sales receipts list classic customer named',
-    body: <p className="text-sm text-gray-700">The classic list of sales receipts -- useful for named-customer sales that do not belong on the walk-in tap grid.</p>,
+    body: <p className="text-sm text-gray-700">Inside the <strong>Sales</strong> tab, switch to <strong>Receipts</strong> (next to Sale/Log near the top) for the classic list of sales receipts -- useful for named-customer sales that do not belong on the walk-in tap grid.</p>,
   },
   {
     id: 'bills-tab',
