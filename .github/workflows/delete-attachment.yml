@@ -1,0 +1,42 @@
+name: Delete Attachment File
+
+# Manual, on-demand deletion of one or more orphaned/unwanted files from
+# /root/app-uploads (see lib/fileStorage.ts -- the Droplet's own disk store
+# for Sales/Bills/UK tab/Announcements attachments). Doesn't touch git/
+# build/pm2, so it's safe to run any time. Pass paths relative to
+# /root/app-uploads, space-separated, e.g.:
+#   announcements/grony-1785668118591.jpg announcements/james-1786955427634.webm
+# Always confirm nothing still references a path (search the relevant
+# table's attachments/media_urls column) before running this -- it does not
+# check for you, and there is no undo once the file is gone from disk.
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: "Space-separated paths relative to /root/app-uploads"
+        required: true
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete file(s) on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: INPUT_PATHS
+          script: |
+            set -e
+            for p in $INPUT_PATHS; do
+              full="/root/app-uploads/$p"
+              if [ -f "$full" ]; then
+                rm -f "$full"
+                echo "Deleted $full"
+              else
+                echo "Not found (already gone?): $full"
+              fi
+            done
+        env:
+          INPUT_PATHS: ${{ inputs.paths }}
