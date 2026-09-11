@@ -4308,6 +4308,19 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
   // The tab switcher for Items page internal navigation -- allows switching
   // between the items table and Live Sale modes without changing the sidebar.
+  // P&L/CAB (own buttons below) replace this whole tab row's content with
+  // their own full-screen report by switching lossView away from
+  // 'items'/'sales' entirely -- stepping back to any of the modes below
+  // from there needs to undo that (lossView otherwise never returns to
+  // 'items'/'sales' on its own), or the tab row would stay lit up on the
+  // clicked button while the content underneath keeps showing the P&L/CAB
+  // report instead. A no-op when already on 'items'/'sales'.
+  function pickItemsMode(mode: 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks') {
+    if (lossView === 'pl' || lossView === 'cab') pickLossView('sales')
+    setItemsPageMode(mode)
+    setLiveMode(mode)
+  }
+
   function renderTabSwitcher(compact: boolean) {
     // Each tab is its own standalone button (own background/border) rather
     // than a segment inside one shared pill -- an inactive tab used to be
@@ -4317,23 +4330,43 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       `font-bold rounded-md border transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white border-transparent` : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
       }`
+    // itemsPageMode itself doesn't change when P&L/CAB take over (see
+    // pickItemsMode above) -- without this, whichever mode was open right
+    // before would stay lit up underneath the P&L/CAB button that's
+    // actually showing.
+    const onItemsGrid = lossView !== 'pl' && lossView !== 'cab'
     // Always one line -- scrolls horizontally rather than wrapping onto a
     // second row when there isn't room for all buttons.
     return (
       <div className="flex gap-6 overflow-x-auto max-w-full">
-        <button type="button" onClick={() => { setItemsPageMode('sale'); setLiveMode('sale') }} title="Sale" className={btnCls(itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
-        <button type="button" onClick={() => { setItemsPageMode('log'); setLiveMode('log') }} title="Log" className={btnCls(itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
-        <button type="button" onClick={() => { setItemsPageMode('sales'); setLiveMode('sales') }} title="Sales" className={btnCls(itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
-        <button type="button" onClick={() => { setItemsPageMode('bills'); setLiveMode('bills') }} title="Bills" className={btnCls(itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => { setItemsPageMode('expenses'); setLiveMode('expenses') }} title="Expenses" className={btnCls(itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
+        <button type="button" onClick={() => pickItemsMode('sale')} title="Sale" className={btnCls(onItemsGrid && itemsPageMode === 'sale', 'bg-blue-600')}>Sale</button>
+        <button type="button" onClick={() => pickItemsMode('log')} title="Log" className={btnCls(onItemsGrid && itemsPageMode === 'log', 'bg-slate-600')}>Log</button>
+        <button type="button" onClick={() => pickItemsMode('sales')} title="Sales" className={btnCls(onItemsGrid && itemsPageMode === 'sales', 'bg-emerald-600')}>Sales</button>
+        <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
+        <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
+        {/* P&L/CAB were previously reachable only via the sidebar (pickLossView)
+            or a small radio button buried in Sale mode's own filter row (see
+            liveSaleViolationFilter) -- promoted to full tabs here since owners
+            open them often enough to want one tap from anywhere in this row,
+            same gate (canSeePL) either way. Unlike the other buttons above,
+            these switch lossView rather than itemsPageMode/liveMode -- they
+            render as their own full-screen report (see lossView === 'pl'/'cab'
+            further down this same flex-col), not a mode within the Items/Sales
+            grid, so active state reads off lossView instead. */}
+        {canSeePL && (
+          <button type="button" onClick={() => pickLossView('pl')} title="P&L" className={btnCls(lossView === 'pl', 'bg-cyan-600')}>P&amp;L</button>
+        )}
+        {canSeePL && (
+          <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
+        )}
         {(canSeeManage || canSeeTeam) && (
-          <button type="button" onClick={() => { setItemsPageMode('manage'); setLiveMode('manage') }} title="Manage" className={btnCls(itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
+          <button type="button" onClick={() => pickItemsMode('manage')} title="Manage" className={btnCls(onItemsGrid && itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
         )}
         {canSeeManage && (
-          <button type="button" onClick={() => { setItemsPageMode('advert'); setLiveMode('advert') }} title="Advert" className={btnCls(itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
+          <button type="button" onClick={() => pickItemsMode('advert')} title="Advert" className={btnCls(onItemsGrid && itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
         )}
         {canSeeManage && (
-          <button type="button" onClick={() => { setItemsPageMode('gronyChecks'); setLiveMode('gronyChecks') }} title="Grony 1-10 checks" className={btnCls(itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
+          <button type="button" onClick={() => pickItemsMode('gronyChecks')} title="Grony 1-10 checks" className={btnCls(onItemsGrid && itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
         )}
       </div>
     )
@@ -5647,11 +5680,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               unchanged -- Nav is hidden entirely below the md breakpoint
               (nothing to portal into), so both render in place exactly as
               before. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && !isDesktop && (
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && !isDesktop && (
             <PresentStaffBar roster={activeStaff}
               staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
           )}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && isDesktop && navSlotEl && createPortal(
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && isDesktop && navSlotEl && createPortal(
             <>
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
@@ -5662,12 +5695,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             navSlotEl
           )}
 
-          {/* Sale/Log/Sales/Count/Bills only belong to Items (lossView
-              'items' -- the sidebar row -- and 'sales', the same screen's
-              default landing view) -- every other lossView (Vendors,
-              Expenses, CAB, Opener, etc.) has nothing to do with this
-              switcher, so it no longer shows there. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales') && (
+          {/* This row (and the staff bar/portal above) shows for Items
+              (lossView 'items' -- the sidebar row), 'sales' (the same
+              screen's default landing view), and now also 'pl'/'cab' --
+              P&L and CAB are full-screen reports rather than a mode within
+              the Items/Sales grid (see pickItemsMode/renderTabSwitcher
+              above), but still belong to this same tab row so switching
+              back to Sale/Log/etc. from either is one tap. Every other
+              lossView (Vendors, Expenses, Opener, etc.) still has nothing
+              to do with this switcher and doesn't show it. */}
+          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab') && (
             <div className="shrink-0 bg-white border-b border-gray-200">
               {/* Tab switcher: Items vs Live Sale modes -- a 3-column grid
                   (rather than flex+justify-between) so the tabs stay
