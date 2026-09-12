@@ -26,6 +26,13 @@ export async function POST(req: NextRequest) {
       if (!Number.isFinite(qty) || qty <= 0) {
         return badRequest(`"${l.itemName || 'a line'}" needs a valid quantity greater than 0.`)
       }
+      // Checked unconditionally, unlike the cost-price comparison below --
+      // that one only fires once an item's cost is known, so a negative
+      // price on a brand-new/no-cost-yet item would otherwise slip through.
+      const price = Number(l.price)
+      if (!Number.isFinite(price) || price < 0) {
+        return badRequest(`"${l.itemName || 'a line'}" needs a selling price of 0 or more.`)
+      }
     }
   }
 

@@ -25,6 +25,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       if (!Number.isFinite(qty) || qty <= 0) {
         return badRequest(`"${line.item_name || 'a line'}" needs a valid quantity greater than 0.`)
       }
+      // Checked unconditionally, unlike the cost-price comparison below --
+      // that one only fires once an item's cost is known, so a negative
+      // price on a brand-new/no-cost-yet or unlinked line would otherwise
+      // slip through.
+      const price = parseFloat(line.item_price)
+      if (!Number.isFinite(price) || price < 0) {
+        return badRequest(`"${line.item_name || 'a line'}" needs a selling price of 0 or more.`)
+      }
     }
 
     // Block edits that would drive an item's stock below zero. Existing

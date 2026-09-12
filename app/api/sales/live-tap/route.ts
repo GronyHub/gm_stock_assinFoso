@@ -33,7 +33,11 @@ export async function POST(req: NextRequest) {
   try {
     const { itemId, quantity, customPrice, isGMC, tapTime } = await req.json()
     if (!itemId) return badRequest('Missing itemId')
-    const qty = Math.max(1, Math.floor(Number(quantity) || 1))
+    const qtyNum = Number(quantity)
+    if (!Number.isFinite(qtyNum) || qtyNum < 1) {
+      return badRequest('Quantity must be a whole number of 1 or more.')
+    }
+    const qty = Math.floor(qtyNum)
 
     const staffName = session.user?.name || (session.user as { username?: string })?.username || 'Unknown'
     // Use provided tapTime or current time. tapTime is in format "2026-08-24T14:30" (datetime-local)

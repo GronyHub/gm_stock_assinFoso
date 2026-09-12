@@ -794,11 +794,11 @@ function SalesTab({
                               className="w-full bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5">
-                            <input type="number" value={l.quantity} onChange={e => updateEditLine(idx, 'quantity', e.target.value)}
+                            <input type="number" min="1" step="1" value={l.quantity} onChange={e => updateEditLine(idx, 'quantity', e.target.value)}
                               className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5">
-                            <input type="number" value={l.item_price} onChange={e => updateEditLine(idx, 'item_price', e.target.value)}
+                            <input type="number" min="0" step="0.01" value={l.item_price} onChange={e => updateEditLine(idx, 'item_price', e.target.value)}
                               className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5 text-right text-gray-700">
