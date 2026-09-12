@@ -1809,22 +1809,22 @@ function ItemHubPageInner() {
   ].filter(Boolean).join(' · ')
 
   const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
-  // True while the Count tab owns the screen -- either because one of its
-  // full-page views (Records, Count Due, or now Negative SOH too) has
-  // replaced the tap-to-sell grid entirely (see the `!liveShowCountFullPage`
-  // gate further down and the count_due_chart/negative_soh_chart branches
-  // next to it). Negative SOH used to stay a liveSaleViolationFilter-driven
-  // grid filter (fix it by tapping the item right on the grid) -- now it's
-  // the same enter-a-count list Count Due uses (renderNegativeSohChart),
-  // just without the "Same as X, no loss" shortcut (there's no valid
-  // "expected" number to match when the system's own figure is negative).
+  // True while Count Due or Negative SOH owns the screen, replacing the
+  // tap-to-sell grid entirely (see the count_due_chart/negative_soh_chart
+  // branches further down). Each is its own full page now -- no shared
+  // sub-nav between them (see renderCriticalBar) and no "Records" landing
+  // page either; the full history/edit list lives on its own sidebar page
+  // instead (lossView 'counts', CountsTab.tsx). Negative SOH is the same
+  // enter-a-count list Count Due uses (renderNegativeSohChart), just
+  // without the "Same as X, no loss" shortcut -- there's no valid
+  // "expected" number to match when the system's own figure is negative.
   // Loss by Date/Items/Net Loss used to live here too, but moved to P&L
   // instead (see plSubView) -- they're a financial-loss concern, not a
   // counting one. Count is just a different way in rather than a new
   // lossView (which would mean pulling all this rendering out of Sale
   // mode's own scope, a much bigger change than this file's size makes
   // worth it for what's otherwise a UI relabeling).
-  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'count_due_chart' || liveSaleView?.kind === 'negative_soh_chart')
+  const inCountTab = liveMode === 'sale' && (liveSaleView?.kind === 'count_due_chart' || liveSaleView?.kind === 'negative_soh_chart')
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
@@ -4521,29 +4521,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveMode(mode)
   }
 
-  // Landing view for the Count tab -- defaults to the Records list (what
-  // "Counts" used to open on as a Sale-mode filter radio); Loss by Date/
-  // Loss by Items are reachable from Count's own small sub-nav once inside
-  // (see the inCountTab block further down), same as they always were, just
-  // relocated out of Sale mode's shared filter row.
+  // Landing view for Count mode -- straight to the Count Due list (the
+  // Records list and its own Records/History/Intervals sub-nav were
+  // retired; the full history/edit list now lives on its own sidebar page,
+  // lossView 'counts', CountsTab.tsx). Used by the Critical bar's Count Due
+  // radio and the GMC overage gate's "Go to Count" button -- Negative SOH
+  // overrides the view kind right after calling this, same shared setup
+  // (lossView/itemsPageMode/liveMode) either way.
   function pickCountMode() {
     if (lossView === 'pl' || lossView === 'cab' || lossView === 'customers') pickLossView('sales')
     setItemsPageMode('sale')
     setLiveMode('sale')
-    setLiveSaleViolationFilter('counts')
-    setLiveShowCountFullPage(true)
-    setLiveSaleView(null)
+    setLiveSaleViolationFilter('countDue')
+    setLiveShowCountFullPage(false)
+    setLiveSaleView({ kind: 'count_due_chart' })
     setLiveCountView(null)
   }
 
   // "Critical, Do Now" bar -- a permanent shortcut, shown above the staff
   // bar/tab switcher, into the two things worth interrupting a shift for: a
-  // physical count that's overdue, or stock that's gone negative. Jumps
-  // straight into the same Count mode + violation filter the in-hub
-  // "countSubView" sub-nav radios further down already set (see
-  // pickCountMode above) -- picking one here is just a shortcut into that
-  // same state from anywhere in this section, so it stays in sync with
-  // (and lights up the same as) that sub-nav once you're actually there.
+  // physical count that's overdue, or stock that's gone negative. Count Due
+  // and Negative SOH are each their own full page now -- no shared sub-nav
+  // between them and no way to embed one inside the other, so picking
+  // either here is the only way in besides the GMC overage gate's own
+  // "Go to Count" button (which lands on Count Due the same way).
   function renderCriticalBar() {
     return (
       <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[9px] whitespace-nowrap overflow-x-auto">
@@ -4551,14 +4552,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <span className="text-red-300">·</span>
         <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'count_due_chart'}
-            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'count_due_chart' }) }}
+            onChange={pickCountMode}
             className="cursor-pointer w-3 h-3" />
           <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
         </label>
         {liveNegSohCount > 0 && (<><span className="text-red-300">·</span>
         <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'negative_soh_chart'}
-            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
+            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
             className="cursor-pointer w-3 h-3" />
           <span>Negative SOH ({liveNegSohCount})</span>
         </label></>)}
@@ -5024,8 +5025,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // keeps items already at 'overdue' level -- this wants every due item,
   // same as the "N items need counting" header already promises.
   function renderCountDueChart() {
+    // An item already flagged Negative SOH gets counted through that list
+    // instead (see renderNegativeSohChart) -- it needs a count regardless
+    // of its due date, so showing it here too would just be the same
+    // to-do twice under two different names.
     const scored = liveCatalogueItems
-      .filter(item => liveCountStatus.has(item.id))
+      .filter(item => liveCountStatus.has(item.id) && !liveNegSohIds.has(item.id))
       .map(item => {
         const status = liveCountStatus.get(item.id)!
         // Never-counted items (no baseline to measure a day count from) are
@@ -6533,32 +6538,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   ))}
                 </div>
               )}
-              {/* Count tab's own small sub-nav -- picks between Records/
-                  Count Due/Negative SOH (see inCountTab/pickCountMode
-                  above). Loss by Date/Loss by Items/Net Loss used to live
-                  here too but moved to the P&L tab instead (see plSubView)
-                  -- they're a financial-loss concern, not a counting one.
-                  Negative SOH (red/action-required, same enter-a-count list
-                  Count Due uses -- see renderNegativeSohChart) only shows
-                  up when there's actually one to see. */}
-              {inCountTab && (
-                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="countSubView" checked={liveShowCountFullPage} onChange={() => { setLiveSaleViolationFilter('counts'); setLiveShowCountFullPage(true); setLiveSaleView(null); setLiveCountView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>Records{liveCountRecords.length > 0 && ` (${liveCountRecords.filter(r => r.kind !== 'loss' && r.kind !== 'gain').length})`}</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'count_due_chart'} onChange={() => { setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'count_due_chart' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
-                  </label>
-                  {liveNegSohCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'negative_soh_chart'} onChange={() => { setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'negative_soh_chart' }) }} className="cursor-pointer w-3 h-3" />
-                    <span>Negative SOH ({liveNegSohCount})</span>
-                  </label></>)}
-                </div>
-              )}
+              {/* Count Due and Negative SOH used to share a small sub-nav
+                  here (plus a "Records" option) -- retired, since each is
+                  now its own full page reached only from the Critical bar
+                  (see renderCriticalBar), with no in-page picker to jump
+                  between them or to a Records view (that full history/edit
+                  list lives on its own sidebar page instead, lossView
+                  'counts', CountsTab.tsx). */}
               {/* Row 3: search bar + controls — hidden on report-style submenus, and on
                   Sales/Bills (they render their own title+search+analytics+help row
                   inside their own liveMode block instead). Global Search's own 🔍
@@ -7528,219 +7514,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             )}
 
-            {/* Count Records Inline Display - Full Height */}
-            {liveShowCountFullPage && liveMode === 'sale' && liveSaleCountRecords.length > 0 && (!liveCountView || liveCountView?.kind === 'records') && (
-              <div className="flex-1 overflow-y-auto flex flex-col">
-                <div className="px-2 pt-2 pb-1 text-xs font-bold text-gray-600 sticky top-0 bg-gray-50 z-10 flex items-center justify-between">
-                  <span>Count</span>
-                  <button
-                    type="button"
-                    onClick={() => setLiveShowCountFullPage(false)}
-                    className="text-gray-600 hover:text-gray-900 font-bold"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="px-2 py-1 bg-white border-b border-gray-200 sticky top-7 z-9 flex gap-2 items-center">
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveCountView"
-                      checked={liveCountView?.kind === 'records' || (liveCountView === null || liveCountView === undefined)}
-                      onChange={() => setLiveCountView({ kind: 'records' })}
-                      className="cursor-pointer"
-                    />
-                    <span>Records</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveCountView"
-                      checked={(liveCountView as any)?.kind === 'history'}
-                      onChange={() => setLiveCountView({ kind: 'history' })}
-                      className="cursor-pointer"
-                    />
-                    <span>History</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer text-[9px] px-2 py-0.5 rounded hover:bg-gray-100">
-                    <input
-                      type="radio"
-                      name="liveCountView"
-                      checked={(liveCountView as any)?.kind === 'intervals'}
-                      onChange={() => setLiveCountView({ kind: 'intervals' })}
-                      className="cursor-pointer"
-                    />
-                    <span>Intervals</span>
-                  </label>
-                </div>
-                <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-[50px] z-9 flex gap-2 flex-wrap items-center" style={(liveCountView as any)?.kind === 'intervals' ? { display: 'none' } : undefined}>
-                  <span className="text-[9px] font-semibold text-gray-600">Filter:</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
-                    <input
-                      type="radio"
-                      name="liveCountsRecordStatusFilter"
-                      checked={liveCountsRecordStatusFilter === 'all'}
-                      onChange={() => setLiveCountsRecordStatusFilter('all')}
-                      className="cursor-pointer"
-                    />
-                    All
-                  </label>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
-                    <input
-                      type="radio"
-                      name="liveCountsRecordStatusFilter"
-                      checked={liveCountsRecordStatusFilter === 'loss'}
-                      onChange={() => setLiveCountsRecordStatusFilter('loss')}
-                      className="cursor-pointer"
-                    />
-                    📉 Loss
-                  </label>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
-                    <input
-                      type="radio"
-                      name="liveCountsRecordStatusFilter"
-                      checked={liveCountsRecordStatusFilter === 'gain'}
-                      onChange={() => setLiveCountsRecordStatusFilter('gain')}
-                      className="cursor-pointer"
-                    />
-                    🚩 Gain
-                  </label>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:bg-gray-200 px-1.5 py-0.5 rounded text-[9px]">
-                    <input
-                      type="radio"
-                      name="liveCountsRecordStatusFilter"
-                      checked={liveCountsRecordStatusFilter === 'ok'}
-                      onChange={() => setLiveCountsRecordStatusFilter('ok')}
-                      className="cursor-pointer"
-                    />
-                    ✓ OK
-                  </label>
-                  <div className="border-l border-gray-300 h-4 mx-0.5" />
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={liveEmbeddedSearch}
-                      onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                      placeholder="Search…"
-                      className="text-[9px] px-1.5 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
-                    />
-                    {liveEmbeddedSearch && (
-                      <button
-                        onClick={() => setLiveEmbeddedSearch('')}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <table className="w-full text-[10px] border-collapse flex-1">
-                  <thead>
-                    <tr className="bg-gray-100 sticky top-6 z-9 border-b border-gray-300">
-                      <th className="text-left px-2 py-0.5 font-bold text-gray-700">Item</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700 whitespace-nowrap">Count Time</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700 whitespace-nowrap">Count Date</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Status</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Qty</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Trade Options</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Net After Trade</th>
-                      <th className="text-center px-2 py-0.5 font-bold text-gray-700">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liveSaleCountRecords.filter((rec) => {
-                      const recAny = rec as any
-                      const isLoss = (recAny.loss_qty ?? 0) > 0
-                      const isGain = (recAny.gain_qty ?? 0) > 0
-                      const status = isLoss ? 'loss' : isGain ? 'gain' : 'ok'
-                      return liveCountsRecordStatusFilter === 'all' || liveCountsRecordStatusFilter === status
-                    }).map((rec) => {
-                      const recAny = rec as any
-                      const isLoss = (recAny.loss_qty ?? 0) > 0
-                      const isGain = (recAny.gain_qty ?? 0) > 0
-                      const tradeOff = rec.tradeOffWith
-                      const qty = isLoss ? recAny.loss_qty : isGain ? recAny.gain_qty : rec.quantity_counted
-                      const statusLabel = isLoss ? 'Loss' : isGain ? 'Gain' : 'OK'
-                      const statusColor = isLoss ? 'bg-red-100 text-red-700' : isGain ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
-                      const netAfterTrade = tradeOff ? (isLoss ? Math.max(0, qty - tradeOff.qty) : 0) : qty
-                      const netLabel = netAfterTrade === 0 ? 'Settled' : isLoss ? `${netAfterTrade} Loss` : `${netAfterTrade} Gain`
-                      const netColor = netAfterTrade === 0 ? 'text-green-600 font-bold' : isLoss ? 'text-red-600' : 'text-amber-600'
-
-                      return (
-                        <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                          <td className="px-2 py-0 text-gray-800 font-semibold max-w-sm truncate">{rec.item_name}</td>
-                          <td className="px-2 py-0 text-center text-gray-600 whitespace-nowrap">{(rec as any).counted_at?.slice(11, 16) || '—'}</td>
-                          <td className="px-2 py-0 text-center text-gray-600 whitespace-nowrap">{rec.count_date.slice(0, 10)}</td>
-                          <td className="px-2 py-0 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold whitespace-nowrap inline-block ${statusColor}`}>
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td className="px-2 py-0 text-center font-semibold text-gray-800">{qty !== null ? Math.abs(qty).toFixed(2) : '—'}</td>
-                          <td className="px-2 py-0 text-center">
-                            {tradeOff ? (
-                              <span className="text-blue-600 font-bold text-[9px]">
-                                ↔ {tradeOff.kind === 'gain' ? '🚩' : '📉'} {tradeOff.qty.toFixed(2)}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 text-[9px]">—</span>
-                            )}
-                          </td>
-                          <td className={`px-2 py-0 text-center font-bold text-[9px] ${netColor}`}>
-                            {netLabel}
-                          </td>
-                          <td className="px-2 py-0 text-center flex gap-1 justify-center">
-                            <button
-                              onClick={() => {
-                                setLiveEditingCountId(rec.id)
-                                setLiveEditCountQty(String(recAny.loss_qty ?? recAny.gain_qty ?? rec.quantity_counted ?? ''))
-                                setLiveEditCountNotes(rec.notes ?? '')
-                              }}
-                              className="px-1.5 py-0.5 text-blue-600 hover:bg-blue-50 rounded text-[9px] font-semibold"
-                              title="Edit count"
-                            >
-                              ✎
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Delete count record for ${rec.item_name}?`)) {
-                                  setLiveCountDeleteLoading(rec.id)
-                                  fetch(`/api/stock/counts/${rec.id}`, {
-                                    method: 'DELETE',
-                                  }).then(async (res) => {
-                                    setLiveCountDeleteLoading(null)
-                                    if (res.ok) {
-                                      window.location.reload()
-                                    } else {
-                                      const data = await res.json()
-                                      alert(`Delete failed: ${data.error || 'Unknown error'}`)
-                                    }
-                                  }).catch(e => {
-                                    console.error('Delete failed:', e)
-                                    alert('Delete failed: ' + e.message)
-                                    setLiveCountDeleteLoading(null)
-                                  })
-                                }
-                              }}
-                              disabled={liveCountDeleteLoading === rec.id}
-                              className="px-1.5 py-0.5 text-red-600 hover:bg-red-50 rounded text-[9px] font-semibold disabled:opacity-50"
-                              title="Delete count"
-                            >
-                              {liveCountDeleteLoading === rec.id ? '…' : '✕'}
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Count Intervals View */}
-            {liveShowCountFullPage && liveMode === 'sale' && liveCountView?.kind === 'intervals' && (
-              renderCountIntervalsView()
-            )}
+            {/* The "Records" full-page view (with its own Records/History/
+                Intervals sub-nav) that used to live here was retired --
+                liveShowCountFullPage can no longer become true (see
+                pickCountMode), so this whole block is unreachable. The full
+                history/edit list now lives on its own sidebar page instead
+                (lossView 'counts', CountsTab.tsx). */}
 
             {saleModeShowAnalytics ? (
               <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
