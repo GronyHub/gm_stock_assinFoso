@@ -322,6 +322,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
             window.open(`/item?tab=loss&view=sales&mode=sales&jumpDate=${encodeURIComponent(date)}&jumpItem=${encodeURIComponent(itemName)}`, '_blank')}
           onBillClick={(billId) =>
             window.open(`/item?tab=loss&view=sales&mode=bills&jumpBillId=${billId}`, '_blank')}
+          onReceiptClick={(receiptId) =>
+            window.open(`/item?tab=loss&view=sales&mode=sales&jumpReceiptId=${receiptId}`, '_blank')}
           maxRows={maxRows} />
       </ItemDetailErrorBoundary>
     </div>

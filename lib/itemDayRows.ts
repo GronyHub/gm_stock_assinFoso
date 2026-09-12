@@ -7,6 +7,12 @@ export type CountRevision = { old_qty: string | number | null; old_by: string | 
 export type ItemDayRow = {
   date: string
   qty_counted: string | null
+  // The stock_counts row id behind qty_counted, if any -- lets a caller
+  // (Item 360's own day table) edit/delete that exact count in place via
+  // PUT/DELETE /api/stock/counts/[id], the same endpoint CountsTab already
+  // uses. Null on a day with no count of its own (a deleted-count-only day
+  // still shows a history via count_history but has no live row to edit).
+  count_id: number | null
   counted_by: string | null
   counted_at: string | null
   count_history: CountRevision[] | null
@@ -18,11 +24,20 @@ export type ItemDayRow = {
   converted_in_qty: string | null
   converted_in_time: string | null
   wic_breakdown: { name: string; qty: number; amount: number }[] | null
-  bills_breakdown: { vendor_name: string | null; qty: number }[] | null
+  // bill_id: a representative bills.id for this (date, vendor) group -- same
+  // "pick one, they're interchangeable for jumping" convention vcp_bill_id
+  // already uses -- so a click can deep-link to BillsTab's own view of it.
+  bills_breakdown: { vendor_name: string | null; qty: number; bill_id: number | null }[] | null
   sold_below_cost: boolean
   vcp: string | null
   vcp_bill_id: number | null
   acp: string | null
+  // Representative sales_receipts.id for this date's WIC/GMC sale, so the
+  // WIC/GMC columns can deep-link to the exact receipt instead of relying
+  // on SalesTab's date+item-name guess (which can't tell a WIC and a GMC
+  // receipt on the same date apart). Null on a day with no such sale.
+  wic_receipt_id?: number | null
+  gmc_receipt_id?: number | null
   // Self-contained per-cycle tally for a GMC conversion target -- see the
   // pass at the bottom of getItemDayRows. Set only on the date a pack was
   // actually opened (converted_in_qty > 0); every other row is null. Only
@@ -130,7 +145,8 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       -- /api/stock/count's own comment on why a same-day recount replaces
       -- rather than adds), so these aggregates are just that row's values.
       SELECT count_date::date AS d, SUM(quantity_counted) AS qty_counted,
-             MAX(counted_by) AS counted_by, MAX(counted_at) AS counted_at
+             MAX(counted_by) AS counted_by, MAX(counted_at) AS counted_at,
+             MAX(id) AS id
       FROM stock_counts
       WHERE item_id = ${id}
       GROUP BY count_date::date
@@ -167,9 +183,29 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         AND sr.customer_name = 'Grony Multimedia as Customer'
       GROUP BY sr.receipt_date::date
     ),
+    daily_wic_receipt AS (
+      -- Representative sales_receipts.id for this date's WIC column -- lets
+      -- a click jump straight to the exact receipt (SalesTab's own
+      -- date+item-name guess can't tell a same-day WIC receipt from a GMC
+      -- one apart).
+      SELECT sr.receipt_date::date AS d, MAX(sr.id) AS receipt_id
+      FROM sales_receipt_lines srl
+      JOIN sales_receipts sr ON sr.id = srl.receipt_id
+      WHERE srl.item_id = ${id}
+        AND (sr.customer_name IS NULL OR sr.customer_name <> 'Grony Multimedia as Customer')
+      GROUP BY sr.receipt_date::date
+    ),
+    daily_gmc_receipt AS (
+      SELECT sr.receipt_date::date AS d, MAX(sr.id) AS receipt_id
+      FROM sales_receipt_lines srl
+      JOIN sales_receipts sr ON sr.id = srl.receipt_id
+      WHERE srl.item_id = ${id}
+        AND sr.customer_name = 'Grony Multimedia as Customer'
+      GROUP BY sr.receipt_date::date
+    ),
     daily_bills_by_vendor AS (
       SELECT b.bill_date::date AS d, COALESCE(b.vendor_name, 'Unknown') AS vendor_name,
-             SUM(bl.quantity) AS qty
+             SUM(bl.quantity) AS qty, MAX(bl.bill_id) AS bill_id
       FROM bill_lines bl
       JOIN bills b ON b.id = bl.bill_id
       WHERE bl.item_id = ${id}
@@ -177,7 +213,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     ),
     daily_bills AS (
       SELECT d, SUM(qty) AS qty,
-             json_agg(json_build_object('vendor_name', vendor_name, 'qty', qty) ORDER BY vendor_name) AS breakdown
+             json_agg(json_build_object('vendor_name', vendor_name, 'qty', qty, 'bill_id', bill_id) ORDER BY vendor_name) AS breakdown
       FROM daily_bills_by_vendor
       GROUP BY d
     ),
@@ -273,6 +309,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     SELECT
       ad.d::text AS date,
       dc.qty_counted,
+      dc.id AS count_id,
       dc.counted_by,
       dc.counted_at::text AS counted_at,
       dch.history AS count_history,
@@ -299,11 +336,15 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       dvs.vcp_bill_id,
       CASE WHEN dvs.vcp IS NOT NULL
         THEN dvs.vcp + CASE WHEN vbg.total_qty > 0 THEN vbg.shared_total / vbg.total_qty ELSE 0 END
-        ELSE NULL END AS acp
+        ELSE NULL END AS acp,
+      dwr.receipt_id AS wic_receipt_id,
+      dgr.receipt_id AS gmc_receipt_id
     FROM all_dates ad
     LEFT JOIN daily_counts dc ON dc.d = ad.d
     LEFT JOIN daily_wic    dw ON dw.d = ad.d
     LEFT JOIN daily_gmc    dg ON dg.d = ad.d
+    LEFT JOIN daily_wic_receipt dwr ON dwr.d = ad.d
+    LEFT JOIN daily_gmc_receipt dgr ON dgr.d = ad.d
     LEFT JOIN daily_bills  db ON db.d = ad.d
     LEFT JOIN daily_sp    dsp ON dsp.d = ad.d
     LEFT JOIN daily_aliases da ON da.d = ad.d

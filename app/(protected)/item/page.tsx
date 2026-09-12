@@ -863,6 +863,12 @@ function ItemHubPageInner() {
   const [jumpToBillId, setJumpToBillId] = useState<number | null>(
     searchParams.get('jumpBillId') ? Number(searchParams.get('jumpBillId')) : null
   )
+  // Seeded from ?jumpReceiptId= -- Item 360's WIC/GMC columns (see
+  // LossTab.tsx's onReceiptClick), same pattern as jumpToBillId above, but
+  // going straight to one receipt instead of a date+item-name guess.
+  const [jumpToReceiptId, setJumpToReceiptId] = useState<number | null>(
+    searchParams.get('jumpReceiptId') ? Number(searchParams.get('jumpReceiptId')) : null
+  )
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
@@ -5244,8 +5250,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       <div className="flex-1 overflow-auto">
         <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
           violation="sold_below_cost"
-          jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-          onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+          jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName} jumpToReceiptId={jumpToReceiptId}
+          onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null); setJumpToReceiptId(null) }}
           showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
           barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
           showW={liveSalesShowW} setShowW={setLiveSalesShowW}
@@ -6808,8 +6814,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 overflow-auto">
                   <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
                     violation={liveSalesViolationFilter}
-                    jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName}
-                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null) }}
+                    jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName} jumpToReceiptId={jumpToReceiptId}
+                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null); setJumpToReceiptId(null) }}
                     showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
                     barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
                     showW={liveSalesShowW} setShowW={setLiveSalesShowW}

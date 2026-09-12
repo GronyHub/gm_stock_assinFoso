@@ -11,6 +11,7 @@ import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 import { ColResizeHandle } from './columnPrefs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './ItemEditForm'
 import ItemDetailModal from './ItemDetailModal'
+import { LossDialog, type LossExtra, type LossPrompt } from './CountDialogs'
 
 /* ── types ── */
 export type SummaryRow = {
@@ -159,6 +160,59 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
         </span>
       )}
     </span>
+  )
+}
+
+// Wraps CntValue with click-to-edit/delete when this day's count has a live
+// stock_counts row (row.count_id) behind it -- reuses the exact same
+// PUT/DELETE /api/stock/counts/[id] endpoint CountsTab.tsx already calls, so
+// the edit history, gain/loss-reason gate, and audit trail all behave
+// identically no matter which screen the edit came from. A day whose count
+// was only ever deleted (count_id null, history still shown via CntValue)
+// isn't editable -- there's nothing left to edit.
+function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onStartEdit, onQtyChange, onSave, onCancel, onDelete }: {
+  row: DayRow
+  isOwnerLevelUser: boolean
+  editing: boolean
+  editQty: string
+  saving: boolean
+  onStartEdit: () => void
+  onQtyChange: (v: string) => void
+  onSave: () => void
+  onCancel: () => void
+  onDelete: () => void
+}) {
+  if (editing) {
+    return (
+      <span className="inline-flex flex-col items-end gap-0.5">
+        <input type="number" min="0" step="any" autoFocus value={editQty} onChange={e => onQtyChange(e.target.value)}
+          className="w-12 text-[9px] border border-gray-300 rounded px-1 py-0.5 text-right outline-none focus:ring-1 focus:ring-blue-400" />
+        <span className="flex gap-0.5">
+          <button type="button" onClick={onSave} disabled={saving}
+            className="text-[7px] font-bold text-white bg-green-600 hover:bg-green-700 rounded px-1 disabled:opacity-50">
+            {saving ? '…' : 'Save'}
+          </button>
+          <button type="button" onClick={onCancel}
+            className="text-[7px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded px-1">
+            Cancel
+          </button>
+          {isOwnerLevelUser && (
+            <button type="button" onClick={onDelete}
+              className="text-[7px] font-bold text-white bg-red-600 hover:bg-red-700 rounded px-1">
+              Del
+            </button>
+          )}
+        </span>
+      </span>
+    )
+  }
+  const content = <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
+  if (row.count_id == null) return content
+  return (
+    <button type="button" onClick={onStartEdit} title="Click to edit or delete this count"
+      className="hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition">
+      {content}
+    </button>
   )
 }
 
@@ -1122,7 +1176,7 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, onReceiptClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1133,6 +1187,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   onMerged: () => void
   onDateClick?: (date: string, itemName: string) => void
   onBillClick?: (billId: number) => void
+  // Precise WIC/GMC deep-link -- falls back to onDateClick (date+item-name
+  // guess) when a row has no representative receipt id of its own.
+  onReceiptClick?: (receiptId: number) => void
   showPrices?: boolean
   gainOnly?: boolean
   lossOnly?: boolean
@@ -1140,11 +1197,54 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   tradeOffRecords?: CountRecord[]
 }) {
   const [dayRows, setDayRows] = useState<DayRow[] | null>(null)
-  useEffect(() => {
+  function loadDayRows() {
     fetch(`/api/losses/${item.item_id}`).then(r => r.json())
       .then(d => setDayRows(Array.isArray(d) ? d : []))
       .catch(() => setDayRows([]))
+  }
+  useEffect(() => {
+    loadDayRows()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.item_id])
+
+  // Click-to-edit/delete for the CNT column -- see CntCell. Reuses the same
+  // PUT/DELETE /api/stock/counts/[id] endpoint and loss-reason gate
+  // CountsTab.tsx's own edit UI already goes through.
+  const [countEditId, setCountEditId] = useState<number | null>(null)
+  const [countEditQty, setCountEditQty] = useState('')
+  const [countSaving, setCountSaving] = useState(false)
+  const [countLossPrompt, setCountLossPrompt] = useState<LossPrompt | null>(null)
+
+  async function saveCountEdit(id: number, qty: string, lossExtra?: LossExtra) {
+    setCountSaving(true)
+    const res = await fetch(`/api/stock/counts/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity_counted: Number(qty), ...(lossExtra ?? {}) }),
+    })
+    setCountSaving(false)
+    if (res.ok) {
+      setCountEditId(null)
+      loadDayRows()
+      return
+    }
+    const d = await res.json().catch(() => null)
+    if (res.status === 409 && d?.requires_loss_reason) {
+      setCountLossPrompt({ d, retry: extra => saveCountEdit(id, qty, extra) })
+      return
+    }
+    alert(d?.error ?? 'Could not save count.')
+  }
+
+  async function deleteCountEdit(id: number, qtyLabel: string, dateLabel: string) {
+    if (!confirm(`Delete the count of ${qtyLabel} on ${shortItemDate(dateLabel)}? This changes the loss/gain math from that day onward.`)) return
+    const res = await fetch(`/api/stock/counts/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setCountEditId(null)
+      loadDayRows()
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not delete count.')
+    }
+  }
 
   // Bill ids whose VCP jump was already confirmed as a genuine price change
   // (see /api/flags/dismiss-vcp-jump) -- fetched per item so computeVcpJumps
@@ -1300,6 +1400,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
     // can scroll sideways while the frozen DATE column stays put.
     <div className={`bg-white border border-gray-200 rounded-lg mt-0 ${showPackChainTable ? 'w-max min-w-full' : 'overflow-hidden'}`}>
+      {countLossPrompt && <LossDialog prompt={countLossPrompt} onClose={() => setCountLossPrompt(null)} />}
       {parentPackName && (
         <div className="px-3 py-1.5 border-b border-gray-200 bg-blue-50">
           <p className="text-[8px] font-semibold text-blue-700">
@@ -1642,7 +1743,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   </td>
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
-                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
+                    <CntCell row={row} isOwnerLevelUser={isOwnerLevelUser}
+                      editing={countEditId === row.count_id}
+                      editQty={countEditQty} saving={countSaving}
+                      onStartEdit={() => { if (row.count_id != null) { setCountEditId(row.count_id); setCountEditQty(String(parseFloat(row.qty_counted ?? '0') || 0)) } }}
+                      onQtyChange={setCountEditQty}
+                      onSave={() => countEditId != null && saveCountEdit(countEditId, countEditQty)}
+                      onCancel={() => setCountEditId(null)}
+                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)} />
                   </td>}
                   {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>
@@ -1666,7 +1774,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </td>
                     )
                   })}
-                  {!isGmcItem && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
+                  {!isGmcItem && <td className="px-1 py-0 text-right text-gray-600">
+                    {row.gmc_qty && (onReceiptClick || onDateClick) ? (
+                      <button onClick={() => row.gmc_receipt_id != null && onReceiptClick ? onReceiptClick(row.gmc_receipt_id) : onDateClick!(row.date, item.item_name)}
+                        className="hover:underline">{fmtQs(row.gmc_qty)}</button>
+                    ) : fmtQs(row.gmc_qty)}
+                  </td>}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-blue-500">
                       {row.sell_price && onDateClick ? (
@@ -1679,13 +1792,21 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
-                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">
+                    {row.acp != null ? (
+                      row.vcp_bill_id != null && onBillClick ? (
+                        <button onClick={() => onBillClick(row.vcp_bill_id!)} className="hover:underline">{formatACP(row.acp)}</button>
+                      ) : formatACP(row.acp)
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>}
                   {!isGmcItem && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">
                         {row.bills_breakdown.map((bill, idx) => (
                           <div key={idx} className="block">
-                            <span>{fmtQs(String(bill.qty))}</span>
+                            {bill.bill_id != null && onBillClick ? (
+                              <button onClick={() => onBillClick(bill.bill_id!)} className="hover:underline">{fmtQs(String(bill.qty))}</button>
+                            ) : <span>{fmtQs(String(bill.qty))}</span>}
                             {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
                           </div>
                         ))}
@@ -1798,10 +1919,27 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : <span className="text-gray-400">0</span>}
                   </td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
-                    <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
+                    <CntCell row={row} isOwnerLevelUser={isOwnerLevelUser}
+                      editing={countEditId === row.count_id}
+                      editQty={countEditQty} saving={countSaving}
+                      onStartEdit={() => { if (row.count_id != null) { setCountEditId(row.count_id); setCountEditQty(String(parseFloat(row.qty_counted ?? '0') || 0)) } }}
+                      onQtyChange={setCountEditQty}
+                      onSave={() => countEditId != null && saveCountEdit(countEditId, countEditQty)}
+                      onCancel={() => setCountEditId(null)}
+                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)} />
                   </td>}
-                  <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
-                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
+                  <td className="px-1 py-0 text-right text-gray-600">
+                    {row.wic_qty && (onReceiptClick || onDateClick) ? (
+                      <button onClick={() => row.wic_receipt_id != null && onReceiptClick ? onReceiptClick(row.wic_receipt_id) : onDateClick!(row.date, item.item_name)}
+                        className="hover:underline">{fmtQs(row.wic_qty)}</button>
+                    ) : fmtQs(row.wic_qty)}
+                  </td>
+                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-600">
+                    {row.gmc_qty && (onReceiptClick || onDateClick) ? (
+                      <button onClick={() => row.gmc_receipt_id != null && onReceiptClick ? onReceiptClick(row.gmc_receipt_id) : onDateClick!(row.date, item.item_name)}
+                        className="hover:underline">{fmtQs(row.gmc_qty)}</button>
+                    ) : fmtQs(row.gmc_qty)}
+                  </td>}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-blue-500">
                       {row.sell_price && onDateClick ? (
@@ -1814,13 +1952,21 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
                     </td>
                   )}
-                  {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-purple-700">
+                    {row.acp != null ? (
+                      row.vcp_bill_id != null && onBillClick ? (
+                        <button onClick={() => onBillClick(row.vcp_bill_id!)} className="hover:underline">{formatACP(row.acp)}</button>
+                      ) : formatACP(row.acp)
+                    ) : <span className="text-gray-300">—</span>}
+                  </td>}
                   {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">
                         {row.bills_breakdown.map((bill, idx) => (
                           <div key={idx} className="block">
-                            <span>{fmtQs(String(bill.qty))}</span>
+                            {bill.bill_id != null && onBillClick ? (
+                              <button onClick={() => onBillClick(bill.bill_id!)} className="hover:underline">{fmtQs(String(bill.qty))}</button>
+                            ) : <span>{fmtQs(String(bill.qty))}</span>}
                             {bill.vendor_name && <span className="text-gray-600">({bill.vendor_name})</span>}
                           </div>
                         ))}

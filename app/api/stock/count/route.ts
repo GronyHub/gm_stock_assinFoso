@@ -5,6 +5,7 @@ import { recordCountRevision } from '@/lib/countRevisions'
 import { gainViolation, expectedStockAt, packPairingCheck } from '@/lib/stockGuard'
 import { isOwnerLevel } from '@/lib/roles'
 import { once } from '@/lib/once'
+import { invalidateCache } from '@/lib/cacheStore'
 import { NextRequest } from 'next/server'
 
 // count_date stays date-only (every day-level query across the app groups/
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest) {
       console.error('Database insert/update error:', dbError)
       return serverError('Failed to save count', String(dbError))
     }
+  invalidateCache(`losses:${itemId}`)
   return success({
     ok: true,
     ...(pairing && !pairing.blocking ? { pack_count_suggested: pairing.packs } : {}),

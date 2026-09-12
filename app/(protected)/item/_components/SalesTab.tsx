@@ -184,6 +184,10 @@ type Props = {
   violation: string | null
   jumpToDate?: string | null
   jumpToItemName?: string | null
+  // Precise jump straight to one receipt (Item 360's WIC/GMC columns, which
+  // know exactly which receipt a day's figure came from) -- takes priority
+  // over jumpToDate/jumpToItemName's date+item-name guess when both are set.
+  jumpToReceiptId?: number | null
   onJumpDone?: () => void
   // History/Bars Only/W/G moved up to the parent's own violation-filter row
   // (so they render alongside it, not a second row) -- this component just
@@ -220,7 +224,7 @@ type Props = {
 }
 
 function SalesTab({
-  items, groupFilter, search, violation, jumpToDate, jumpToItemName, onJumpDone,
+  items, groupFilter, search, violation, jumpToDate, jumpToItemName, jumpToReceiptId, onJumpDone,
   showHistory = false, setShowHistory = () => {}, barsOnly = false, setBarsOnly = () => {},
   showW = true, setShowW = () => {}, showG = true, setShowG = () => {},
   colPrefs,
@@ -384,11 +388,21 @@ function SalesTab({
   }
 
   // Incoming jump from an item's day table (Item 360's Detail section, or
-  // Gd/Srv historically): find the receipt for that date, preferring the
-  // one that actually has the item on it (a date can have both a WIC and a
-  // GMC receipt) over just the first match.
+  // Gd/Srv historically): jumpToReceiptId (when the day-row knew exactly
+  // which receipt it came from -- see lib/itemDayRows.ts's wic_receipt_id/
+  // gmc_receipt_id) goes straight to that receipt; otherwise fall back to
+  // the date+item-name guess, preferring the receipt that actually has the
+  // item on it (a date can have both a WIC and a GMC receipt) over just the
+  // first match.
   useEffect(() => {
-    if (!jumpToDate || loading) return
+    if (loading) return
+    if (jumpToReceiptId != null) {
+      const target = receipts.find(r => r.id === jumpToReceiptId)
+      if (target) setTimeout(() => jumpTo(target), 50)
+      onJumpDone?.()
+      return
+    }
+    if (!jumpToDate) return
     const targetDate = jumpToDate.slice(0, 10)
     const candidates = receipts.filter(r => r.receipt_date?.slice(0, 10) === targetDate)
     if (candidates.length > 0) {
@@ -400,7 +414,7 @@ function SalesTab({
     }
     onJumpDone?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jumpToDate, loading])
+  }, [jumpToDate, jumpToReceiptId, loading])
 
   function startEdit(r: Receipt) {
     setEditForm({
