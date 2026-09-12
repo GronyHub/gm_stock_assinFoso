@@ -1582,7 +1582,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>
               {isGmcItem && <th className="px-1 py-0 text-left text-teal-600" title="Which pack was converted to create this CNV">Source Pack</th>}
               <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
-              {!isGmcItem && <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>}
+              <th className="px-1 py-0 text-right" title={isGmcItem ? 'Stock On Hand -- current stock physically at the shop, running day to day' : 'Expected = Available − Used'}>{isGmcItem ? 'SOH' : 'Exp'}</th>
               <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
               <th className="px-1 py-0 text-right text-red-500" title="Loss valued at selling price">Loss ₵</th>
@@ -1646,7 +1646,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <span className="text-gray-400 font-normal">({fmtQ(row.cnv_used_before)}/{fmtQ(row.cnv_used_after)})</span>
                     )}
                   </td>
-                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>}
@@ -1722,7 +1722,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <tfoot>
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
-              <td colSpan={4} />
+              <td colSpan={isGmcItem ? 5 : 4} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td colSpan={6 + breakdownNames.length} />
@@ -1754,7 +1754,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
-              {!isService && !isGmcItem && <th className="px-1 py-0 text-right">Exp</th>}
+              {!isService && <th className="px-1 py-0 text-right" title={isGmcItem ? 'Stock On Hand -- current stock physically at the shop, running day to day' : undefined}>{isGmcItem ? 'SOH' : 'Exp'}</th>}
               <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
@@ -1818,7 +1818,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     )}
                   </td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} usedBefore={row.cnv_used_before} usedAfter={row.cnv_used_after} /></td>}
-                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
@@ -1853,7 +1853,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               {!isService && <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
-              <td colSpan={isService ? 2 : 10} />
+              <td colSpan={isService ? 2 : 9 + (isGmcItem ? 2 : 1)} />
             </tr>
           </tfoot>
         </table>
