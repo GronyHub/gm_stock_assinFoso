@@ -22,13 +22,14 @@ export type ItemDayRow = {
   vcp: string | null
   vcp_bill_id: number | null
   acp: string | null
-  // Tap-timestamp-precise EXP/LOSS override -- see the pass at the bottom
-  // of getItemDayRows. null on every row for the overwhelming majority of
-  // items (anything that's never been a GMC conversion target); only
-  // lib/packChain.ts's computeRows reads these, preferring them over its
-  // own day-grained calculation when present.
-  precise_expected_soh?: number | null
-  precise_loss?: number | null
+  // Self-contained per-cycle tally for a GMC conversion target -- see the
+  // pass at the bottom of getItemDayRows. Set only on the date a pack was
+  // actually opened (converted_in_qty > 0); every other row is null. Only
+  // lib/packChain.ts's computeRows reads these, to override that date's
+  // loss (never the day-grained available/expected chain).
+  cycle_given?: number | null
+  cycle_used?: number | null
+  cycle_closed?: boolean | null
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -301,26 +302,24 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
 
   const dayRows = rows as unknown as ItemDayRow[]
 
-  // Tap-timestamp-precise EXP/LOSS override for GMC conversion targets.
-  // A CNV (a pack being opened) is itself a ground-truth reset event, same
-  // weight as a physical count -- "a new pack means the old one is empty."
-  // But day-grained sums can't tell whether a day's WIC/GMC activity
-  // happened before or after that day's own pack-open, only
-  // live_sale_taps.tapped_at can (e.g. 10 sold that morning belong to the
-  // OLD pack; a pack opens at 2pm; 20 more sold that afternoon belong to
-  // the NEW one -- the day-grained WIC total of 30 can't be split that
-  // way). Computed as a second, chronological-event pass here rather than
-  // folded into the CTE above, since it needs to walk in time order, not
-  // aggregate by date. Only actually does anything for an item that's
-  // been a GMC conversion target at least once (checked below) -- a pure
-  // no-op for every other item, whose converted_in_qty is always null.
+  // Self-contained per-cycle tally for GMC conversion targets. A CNV (a
+  // pack being opened) starts a fresh, independent cycle: it supplies
+  // `sheetsGiven` units, and every real sale/consumption from that exact
+  // moment onward -- until the NEXT pack-open, whatever day that falls on
+  // -- counts as `used` against it. Unlike a running balance, cycles never
+  // chain: a discrepancy in one cycle can never propagate into another.
+  // Deliberately count-independent (a physical count plays no part here --
+  // loss/gain is read straight off given vs. used). Day-grained sums can't
+  // tell whether a day's activity happened before or after that day's own
+  // pack-open, only live_sale_taps.tapped_at can (e.g. 10 sold that
+  // morning belong to the OLD pack; a pack opens at 2pm; 20 more sold that
+  // afternoon belong to the NEW one), so this walks in real time order
+  // rather than aggregating by date. Only actually does anything for an
+  // item that's been a GMC conversion target at least once (checked
+  // below) -- a pure no-op for every other item, whose converted_in_qty is
+  // always null.
   if (dayRows.some(r => r.converted_in_qty != null)) {
-    const [countEvents, packOpenEvents, directSaleEvents, serviceConsumptionEvents] = await Promise.all([
-      sql`
-        SELECT counted_at, quantity_counted FROM stock_counts
-        WHERE item_id = ${id} AND counted_at IS NOT NULL
-        ORDER BY counted_at ASC
-      ` as unknown as Promise<{ counted_at: string; quantity_counted: string }[]>,
+    const [packOpenEvents, directSaleEvents, serviceConsumptionEvents] = await Promise.all([
       // A real GMC purchase of a pack_to_gmc item converting into this
       // target -- confirmed via sales_receipts.customer_name the same way
       // /api/sales/live-taps derives is_gmc, not a stray WIC sale of the
@@ -361,50 +360,42 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       ` as unknown as Promise<{ tapped_at: string; quantity: number }[]>,
     ])
 
-    type PreciseEvent = { at: number; date: string; kind: 'count' | 'pack_open' | 'consume'; qty: number }
+    type CycleEvent = { at: number; date: string; kind: 'pack_open' | 'consume'; qty: number }
     const toDate = (ts: string) => new Date(ts).toISOString().slice(0, 10)
-    const events: PreciseEvent[] = [
-      ...countEvents.map(c => ({ at: new Date(c.counted_at).getTime(), date: toDate(c.counted_at), kind: 'count' as const, qty: parseFloat(c.quantity_counted) || 0 })),
+    const events: CycleEvent[] = [
       ...packOpenEvents.map(p => ({ at: new Date(p.tapped_at).getTime(), date: toDate(p.tapped_at), kind: 'pack_open' as const, qty: (parseFloat(p.units_per_pack) || 1) * Number(p.quantity) })),
       ...directSaleEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
       ...serviceConsumptionEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
     ].sort((a, b) => a.at - b.at)
 
-    // Walk chronologically, maintaining a running balance. 'count' and
-    // 'pack_open' are hard resets -- whatever the balance was right before
-    // one IS that closed cycle's loss (positive) or gain (negative), same
-    // sign convention lib/packChain.ts's computeRows already uses.
-    // 'consume' before any reset has no budget to judge against yet and is
-    // skipped, same rule buildPackCycles documents.
-    let balance: number | null = null
-    const preciseByDate = new Map<string, { expected: number; loss: number | null }>()
+    let cur: { startDate: string; given: number; used: number } | null = null
+    const cycleByDate = new Map<string, { given: number; used: number; closed: boolean }>()
     for (const ev of events) {
-      let lossThisEvent: number | null = null
-      if (balance === null) {
-        if (ev.kind === 'count' || ev.kind === 'pack_open') balance = ev.qty
-      } else if (ev.kind === 'count') {
-        lossThisEvent = parseFloat((balance - ev.qty).toFixed(4))
-        balance = ev.qty
-      } else if (ev.kind === 'pack_open') {
-        lossThisEvent = parseFloat(balance.toFixed(4))
-        balance = ev.qty
-      } else {
-        balance = parseFloat((balance - ev.qty).toFixed(4))
-      }
-      if (balance !== null) {
-        const existing = preciseByDate.get(ev.date)
-        preciseByDate.set(ev.date, {
-          expected: balance,
-          loss: lossThisEvent !== null ? (existing?.loss ?? 0) + lossThisEvent : (existing?.loss ?? null),
-        })
+      if (ev.kind === 'pack_open') {
+        if (cur && cur.startDate === ev.date) {
+          // A second pack opened the same calendar day as the still-open
+          // cycle's own start -- merge into one cell, consistent with how
+          // daily_converted_in above already sums same-day pack quantities.
+          cur.given = parseFloat((cur.given + ev.qty).toFixed(4))
+        } else {
+          if (cur) cycleByDate.set(cur.startDate, { given: cur.given, used: cur.used, closed: true })
+          cur = { startDate: ev.date, given: ev.qty, used: 0 }
+        }
+      } else if (cur) {
+        // Consumption before the very first ever pack-open has no budget
+        // to judge against yet -- skipped, same rule buildPackCycles
+        // documents.
+        cur.used = parseFloat((cur.used + ev.qty).toFixed(4))
       }
     }
+    if (cur) cycleByDate.set(cur.startDate, { given: cur.given, used: cur.used, closed: false })
 
     for (const row of dayRows) {
-      const p = preciseByDate.get(row.date)
-      if (p) {
-        row.precise_expected_soh = p.expected
-        row.precise_loss = p.loss
+      const c = cycleByDate.get(row.date)
+      if (c) {
+        row.cycle_given = c.given
+        row.cycle_used = c.used
+        row.cycle_closed = c.closed
       }
     }
   }

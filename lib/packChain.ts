@@ -30,17 +30,19 @@ export function computeRows(rows: ItemDayRow[]): ComputedRow[] {
       if (counted !== null) { loss = parseFloat((expected - counted).toFixed(4)); prev = counted }
       else prev = expected
     }
-    // Tap-timestamp-precise override (see getItemDayRows in
-    // lib/itemDayRows.ts) -- only ever set for a GMC conversion target,
-    // where it correctly resets EXP/LOSS at the exact moment a pack opens
-    // instead of at the end of that whole calendar day. Replaces both the
-    // day-grained expected/loss just computed above AND the running `prev`
-    // carried into the next row, so every row after this one continues
-    // from the precise anchor.
-    if (row.precise_expected_soh != null) {
-      expected = row.precise_expected_soh
-      loss = row.precise_loss ?? null
-      prev = expected
+    // Self-contained per-cycle override (see getItemDayRows in
+    // lib/itemDayRows.ts) -- only ever set on the date a GMC conversion
+    // target's pack was actually opened. Overrides ONLY this row's loss,
+    // never `expected`/`available`, and never `prev` carried into the next
+    // row -- each cycle is judged purely against its own given-vs-used
+    // tally, so a discrepancy here can never chain into another row.
+    if (row.cycle_given != null) {
+      const given = row.cycle_given, used = row.cycle_used ?? 0
+      // Closed -> real loss/gain. Still open -> only surface it early if
+      // it's already a gain (same convention realizedCycleCedis uses);
+      // a possible loss waits for the cycle to close, since more usage
+      // could still come in before the next pack.
+      loss = (row.cycle_closed || used > given) ? parseFloat((given - used).toFixed(4)) : null
     }
     result.push({ ...row, available, used, expected_soh: expected, loss })
   }

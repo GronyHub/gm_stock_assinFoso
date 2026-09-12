@@ -164,14 +164,34 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
 
 // CNV column cell -- the converted-in quantity plus, when it came through a
 // Live Sale tap (not every conversion did -- see daily_converted_in_time's
-// own comment in lib/itemDayRows.ts), the clock time it was tapped in.
-function CnvValue({ qty, time }: { qty: string | null; time?: string | null }) {
+// own comment in lib/itemDayRows.ts), the clock time it was tapped in. When
+// this pack's own self-contained usage tally exists (see cycle_used/
+// cycle_closed in lib/itemDayRows.ts), shown as a "used/given" fraction
+// instead of the bare quantity -- e.g. "24/50" -- so this cell alone
+// answers how much of THIS pack has been used, independent of any other
+// row. Still open (no next pack yet) is marked "open"; already using more
+// than this pack gave is flagged red even before it closes.
+function CnvValue({ qty, time, used, closed }: { qty: string | null; time?: string | null; used?: number | null; closed?: boolean | null }) {
   const text = fmtQs(qty)
   const t = fmtTime(time)
   if (text === '—') return <span className="text-gray-300">—</span>
+  const given = parseFloat(qty!) || 0
+  const overGiven = used != null && used > given
   return (
     <span className="flex flex-col items-center" title={t ? `Converted in at ${t}` : undefined}>
-      <span className="whitespace-nowrap">{text}</span>
+      <span className="whitespace-nowrap">
+        {used != null ? (
+          <>
+            <span className={overGiven ? 'text-red-600 font-bold' : ''}>{fmtQ(used)}</span>
+            <span className="text-gray-400">/{text}</span>
+          </>
+        ) : text}
+      </span>
+      {closed === false && (
+        overGiven
+          ? <span className="text-red-600 text-[6px] font-bold whitespace-nowrap">open ⚠</span>
+          : <span className="text-blue-600 text-[6px] font-semibold whitespace-nowrap">open</span>
+      )}
       {t && <span className="text-gray-400 text-[6px] whitespace-nowrap">{t}</span>}
     </span>
   )
@@ -1549,8 +1569,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>
               {isGmcItem && <th className="px-1 py-0 text-left text-teal-600" title="Which pack was converted to create this CNV">Source Pack</th>}
               <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
-              <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>
-              <th className="px-1 py-0 text-right text-blue-500" title="Available = previous stock + bills received + converted in">Avail</th>
+              {!isGmcItem && <th className="px-1 py-0 text-right" title="Expected = Available − Used">Exp</th>}
               <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
               <th className="px-1 py-0 text-right text-red-500" title="Loss valued at selling price">Loss ₵</th>
@@ -1588,7 +1607,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </button>
                     ) : shortItemDate(row.date)}
                   </td>
-                  {!isService && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
+                  {!isService && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} /></td>}
                   {isGmcItem && (
                     <td className="px-1 py-0 text-left text-teal-700 font-medium whitespace-nowrap">
                       {(row.converted_in_qty && Number(row.converted_in_qty) > 0) ? (
@@ -1608,8 +1627,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   <td className="px-1 py-0 text-right font-semibold text-blue-700">
                     {fmtQ(row.used + (row.wic_breakdown ?? []).reduce((s, b) => s + b.qty, 0))}
                   </td>
-                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
-                  <td className="px-1 py-0 text-right font-semibold text-blue-700">{fmtN(row.available)}</td>
+                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>}
@@ -1685,7 +1703,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <tfoot>
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
-              <td colSpan={5} />
+              <td colSpan={4} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
               <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
               <td colSpan={6 + breakdownNames.length} />
@@ -1717,7 +1735,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>}
               {!isService && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
-              {!isService && <th className="px-1 py-0 text-right">Exp</th>}
+              {!isService && !isGmcItem && <th className="px-1 py-0 text-right">Exp</th>}
               <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
@@ -1780,8 +1798,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       fmtQs(row.bills_qty)
                     )}
                   </td>}
-                  {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} /></td>}
-                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} /></td>}
+                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
