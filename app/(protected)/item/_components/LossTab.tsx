@@ -1646,7 +1646,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       <span className="text-gray-400 font-normal">({fmtQ(row.cnv_used_before)}/{fmtQ(row.cnv_used_after)})</span>
                     )}
                   </td>
-                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>}
@@ -1818,7 +1818,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     )}
                   </td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} usedBefore={row.cnv_used_before} usedAfter={row.cnv_used_after} /></td>}
-                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
+                  {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">

@@ -36,6 +36,16 @@ export type ItemDayRow = {
   // Set only on a date where converted_in_qty > 0; null everywhere else.
   cnv_used_before?: number | null
   cnv_used_after?: number | null
+  // Running Stock On Hand for a GMC conversion target -- what's physically
+  // at the shop as of THIS date, resetting at every pack-open (a new pack
+  // is assumed to replace whatever was left of the old one) and every
+  // physical count (ground truth), decreasing in between as real sales/
+  // consumption come in. A different question from the cycle tally above
+  // (which measures usage against ONE pack, for loss/gain) -- this is the
+  // running total across every pack, forward-filled onto every date. Set
+  // for every date once the item has been a GMC conversion target at
+  // least once; null for every other item.
+  gmc_soh?: number | null
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -325,7 +335,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
   // below) -- a pure no-op for every other item, whose converted_in_qty is
   // always null.
   if (dayRows.some(r => r.converted_in_qty != null)) {
-    const [packOpenEvents, directSaleEvents, serviceConsumptionEvents] = await Promise.all([
+    const [packOpenEvents, directSaleEvents, serviceConsumptionEvents, countEvents] = await Promise.all([
       // A real GMC purchase of a pack_to_gmc item converting into this
       // target -- confirmed via sales_receipts.customer_name the same way
       // /api/sales/live-taps derives is_gmc, not a stray WIC sale of the
@@ -364,6 +374,15 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
           AND r.customer_name IS NULL
         ORDER BY t.tapped_at ASC
       ` as unknown as Promise<{ tapped_at: string; quantity: number }[]>,
+      // A physical count -- ground truth for the running SOH walk further
+      // below (a count always wins over any estimate), but deliberately
+      // NOT read into the cycle tally above, which stays count-independent
+      // on purpose.
+      sql`
+        SELECT counted_at, quantity_counted FROM stock_counts
+        WHERE item_id = ${id} AND counted_at IS NOT NULL
+        ORDER BY counted_at ASC
+      ` as unknown as Promise<{ counted_at: string; quantity_counted: string }[]>,
     ])
 
     type CycleEvent = { at: number; date: string; kind: 'pack_open' | 'consume'; qty: number }
@@ -432,6 +451,49 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         row.cycle_used = c.used
         row.cycle_closed = c.closed
       }
+    }
+
+    // Running Stock On Hand -- what's physically at the shop as of any
+    // given date. A different question from the cycle tally above (which
+    // measures usage against ONE pack, for loss/gain): this is the running
+    // total across EVERY pack, so it resets at every pack-open (same
+    // premise the whole feature started from -- a new pack means the old
+    // one is assumed empty/replaced) AND at every physical count (ground
+    // truth), decreasing by real consumption in between. Shares the same
+    // merged pack_open/consume events as the cycle tally, plus counts
+    // (deliberately excluded from the cycle tally, but very much a reset
+    // here). Same same-day-merge rule as the cycle tally: two pack-opens
+    // on one calendar date combine into a single reset.
+    type SohEvent = CycleEvent | { at: number; date: string; kind: 'count'; qty: number }
+    const sohEvents: SohEvent[] = [
+      ...events,
+      ...countEvents.map(c => ({ at: new Date(c.counted_at).getTime(), date: toDate(c.counted_at), kind: 'count' as const, qty: parseFloat(c.quantity_counted) || 0 })),
+    ].sort((a, b) => a.at - b.at)
+
+    let sohBalance: number | null = null
+    let sohResetDate: string | null = null
+    const sohByDate = new Map<string, number>()
+    for (const ev of sohEvents) {
+      if (ev.kind === 'pack_open') {
+        sohBalance = sohResetDate === ev.date && sohBalance !== null ? parseFloat((sohBalance + ev.qty).toFixed(4)) : ev.qty
+        sohResetDate = ev.date
+      } else if (ev.kind === 'count') {
+        sohBalance = ev.qty
+        sohResetDate = ev.date
+      } else if (sohBalance !== null) {
+        sohBalance = parseFloat((sohBalance - ev.qty).toFixed(4))
+      }
+      if (sohBalance !== null) sohByDate.set(ev.date, sohBalance)
+    }
+    // dayRows is already ordered oldest-first (see the main query's own
+    // ORDER BY) -- forward-fill so a date with no SOH-relevant event of
+    // its own (e.g. a pure bill/receiving day) still carries the balance
+    // as of the most recent one, rather than showing a gap.
+    let lastSoh: number | null = null
+    for (const row of dayRows) {
+      const s = sohByDate.get(row.date)
+      if (s !== undefined) lastSoh = s
+      if (lastSoh !== null) row.gmc_soh = lastSoh
     }
 
     // Same-day before/after split, for the USED column's own display (e.g.
