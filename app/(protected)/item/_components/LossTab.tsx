@@ -1626,6 +1626,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       the breakdown back on top of it here. */}
                   <td className="px-1 py-0 text-right font-semibold text-blue-700">
                     {fmtQ(row.used + (row.wic_breakdown ?? []).reduce((s, b) => s + b.qty, 0))}
+                    {row.cnv_used_before != null && row.cnv_used_after != null && (
+                      // A CNV was recorded this day -- un-blend the total
+                      // around the exact tap moment: before still belongs
+                      // to the OLD pack's cycle, after to the NEW one.
+                      <span className="text-gray-400 font-normal">({fmtQ(row.cnv_used_before)}/{fmtQ(row.cnv_used_after)})</span>
+                    )}
                   </td>
                   {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">

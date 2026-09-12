@@ -30,6 +30,12 @@ export type ItemDayRow = {
   cycle_given?: number | null
   cycle_used?: number | null
   cycle_closed?: boolean | null
+  // Same-day split of this date's own USED total around the exact moment a
+  // pack was tapped open -- e.g. 15 used that day = 6 before the CNV tap
+  // (still belongs to the OLD cycle) + 9 after (belongs to the NEW one).
+  // Set only on a date where converted_in_qty > 0; null everywhere else.
+  cnv_used_before?: number | null
+  cnv_used_after?: number | null
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -396,6 +402,42 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         row.cycle_given = c.given
         row.cycle_used = c.used
         row.cycle_closed = c.closed
+      }
+    }
+
+    // Same-day before/after split, for the USED column's own display (e.g.
+    // "15(6/9)") -- distinct from the cycle tally above, which accumulates
+    // used across however many days a cycle stays open. This is strictly
+    // about un-blending ONE day's total around that day's own pack-open
+    // moment: a day's consumption before the tap still belongs to the OLD
+    // cycle (already folded into its `used` above), consumption after
+    // belongs to the NEW one -- both true regardless of which day the
+    // cycle that opened it started on.
+    const packOpenAtByDate = new Map<string, number>()
+    for (const ev of events) {
+      if (ev.kind !== 'pack_open') continue
+      const existing = packOpenAtByDate.get(ev.date)
+      if (existing === undefined || ev.at < existing) packOpenAtByDate.set(ev.date, ev.at)
+    }
+    const usedSplitByDate = new Map<string, { before: number; after: number }>()
+    for (const ev of events) {
+      if (ev.kind !== 'consume') continue
+      const cnvAt = packOpenAtByDate.get(ev.date)
+      if (cnvAt === undefined) continue
+      const split = usedSplitByDate.get(ev.date) ?? { before: 0, after: 0 }
+      if (ev.at < cnvAt) split.before = parseFloat((split.before + ev.qty).toFixed(4))
+      else split.after = parseFloat((split.after + ev.qty).toFixed(4))
+      usedSplitByDate.set(ev.date, split)
+    }
+    for (const row of dayRows) {
+      const s = usedSplitByDate.get(row.date)
+      if (s) {
+        row.cnv_used_before = s.before
+        row.cnv_used_after = s.after
+      } else if (packOpenAtByDate.has(row.date)) {
+        // A CNV was recorded this day but nothing sold either side of it.
+        row.cnv_used_before = 0
+        row.cnv_used_after = 0
       }
     }
   }
