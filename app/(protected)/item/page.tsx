@@ -8719,79 +8719,60 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     {editItem && !liveGridEditLoading && (() => {
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
                       return (
-                      <div ref={liveGridEditSaleTapRef} className="p-2 border-b border-gray-200">
-                        <div className="bg-orange-100 border border-orange-300 rounded p-1.5 mb-1">
-                          <p className="text-[10px] font-semibold text-orange-900">⚠ SALE TAP</p>
-                        </div>
+                      <div ref={liveGridEditSaleTapRef} className="px-2 py-1.5 border-b border-gray-200">
+                        <p className="text-xs text-gray-500 mb-1">Backdate a sale (only if it wasn't tapped on the item card)</p>
                         {liveTapStatus.length > 0 && (
-                          <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-[8px] font-mono text-blue-900 max-h-24 overflow-y-auto">
+                          <div className="mb-1.5 p-1.5 bg-gray-50 border border-gray-200 rounded text-[8px] font-mono text-gray-600 max-h-24 overflow-y-auto">
                             {liveTapStatus.map((msg, i) => (
                               <div key={i}>{msg}</div>
                             ))}
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <div className="flex gap-1.5 items-stretch">
-                            <div className="flex-1 min-w-0 flex flex-col">
-                              <p className="text-[9px] text-gray-700 font-medium mb-1">Qty</p>
-                              <input
-                                ref={liveGridEditQtyInputRef}
-                                type="number"
-                                inputMode="decimal"
-                                min="1"
-                                step="1"
-                                value={liveQty}
-                                onChange={e => setLiveQty(e.target.value)}
-                                placeholder="Qty"
-                                className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-col">
-                              <p className="text-[9px] text-gray-700 font-medium mb-1">Price</p>
-                              <div className="relative flex-1">
-                                <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-500 text-[9px]">₵</span>
-                                <input
-                                  type="number"
-                                  inputMode="decimal"
-                                  min="0"
-                                  step="0.01"
-                                  value={livePrice}
-                                  onChange={e => setLivePrice(e.target.value)}
-                                  placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
-                                  className="w-full h-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg pl-4 pr-1 py-4 outline-none focus:ring-1 focus:ring-blue-400"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-col">
-                              <p className="text-[9px] text-gray-700 font-medium mb-1">Time</p>
-                              <input
-                                type="datetime-local"
-                                value={liveTapTime}
-                                onChange={e => setLiveTapTime(e.target.value)}
-                                className="w-full flex-1 text-[9px] font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-blue-400"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-col">
-                              <p className="text-[9px] text-transparent font-medium mb-1 select-none">Tap</p>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await recordTap(editItem)
-                                  } catch (e) {
-                                    const err = e instanceof Error ? e.message : String(e)
-                                    console.error('[SALE TAP] Error:', err)
-                                    showToast(`Error: ${err}`, 'error')
-                                  }
-                                }}
-                                disabled={!liveQty || liveSaving}
-                                className="w-full flex-1 px-1 py-4 bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
-                                {liveSaving ? '…' : 'Tap'}
-                              </button>
-                            </div>
+                        <div className="flex gap-1 items-center">
+                          <input
+                            ref={liveGridEditQtyInputRef}
+                            type="number"
+                            inputMode="decimal"
+                            min="1"
+                            step="1"
+                            value={liveQty}
+                            onChange={e => setLiveQty(e.target.value)}
+                            placeholder="Qty"
+                            className="w-14 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                          <div className="relative">
+                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₵</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step="0.01"
+                              value={livePrice}
+                              onChange={e => setLivePrice(e.target.value)}
+                              placeholder={editItem ? formatPrice(editItem.selling_price) : 'Price'}
+                              className="w-20 text-xs text-gray-900 bg-white border border-gray-300 rounded pl-4 pr-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                            />
                           </div>
-                          <p className="text-[8px] text-gray-500">
-                            Defaults to ₵{editItem ? formatPrice(editItem.selling_price) : '0'} · When was this sale made?
-                          </p>
+                          <input
+                            type="datetime-local"
+                            value={liveTapTime}
+                            onChange={e => setLiveTapTime(e.target.value)}
+                            className="flex-1 min-w-0 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                          <button
+                            onClick={async () => {
+                              try {
+                                await recordTap(editItem)
+                              } catch (e) {
+                                const err = e instanceof Error ? e.message : String(e)
+                                console.error('[SALE TAP] Error:', err)
+                                showToast(`Error: ${err}`, 'error')
+                              }
+                            }}
+                            disabled={!liveQty || liveSaving}
+                            className="shrink-0 px-2.5 py-1 bg-gray-700 hover:bg-gray-800 text-white text-xs font-medium rounded transition disabled:opacity-50">
+                            {liveSaving ? '…' : 'Tap'}
+                          </button>
                         </div>
                       </div>
                     )})()}
@@ -8799,102 +8780,64 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
                       const currentCount = overdueItem ? Math.ceil(Number(overdueItem.calculated_soh)) : null
                       return (
-                      <div className="bg-gray-50">
-                        <div className="px-2 py-1.5 space-y-2">
-                          <div>
-                            {overdueItem ? (
-                              <div className="p-1.5 bg-red-100 border border-red-300 rounded space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <div>
-                                    <p className="text-[9px] font-bold text-red-900">
-                                      ⚠ COUNT NOW{overdueItem.days_overdue != null ? ` – ${overdueItem.days_overdue}d overdue` : ' – never counted'}
-                                    </p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-[8px] text-red-800 font-semibold">System Count</p>
-                                    <p className="text-xl font-bold text-red-900">{currentCount}</p>
-                                  </div>
-                                </div>
-                                <p className="text-[8px] text-red-800">
-                                  {Number(overdueItem.calculated_soh) < 0
-                                    ? `System shows ${overdueItem.calculated_soh} -- there's no earlier count to check against, so just enter what's actually on the shelf.`
-                                    : `System expects ${overdueItem.calculated_soh} on the shelf.`}
-                                </p>
-                                <div className="flex gap-1.5 items-stretch">
-                                  <div className="flex-1 min-w-0 flex flex-col">
-                                    <p className="text-[8px] text-red-800 font-medium mb-1">Quantity</p>
-                                    <input
-                                      type="number"
-                                      inputMode="decimal"
-                                      min="0"
-                                      step="1"
-                                      value={liveGridEditCountQty}
-                                      onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                      placeholder="Qty"
-                                      className="w-full flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-1 py-4 outline-none focus:ring-1 focus:ring-red-400 text-center"
-                                      disabled={liveGridEditCountSaving}
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0 flex flex-col">
-                                    <p className="text-[8px] text-transparent font-medium mb-1 select-none">Save</p>
-                                    <button
-                                      type="button"
-                                      onClick={() => recordCountFromModal()}
-                                      disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                      className="w-full flex-1 px-1 py-4 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
-                                      {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
-                                    </button>
-                                  </div>
-                                </div>
-                                {liveGridEditCountError && (
-                                  <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
-                                    {liveGridEditCountError}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <>
-                                <div className="bg-blue-600 text-white rounded-lg px-4 py-3 mb-2">
-                                  <div className="flex items-center justify-between gap-4">
-                                    <h3 className="text-lg font-bold">Enter Count here</h3>
-                                    <div className="text-right">
-                                      <p className="text-sm opacity-90">Current Count</p>
-                                      <p className="text-2xl font-bold">{currentCount ?? '—'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex gap-1.5 items-stretch">
-                                    <input
-                                      type="number"
-                                      inputMode="decimal"
-                                      min="0"
-                                      step="1"
-                                      value={liveGridEditCountQty}
-                                      onChange={e => setLiveGridEditCountQty(e.target.value)}
-                                      placeholder="Qty"
-                                      className="flex-1 text-lg font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-4 outline-none focus:ring-1 focus:ring-blue-400 text-center"
-                                      disabled={liveGridEditCountSaving}
-                                      autoFocus
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => recordCountFromModal()}
-                                      disabled={!liveGridEditCountQty || liveGridEditCountSaving}
-                                      className="shrink-0 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded-lg transition disabled:opacity-50">
-                                      {liveGridEditCountSaving ? 'Recording…' : 'Record'}
-                                    </button>
-                                  </div>
-                                  {liveGridEditCountError && (
-                                    <div className="bg-red-50 border border-red-200 rounded px-1.5 py-0.5 text-[8px] text-red-600">
-                                      {liveGridEditCountError}
-                                    </div>
-                                  )}
-                                </div>
-                              </>
+                      <div className="px-2 py-1.5 border-b border-gray-200">
+                        {overdueItem ? (
+                          <>
+                            <p className="text-xs text-red-600 font-medium mb-1">
+                              ⚠ Count overdue{overdueItem.days_overdue != null ? ` (${overdueItem.days_overdue}d)` : ' (never counted)'} · system expects {currentCount}
+                            </p>
+                            <div className="flex gap-1 items-center">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="1"
+                                value={liveGridEditCountQty}
+                                onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                placeholder="Qty"
+                                className="w-20 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-red-400"
+                                disabled={liveGridEditCountSaving}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => recordCountFromModal()}
+                                disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                className="shrink-0 px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition disabled:opacity-50">
+                                {liveGridEditCountSaving ? 'Saving…' : 'Save Count'}
+                              </button>
+                            </div>
+                            {liveGridEditCountError && (
+                              <p className="mt-1 text-[10px] text-red-600">{liveGridEditCountError}</p>
                             )}
-                          </div>
-                        </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-gray-500 mb-1">Count now (off-cycle) · current count {currentCount ?? '—'}</p>
+                            <div className="flex gap-1 items-center">
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="1"
+                                value={liveGridEditCountQty}
+                                onChange={e => setLiveGridEditCountQty(e.target.value)}
+                                placeholder="Qty"
+                                className="w-20 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                                disabled={liveGridEditCountSaving}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => recordCountFromModal()}
+                                disabled={!liveGridEditCountQty || liveGridEditCountSaving}
+                                className="shrink-0 px-2.5 py-1 bg-gray-700 hover:bg-gray-800 text-white text-xs font-medium rounded transition disabled:opacity-50">
+                                {liveGridEditCountSaving ? 'Recording…' : 'Record'}
+                              </button>
+                            </div>
+                            {liveGridEditCountError && (
+                              <p className="mt-1 text-[10px] text-red-600">{liveGridEditCountError}</p>
+                            )}
+                          </>
+                        )}
                       </div>
                     )})()}
                     {editItem && !liveGridEditLoading && (
