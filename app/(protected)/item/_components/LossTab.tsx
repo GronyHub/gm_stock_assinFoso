@@ -169,12 +169,16 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
 // cycle_closed in lib/itemDayRows.ts), shown as a "used/given" fraction
 // instead of the bare quantity -- e.g. "24/50" -- so this cell alone
 // answers how much of THIS pack has been used, independent of any other
-// row. Still open (no next pack yet) is marked "open"; already using more
-// than this pack gave is flagged red even before it closes. usedBefore/
-// usedAfter (see cnv_used_before/cnv_used_after in lib/itemDayRows.ts) is
-// this SAME day's own before/after split around the exact tap moment --
-// only passed in by tables that don't already show it in a dedicated Used
-// column (see the "2+ services" breakdown table below, which does).
+// row. Still open (no next pack yet) is marked "open". Same red=loss,
+// green=gain-or-breakeven convention as the rest of this table: using more
+// than the pack gave is a gain (green), even before the cycle closes; a
+// shortfall only counts as a real loss (red) once the cycle is closed --
+// while still open it could still be made up before the next pack.
+// usedBefore/usedAfter (see cnv_used_before/cnv_used_after in
+// lib/itemDayRows.ts) is this SAME day's own before/after split around the
+// exact tap moment -- only passed in by tables that don't already show it
+// in a dedicated Used column (see the "2+ services" breakdown table below,
+// which does).
 function CnvValue({ qty, time, used, closed, usedBefore, usedAfter }: {
   qty: string | null; time?: string | null
   used?: number | null; closed?: boolean | null
@@ -184,20 +188,23 @@ function CnvValue({ qty, time, used, closed, usedBefore, usedAfter }: {
   const t = fmtTime(time)
   if (text === '—') return <span className="text-gray-300">—</span>
   const given = parseFloat(qty!) || 0
-  const overGiven = used != null && used > given
+  const diff = used != null ? parseFloat((given - used).toFixed(4)) : null // >0 loss, <0 gain, 0 breakeven
+  const overGiven = diff != null && diff < -0.001
+  const isLoss = diff != null && closed === true && diff > 0.001
+  const isGain = diff != null && !isLoss && (overGiven || closed === true)
   return (
     <span className="flex flex-col items-center" title={t ? `Converted in at ${t}` : undefined}>
       <span className="whitespace-nowrap">
         {used != null ? (
           <>
-            <span className={overGiven ? 'text-red-600 font-bold' : ''}>{fmtQ(used)}</span>
+            <span className={isLoss ? 'text-red-600 font-bold' : isGain ? 'text-green-600 font-bold' : ''}>{fmtQ(used)}</span>
             <span className="text-gray-400">/{text}</span>
           </>
         ) : text}
       </span>
       {closed === false && (
         overGiven
-          ? <span className="text-red-600 text-[6px] font-bold whitespace-nowrap">open ⚠</span>
+          ? <span className="text-green-600 text-[6px] font-bold whitespace-nowrap">open</span>
           : <span className="text-blue-600 text-[6px] font-semibold whitespace-nowrap">open</span>
       )}
       {usedBefore != null && usedAfter != null && (
@@ -210,20 +217,17 @@ function CnvValue({ qty, time, used, closed, usedBefore, usedAfter }: {
   )
 }
 
-// A day's cedis-valued loss/gain used to sit in one column, color alone
-// telling the two apart (red = loss, green = gain) -- split into two real
-// columns instead, each showing only its own side and blank otherwise, so
-// "how much did we gain" doesn't require reading color off a shared cell.
-function LossGainCells({ value }: { value: number | null }) {
+// A day's cedis-valued loss/gain in one column -- red = loss, green = gain
+// or breakeven, same convention as every other loss/gain cell in this
+// table (e.g. CnvValue, the LOSS quantity column).
+function LossGainCell({ value }: { value: number | null }) {
   return (
-    <>
-      <td className="px-1 py-0 text-right font-semibold text-red-500">
-        {value !== null && value > 0.01 ? fmtN(value) : <span className="text-gray-300">—</span>}
-      </td>
-      <td className="px-1 py-0 text-right font-semibold text-green-600">
-        {value !== null && value < -0.01 ? fmtN(Math.abs(value)) : <span className="text-gray-300">—</span>}
-      </td>
-    </>
+    <td className="px-1 py-0 text-right font-semibold">
+      {value === null ? <span className="text-gray-300">—</span>
+        : value > 0.01 ? <span className="text-red-500">-{fmtN(value)}</span>
+        : value < -0.01 ? <span className="text-green-600">+{fmtN(Math.abs(value))}</span>
+        : <span className="text-green-600">0</span>}
+    </td>
   )
 }
 
@@ -1584,20 +1588,19 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-right" title={isGmcItem ? 'Stock On Hand -- current stock physically at the shop, running day to day' : 'Expected = Available − Used'}>{isGmcItem ? 'SOH' : 'Exp'}</th>
               <th className="px-1 py-0 text-right" title="Physical count taken that day">Cnt</th>
               <th className="px-1 py-0 text-right" title="Count Loss = Expected − actual count (only on count days)">Loss</th>
-              <th className="px-1 py-0 text-right text-red-500" title="Loss valued at selling price">Loss ₵</th>
-              <th className="px-1 py-0 text-right text-green-600" title="Gain valued at selling price">Gain ₵</th>
+              <th className="px-1 py-0 text-right" title="Loss (red) or gain (green) valued at selling price">L/G ₵</th>
               {breakdownNames.map(n => (
                 <th key={n} title={n} className="px-1 py-0 text-right">
                   {shortSourceName(n)}
                 </th>
               ))}
-              <th className="px-1 py-0 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>
+              {!isGmcItem && <th className="px-1 py-0 text-right" title="Direct GMC (internal use) on this item itself">GMC</th>}
               <th className="px-1 py-0 text-right" title="Average direct sale price that day -- click to jump to that day's sales receipt">SP</th>
               <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>
               <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>
-              <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>
+              {!isGmcItem && <th className="px-1 py-0 text-right" title="Direct bills/purchases received">BL</th>}
               {isGmcItem && <th className="px-1 py-0 text-left text-teal-600" title="Which pack was converted to create this CNV">Source Pack</th>}
-              <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
+              {!isGmcItem && <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>}
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
@@ -1647,13 +1650,23 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       : row.loss < -0.001 ? <span className="text-green-600">+{fmtN(Math.abs(row.loss))}</span>
                       : <span className="text-gray-400">0</span>}
                   </td>}
-                  {!isService && <LossGainCells value={lossVal} />}
-                  {breakdownNames.map(n => (
-                    <td key={n} className="px-1 py-0 text-right text-gray-600">
-                      {fmtQ(row.wic_breakdown?.find(b => b.name === n)?.qty ?? 0)}
-                    </td>
-                  ))}
-                  {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
+                  {!isService && <LossGainCell value={lossVal} />}
+                  {breakdownNames.map(n => {
+                    const b = row.wic_breakdown?.find(x => x.name === n)
+                    const qty = b?.qty ?? 0
+                    const amount = b?.amount ?? 0
+                    const avgSp = qty > 0 ? amount / qty : 0
+                    return (
+                      <td key={n} className="px-1 py-0 text-right text-gray-600 whitespace-nowrap">
+                        {qty === 0 ? <span className="text-gray-300">—</span> : (
+                          <span className="text-[8px]" title={`Total ₵${fmtN(amount)} · avg. selling price ₵${fmtN(avgSp)} · ${fmtQ(qty)} used`}>
+                            TT<span className="text-blue-600">({fmtN(amount)})</span>SP<span className="text-blue-600">({fmtN(avgSp)})</span>QTY<span className="text-blue-600">({fmtQ(qty)})</span>
+                          </span>
+                        )}
+                      </td>
+                    )
+                  })}
+                  {!isGmcItem && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-blue-500">
                       {row.sell_price && onDateClick ? (
@@ -1667,7 +1680,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-600">
+                  {!isGmcItem && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">
                         {row.bills_breakdown.map((bill, idx) => (
@@ -1690,7 +1703,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       )}
                     </td>
                   )}
-                  {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
                         {matchingTradeOffs.map(rec => {
@@ -1724,8 +1737,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               <td colSpan={4} />
               <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>
-              <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
-              <td colSpan={6 + breakdownNames.length + (isGmcItem ? 1 : 0)} />
+              <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>
+              <td colSpan={breakdownNames.length + (isGmcItem ? 5 : 7)} />
             </tr>
           </tfoot>
         </table>
@@ -1743,19 +1756,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
                 <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
-              {!isService && <th className="px-1 py-0 text-right text-red-500">Loss ₵</th>}
-              {!isService && <th className="px-1 py-0 text-right text-green-600">Gain ₵</th>}
+              {!isService && <th className="px-1 py-0 text-right" title="Loss (red) or gain (green) valued at selling price">L/G ₵</th>}
               {!isService && <th className="px-1 py-0 text-right">L/G</th>}
               {!isService && <th className="px-1 py-0 text-right">Cnt</th>}
               <th className="px-1 py-0 text-right">WIC</th>
-              {!isService && <th className="px-1 py-0 text-right">GMC</th>}
+              {!isService && !isGmcItem && <th className="px-1 py-0 text-right">GMC</th>}
               {!isService && <th className="px-1 py-0 text-right" title="Click to jump to that day's sales receipt">SP</th>}
               {!isService && <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>}
               {!isService && <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>}
-              {!isService && <th className="px-1 py-0 text-right">BL</th>}
+              {!isService && !isGmcItem && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right" title={isGmcItem ? 'Stock On Hand -- current stock physically at the shop, running day to day' : undefined}>{isGmcItem ? 'SOH' : 'Exp'}</th>}
-              <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>
+              {!isGmcItem && <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>}
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
@@ -1778,7 +1790,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       </button>
                     ) : shortItemDate(row.date)}
                   </td>
-                  {!isService && <LossGainCells value={lossVal} />}
+                  {!isService && <LossGainCell value={lossVal} />}
                   {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>
                       : row.loss > 0.001 ? <span className="text-red-500">-{fmtN(row.loss)}</span>
@@ -1789,7 +1801,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
                   </td>}
                   <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.wic_qty)}</td>
-                  {!isService && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
+                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-600">{fmtQs(row.gmc_qty)}</td>}
                   {!isService && (
                     <td className="px-1 py-0 text-right text-blue-500">
                       {row.sell_price && onDateClick ? (
@@ -1803,7 +1815,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     </td>
                   )}
                   {!isService && <td className="px-1 py-0 text-right text-purple-700">{row.acp != null ? formatACP(row.acp) : <span className="text-gray-300">—</span>}</td>}
-                  {!isService && <td className="px-1 py-0 text-right text-blue-600">
+                  {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-blue-600">
                     {row.bills_breakdown && row.bills_breakdown.length > 0 ? (
                       <div className="space-y-0.5">
                         {row.bills_breakdown.map((bill, idx) => (
@@ -1819,7 +1831,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   </td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} usedBefore={row.cnv_used_before} usedAfter={row.cnv_used_after} /></td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
-                  {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
                         {matchingTradeOffs.map(rec => {
@@ -1851,9 +1863,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <tfoot>
             <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[9px]">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
-              {!isService && <td colSpan={2} className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
+              {!isService && <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
-              <td colSpan={isService ? 2 : 9 + (isGmcItem ? 2 : 1)} />
+              <td colSpan={isService ? 2 : 7 + (isGmcItem ? 1 : 3)} />
             </tr>
           </tfoot>
         </table>
