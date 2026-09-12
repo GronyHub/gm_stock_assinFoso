@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, ty
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNavSlotEl } from '@/lib/navSlot'
+import { useNavHeightPx } from '@/lib/navHeight'
 import { useIsDesktop } from '@/lib/useIsDesktop'
 import { useSession, signOut } from 'next-auth/react'
 import { hasFeature, DEFAULT_ON_FEATURES, type FeatureKey, type RolePermissionsMap } from '@/lib/permissionsShared'
@@ -1841,6 +1842,11 @@ function ItemHubPageInner() {
   // renders -- not just whether the slot happens to exist.
   const navSlotEl = useNavSlotEl()
   const isDesktop = useIsDesktop()
+  // Nav's real rendered height (see lib/navHeight.ts) -- used below to size
+  // this page's own content area to "the rest of the viewport", instead of
+  // a hardcoded assumption that goes stale the moment Nav grows a second
+  // stacked row (e.g. the Critical bar) on desktop.
+  const navHeightPx = useNavHeightPx()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
@@ -5866,7 +5872,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   }
 
   return (
-    <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh] md:h-[calc(100dvh-28px)]">
+    <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh]"
+      style={isDesktop ? { height: `calc(100dvh - ${navHeightPx}px)` } : undefined}>
 
       {/* ── Body ── No separate header row any more -- Grony Cash/UK/C&H
           (formerly the top tab row) and global search now live inside the
@@ -8012,7 +8019,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     {liveCurrentView ? 'No items in this view' : 'No items found'}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-3 gap-0 p-0">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-0 p-0">
                   {liveSortedCatalogueItems.map((item, idx) => {
                     const count = liveSalesCounts.get(item.id) ?? 0
                     const due = liveCountStatus.get(item.id)
@@ -8033,7 +8040,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && liveDueCatalogueCount > 0 && (
-                          <div className="col-span-3 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                          <div className="col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
                             {liveDueCatalogueCount} item{liveDueCatalogueCount !== 1 ? 's' : ''} need{liveDueCatalogueCount === 1 ? 's' : ''} counting
                           </div>
                         )}
@@ -8238,7 +8245,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           )}
                         </div>
                         {liveDueCatalogueCount > 0 && idx === liveDueCatalogueCount - 1 && liveDueCatalogueCount < liveSortedCatalogueItems.length && (
-                          <div className="col-span-3 border-b border-gray-200" />
+                          <div className="col-span-3 md:col-span-6 border-b border-gray-200" />
                         )}
                       </Fragment>
                     )
