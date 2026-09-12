@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
+import { expectedStockAt } from '@/lib/stockGuard'
 import { NextRequest } from 'next/server'
 
 // Ghana is UTC+0 year-round, so an ISO UTC date slice is already the
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     console.log('[live-tap] Table ensured')
 
     const [item] = await sql`
-      SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id, unit_time_seconds,
+      SELECT id, canonical_name, selling_rate, product_type, gmc_type, converts_to_item_id, unit_time_seconds, units_per_pack,
              COALESCE(adjusted_cost_price, purchase_rate, 0) AS cost_price
       FROM items WHERE id = ${Number(itemId)}
     `
@@ -201,6 +202,53 @@ export async function POST(req: NextRequest) {
         console.log('[live-tap] Target GMC item SOH reduced:', { targetItemId: item.converts_to_item_id, targetName: targetItemName, newSOH: targetSohAfterReduction })
       } catch (e) {
         console.error('[live-tap] Failed to reduce target item SOH:', e instanceof Error ? e.message : String(e))
+      }
+    }
+
+    // Buying a new pack_to_gmc item is itself evidence the previous pack's
+    // credited stock is gone -- rather than adding this pack's yield on top
+    // of whatever the target's tracked stock already drifted to (there is
+    // no other code path that ever credits it -- see item/page.tsx's own
+    // notes on this), reset it: record today's true count as exactly what
+    // this pack yields (units_per_pack x qty), same shape as a manual
+    // physical count (see /api/stock/count's own insert/update). That gives
+    // expectedStockAt (lib/stockGuard.ts) a trustworthy anchor going
+    // forward, any discrepancy from what was previously expected shows up
+    // as a normal Net Gain/Loss, and item_stock_summary.calculated_soh (what
+    // the service_using_gmc consumption block above and the low-stock
+    // badge in itemAttentionFlags both read) becomes accurate too.
+    if (isGMC && item.gmc_type === 'pack_to_gmc' && item.converts_to_item_id && Number(item.units_per_pack) > 0) {
+      try {
+        const [targetItem] = await sql`
+          SELECT zoho_item_id, canonical_name FROM items WHERE id = ${item.converts_to_item_id}
+        `
+        if (targetItem) {
+          const resetQty = Number(item.units_per_pack) * qty
+          const expected = await expectedStockAt(item.converts_to_item_id, date)
+          const note = `[GMC PACK RESET] New pack of "${item.canonical_name}" recorded -- assumed previous stock finished. `
+            + `Expected ${expected ?? 'n/a'}, reset to ${resetQty}.`
+
+          const [existingReset] = await sql`
+            SELECT id FROM stock_counts
+            WHERE item_id = ${item.converts_to_item_id} AND count_date::date = ${date} AND source = 'gmc_pack_reset'
+            ORDER BY id DESC LIMIT 1
+          `
+          if (existingReset) {
+            await sql`
+              UPDATE stock_counts
+              SET quantity_counted = ${resetQty}, notes = ${note}, counted_by = ${staffName}, counted_at = NOW()
+              WHERE id = ${existingReset.id}
+            `
+          } else {
+            await sql`
+              INSERT INTO stock_counts (item_id, zoho_item_id, item_name, count_date, quantity_counted, notes, source, counted_by, counted_at)
+              VALUES (${item.converts_to_item_id}, ${targetItem.zoho_item_id}, ${targetItem.canonical_name}, ${date}, ${resetQty}, ${note}, 'gmc_pack_reset', ${staffName}, NOW())
+            `
+          }
+          console.log('[live-tap] GMC pack reset:', { packItemId: item.id, targetItemId: item.converts_to_item_id, resetQty, expected })
+        }
+      } catch (e) {
+        console.error('[live-tap] Failed to reset GMC pack target stock:', e instanceof Error ? e.message : String(e))
       }
     }
 

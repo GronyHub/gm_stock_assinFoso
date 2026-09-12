@@ -666,7 +666,8 @@ function itemAttentionFlags(
   netGainByItemId: Map<number, { qty: number; amt: number }>,
   emptyRowCountByItemId: Map<number, number>,
   soldBelowCostDatesByItemId: Map<number, string[]>,
-  vcpJumpDatesByItemId: Map<number, string[]>
+  vcpJumpDatesByItemId: Map<number, string[]>,
+  gmcTargetStockByItemId: Map<number, number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -731,6 +732,22 @@ function itemAttentionFlags(
   // dead weight in the item's own record that's worth cleaning up.
   const emptyRowCount = emptyRowCountByItemId.get(item.id) ?? 0
   if (emptyRowCount > 0) flags.push({ label: `⚠ EMPTY DATA: ${emptyRowCount}`, bg: 'bg-gray-500' })
+  // Warns on BOTH sides of a GMC pack/service pair: a pack_to_gmc item (buy
+  // a new one) and a service_using_gmc item (about to run out mid-service)
+  // both carry converts_to_item_id pointing at the same target, so this one
+  // check covers both with no type-specific branching. Same thresholds
+  // recordTap's own post-tap toast already uses (~3699) -- kept in sync so
+  // "low"/"depleted" mean the same thing whether you just tapped it or are
+  // only browsing. See /api/sales/live-tap's pack-reset block for what
+  // makes this number trustworthy, and /api/items/gmc-target-stock for
+  // where it's fetched from.
+  if (item.converts_to_item_id) {
+    const targetStock = gmcTargetStockByItemId.get(item.converts_to_item_id)
+    if (targetStock != null) {
+      if (Math.abs(targetStock) < 0.001) flags.push({ label: `🪫 GMC STOCK DEPLETED (${item.converts_to_name ?? 'target'}) -- restock now`, bg: 'bg-red-700' })
+      else if (targetStock < 5) flags.push({ label: `🪫 GMC STOCK LOW (${item.converts_to_name ?? 'target'}): ${fmtN(targetStock)} left`, bg: 'bg-amber-600' })
+    }
+  }
   return flags
 }
 
@@ -2791,6 +2808,37 @@ function ItemHubPageInner() {
       .catch(() => {})
   }, [])
 
+  // Current stock of every GMC conversion target (see /api/items/
+  // gmc-target-stock) -- what itemAttentionFlags reads to warn on a
+  // pack_to_gmc item ("buy a new one") or a service_using_gmc item ("about
+  // to run out") once its target is low or empty. Not tied to any single
+  // tap the way targetSohAfterReduction is (recordTap's own post-tap toast,
+  // ~3699) -- this is what makes the warning show up proactively, before
+  // anyone taps anything, from the item card / tap sheet alone. Polled the
+  // same 60s cadence as everything else in this file that needs to react to
+  // teammates' actions (see usePolling's own comment), not just fetched once
+  // like liveGmcItemIds -- a pack reset from another staff member's tap
+  // should clear this item's badge without a full page reload.
+  const [liveGmcTargetStock, setLiveGmcTargetStock] = useState<Map<number, number>>(new Map())
+  useEffect(() => {
+    fetch('/api/items/gmc-target-stock')
+      .then(r => r.json())
+      .then(d => {
+        const rows: { item_id: number; calculated_soh: number }[] = Array.isArray(d) ? d : []
+        setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
+      })
+      .catch(() => {})
+  }, [])
+  usePolling(() => {
+    fetch('/api/items/gmc-target-stock')
+      .then(r => r.json())
+      .then(d => {
+        const rows: { item_id: number; calculated_soh: number }[] = Array.isArray(d) ? d : []
+        setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
+      })
+      .catch(() => {})
+  }, 60000)
+
   // Shared across every staff member -- see /api/item-sort-order.
   useEffect(() => {
     fetch('/api/item-sort-order')
@@ -3476,10 +3524,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -7777,7 +7825,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -8008,7 +8056,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
