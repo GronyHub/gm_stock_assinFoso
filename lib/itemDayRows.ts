@@ -368,11 +368,40 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
 
     type CycleEvent = { at: number; date: string; kind: 'pack_open' | 'consume'; qty: number }
     const toDate = (ts: string) => new Date(ts).toISOString().slice(0, 10)
-    const events: CycleEvent[] = [
+    // Real, tap-timestamped events only -- kept separate from the merged
+    // `events` list below because the before/after split further down
+    // needs to know which dates have genuine sub-day precision.
+    const preciseEvents: CycleEvent[] = [
       ...packOpenEvents.map(p => ({ at: new Date(p.tapped_at).getTime(), date: toDate(p.tapped_at), kind: 'pack_open' as const, qty: (parseFloat(p.units_per_pack) || 1) * Number(p.quantity) })),
       ...directSaleEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
       ...serviceConsumptionEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
-    ].sort((a, b) => a.at - b.at)
+    ]
+
+    // Pre-live fallback: live_sale_taps only exists from whenever the Live
+    // Sale feature actually launched, so a pack opened (or sold from)
+    // before that has no tap row at all and would otherwise be invisible
+    // here -- exactly the plain, fraction-less older CNV rows (18 Aug, 27
+    // Jul, ...) that never got a cycle. For any date with NO tap-sourced
+    // event at all, fall back to the same day-grained totals the rest of
+    // this function already computed (converted_in_qty/wic_qty/gmc_qty/
+    // wic_breakdown -- no fresh query needed), anchored at a fixed time of
+    // day so it still sorts correctly against real tap timestamps on other
+    // dates. This can only lose precision (no before/after split, no
+    // sub-day ordering) on days it applies to -- it never re-processes a
+    // date that already has real tap data, so it can't double-count.
+    const preciseDates = new Set(preciseEvents.map(e => e.date))
+    const numVal = (v: string | null) => v ? parseFloat(v) || 0 : 0
+    const fallbackEvents: CycleEvent[] = []
+    for (const row of dayRows) {
+      if (preciseDates.has(row.date)) continue
+      const given = numVal(row.converted_in_qty)
+      const used = numVal(row.wic_qty) + numVal(row.gmc_qty) + (row.wic_breakdown ?? []).reduce((s, b) => s + b.qty, 0)
+      if (given <= 0 && used <= 0) continue
+      const dayAt = new Date(row.date + 'T12:00:00.000Z').getTime()
+      if (given > 0) fallbackEvents.push({ at: dayAt, date: row.date, kind: 'pack_open', qty: given })
+      if (used > 0) fallbackEvents.push({ at: dayAt + 1, date: row.date, kind: 'consume', qty: used })
+    }
+    const events = [...preciseEvents, ...fallbackEvents].sort((a, b) => a.at - b.at)
 
     let cur: { startDate: string; given: number; used: number } | null = null
     const cycleByDate = new Map<string, { given: number; used: number; closed: boolean }>()
@@ -412,15 +441,18 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     // moment: a day's consumption before the tap still belongs to the OLD
     // cycle (already folded into its `used` above), consumption after
     // belongs to the NEW one -- both true regardless of which day the
-    // cycle that opened it started on.
+    // cycle that opened it started on. Built from preciseEvents only, not
+    // the fallback-augmented `events` -- a pre-live (day-grained) pack-open
+    // has no real tap time to split around, so it's deliberately left
+    // unsplit rather than shown as a misleading "0/total".
     const packOpenAtByDate = new Map<string, number>()
-    for (const ev of events) {
+    for (const ev of preciseEvents) {
       if (ev.kind !== 'pack_open') continue
       const existing = packOpenAtByDate.get(ev.date)
       if (existing === undefined || ev.at < existing) packOpenAtByDate.set(ev.date, ev.at)
     }
     const usedSplitByDate = new Map<string, { before: number; after: number }>()
-    for (const ev of events) {
+    for (const ev of preciseEvents) {
       if (ev.kind !== 'consume') continue
       const cnvAt = packOpenAtByDate.get(ev.date)
       if (cnvAt === undefined) continue
