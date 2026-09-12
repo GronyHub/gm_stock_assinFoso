@@ -39,18 +39,22 @@ export function walkGmcSohByDate(eventsSorted: GmcSohEvent[]): Map<string, numbe
 const numVal = (v: string | null | undefined) => (v ? parseFloat(v) || 0 : 0)
 const toDate = (ts: string) => new Date(ts).toISOString().slice(0, 10)
 
-// Current (as-of-right-now) Stock On Hand for every GMC conversion target
-// item (items.gmc_type = 'gmc'), computed the same tap-precise, pack-
-// reset-aware way as Item 360 -- NOT item_stock_summary.calculated_soh,
-// which has no concept of a pack-open resetting the count and drifts
-// further from reality with every tap once its last real physical count
-// ages. Batched across every target item in one pass (there are only a
-// handful of these, confirmed live) rather than looping getItemDayRows
-// per item, which would run a much heavier multi-CTE query (VCP/ACP/
-// aliases/bills-breakdown) that's irrelevant to a plain stock number.
-// Deliberately uncached, like /api/items/gmc-target-stock already is --
-// this must reflect a tap that just happened, not a stale snapshot.
-export async function getGmcTargetSohMap(): Promise<Map<number, number>> {
+export type GmcTargetState = { soh: number; openOverage: { given: number; used: number } | null }
+
+// One round of queries computing everything every GMC-target consumer
+// needs about its CURRENT state: the pack-reset-aware SOH (see
+// getGmcTargetSohMap) and whether its currently-open cycle has already
+// used more than its own pack gave (see getGmcOpenOverageMap). Batched
+// across every target item in one pass (there are only a handful of
+// these, confirmed live) rather than looping getItemDayRows per item,
+// which would run a much heavier multi-CTE query (VCP/ACP/aliases/bills-
+// breakdown) irrelevant to either of these. Not cached -- both derived
+// values must reflect a tap that just happened, not a stale snapshot.
+// Exported so a caller that needs BOTH pieces (e.g. /api/items/gmc-
+// target-stock) can get them from one round of queries instead of calling
+// getGmcTargetSohMap and getGmcOpenOverageMap separately, which would run
+// everything below twice.
+export async function getGmcTargetState(): Promise<Map<number, GmcTargetState>> {
   const targets = await sql`SELECT id FROM items WHERE gmc_type = 'gmc'` as unknown as { id: number }[]
   const targetIds = targets.map(t => t.id)
   if (targetIds.length === 0) return new Map()
@@ -156,7 +160,7 @@ export async function getGmcTargetSohMap(): Promise<Map<number, number>> {
   for (const r of fallbackDirect) addFallback(r.target_id, r.d, 0, numVal(r.qty))
   for (const r of fallbackService) addFallback(r.target_id, r.d, 0, numVal(r.qty))
 
-  const result = new Map<number, number>()
+  const state = new Map<number, GmcTargetState>()
   for (const targetId of targetIds) {
     const merged: GmcSohEvent[] = [...(preciseByTarget.get(targetId) ?? [])]
     for (const [d, { given, used }] of fallbackByTargetDate.get(targetId) ?? []) {
@@ -165,10 +169,61 @@ export async function getGmcTargetSohMap(): Promise<Map<number, number>> {
       if (used > 0) merged.push({ at: dayAt + 1, date: d, kind: 'consume', qty: used })
     }
     merged.sort((a, b) => a.at - b.at)
+
     const byDate = walkGmcSohByDate(merged)
     if (byDate.size === 0) continue
     const lastDate = Array.from(byDate.keys()).sort().pop()!
-    result.set(targetId, byDate.get(lastDate)!)
+    const soh = byDate.get(lastDate)!
+
+    // The CURRENT cycle -- everything from the most recent pack-open
+    // onward, count-independent (same rule the loss tally uses: a count
+    // never closes a cycle, only the next pack-open does), so `cur` after
+    // the full walk is always whichever cycle is still active right now.
+    // Already using more than it gave, with no new pack recorded yet,
+    // means one of two things happened in real life: a pack really is
+    // short (or missing), or one was already opened but never tapped in
+    // GMC -- either way it's worth a physical count to find out which.
+    let cur: { date: string; given: number; used: number } | null = null
+    for (const ev of merged) {
+      if (ev.kind === 'count') continue
+      if (ev.kind === 'pack_open') {
+        if (cur && cur.date === ev.date) cur.given = parseFloat((cur.given + ev.qty).toFixed(4))
+        else cur = { date: ev.date, given: ev.qty, used: 0 }
+      } else if (cur) {
+        cur.used = parseFloat((cur.used + ev.qty).toFixed(4))
+      }
+    }
+    const openOverage = cur && parseFloat((cur.used - cur.given).toFixed(4)) > 0.001
+      ? { given: cur.given, used: cur.used }
+      : null
+
+    state.set(targetId, { soh, openOverage })
+  }
+  return state
+}
+
+// Current (as-of-right-now) Stock On Hand for every GMC conversion target
+// -- NOT item_stock_summary.calculated_soh, which has no concept of a
+// pack-open resetting the count and drifts further from reality with
+// every tap once its last real physical count ages.
+export async function getGmcTargetSohMap(): Promise<Map<number, number>> {
+  const state = await getGmcTargetState()
+  return new Map(Array.from(state, ([id, s]) => [id, s.soh]))
+}
+
+// Every GMC target whose CURRENT (still-open) cycle has already used more
+// than its own pack gave, with no new pack tapped in yet -- staff keep
+// recording sales/services against a pack that, on paper, should already
+// be empty. That's worth a physical count of the packs to find out why:
+// either a pack really is short (or missing outright), or one was already
+// physically opened at the shop but never actually tapped in GMC. Shares
+// the exact same walk as getGmcTargetSohMap (one round of queries covers
+// both), just reads the other half of the result.
+export async function getGmcOpenOverageMap(): Promise<Map<number, { given: number; used: number }>> {
+  const state = await getGmcTargetState()
+  const result = new Map<number, { given: number; used: number }>()
+  for (const [id, s] of state) {
+    if (s.openOverage) result.set(id, s.openOverage)
   }
   return result
 }

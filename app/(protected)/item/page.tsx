@@ -667,7 +667,8 @@ function itemAttentionFlags(
   emptyRowCountByItemId: Map<number, number>,
   soldBelowCostDatesByItemId: Map<number, string[]>,
   vcpJumpDatesByItemId: Map<number, string[]>,
-  gmcTargetStockByItemId: Map<number, number>
+  gmcTargetStockByItemId: Map<number, number>,
+  gmcOpenOverageByItemId: Map<number, { given: number; used: number }>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -746,6 +747,19 @@ function itemAttentionFlags(
     if (targetStock != null) {
       if (Math.abs(targetStock) < 0.001) flags.push({ label: `🪫 GMC STOCK DEPLETED (${item.converts_to_name ?? 'target'}) -- restock now`, bg: 'bg-red-700' })
       else if (targetStock < 5) flags.push({ label: `🪫 GMC STOCK LOW (${item.converts_to_name ?? 'target'}): ${fmtN(targetStock)} left`, bg: 'bg-amber-600' })
+    }
+    // The target's current pack (no new one tapped in yet) has already
+    // used more than it gave -- either a pack really is short/missing, or
+    // one was already physically opened at the shop but never actually
+    // tapped in GMC. Either way it needs a physical count of the packs to
+    // find out which, so this keeps showing every time the item is seen
+    // until a new pack is tapped (clearing it) or the count explains it.
+    const overage = gmcOpenOverageByItemId.get(item.converts_to_item_id)
+    if (overage) {
+      flags.push({
+        label: `📦 USAGE EXCEEDS PACK (${item.converts_to_name ?? 'target'}): ${fmtN(overage.used)} used vs ${fmtN(overage.given)} given -- count the packs to check for a shortage, or a pack taken but not yet recorded`,
+        bg: 'bg-amber-700',
+      })
     }
   }
   return flags
@@ -2808,35 +2822,31 @@ function ItemHubPageInner() {
       .catch(() => {})
   }, [])
 
-  // Current stock of every GMC conversion target (see /api/items/
-  // gmc-target-stock) -- what itemAttentionFlags reads to warn on a
-  // pack_to_gmc item ("buy a new one") or a service_using_gmc item ("about
-  // to run out") once its target is low or empty. Not tied to any single
-  // tap the way targetSohAfterReduction is (recordTap's own post-tap toast,
-  // ~3699) -- this is what makes the warning show up proactively, before
-  // anyone taps anything, from the item card / tap sheet alone. Polled the
-  // same 60s cadence as everything else in this file that needs to react to
-  // teammates' actions (see usePolling's own comment), not just fetched once
-  // like liveGmcItemIds -- a pack reset from another staff member's tap
-  // should clear this item's badge without a full page reload.
+  // Current stock of every GMC conversion target, and (see open_overage
+  // below) whether its currently-open cycle has already used more than
+  // its own pack gave -- both from /api/items/gmc-target-stock, what
+  // itemAttentionFlags reads to warn on a pack_to_gmc item ("buy a new
+  // one" / "count the packs") or a service_using_gmc item ("about to run
+  // out"). Not tied to any single tap the way targetSohAfterReduction is
+  // (recordTap's own post-tap toast, ~3699) -- this is what makes the
+  // warning show up proactively, before anyone taps anything, from the
+  // item card / tap sheet alone. Polled the same 60s cadence as everything
+  // else in this file that needs to react to teammates' actions (see
+  // usePolling's own comment), not just fetched once like liveGmcItemIds
+  // -- a pack reset (or a fresh overage) from another staff member's tap
+  // should show up without a full page reload.
   const [liveGmcTargetStock, setLiveGmcTargetStock] = useState<Map<number, number>>(new Map())
+  const [liveGmcOpenOverage, setLiveGmcOpenOverage] = useState<Map<number, { given: number; used: number }>>(new Map())
+  const applyGmcTargetStock = (d: unknown) => {
+    const rows: { item_id: number; calculated_soh: number; open_overage: { given: number; used: number } | null }[] = Array.isArray(d) ? d : []
+    setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
+    setLiveGmcOpenOverage(new Map(rows.filter(r => r.open_overage).map(r => [r.item_id, r.open_overage!])))
+  }
   useEffect(() => {
-    fetch('/api/items/gmc-target-stock')
-      .then(r => r.json())
-      .then(d => {
-        const rows: { item_id: number; calculated_soh: number }[] = Array.isArray(d) ? d : []
-        setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
-      })
-      .catch(() => {})
+    fetch('/api/items/gmc-target-stock').then(r => r.json()).then(applyGmcTargetStock).catch(() => {})
   }, [])
   usePolling(() => {
-    fetch('/api/items/gmc-target-stock')
-      .then(r => r.json())
-      .then(d => {
-        const rows: { item_id: number; calculated_soh: number }[] = Array.isArray(d) ? d : []
-        setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
-      })
-      .catch(() => {})
+    fetch('/api/items/gmc-target-stock').then(r => r.json()).then(applyGmcTargetStock).catch(() => {})
   }, 60000)
 
   // Shared across every staff member -- see /api/item-sort-order.
@@ -3524,10 +3534,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -7825,7 +7835,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -8056,7 +8066,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
