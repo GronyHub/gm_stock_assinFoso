@@ -11,7 +11,6 @@ import { isOwnerLevel } from '@/lib/roles'
 import { fmtDate, fmtTime } from '@/lib/fmtDate'
 import { trimZeros, formatACP } from '@/lib/fmtNumber'
 import { formatGapMins } from '@/lib/fmtGap'
-import ItemDetailModal from './_components/ItemDetailModal'
 import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt, type GainExtra, type GainPrompt, type PairingPrompt } from './_components/CountDialogs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
@@ -2126,11 +2125,11 @@ function ItemHubPageInner() {
   const [liveDayBounds, setLiveDayBounds] = useState<Record<string, { openTime: string | null; closeTime: string | null }>>({})
   const [liveSaleType, setLiveSaleType] = useState<'WIC' | 'GMC'>('WIC')
   const [liveTapError, setLiveTapError] = useState('')
-  // Tapping an item's name opens its full Item 360 detail (loss/gain
-  // history, pack-chain, aliases, merge) as its own popup -- separate from
-  // liveSelectedItem/the sale-tap sheet, since the two can be open from
-  // different rows at once with no relationship to each other.
-  const [liveViewingItemId, setLiveViewingItemId] = useState<number | null>(null)
+  // Tapping an item's name used to open a lightweight, view-only Item 360
+  // popup (aliases + loss/gain history, no cost price/group/count entry) --
+  // now redirected to openEditGridItem below, the same full editor every
+  // other item-opening path already uses, so there's one consistent
+  // "Item 360" experience regardless of what was tapped to get there.
   const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
   const liveGridEditSaleTapRef = useRef<HTMLDivElement>(null)
   const liveGridEditQtyInputRef = useRef<HTMLInputElement>(null)
@@ -2196,7 +2195,7 @@ function ItemHubPageInner() {
     if (!item) return <span className={className}>{itemName}</span>
     return (
       <span
-        onClick={() => setLiveViewingItemId(item.id)}
+        onClick={() => openEditGridItem(item.id)}
         className={`cursor-pointer text-blue-600 hover:text-blue-800 hover:underline transition ${className || ''}`}
       >
         {itemName}
@@ -4391,7 +4390,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // Refresh items list so grid shows updated values everywhere
     fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
     setLiveEditingGridItemId(null)
-    setLiveViewingItemId(null)
   }
 
   // Same edit/delete pair Counts' own list already offers -- kept here so
@@ -5222,7 +5220,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               return (
                 <div key={item.id} className={`grid ${GRID} gap-0 border-b border-gray-100 items-center hover:bg-gray-50 transition`}>
                   <div className="px-2 py-1">
-                    <button type="button" onClick={() => setLiveViewingItemId(item.id)} className="text-xs font-semibold text-gray-900 hover:underline truncate text-left">{item.name}</button>
+                    <button type="button" onClick={() => openEditGridItem(item.id)} className="text-xs font-semibold text-gray-900 hover:underline truncate text-left">{item.name}</button>
                   </div>
                   <div className="px-2 py-1"><p className="text-xs text-gray-600 truncate">{item.group ?? '—'}</p></div>
                   <div className="px-2 py-1 text-right"><p className="text-xs font-bold text-red-600">₵{formatPrice(acp)}</p></div>
@@ -6577,7 +6575,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 </span>
                                 {tap.undone ? (
                                   <span
-                                    onClick={tapItem ? () => setLiveViewingItemId(tapItem.id) : undefined}
+                                    onClick={tapItem ? () => openEditGridItem(tapItem.id) : undefined}
                                     className={`text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400 ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
                                   >
                                     {tap.item_name}
@@ -8539,17 +8537,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
           </div>
 
-          {/* Item detail popup -- opened by tapping an item's name, instead of
-              navigating to the Loss by Item page (which no longer exists as
-              its own destination). Kept as a sibling outside liveRootClassName
-              (same as LossDialog/PairingDialog below) so it isn't clipped by
-              the overlay's own overflow-y-auto while liveExpanded. Only ever
-              set from Sale mode's own grid, so it (along with the loss/pairing
-              dialogs below) only needs rendering here, not in every mode. */}
-          {liveViewingItemId != null && (
-            <ItemDetailModal itemId={liveViewingItemId} onClose={() => setLiveViewingItemId(null)} />
-          )}
-
           {liveEditingGridItemId != null && (() => {
             const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
             return (
@@ -8568,10 +8555,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     )}
                     <button
                       type="button"
-                      onClick={() => {
-                        setLiveEditingGridItemId(null)
-                        setLiveViewingItemId(null)
-                      }}
+                      onClick={() => setLiveEditingGridItemId(null)}
                       className="text-gray-500 hover:text-gray-700 text-xl font-light"
                     >
                       ×
@@ -9254,7 +9238,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <div>
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
                       {r.items.map(i => (
-                        <button key={i.id} onClick={() => { setLiveViewingItemId(i.id); closeGlobalSearch() }}
+                        <button key={i.id} onClick={() => { openEditGridItem(i.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {i.name}
                           {i.cf_group && <span className="text-gray-400 text-xs ml-1.5">· {i.cf_group}</span>}
