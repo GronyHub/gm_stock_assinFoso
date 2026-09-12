@@ -98,6 +98,7 @@ const ActivityDurationsPanel = dynamic(() => import('./_components/ActivityDurat
 // was dropped and the classic Sales list's own tap-a-sale case moved here.
 const SalesTab = dynamic(() => import('./_components/SalesTab'), { ssr: false })
 const BillsTab = dynamic(() => import('./_components/BillsTab'), { ssr: false })
+const CountsTab = dynamic(() => import('./_components/CountsTab'), { ssr: false })
 const NewBillForm = dynamic(() => import('../bills/new/page'), { ssr: false })
 // Purchase Orders radio inside Bills swaps to this in place, instead of
 // navigating to the separate lossView==='purchaseOrders' destination.
@@ -137,6 +138,11 @@ type OuterTab = 'today' | 'loss' | 'uk' | 'ch'
 // state/pane machinery rather than needing its own parallel copy.
 type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'customers' | 'dailySummary'
   | 'purchaseOrders' | 'services'
+  // The full Counts page (CountsTab.tsx -- records list with edit/delete,
+  // Manual Count, Analytics) -- previously only reachable indirectly as a
+  // "fix this violation" deep link (see ViolationFixPanel.tsx), now its own
+  // CASH_ITEMS row so it's a real, navigable destination on its own.
+  | 'counts'
   // Cust. Receipts and New Customer folded into Customers' own tabs (same
   // treatment Sales/Bills/Loss by Date/Expenses got inside Live Sale) -- see
   // jumpToCustomersTab, since neither is a real LossView any more.
@@ -269,6 +275,10 @@ const REPORT_VIEWS = new Set<LossView>([
 // result.
 const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
   { key: 'items',    label: 'Items',    icon: '📦' },
+  // The full Counts page -- see LossView's own 'counts' comment. Kept as
+  // its own row (not folded under Items) since it's a distinct destination
+  // now, not just a mode inside the Sale/Log/Sales/Bills switcher.
+  { key: 'counts',   label: 'Counts',   icon: '🔢' },
 ]
 // flattenPaneRuns needs a group->label lookup to build each run's header
 // text, but a Cash row's group already IS its own label (see CASH_ITEMS'
@@ -2468,6 +2478,13 @@ function ItemHubPageInner() {
     () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, selling_price: i.selling_price, cost_price: i.cost_price })),
     [liveAllItems]
   )
+  // For the Counts pane row (lossView 'counts') -- product_type is needed
+  // (unlike liveSalesBillsItems above) since CountsTab uses it to tell
+  // countable goods from services.
+  const liveCountsItems = useMemo(
+    () => liveAllItems.map(i => ({ id: i.id, item_name: i.name, cf_group: i.group, product_type: i.product_type })),
+    [liveAllItems]
+  )
 
   // The Sales header's whole radio row (All/violations/History/Bars Only/
   // WIC/GMC) behaves as one mutually-exclusive group even though it's
@@ -4511,6 +4528,36 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveCountView(null)
   }
 
+  // "Critical, Do Now" bar -- a permanent shortcut, shown above the staff
+  // bar/tab switcher, into the two things worth interrupting a shift for: a
+  // physical count that's overdue, or stock that's gone negative. Jumps
+  // straight into the same Count mode + violation filter the in-hub
+  // "countSubView" sub-nav radios further down already set (see
+  // pickCountMode above) -- picking one here is just a shortcut into that
+  // same state from anywhere in this section, so it stays in sync with
+  // (and lights up the same as) that sub-nav once you're actually there.
+  function renderCriticalBar() {
+    return (
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[9px] whitespace-nowrap overflow-x-auto">
+        <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">Critical, Do Now</span>
+        <span className="text-red-300">·</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'count_due_chart'}
+            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('countDue'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'count_due_chart' }) }}
+            className="cursor-pointer w-3 h-3" />
+          <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
+        </label>
+        {liveNegSohCount > 0 && (<><span className="text-red-300">·</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold">
+          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleViolationFilter === 'negSoh'}
+            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
+            className="cursor-pointer w-3 h-3" />
+          <span>Negative Stock ({liveNegSohCount})</span>
+        </label></>)}
+      </div>
+    )
+  }
+
   // Sale mode's own violation-filter radios (Live/Least Sales/Duplicates/
   // etc, further down) now share their row with Log/Receipts -- picking one
   // of these needs to also jump back to the grid itself (itemsPageMode
@@ -5779,7 +5826,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                     active={paneActive(cashItemActive(v.key))} divider
-                    badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + countsFlagsCount + lossByDateFlagsCount)
+                    badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + lossByDateFlagsCount)
                       // Expenses/Vendors/Customers all moved off their own
                       // CASH_ITEMS row onto the Items row's badge -- 'items'
                       // is the real, reachable entry point into the whole
@@ -5788,6 +5835,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       // that's where their combined flag count needs to show.
                       : v.key === 'items' ? (itemsFlagsCount + expensesFlagsCount + vendorsFlagsCount + customersFlagsCount)
                       : v.key === 'cab' ? cabFlagsCount
+                      // Own row now instead of folded into Sales' badge --
+                      // see LossView's 'counts' comment.
+                      : v.key === 'counts' ? countsFlagsCount
                       : undefined}
                     taskBadge={taskCountFor(cashItemTaskScope(v.key))}
                     onClick={() => cashItemClick(v.key)} />
@@ -5998,11 +6048,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               (nothing to portal into), so both render in place exactly as
               before. */}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && !isDesktop && (
-            <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
-              staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+            <>
+              {renderCriticalBar()}
+              <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
+                staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+            </>
           )}
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
             <>
+              {renderCriticalBar()}
+              <div className="flex items-center gap-3 overflow-x-auto">
               {/* Today's running sales total (see liveTodaySalesTotal) --
                   first in the slot so it's never scrolled out of view by
                   overflow-x-auto once the staff bar/tab switcher get long,
@@ -6015,6 +6070,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
               <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 shrink-0">
                 {renderTabSwitcher(true)}
+              </div>
               </div>
             </>,
             navSlotEl
@@ -9001,6 +9057,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <div className="px-4 pt-2 space-y-2">
               <CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount}
                 jumpToTabSeq={customersJumpSeq} jumpToTab={customersJumpTab} />
+            </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'counts' && (
+          <TabErrorBoundary>
+            <div className="px-4 pt-2 space-y-2">
+              <CountsTab items={liveCountsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={null}
+                onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }} />
             </div>
           </TabErrorBoundary>
         )}

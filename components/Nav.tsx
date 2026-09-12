@@ -20,15 +20,17 @@ export default function Nav() {
   // branding on every page load.
   //
   // The slot (empty by default) is where the Item hub, on desktop, portals
-  // its own staff bar + tab switcher via lib/navSlot.ts -- see item/page.tsx.
-  // No longer a fixed height (was h-7) since that content can be taller
-  // than the bare row alone; py-1 + items-center lets the row grow to fit
-  // whatever's actually portaled in, and shrinks back to the thin strip
+  // its own "Critical, Do Now" bar + staff bar/tab switcher via
+  // lib/navSlot.ts -- see item/page.tsx. flex-col (not a single row) since
+  // the portaled content is two stacked bars, each laying out its own
+  // children horizontally. No longer a fixed height (was h-7) since that
+  // content can be taller than a bare row alone; py-1 lets the row grow to
+  // fit whatever's actually portaled in, and shrinks back to the thin strip
   // when nothing is (every other page).
   return (
     <nav className="hidden md:block bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className={`mx-auto px-4 py-1 flex items-center gap-3 min-h-7 ${isItemHub ? 'max-w-none' : 'max-w-5xl'}`}>
-        <div ref={setNavSlotEl} className="flex-1 min-w-0 flex items-center gap-3 overflow-x-auto" />
+        <div ref={setNavSlotEl} className="flex-1 min-w-0 flex flex-col" />
         {!isItemHub && (
           <button onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }}
             className="shrink-0 text-[11px] text-gray-500 hover:text-gray-900 transition">Sign out</button>
