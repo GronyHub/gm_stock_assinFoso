@@ -933,7 +933,7 @@ function ItemHubPageInner() {
     null
   const [liveSaleFilter, setLiveSaleFilter] = useState<{ kind: 'loss' } | { kind: 'gain' } | { kind: 'count_0' } | { kind: 'count_1' } | { kind: 'interval'; label: string } | { kind: 'flag'; key: string } | null>(initialLiveSaleFilter)
   const rawLiveSaleView = searchParams.get('liveSaleView')
-  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null =
+  const initialLiveSaleView: { kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'negative_soh_chart' } | { kind: 'least_purchased' } | null =
     rawLiveSaleView === 'loss_by_date' ? { kind: 'loss_by_date' } :
     rawLiveSaleView === 'loss_by_items' ? { kind: 'loss_by_items' } :
     rawLiveSaleView === 'net_loss' ? { kind: 'net_loss' } :
@@ -941,9 +941,10 @@ function ItemHubPageInner() {
     rawLiveSaleView === 'least_sales_goods' ? { kind: 'least_sales_goods' } :
     rawLiveSaleView === 'least_sales_groups' ? { kind: 'least_sales_groups' } :
     rawLiveSaleView === 'count_due_chart' ? { kind: 'count_due_chart' } :
+    rawLiveSaleView === 'negative_soh_chart' ? { kind: 'negative_soh_chart' } :
     rawLiveSaleView === 'least_purchased' ? { kind: 'least_purchased' } :
     null
-  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'least_purchased' } | null>(initialLiveSaleView)
+  const [liveSaleView, setLiveSaleView] = useState<{ kind: 'grid' } | { kind: 'loss_by_date' } | { kind: 'loss_by_items' } | { kind: 'net_loss' } | { kind: 'least_sales_services' } | { kind: 'least_sales_goods' } | { kind: 'least_sales_groups' } | { kind: 'count_due_chart' } | { kind: 'negative_soh_chart' } | { kind: 'least_purchased' } | null>(initialLiveSaleView)
   const rawLiveCountView = searchParams.get('liveCountView')
   const initialLiveCountView: { kind: 'interval'; label: string } | { kind: 'records' } | { kind: 'history' } | { kind: 'intervals' } | null =
     rawLiveCountView === 'records' ? { kind: 'records' } :
@@ -1808,20 +1809,21 @@ function ItemHubPageInner() {
 
   const showControls = outerTab === 'loss' && !REPORT_VIEWS.has(lossView)
   // True while the Count tab owns the screen -- either because one of its
-  // full-page views (Records, or now Count Due) has replaced the tap-to-
-  // sell grid entirely (see the `!liveShowCountFullPage` gate further down
-  // and the count_due_chart branch next to it), or because Negative Stock
-  // is selected -- that one is the odd one out, deliberately NOT full-page:
-  // fixing a negative-stock item means tapping it right on the grid, so it
-  // stays a liveSaleViolationFilter-driven grid filter same as it always
-  // was, just entered/exited through Count's own sub-nav now instead of
-  // Sale mode's generic filter row. Loss by Date/Items/Net Loss used to
-  // live here too, but moved to P&L instead (see plSubView) -- they're a
-  // financial-loss concern, not a counting one. Count is just a different
-  // way in rather than a new lossView (which would mean pulling all this
-  // rendering out of Sale mode's own scope, a much bigger change than this
-  // file's size makes worth it for what's otherwise a UI relabeling).
-  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'count_due_chart' || liveSaleViolationFilter === 'negSoh')
+  // full-page views (Records, Count Due, or now Negative SOH too) has
+  // replaced the tap-to-sell grid entirely (see the `!liveShowCountFullPage`
+  // gate further down and the count_due_chart/negative_soh_chart branches
+  // next to it). Negative SOH used to stay a liveSaleViolationFilter-driven
+  // grid filter (fix it by tapping the item right on the grid) -- now it's
+  // the same enter-a-count list Count Due uses (renderNegativeSohChart),
+  // just without the "Same as X, no loss" shortcut (there's no valid
+  // "expected" number to match when the system's own figure is negative).
+  // Loss by Date/Items/Net Loss used to live here too, but moved to P&L
+  // instead (see plSubView) -- they're a financial-loss concern, not a
+  // counting one. Count is just a different way in rather than a new
+  // lossView (which would mean pulling all this rendering out of Sale
+  // mode's own scope, a much bigger change than this file's size makes
+  // worth it for what's otherwise a UI relabeling).
+  const inCountTab = liveMode === 'sale' && (liveShowCountFullPage || liveSaleView?.kind === 'count_due_chart' || liveSaleView?.kind === 'negative_soh_chart')
   const [cashDisplayMode, changeCashDisplayMode] = useSidePaneDisplayMode()
   // Left-pane section headers that don't open a page of their own (Loss,
   // Properties, Manage, Team, Personal, a UK/C&H person's "Submenus", ...)
@@ -4549,10 +4551,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </label>
         {liveNegSohCount > 0 && (<><span className="text-red-300">·</span>
         <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold">
-          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleViolationFilter === 'negSoh'}
-            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView(null) }}
+          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'negative_soh_chart'}
+            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
             className="cursor-pointer w-3 h-3" />
-          <span>Negative Stock ({liveNegSohCount})</span>
+          <span>Negative SOH ({liveNegSohCount})</span>
         </label></>)}
       </div>
     )
@@ -5071,6 +5073,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-1">
+                  {/* One tap for the common case -- the physical count
+                      matches what the system already expects, so there's no
+                      loss/gain to explain. Submits that exact expected
+                      figure through the same submitCount path as the manual
+                      qty box, so a genuine mismatch still goes through the
+                      usual loss-reason gate -- this is just a shortcut for
+                      when there isn't one, not a bypass of it. */}
+                  <button
+                    type="button"
+                    disabled={liveCountSaving}
+                    onClick={() => submitCount(item, Math.ceil(Number(item.soh)))}
+                    className="shrink-0 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold whitespace-nowrap disabled:opacity-30"
+                  >
+                    Same as {Math.ceil(Number(item.soh))}, no loss
+                  </button>
                   <input
                     type="number" inputMode="decimal" placeholder="Qty"
                     value={qty}
@@ -5084,6 +5101,61 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => recordInlineCount(item)}
                     aria-label={`Record count for ${item.name}`}
                     className="shrink-0 w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold flex items-center justify-center disabled:opacity-30"
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Same enter-a-count list Count Due uses (renderCountDueChart), for items
+  // whose calculated stock has gone negative -- a data-integrity problem
+  // that only a physical count can resolve, not just an overdue-cadence
+  // one. Deliberately NO "Same as X, no loss" shortcut here: the system's
+  // own figure is already known-wrong (negative), so there's no valid
+  // "expected" number to one-tap match against -- whatever's actually on
+  // the shelf has to be typed in.
+  function renderNegativeSohChart() {
+    const items = liveCatalogueItems.filter(item => liveNegSohIds.has(item.id))
+    if (items.length === 0) {
+      return <div className="flex-1 flex items-center justify-center text-xs text-gray-400 py-10">No items with negative stock right now.</div>
+    }
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-2 py-1 bg-red-700 text-[9px] font-bold text-white uppercase tracking-wide">
+          {items.length} item{items.length !== 1 ? 's' : ''} with negative stock -- count to correct
+        </div>
+        <div className="divide-y divide-gray-100">
+          {items.map(item => {
+            const qty = liveInlineCountQtyByItemId[item.id] ?? ''
+            return (
+              <div key={item.id} className="relative flex items-center gap-2 px-2 py-1.5">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
+                <div className="flex-1 min-w-0 pl-2">
+                  {renderClickableItemName(item.name, 'text-[11px] font-semibold truncate')}
+                  <p className="text-[9px] text-red-600 font-semibold">
+                    System shows {Math.ceil(Number(item.soh))} -- count what's actually on the shelf.
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-1">
+                  <input
+                    type="number" inputMode="decimal" placeholder="Qty"
+                    value={qty}
+                    onChange={e => setLiveInlineCountQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') recordInlineCount(item) }}
+                    className="w-14 text-[11px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-200"
+                  />
+                  <button
+                    type="button"
+                    disabled={!qty || liveCountSaving}
+                    onClick={() => recordInlineCount(item)}
+                    aria-label={`Record count for ${item.name}`}
+                    className="shrink-0 w-6 h-6 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center disabled:opacity-30"
                   >
                     ✓
                   </button>
@@ -6451,13 +6523,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               )}
               {/* Count tab's own small sub-nav -- picks between Records/
-                  Count Due/Negative Stock (see inCountTab/pickCountMode
+                  Count Due/Negative SOH (see inCountTab/pickCountMode
                   above). Loss by Date/Loss by Items/Net Loss used to live
                   here too but moved to the P&L tab instead (see plSubView)
                   -- they're a financial-loss concern, not a counting one.
-                  Negative Stock (red/action-required, kept tappable-grid
-                  rather than full-page -- see inCountTab's own comment)
-                  only shows up when there's actually one to see. */}
+                  Negative SOH (red/action-required, same enter-a-count list
+                  Count Due uses -- see renderNegativeSohChart) only shows
+                  up when there's actually one to see. */}
               {inCountTab && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
@@ -6471,8 +6543,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label>
                   {liveNegSohCount > 0 && (<><span className="text-gray-400 px-1">·</span>
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="countSubView" checked={liveSaleViolationFilter === 'negSoh'} onChange={() => { setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView(null) }} className="cursor-pointer w-3 h-3" />
-                    <span>Negative Stock ({liveNegSohCount})</span>
+                    <input type="radio" name="countSubView" checked={liveSaleView?.kind === 'negative_soh_chart'} onChange={() => { setLiveSaleViolationFilter('negSoh'); setLiveShowCountFullPage(false); setLiveSaleView({ kind: 'negative_soh_chart' }) }} className="cursor-pointer w-3 h-3" />
+                    <span>Negative SOH ({liveNegSohCount})</span>
                   </label></>)}
                 </div>
               )}
@@ -7900,6 +7972,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 overflow-y-auto"><LeastSalesChart kind="groups" /></div>
               ) : liveSaleView?.kind === 'count_due_chart' ? (
                 renderCountDueChart()
+              ) : liveSaleView?.kind === 'negative_soh_chart' ? (
+                renderNegativeSohChart()
               ) : liveSaleView?.kind === 'least_purchased' ? (
                 <div className="flex-1 overflow-y-auto"><LeastPurchasedChart /></div>
               ) : (
