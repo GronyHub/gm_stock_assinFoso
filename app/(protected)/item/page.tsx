@@ -6358,6 +6358,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option value="gmc:service_using_gmc">Service uses GMC</option>
                     </optgroup>
                   </select>
+                  {/* Desktop only: Search/WIC-GMC/Analytics move up onto this
+                      same row (see isDesktop below) instead of getting their
+                      own row underneath (see Row 3, now desktop-only false)
+                      -- frees a full row's height for the item grid below on
+                      a screen with room to spare, unlike mobile where these
+                      still need their own row to stay tappable. */}
+                  {isDesktop && (lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                 </div>
               )}
               {/* Sale mode filter bar -- now Sale/Log/Receipts' shared row
@@ -6545,11 +6552,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   between them or to a Records view (that full history/edit
                   list lives on its own sidebar page instead, lossView
                   'counts', CountsTab.tsx). */}
-              {/* Row 3: search bar + controls — hidden on report-style submenus, and on
-                  Sales/Bills (they render their own title+search+analytics+help row
-                  inside their own liveMode block instead). Global Search's own 🔍
-                  now lives once, next to the tab switcher above, not repeated here. */}
-              {showControls && (liveMode === 'sale' || liveMode === 'log') && (
+              {/* Row 3: search bar + controls — mobile only now (see the
+                  filter-bar row above, which absorbs these on desktop
+                  instead so the item grid gets that row's height back).
+                  Also hidden on report-style submenus, and on Sales/Bills
+                  (they render their own title+search+analytics+help row
+                  inside their own liveMode block instead). Global Search's
+                  own 🔍 now lives once, next to the tab switcher above, not
+                  repeated here. */}
+              {!isDesktop && showControls && (liveMode === 'sale' || liveMode === 'log') && (
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2">
                     {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
