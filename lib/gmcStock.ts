@@ -39,7 +39,8 @@ export function walkGmcSohByDate(eventsSorted: GmcSohEvent[]): Map<string, numbe
 const numVal = (v: string | null | undefined) => (v ? parseFloat(v) || 0 : 0)
 const toDate = (ts: string) => new Date(ts).toISOString().slice(0, 10)
 
-export type GmcTargetState = { soh: number; openOverage: { given: number; used: number } | null }
+export type GmcOpenOverage = { given: number; used: number; exhaustedOnDate: string }
+export type GmcTargetState = { soh: number; openOverage: GmcOpenOverage | null }
 
 // One round of queries computing everything every GMC-target consumer
 // needs about its CURRENT state: the pack-reset-aware SOH (see
@@ -183,18 +184,23 @@ export async function getGmcTargetState(): Promise<Map<number, GmcTargetState>> 
     // means one of two things happened in real life: a pack really is
     // short (or missing), or one was already opened but never tapped in
     // GMC -- either way it's worth a physical count to find out which.
-    let cur: { date: string; given: number; used: number } | null = null
+    // crossedAt records the exact date cumulative used first passed given
+    // -- not a guess, the real event data already being walked -- so a
+    // missed CNV can be backdated to when the pack actually ran out
+    // instead of whatever day someone happens to notice the warning.
+    let cur: { date: string; given: number; used: number; crossedAt: string | null } | null = null
     for (const ev of merged) {
       if (ev.kind === 'count') continue
       if (ev.kind === 'pack_open') {
         if (cur && cur.date === ev.date) cur.given = parseFloat((cur.given + ev.qty).toFixed(4))
-        else cur = { date: ev.date, given: ev.qty, used: 0 }
+        else cur = { date: ev.date, given: ev.qty, used: 0, crossedAt: null }
       } else if (cur) {
         cur.used = parseFloat((cur.used + ev.qty).toFixed(4))
+        if (cur.crossedAt === null && cur.used > cur.given + 0.001) cur.crossedAt = ev.date
       }
     }
-    const openOverage = cur && parseFloat((cur.used - cur.given).toFixed(4)) > 0.001
-      ? { given: cur.given, used: cur.used }
+    const openOverage = cur?.crossedAt
+      ? { given: cur.given, used: cur.used, exhaustedOnDate: cur.crossedAt }
       : null
 
     state.set(targetId, { soh, openOverage })
@@ -219,9 +225,9 @@ export async function getGmcTargetSohMap(): Promise<Map<number, number>> {
 // physically opened at the shop but never actually tapped in GMC. Shares
 // the exact same walk as getGmcTargetSohMap (one round of queries covers
 // both), just reads the other half of the result.
-export async function getGmcOpenOverageMap(): Promise<Map<number, { given: number; used: number }>> {
+export async function getGmcOpenOverageMap(): Promise<Map<number, GmcOpenOverage>> {
   const state = await getGmcTargetState()
-  const result = new Map<number, { given: number; used: number }>()
+  const result = new Map<number, GmcOpenOverage>()
   for (const [id, s] of state) {
     if (s.openOverage) result.set(id, s.openOverage)
   }

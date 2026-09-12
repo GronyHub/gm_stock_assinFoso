@@ -18,6 +18,8 @@ import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
 import { HelpButton } from './_components/HelpButton'
 import ClockInGateModal from './_components/ClockInGateModal'
+import GmcOverageGateModal from './_components/GmcOverageGateModal'
+import type { GmcOpenOverage } from '@/lib/gmcStock'
 import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
 import ItemDetailPanel from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
@@ -668,7 +670,7 @@ function itemAttentionFlags(
   soldBelowCostDatesByItemId: Map<number, string[]>,
   vcpJumpDatesByItemId: Map<number, string[]>,
   gmcTargetStockByItemId: Map<number, number>,
-  gmcOpenOverageByItemId: Map<number, { given: number; used: number }>
+  gmcOpenOverageByItemId: Map<number, GmcOpenOverage>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -1378,6 +1380,12 @@ function ItemHubPageInner() {
   // have nothing to fall back to and silently do nothing.
   const pendingTapQtyRef = useRef<string | undefined>(undefined)
   const pendingTapPriceRef = useRef<string | undefined>(undefined)
+  // A second, independent gate from the clock-in one above -- re-checked on
+  // EVERY tap attempt (not a one-time-per-session dismiss), since the whole
+  // point is to keep surfacing this until a new pack is tapped in or a
+  // count settles it (see GmcOverageGateModal). Reuses the same pending-tap
+  // refs above (they're just a "what to resume" slot, not gate-specific).
+  const [gmcOverageGate, setGmcOverageGate] = useState<{ itemName: string; targetName: string; given: number; used: number; exhaustedOnDate: string } | null>(null)
   // Per-card quantity/price typed directly into the grid (the "tap straight
   // into a card" flow) -- keyed by item id since many cards can be mid-entry
   // at once. Price is seeded from the item's own selling_price only once the
@@ -2836,9 +2844,9 @@ function ItemHubPageInner() {
   // -- a pack reset (or a fresh overage) from another staff member's tap
   // should show up without a full page reload.
   const [liveGmcTargetStock, setLiveGmcTargetStock] = useState<Map<number, number>>(new Map())
-  const [liveGmcOpenOverage, setLiveGmcOpenOverage] = useState<Map<number, { given: number; used: number }>>(new Map())
+  const [liveGmcOpenOverage, setLiveGmcOpenOverage] = useState<Map<number, GmcOpenOverage>>(new Map())
   const applyGmcTargetStock = (d: unknown) => {
-    const rows: { item_id: number; calculated_soh: number; open_overage: { given: number; used: number } | null }[] = Array.isArray(d) ? d : []
+    const rows: { item_id: number; calculated_soh: number; open_overage: GmcOpenOverage | null }[] = Array.isArray(d) ? d : []
     setLiveGmcTargetStock(new Map(rows.map(r => [r.item_id, r.calculated_soh])))
     setLiveGmcOpenOverage(new Map(rows.filter(r => r.open_overage).map(r => [r.item_id, r.open_overage!])))
   }
@@ -3650,13 +3658,54 @@ function ItemHubPageInner() {
     recordTap(pendingTapItemRef.current, true, pendingTapQtyRef.current, pendingTapPriceRef.current)
   }
 
-  async function recordTap(item?: LiveItem, bypassGate = false, overrideQty?: string, overridePrice?: string) {
+  // Fires when GmcOverageGateModal resolves. Unlike resolveClockGate, this
+  // isn't a "dismissed for the session" flag -- "Continue anyway" only
+  // bypasses THIS one retry (bypassOverageGate=true on the single re-
+  // invocation below), so the very next tap attempt on the same chain
+  // checks liveGmcOpenOverage again and can show it right back up.
+  // bypassGate=true here is safe, not a shortcut around the clock-in gate:
+  // this modal can only ever open after that one already resolved (see
+  // recordTap's check order), so the retry is just re-affirming that.
+  function resolveOverageGate(action: 'continue' | 'count' | 'gmc') {
+    setGmcOverageGate(null)
+    if (action === 'continue') {
+      recordTap(pendingTapItemRef.current, true, pendingTapQtyRef.current, pendingTapPriceRef.current, true)
+    } else if (action === 'count') {
+      pickCountMode()
+    } else {
+      setLiveSaleType('GMC')
+      jumpToLiveSaleTab('sale')
+    }
+  }
+
+  async function recordTap(item?: LiveItem, bypassGate = false, overrideQty?: string, overridePrice?: string, bypassOverageGate = false) {
     if (!bypassGate && !clockGateDismissed && myClockedInToday === false) {
       pendingTapItemRef.current = item
       pendingTapQtyRef.current = overrideQty
       pendingTapPriceRef.current = overridePrice
       setClockGateOpen(true)
       return
+    }
+    // Covers all three chain roles in one lookup: the target itself
+    // (gmc_type 'gmc'), a pack_to_gmc item about to credit it, or a
+    // service_using_gmc item about to draw it down -- both of the latter
+    // carry converts_to_item_id pointing at the same target (same
+    // resolution itemAttentionFlags already uses for the card badge).
+    const gateItem = item || liveSelectedItem
+    if (!bypassOverageGate && gateItem) {
+      const targetId = gateItem.gmc_type === 'gmc' ? gateItem.id : (gateItem.converts_to_item_id ?? null)
+      const overage = targetId != null ? liveGmcOpenOverage.get(targetId) : undefined
+      if (overage) {
+        pendingTapItemRef.current = item
+        pendingTapQtyRef.current = overrideQty
+        pendingTapPriceRef.current = overridePrice
+        setGmcOverageGate({
+          itemName: gateItem.name,
+          targetName: gateItem.gmc_type === 'gmc' ? gateItem.name : (gateItem.converts_to_name ?? 'the target'),
+          given: overage.given, used: overage.used, exhaustedOnDate: overage.exhaustedOnDate,
+        })
+        return
+      }
     }
     addTapStatus('STARTED - checking item & quantity')
     const tapItem = item || liveSelectedItem
@@ -8904,6 +8953,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <GlobalLawsTasksModal isOpen={liveGlobalLawsModalOpen} onClose={() => setLiveGlobalLawsModalOpen(false)} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
+          )}
+          {gmcOverageGate && (
+            <GmcOverageGateModal
+              itemName={gmcOverageGate.itemName}
+              targetName={gmcOverageGate.targetName}
+              given={gmcOverageGate.given}
+              used={gmcOverageGate.used}
+              exhaustedOnDate={gmcOverageGate.exhaustedOnDate}
+              onGoToCount={() => resolveOverageGate('count')}
+              onGoToGmc={() => resolveOverageGate('gmc')}
+              onContinue={() => resolveOverageGate('continue')}
+            />
           )}
 
           {liveSortOrderModalOpen && (
