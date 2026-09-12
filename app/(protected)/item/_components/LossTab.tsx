@@ -1207,6 +1207,23 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.item_id])
 
+  // For the summary panel's Last Sold/Avg Monthly Sales stats -- a single
+  // bulk, 2-hour-cached fetch (see /api/items/sale-history's own comment),
+  // same shared cache every other Item 360 popup and item/page.tsx's own
+  // liveSaleHistoryByItemId already hit, so opening this panel repeatedly
+  // doesn't add new database load beyond the first call in that window.
+  const [saleHistory, setSaleHistory] = useState<{ last_sale_date: string; avg_monthly_qty: number } | null>(null)
+  const [saleHistoryLoaded, setSaleHistoryLoaded] = useState(false)
+  useEffect(() => {
+    fetch('/api/items/sale-history').then(r => r.json())
+      .then((d: { item_id: number; last_sale_date: string; avg_monthly_qty: number }[]) => {
+        if (!Array.isArray(d)) return
+        setSaleHistory(d.find(r => r.item_id === item.item_id) ?? null)
+        setSaleHistoryLoaded(true)
+      })
+      .catch(() => setSaleHistoryLoaded(true))
+  }, [item.item_id])
+
   // Click-to-edit/delete for the CNT column -- see CntCell. Reuses the same
   // PUT/DELETE /api/stock/counts/[id] endpoint and loss-reason gate
   // CountsTab.tsx's own edit UI already goes through.
@@ -1395,6 +1412,56 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     ? allItems.find(a => a.item_id === item.derived_from_item_id)?.item_name
     : null
 
+  // Summary panel just above the day-by-day table -- the same "wholistic
+  // view of everything at once" the Sales/Items/Counts tabs give across
+  // every item, but for this ONE item specifically. Everything here is
+  // either already on `item` (SummaryRow, from the one /api/losses/summary
+  // fetch every caller of ItemDetail already makes), already computed
+  // locally in this component (vcpJumps, dayRows' own sold_below_cost), or
+  // the one extra saleHistory fetch above -- no per-item violations API,
+  // so cross-item checks (duplicate items, unlinked sale names) aren't
+  // included; those stay Items tab's own job.
+  const itemAny = item as any
+  const isGoodsItem = !isService
+  const negativeSoh = isGoodsItem && parseFloat(item.soh ?? '0') < 0
+  const noSp = !item.sp || parseFloat(item.sp) <= 0
+  const noCp = isGoodsItem && (!item.cp || parseFloat(item.cp) <= 0)
+  const noGroup = !item.cf_group
+  // Same condition item/page.tsx's own serviceViolationIds uses -- a
+  // service whose own count/GMC-take/bill activity is nonzero shouldn't
+  // have any (services aren't physically counted or purchased).
+  const serviceViolation = isService && ((itemAny.cnt ?? 0) !== 0 || (item.gmc ?? 0) !== 0 || (item.bl ?? 0) !== 0)
+  const hasVcpJump = vcpJumps.size > 0
+  const soldBelowCost = (dayRows ?? []).some(r => r.sold_below_cost)
+  const lgAmt = item.lgAmt ?? 0
+  const lgQty = item.lgQty ?? 0
+  const isNetLoss = lgAmt > 0.005
+  const isNetGain = lgAmt < -0.005
+  const daysSinceLastSale = saleHistory?.last_sale_date
+    ? Math.floor((Date.now() - new Date(saleHistory.last_sale_date + 'T00:00:00Z').getTime()) / 86400000)
+    : null
+  const neverSold = saleHistoryLoaded && !saleHistory && isGoodsItem
+  // Thresholds are deliberately simple, plain-language cutoffs (under 1 a
+  // month; unsold 2+ months) rather than a per-item-tuned statistical
+  // measure -- good enough to flag "worth a look", which is this panel's
+  // whole job, without pretending to more precision than the underlying
+  // averages actually support.
+  const isLowSales = isGoodsItem && !!saleHistory && saleHistory.avg_monthly_qty > 0 && saleHistory.avg_monthly_qty < 1
+  const isLongUnsold = isGoodsItem && ((daysSinceLastSale != null && daysSinceLastSale > 60) || neverSold)
+
+  const summaryFlags: { label: string; bg: string }[] = []
+  if (negativeSoh) summaryFlags.push({ label: '📦 NEGATIVE SOH', bg: 'bg-red-600' })
+  if (isNetLoss) summaryFlags.push({ label: `📉 NET LOSS -${fmtN(Math.abs(lgQty))} (₵${fmtN(Math.abs(lgAmt))})`, bg: 'bg-red-500' })
+  if (isNetGain) summaryFlags.push({ label: `📈 NET GAIN +${fmtN(Math.abs(lgQty))} (₵${fmtN(Math.abs(lgAmt))})`, bg: 'bg-green-600' })
+  if (soldBelowCost) summaryFlags.push({ label: '🟣 SOLD BELOW COST', bg: 'bg-purple-600' })
+  if (hasVcpJump) summaryFlags.push({ label: '⚠ VCP JUMP', bg: 'bg-amber-600' })
+  if (serviceViolation) summaryFlags.push({ label: '⚠ SERVICE VIOLATION', bg: 'bg-orange-600' })
+  if (noSp) summaryFlags.push({ label: '💰 NO SELLING PRICE', bg: 'bg-gray-600' })
+  if (noCp) summaryFlags.push({ label: '💵 NO COST PRICE', bg: 'bg-gray-600' })
+  if (noGroup) summaryFlags.push({ label: '🏷 NO GROUP', bg: 'bg-gray-600' })
+  if (isLowSales) summaryFlags.push({ label: `🐌 LOW SALES (${saleHistory!.avg_monthly_qty}/mo)`, bg: 'bg-yellow-600' })
+  if (isLongUnsold) summaryFlags.push({ label: neverSold ? '⏳ NEVER SOLD' : `⏳ UNSOLD ${daysSinceLastSale}D`, bg: 'bg-yellow-700' })
+
   return (
     // For the pack-chain view the wrapper grows to the table's full width
     // (w-max) instead of clipping it (overflow-hidden), so the detail panel
@@ -1406,6 +1473,34 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <p className="text-[8px] font-semibold text-blue-700">
             <span className="text-gray-500">Derived from pack:</span> {parentPackName}
           </p>
+        </div>
+      )}
+
+      {dayRows && (
+        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 space-y-1.5">
+          {summaryFlags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {summaryFlags.map((f, i) => (
+                <span key={i} className={`inline-block px-2 py-0.5 rounded-full text-[8px] font-bold text-white whitespace-nowrap ${f.bg}`}>{f.label}</span>
+              ))}
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-0.5 text-[9px]">
+            <div><span className="text-gray-500">Net Loss/Gain:</span>{' '}
+              <span className={isNetLoss ? 'text-red-600 font-semibold' : isNetGain ? 'text-green-600 font-semibold' : 'text-gray-700 font-semibold'}>
+                {isNetLoss ? `-${fmtN(lgQty)}` : isNetGain ? `+${fmtN(Math.abs(lgQty))}` : '0'} (₵{fmtN(Math.abs(lgAmt))})
+              </span>
+            </div>
+            <div><span className="text-gray-500">Loss / Gain days:</span> <span className="font-semibold text-gray-700">{item.lossCount ?? 0} / {itemAny.gainCount ?? 0}</span></div>
+            {isGoodsItem && <div><span className="text-gray-500">WIC / GMC:</span> <span className="font-semibold text-gray-700">{fmtN(item.wic ?? 0)} / {fmtN(item.gmc ?? 0)}</span></div>}
+            {isGoodsItem && <div><span className="text-gray-500">Bills / CNV:</span> <span className="font-semibold text-gray-700">{fmtN(item.bl ?? 0)} / {fmtN(item.cnv ?? 0)}</span></div>}
+            <div><span className="text-gray-500">Last sold:</span>{' '}
+              <span className="font-semibold text-gray-700">
+                {!saleHistoryLoaded ? '…' : saleHistory?.last_sale_date ? `${fmtDate(saleHistory.last_sale_date)} (${daysSinceLastSale}d ago)` : 'Never'}
+              </span>
+            </div>
+            <div><span className="text-gray-500">Avg monthly sales:</span> <span className="font-semibold text-gray-700">{!saleHistoryLoaded ? '…' : saleHistory ? saleHistory.avg_monthly_qty : '0'}</span></div>
+          </div>
         </div>
       )}
 
