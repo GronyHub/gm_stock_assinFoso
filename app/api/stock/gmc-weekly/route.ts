@@ -1,10 +1,22 @@
 import sql from '@/lib/db'
 import { DAILY_ITEM_IDS, ensureCountCadenceColumns } from '@/lib/countRules'
+import { getGmcTargetSohMap } from '@/lib/gmcStock'
 import { NextResponse } from 'next/server'
 
 let cachedGmcWeekly: any = null
 let cachedGmcWeeklyTime = 0
 const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
+
+// calculated_soh has no concept of a pack-open resetting the count, so it
+// drifts for a GMC conversion target the longer it goes without a fresh
+// physical count -- override it with the pack-reset-aware figure from
+// lib/gmcStock.ts, on every request (cache hit or not), since this list is
+// specifically the "which GMC items need counting" view.
+async function withFreshGmcSoh(rows: any[]): Promise<any[]> {
+  const gmcMap = await getGmcTargetSohMap()
+  if (gmcMap.size === 0) return rows
+  return rows.map(r => gmcMap.has(r.item_id) ? { ...r, calculated_soh: gmcMap.get(r.item_id) } : r)
+}
 
 // 7-day count list: GMC items -- goods the shop takes for its own use
 // (4x6 packs, A4 sheets, Brown Envelope packs, etc., identified by having
@@ -20,7 +32,7 @@ const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 export async function GET() {
   const now = Date.now()
   if (cachedGmcWeekly && now - cachedGmcWeeklyTime < CACHE_TTL) {
-    return NextResponse.json(cachedGmcWeekly)
+    return NextResponse.json(await withFreshGmcSoh(cachedGmcWeekly))
   }
 
   await ensureCountCadenceColumns()
@@ -87,5 +99,5 @@ export async function GET() {
   `
   cachedGmcWeekly = rows
   cachedGmcWeeklyTime = Date.now()
-  return NextResponse.json(rows)
+  return NextResponse.json(await withFreshGmcSoh(rows))
 }

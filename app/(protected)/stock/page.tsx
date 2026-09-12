@@ -1,10 +1,11 @@
 import sql from '@/lib/db'
 import Link from 'next/link'
 import StockList from './StockList'
+import { getGmcTargetSohMap } from '@/lib/gmcStock'
 
 export default async function StockPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams
-  const rows = await sql`
+  const rawRows = await sql`
     SELECT item_id, item_name, cf_group, unit_name,
            last_count_date, last_count_qty,
            total_purchased, total_sold,
@@ -16,6 +17,11 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     ORDER BY item_name
     LIMIT 200
   `
+  // calculated_soh has no concept of a pack-open resetting the count, so it
+  // drifts for a GMC conversion target -- override it with the pack-reset-
+  // aware figure from lib/gmcStock.ts for the handful of items that's true for.
+  const gmcMap = await getGmcTargetSohMap()
+  const rows = gmcMap.size === 0 ? rawRows : rawRows.map(r => gmcMap.has(r.item_id) ? { ...r, calculated_soh: gmcMap.get(r.item_id) } : r)
 
   return (
     <div className="py-4 space-y-4">

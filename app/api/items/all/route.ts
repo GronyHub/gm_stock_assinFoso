@@ -2,12 +2,25 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn, ensureDerivedFromColumn } from '@/lib/countRules'
 import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
+import { getGmcTargetSohMap } from '@/lib/gmcStock'
 import { NextResponse, NextRequest } from 'next/server'
 
 // Cache for default items request (no limit/offset)
 let cachedItems: any = null
 let cachedItemsTime: number = 0
 const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
+
+// The bulk catalogue above is cached for 2 hours to control Neon compute
+// cost, but a GMC conversion target's SOH must never lag that long -- it's
+// exactly what a staff member checks right after tapping a new pack. Splice
+// the correct (pack-reset-aware, see lib/gmcStock.ts) value over the plain
+// item_stock_summary.calculated_soh on every request, cache hit or not --
+// only ~14 items ever match, so this is cheap even on a cache hit.
+async function withFreshGmcSoh(items: any[]): Promise<any[]> {
+  const gmcMap = await getGmcTargetSohMap()
+  if (gmcMap.size === 0) return items
+  return items.map(item => gmcMap.has(item.id) ? { ...item, soh: gmcMap.get(item.id) } : item)
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth()
@@ -20,7 +33,7 @@ export async function GET(req: NextRequest) {
   // Return cached data if using defaults and cache is fresh
   const now = Date.now()
   if (limit === 50000 && offset === 0 && cachedItems && now - cachedItemsTime < CACHE_TTL) {
-    return NextResponse.json(cachedItems)
+    return NextResponse.json(await withFreshGmcSoh(cachedItems))
   }
 
   try {
@@ -64,7 +77,7 @@ export async function GET(req: NextRequest) {
       cachedItemsTime = now
     }
 
-    return NextResponse.json(withIntervals)
+    return NextResponse.json(await withFreshGmcSoh(withIntervals))
   } catch (e) {
     console.error('items/all primary query failed, falling back to items table (no soh/count_interval):', e instanceof Error ? e.message : String(e))
     try {
@@ -99,7 +112,7 @@ export async function GET(req: NextRequest) {
         cachedItemsTime = now
       }
 
-      return NextResponse.json(rows)
+      return NextResponse.json(await withFreshGmcSoh(rows))
     } catch (e) {
       console.error('items/all fallback error:', e)
       return NextResponse.json([])

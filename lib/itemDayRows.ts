@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { ensureBillExpensesTable } from '@/lib/billExpenses'
+import { walkGmcSohByDate, type GmcSohEvent } from '@/lib/gmcStock'
 
 export type CountRevision = { old_qty: string | number | null; old_by: string | null; changed_by: string | null; action?: string | null; changed_at: string }
 
@@ -456,35 +457,19 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     // Running Stock On Hand -- what's physically at the shop as of any
     // given date. A different question from the cycle tally above (which
     // measures usage against ONE pack, for loss/gain): this is the running
-    // total across EVERY pack, so it resets at every pack-open (same
-    // premise the whole feature started from -- a new pack means the old
-    // one is assumed empty/replaced) AND at every physical count (ground
-    // truth), decreasing by real consumption in between. Shares the same
-    // merged pack_open/consume events as the cycle tally, plus counts
-    // (deliberately excluded from the cycle tally, but very much a reset
-    // here). Same same-day-merge rule as the cycle tally: two pack-opens
-    // on one calendar date combine into a single reset.
-    type SohEvent = CycleEvent | { at: number; date: string; kind: 'count'; qty: number }
-    const sohEvents: SohEvent[] = [
+    // total across EVERY pack. Shares the same merged pack_open/consume
+    // events as the cycle tally, plus counts (deliberately excluded from
+    // the cycle tally, but very much a reset here). The actual walk lives
+    // in lib/gmcStock.ts's walkGmcSohByDate, shared with getGmcTargetSohMap
+    // (the same computation for every OTHER place that shows a GMC
+    // target's current stock, e.g. the Live Sale item cards) so the two
+    // can never silently disagree.
+    const sohEvents: GmcSohEvent[] = [
       ...events,
       ...countEvents.map(c => ({ at: new Date(c.counted_at).getTime(), date: toDate(c.counted_at), kind: 'count' as const, qty: parseFloat(c.quantity_counted) || 0 })),
     ].sort((a, b) => a.at - b.at)
 
-    let sohBalance: number | null = null
-    let sohResetDate: string | null = null
-    const sohByDate = new Map<string, number>()
-    for (const ev of sohEvents) {
-      if (ev.kind === 'pack_open') {
-        sohBalance = sohResetDate === ev.date && sohBalance !== null ? parseFloat((sohBalance + ev.qty).toFixed(4)) : ev.qty
-        sohResetDate = ev.date
-      } else if (ev.kind === 'count') {
-        sohBalance = ev.qty
-        sohResetDate = ev.date
-      } else if (sohBalance !== null) {
-        sohBalance = parseFloat((sohBalance - ev.qty).toFixed(4))
-      }
-      if (sohBalance !== null) sohByDate.set(ev.date, sohBalance)
-    }
+    const sohByDate = walkGmcSohByDate(sohEvents)
     // dayRows is already ordered oldest-first (see the main query's own
     // ORDER BY) -- forward-fill so a date with no SOH-relevant event of
     // its own (e.g. a pure bill/receiving day) still carries the balance

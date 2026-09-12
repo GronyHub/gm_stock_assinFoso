@@ -2,6 +2,17 @@ import { badRequest, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureActiveItemsView } from '@/lib/activeItems'
 import { ensureGmcColumn, ensureDerivedFromColumn } from '@/lib/countRules'
+import { getGmcTargetSohMap } from '@/lib/gmcStock'
+
+// item_stock_summary.calculated_soh has no concept of a pack-open resetting
+// the count, so it drifts for a GMC conversion target the longer it goes
+// without a fresh physical count -- override it with the pack-reset-aware
+// figure from lib/gmcStock.ts for the ~14 items that's true for.
+async function withFreshGmcSoh<T extends { id: number; calculated_soh: unknown }>(items: T[]): Promise<T[]> {
+  const gmcMap = await getGmcTargetSohMap()
+  if (gmcMap.size === 0) return items
+  return items.map(item => gmcMap.has(item.id) ? { ...item, calculated_soh: gmcMap.get(item.id) } : item)
+}
 
 export async function GET() {
   try {
@@ -24,7 +35,7 @@ export async function GET() {
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `
-    return success(rows)
+    return success(await withFreshGmcSoh(rows as { id: number; calculated_soh: unknown }[]))
   } catch {
     // Fallback if status column is unavailable for any reason
     const rows = await sql`
@@ -45,7 +56,7 @@ export async function GET() {
       WHERE i.status IS NULL OR LOWER(i.status) != 'inactive'
       ORDER BY cf_group NULLS LAST, i.canonical_name
     `
-    return success(rows)
+    return success(await withFreshGmcSoh(rows as { id: number; calculated_soh: unknown }[]))
   }
 }
 

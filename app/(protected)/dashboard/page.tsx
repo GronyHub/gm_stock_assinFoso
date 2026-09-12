@@ -1,6 +1,7 @@
 ﻿import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import Link from 'next/link'
+import { getGmcTargetSohMap } from '@/lib/gmcStock'
 
 function Card({ label, value, sub, href }: { label: string; value: string; sub?: string; href?: string }) {
   const inner = (
@@ -18,15 +19,22 @@ export default async function DashboardPage() {
   const role = (session?.user as any)?.role
   const today = new Date().toISOString().slice(0, 10)
 
-  const [receiptsToday, billsToday, expToday, stockAlerts, cashRow] = await Promise.all([
+  const [receiptsToday, billsToday, expToday, stockAlerts, cashRow, gmcMap] = await Promise.all([
     sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM sales_receipts WHERE receipt_date = ${today}`,
     sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM bills WHERE bill_date = ${today}`,
     sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(COALESCE(total,amount)),0) AS total FROM expenses WHERE expense_date = ${today}`,
-    sql`SELECT COUNT(*) AS cnt FROM item_stock_summary WHERE calculated_soh < 5 AND calculated_soh IS NOT NULL`,
+    // calculated_soh has no concept of a pack-open resetting the count, so
+    // GMC conversion targets are excluded here and counted separately below
+    // using the pack-reset-aware figure from lib/gmcStock.ts instead.
+    sql`SELECT COUNT(*) AS cnt FROM item_stock_summary WHERE calculated_soh < 5 AND calculated_soh IS NOT NULL
+        AND item_id NOT IN (SELECT id FROM items WHERE gmc_type = 'gmc')`,
     role !== 'staff'
       ? sql`SELECT running_cash_at_bank FROM cash_at_bank_view ORDER BY entry_date DESC LIMIT 1`
       : Promise.resolve([]),
+    getGmcTargetSohMap(),
   ])
+  const gmcLowStockCount = Array.from(gmcMap.values()).filter(v => v < 5).length
+  const lowStockCount = Number(stockAlerts[0].cnt) + gmcLowStockCount
 
   const fmt = (n: number) => `₵${Number(n).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`
 
@@ -44,7 +52,7 @@ export default async function DashboardPage() {
           sub={fmt(billsToday[0].total)} href="/bills/new" />
         <Card label="Expenses today" value={String(expToday[0].cnt)}
           sub={fmt(expToday[0].total)} href="/expenses/new" />
-        <Card label="Low stock items" value={String(stockAlerts[0].cnt)} href="/stock" />
+        <Card label="Low stock items" value={String(lowStockCount)} href="/stock" />
       </div>
 
       {role !== 'staff' && cashRow.length > 0 && (
