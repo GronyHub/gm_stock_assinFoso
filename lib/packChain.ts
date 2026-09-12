@@ -30,6 +30,18 @@ export function computeRows(rows: ItemDayRow[]): ComputedRow[] {
       if (counted !== null) { loss = parseFloat((expected - counted).toFixed(4)); prev = counted }
       else prev = expected
     }
+    // Tap-timestamp-precise override (see getItemDayRows in
+    // lib/itemDayRows.ts) -- only ever set for a GMC conversion target,
+    // where it correctly resets EXP/LOSS at the exact moment a pack opens
+    // instead of at the end of that whole calendar day. Replaces both the
+    // day-grained expected/loss just computed above AND the running `prev`
+    // carried into the next row, so every row after this one continues
+    // from the precise anchor.
+    if (row.precise_expected_soh != null) {
+      expected = row.precise_expected_soh
+      loss = row.precise_loss ?? null
+      prev = expected
+    }
     result.push({ ...row, available, used, expected_soh: expected, loss })
   }
   return result.reverse()

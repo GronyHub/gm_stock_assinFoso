@@ -22,6 +22,13 @@ export type ItemDayRow = {
   vcp: string | null
   vcp_bill_id: number | null
   acp: string | null
+  // Tap-timestamp-precise EXP/LOSS override -- see the pass at the bottom
+  // of getItemDayRows. null on every row for the overwhelming majority of
+  // items (anything that's never been a GMC conversion target); only
+  // lib/packChain.ts's computeRows reads these, preferring them over its
+  // own day-grained calculation when present.
+  precise_expected_soh?: number | null
+  precise_loss?: number | null
 }
 
 // Per-item day-level activity (counts, WIC/GMC sales, bills, pack-chain
@@ -292,5 +299,115 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     ORDER BY ad.d ASC
   `
 
-  return rows as unknown as ItemDayRow[]
+  const dayRows = rows as unknown as ItemDayRow[]
+
+  // Tap-timestamp-precise EXP/LOSS override for GMC conversion targets.
+  // A CNV (a pack being opened) is itself a ground-truth reset event, same
+  // weight as a physical count -- "a new pack means the old one is empty."
+  // But day-grained sums can't tell whether a day's WIC/GMC activity
+  // happened before or after that day's own pack-open, only
+  // live_sale_taps.tapped_at can (e.g. 10 sold that morning belong to the
+  // OLD pack; a pack opens at 2pm; 20 more sold that afternoon belong to
+  // the NEW one -- the day-grained WIC total of 30 can't be split that
+  // way). Computed as a second, chronological-event pass here rather than
+  // folded into the CTE above, since it needs to walk in time order, not
+  // aggregate by date. Only actually does anything for an item that's
+  // been a GMC conversion target at least once (checked below) -- a pure
+  // no-op for every other item, whose converted_in_qty is always null.
+  if (dayRows.some(r => r.converted_in_qty != null)) {
+    const [countEvents, packOpenEvents, directSaleEvents, serviceConsumptionEvents] = await Promise.all([
+      sql`
+        SELECT counted_at, quantity_counted FROM stock_counts
+        WHERE item_id = ${id} AND counted_at IS NOT NULL
+        ORDER BY counted_at ASC
+      ` as unknown as Promise<{ counted_at: string; quantity_counted: string }[]>,
+      // A real GMC purchase of a pack_to_gmc item converting into this
+      // target -- confirmed via sales_receipts.customer_name the same way
+      // /api/sales/live-taps derives is_gmc, not a stray WIC sale of the
+      // pack itself.
+      sql`
+        SELECT t.tapped_at, t.quantity, COALESCE(i.units_per_pack, 1) AS units_per_pack
+        FROM live_sale_taps t
+        JOIN items i ON i.id = t.item_id
+        JOIN sales_receipts r ON r.id = t.receipt_id
+        WHERE i.gmc_type = 'pack_to_gmc' AND i.converts_to_item_id = ${id}
+          AND t.undone = false
+          AND r.customer_name = 'Grony Multimedia as Customer'
+        ORDER BY t.tapped_at ASC
+      ` as unknown as Promise<{ tapped_at: string; quantity: number; units_per_pack: string }[]>,
+      // A real sale of the target itself (WIC or GMC -- same "used = wic +
+      // gmc" the day-grained algorithm already sums), whichever way it was
+      // sold in Live Sale.
+      sql`
+        SELECT tapped_at, quantity FROM live_sale_taps
+        WHERE item_id = ${id} AND undone = false
+        ORDER BY tapped_at ASC
+      ` as unknown as Promise<{ tapped_at: string; quantity: number }[]>,
+      // A service_using_gmc item's own real (WIC) tap -- same filter
+      // daily_consumed_by_service above already uses, just at tap
+      // precision. Never also read this item's negative bill_lines rows
+      // as a separate consumption source -- those are the day-grained
+      // echo /api/sales/live-tap writes for this exact same tap in the
+      // same request; reading both would double-count it.
+      sql`
+        SELECT t.tapped_at, t.quantity
+        FROM live_sale_taps t
+        JOIN items i ON i.id = t.item_id
+        JOIN sales_receipts r ON r.id = t.receipt_id
+        WHERE i.gmc_type = 'service_using_gmc' AND i.converts_to_item_id = ${id}
+          AND t.undone = false
+          AND r.customer_name IS NULL
+        ORDER BY t.tapped_at ASC
+      ` as unknown as Promise<{ tapped_at: string; quantity: number }[]>,
+    ])
+
+    type PreciseEvent = { at: number; date: string; kind: 'count' | 'pack_open' | 'consume'; qty: number }
+    const toDate = (ts: string) => new Date(ts).toISOString().slice(0, 10)
+    const events: PreciseEvent[] = [
+      ...countEvents.map(c => ({ at: new Date(c.counted_at).getTime(), date: toDate(c.counted_at), kind: 'count' as const, qty: parseFloat(c.quantity_counted) || 0 })),
+      ...packOpenEvents.map(p => ({ at: new Date(p.tapped_at).getTime(), date: toDate(p.tapped_at), kind: 'pack_open' as const, qty: (parseFloat(p.units_per_pack) || 1) * Number(p.quantity) })),
+      ...directSaleEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
+      ...serviceConsumptionEvents.map(s => ({ at: new Date(s.tapped_at).getTime(), date: toDate(s.tapped_at), kind: 'consume' as const, qty: Number(s.quantity) })),
+    ].sort((a, b) => a.at - b.at)
+
+    // Walk chronologically, maintaining a running balance. 'count' and
+    // 'pack_open' are hard resets -- whatever the balance was right before
+    // one IS that closed cycle's loss (positive) or gain (negative), same
+    // sign convention lib/packChain.ts's computeRows already uses.
+    // 'consume' before any reset has no budget to judge against yet and is
+    // skipped, same rule buildPackCycles documents.
+    let balance: number | null = null
+    const preciseByDate = new Map<string, { expected: number; loss: number | null }>()
+    for (const ev of events) {
+      let lossThisEvent: number | null = null
+      if (balance === null) {
+        if (ev.kind === 'count' || ev.kind === 'pack_open') balance = ev.qty
+      } else if (ev.kind === 'count') {
+        lossThisEvent = parseFloat((balance - ev.qty).toFixed(4))
+        balance = ev.qty
+      } else if (ev.kind === 'pack_open') {
+        lossThisEvent = parseFloat(balance.toFixed(4))
+        balance = ev.qty
+      } else {
+        balance = parseFloat((balance - ev.qty).toFixed(4))
+      }
+      if (balance !== null) {
+        const existing = preciseByDate.get(ev.date)
+        preciseByDate.set(ev.date, {
+          expected: balance,
+          loss: lossThisEvent !== null ? (existing?.loss ?? 0) + lossThisEvent : (existing?.loss ?? null),
+        })
+      }
+    }
+
+    for (const row of dayRows) {
+      const p = preciseByDate.get(row.date)
+      if (p) {
+        row.precise_expected_soh = p.expected
+        row.precise_loss = p.loss
+      }
+    }
+  }
+
+  return dayRows
 }
