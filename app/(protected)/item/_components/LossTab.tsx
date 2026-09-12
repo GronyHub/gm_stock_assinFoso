@@ -170,8 +170,16 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
 // instead of the bare quantity -- e.g. "24/50" -- so this cell alone
 // answers how much of THIS pack has been used, independent of any other
 // row. Still open (no next pack yet) is marked "open"; already using more
-// than this pack gave is flagged red even before it closes.
-function CnvValue({ qty, time, used, closed }: { qty: string | null; time?: string | null; used?: number | null; closed?: boolean | null }) {
+// than this pack gave is flagged red even before it closes. usedBefore/
+// usedAfter (see cnv_used_before/cnv_used_after in lib/itemDayRows.ts) is
+// this SAME day's own before/after split around the exact tap moment --
+// only passed in by tables that don't already show it in a dedicated Used
+// column (see the "2+ services" breakdown table below, which does).
+function CnvValue({ qty, time, used, closed, usedBefore, usedAfter }: {
+  qty: string | null; time?: string | null
+  used?: number | null; closed?: boolean | null
+  usedBefore?: number | null; usedAfter?: number | null
+}) {
   const text = fmtQs(qty)
   const t = fmtTime(time)
   if (text === '—') return <span className="text-gray-300">—</span>
@@ -191,6 +199,11 @@ function CnvValue({ qty, time, used, closed }: { qty: string | null; time?: stri
         overGiven
           ? <span className="text-red-600 text-[6px] font-bold whitespace-nowrap">open ⚠</span>
           : <span className="text-blue-600 text-[6px] font-semibold whitespace-nowrap">open</span>
+      )}
+      {usedBefore != null && usedAfter != null && (
+        <span className="text-gray-400 text-[6px] whitespace-nowrap" title="Used before / after this pack was tapped open today">
+          {fmtQ(usedBefore)}/{fmtQ(usedAfter)}
+        </span>
       )}
       {t && <span className="text-gray-400 text-[6px] whitespace-nowrap">{t}</span>}
     </span>
@@ -1804,7 +1817,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       fmtQs(row.bills_qty)
                     )}
                   </td>}
-                  {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} /></td>}
+                  {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} usedBefore={row.cnv_used_before} usedAfter={row.cnv_used_after} /></td>}
                   {!isService && !isGmcItem && <td className="px-1 py-0 text-right text-gray-400">{fmtN(row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
                     {matchingTradeOffs.length > 0 ? (
