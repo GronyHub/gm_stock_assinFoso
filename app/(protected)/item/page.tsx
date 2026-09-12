@@ -4621,12 +4621,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             further down) rather than a separate switch of their own -- this
             button's active state lights up for any of the three. */}
         <button type="button" onClick={() => pickItemsMode('sale')} title="Sales" className={btnCls(onItemsGrid && !inCountTab && (itemsPageMode === 'sale' || itemsPageMode === 'log' || itemsPageMode === 'sales'), 'bg-blue-600')}>Sales</button>
-        {/* Count groups the views that used to live only in Sale mode's own
-            filter row -- Records/Count Due/Loss by Date/Loss by Items/Net
-            Loss/Negative Stock (see inCountTab/pickCountMode above) -- these
-            are a stock-taking concern, not a sales one, so they get their
-            own tab rather than staying buried under Sale. */}
-        <button type="button" onClick={() => pickCountMode()} title="Count" className={btnCls(onItemsGrid && inCountTab, 'bg-fuchsia-600')}>Count</button>
+        {/* Count's own tab-switcher button retired -- Count Due/Negative SOH
+            are now reachable straight from the "Critical, Do Now" bar (see
+            renderCriticalBar) and the full Records/history list moved to its
+            own sidebar page (lossView 'counts', CountsTab.tsx), so this was
+            a second, redundant way into overlapping functionality. Count
+            mode itself (inCountTab, pickCountMode) is untouched -- still
+            reachable via the Critical bar and the GMC overage gate's own
+            "Go to Count" button (resolveOverageGate), and once in it, its
+            own sub-nav (see the countSubView row below) still switches
+            between Records/Count Due/Negative SOH same as before. */}
         <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
         <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
         {/* P&L/CAB were previously reachable only via the sidebar (pickLossView)
