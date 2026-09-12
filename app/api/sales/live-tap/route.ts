@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
+import { recordCountRevision } from '@/lib/countRevisions'
 import { NextRequest } from 'next/server'
 
 // Ghana is UTC+0 year-round, so an ISO UTC date slice is already the
@@ -228,15 +229,34 @@ export async function POST(req: NextRequest) {
           const note = `[GMC PACK RESET] New pack of "${item.canonical_name}" recorded -- assumed previous stock finished. `
             + `Expected ${expected ?? 'n/a'}, reset to ${resetQty}.`
 
+          // Never more than one stock_counts row per (item, day) -- looked
+          // up by date alone, not also scoped to source='gmc_pack_reset',
+          // so this can never coexist with (and get silently summed
+          // against, per lib/itemDayRows.ts's daily_counts) a genuine
+          // manual physical count entered the same day. If the row being
+          // overwritten wasn't already a pack reset, it's a real count --
+          // preserve it in the same history trail a manual recount would
+          // (see /api/stock/count's own recordCountRevision call) so its
+          // value/author isn't silently lost, just superseded.
           const [existingReset] = await sql`
-            SELECT id FROM stock_counts
-            WHERE item_id = ${item.converts_to_item_id} AND count_date::date = ${date} AND source = 'gmc_pack_reset'
+            SELECT id, quantity_counted, counted_by, source FROM stock_counts
+            WHERE item_id = ${item.converts_to_item_id} AND count_date::date = ${date}
             ORDER BY id DESC LIMIT 1
           `
           if (existingReset) {
+            if (existingReset.source !== 'gmc_pack_reset') {
+              await recordCountRevision({
+                stockCountId: existingReset.id,
+                itemId: item.converts_to_item_id,
+                countDate: date,
+                oldQty: existingReset.quantity_counted,
+                oldCountedBy: existingReset.counted_by,
+                changedBy: staffName,
+              })
+            }
             await sql`
               UPDATE stock_counts
-              SET quantity_counted = ${resetQty}, notes = ${note}, counted_by = ${staffName}, counted_at = NOW()
+              SET quantity_counted = ${resetQty}, notes = ${note}, source = 'gmc_pack_reset', counted_by = ${staffName}, counted_at = NOW()
               WHERE id = ${existingReset.id}
             `
           } else {

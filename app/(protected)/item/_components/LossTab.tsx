@@ -7,6 +7,7 @@ import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
+import type { PackTimelineEntry } from '@/lib/packTimeline'
 import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 import { ColResizeHandle } from './columnPrefs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './ItemEditForm'
@@ -1178,9 +1179,18 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // code, since nothing else needs it deleted yet. Flip back to
   // `isPackChain` below to restore the old combined view.
   const showPackChainTable = false
+  // CNV (converted-in from another item's GMC take) can only ever be
+  // non-zero for the item a pack_to_gmc good actually converts into --
+  // every other item's converted_in_qty is always null, so showing the
+  // column there is a permanently-empty column, not real information. Also
+  // what gates the Pack Timeline section below (see lib/packTimeline.ts) --
+  // this IS "the item a pack converts into," so it's the only place that
+  // section has anything to show.
+  const isGmcItem = item.gmc_type === 'gmc'
   const [targetDayRows, setTargetDayRows] = useState<DayRow[] | null>(null)
   const [sheetPrice, setSheetPrice] = useState<number>(PAPER_SELL_PRICE)
   const [sheetCP, setSheetCP] = useState<number>(0)
+  const [packTimeline, setPackTimeline] = useState<PackTimelineEntry[] | null>(null)
 
   useEffect(() => {
     if (!isPackChain || item.converts_to_item_id == null) return
@@ -1202,17 +1212,24 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPackChain, item.converts_to_item_id])
 
+  // Pack Timeline (see lib/packTimeline.ts) -- only meaningful on a GMC
+  // target's own page (isGmcItem), the opposite direction from isPackChain
+  // above (that's a pack looking at its target; this is the target looking
+  // at every pack that's ever fed it).
+  useEffect(() => {
+    if (!isGmcItem) { setPackTimeline(null); return }
+    fetch(`/api/items/${item.item_id}/pack-timeline`).then(r => r.json())
+      .then(d => setPackTimeline(Array.isArray(d) ? d : []))
+      .catch(() => setPackTimeline([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGmcItem, item.item_id])
+
   const computed = dayRows ? computeRows(dayRows) : null
   const vcpJumps = computed ? computeVcpJumps(computed) : new Map<string, VcpJump>()
   for (const [date, jump] of vcpJumps) {
     if (jump.billId != null && dismissedVcpJumpBillIds.has(jump.billId)) vcpJumps.delete(date)
   }
   const isService = item.product_type === 'service'
-  // CNV (converted-in from another item's GMC take) can only ever be
-  // non-zero for the item a pack_to_gmc good actually converts into --
-  // every other item's converted_in_qty is always null, so showing the
-  // column there is a permanently-empty column, not real information.
-  const isGmcItem = item.gmc_type === 'gmc'
   const sp = parseFloat(item.sp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
@@ -1268,6 +1285,67 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <p className="text-[8px] font-semibold text-blue-700">
             <span className="text-gray-500">Derived from pack:</span> {parentPackName}
           </p>
+        </div>
+      )}
+
+      {/* Pack Timeline -- see lib/packTimeline.ts. Only shows on a GMC
+          target's own page (isGmcItem), built from exact tap timestamps
+          instead of the day-grained columns below, so two packs opened the
+          same calendar day still get their own separate row here with
+          usage correctly split between them, instead of blurring into one
+          combined day. Purely additive/informational -- doesn't feed, and
+          isn't fed by, the day-by-day table's own Loss/Gain math. */}
+      {isGmcItem && packTimeline && packTimeline.length > 0 && (
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
+            Pack Timeline — every GMC pack opened, in order
+          </p>
+          <table className="w-full border-collapse text-[8px]">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-1.5 py-1 text-left font-semibold text-gray-600 uppercase whitespace-nowrap">Pack</th>
+                <th className="px-1.5 py-1 text-left font-semibold text-gray-600 uppercase whitespace-nowrap">Opened</th>
+                <th className="px-1.5 py-1 text-right font-semibold text-gray-600 uppercase whitespace-nowrap">Given</th>
+                <th className="px-1.5 py-1 text-right font-semibold text-gray-600 uppercase whitespace-nowrap">Used</th>
+                <th className="px-1.5 py-1 text-right font-semibold text-gray-600 uppercase whitespace-nowrap">Remaining</th>
+                <th className="px-1.5 py-1 text-left font-semibold text-gray-600 uppercase whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packTimeline.map((entry, i) => {
+                const remaining = parseFloat((entry.sheetsGiven - entry.used).toFixed(4))
+                return (
+                  <tr key={i} className="border-b border-gray-100 align-top">
+                    <td className="px-1.5 py-1 font-semibold text-gray-900 whitespace-nowrap">{entry.packItemName}</td>
+                    <td className="px-1.5 py-1 text-gray-600 whitespace-nowrap">{fmtDate(entry.start)} {fmtTime(entry.start)}</td>
+                    <td className="px-1.5 py-1 text-right text-gray-900 whitespace-nowrap">{fmtN(entry.sheetsGiven)}</td>
+                    <td className="px-1.5 py-1 text-right text-blue-700">
+                      <div className="whitespace-nowrap">{fmtN(entry.used)}</div>
+                      {entry.usedBreakdown.length > 0 && (
+                        <div className="text-gray-400 text-[7px] mt-0.5 space-y-0.5">
+                          {entry.usedBreakdown.map((b, j) => (
+                            <div key={j} className="whitespace-nowrap">{b.serviceName} ×{b.qty} @ {fmtTime(b.tappedAt)}</div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className={`px-1.5 py-1 text-right font-semibold whitespace-nowrap ${remaining < 0.001 ? 'text-red-600' : remaining < 5 ? 'text-amber-600' : 'text-gray-900'}`}>
+                      {fmtN(remaining)}
+                    </td>
+                    <td className="px-1.5 py-1 whitespace-nowrap">
+                      {entry.end === null ? (
+                        remaining < 0.001
+                          ? <span className="text-red-600 font-bold">open ⚠ depleted</span>
+                          : <span className="text-blue-600 font-semibold">open</span>
+                      ) : (
+                        <span className="text-gray-400">closed {fmtDate(entry.end)} {fmtTime(entry.end)}</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
