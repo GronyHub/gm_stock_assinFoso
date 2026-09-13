@@ -157,11 +157,24 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   const item = rows.find(r => r.item_id === itemId)
 
-  if (!item && rows.length > 0) {
-    return <div className="p-4 text-orange-600 text-sm">Item #{itemId} not found in loaded data</div>
-  }
-
   // Enrich count records with trade-off suggestions
+  //
+  // These five hooks used to sit AFTER the "item not found" early return
+  // below -- fine as long as that branch was never actually reachable once
+  // rows had loaded, which held only because /api/losses/summary used to
+  // guarantee every item it returned had at least one real sale/bill/count
+  // (see that route's own comment). A "Needs Review" stub genuinely has
+  // none, and this panel never remounts between item taps (no `key`, see
+  // its call sites), so switching from an item this stale `rows` DOES have
+  // to one it doesn't -- e.g. right after a deploy widened that query, but
+  // this tab's own `rows` was fetched before it and dataFetched below
+  // blocks a refetch -- flips the early return from not-taken to taken
+  // between renders of the SAME instance, calling five fewer hooks than
+  // the render before it. That's React error #300 ("rendered fewer hooks
+  // than expected"), which a plain page refresh works around by starting
+  // `rows` fresh, but the underlying Rules-of-Hooks violation was still
+  // there waiting for the next stale-cache window. Moved above the early
+  // return so these five always run regardless of whether `item` resolves.
   const countRecordsWithTradeOffs = useMemo(() =>
     countRecords.map(rec => {
       const recAny = rec as any
@@ -207,6 +220,10 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
   const allItemsList = useMemo(() =>
     rows.map(r => ({ item_id: r.item_id, item_name: r.item_name })).sort((a, b) => a.item_name.localeCompare(b.item_name))
   , [rows])
+
+  if (!item && rows.length > 0) {
+    return <div className="p-4 text-orange-600 text-sm">Item #{itemId} not found in loaded data</div>
+  }
 
   function patchItem(id: number, updates: Partial<SummaryRow>) {
     setRows(prev => prev.map(r => r.item_id === id ? { ...r, ...updates } : r))
