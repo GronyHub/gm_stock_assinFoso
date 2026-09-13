@@ -26,10 +26,13 @@ export async function GET() {
       GROUP BY 1, 2
       ORDER BY 1
     `,
+    // 'Pending Review' items are unidentified legacy-import stubs, not
+    // confirmed products -- excluded here for the same reason Inactive is,
+    // since this list is what an admin picks a resolution target from.
     sql`
       SELECT id, canonical_name
       FROM items
-      WHERE status IS NULL OR LOWER(status) != 'inactive'
+      WHERE status IS NULL OR LOWER(status) NOT IN ('inactive', 'pending review')
       ORDER BY canonical_name
     `,
   ])

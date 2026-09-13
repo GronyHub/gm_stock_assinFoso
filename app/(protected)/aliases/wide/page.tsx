@@ -4,6 +4,12 @@ import { useState, useEffect, useMemo } from 'react'
 type Alias = { id: number; name: string; type: string }
 type Row = { item_id: number; canonical_name: string; cf_group: string | null; aliases: Alias[] }
 type TableRow = { item_id: number; canonical_name: string; group: string | null; alias_name: string; alias_type: string; alias_id: number | null }
+type TxLine = { date: string; quantity: string | null; item_price?: string | null; unit_price?: string | null; item_total: string | null; source: string }
+type ItemDetails = {
+  item: { id: number; canonical_name: string; status: string | null; cf_group: string | null; description: string | null }
+  sales: TxLine[]
+  bills: TxLine[]
+}
 
 export default function AliasEditorPage() {
   const [rows, setRows] = useState<Row[]>([])
@@ -15,8 +21,20 @@ export default function AliasEditorPage() {
   const [moving, setMoving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [merging, setMerging] = useState<number | null>(null)
+  const [detailsItemId, setDetailsItemId] = useState<number | null>(null)
+  const [details, setDetails] = useState<ItemDetails | null>(null)
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   useEffect(() => { load() }, [])
+
+  async function openDetails(itemId: number) {
+    setDetailsItemId(itemId)
+    setDetails(null)
+    setDetailsLoading(true)
+    const d = await fetch(`/api/aliases/item-transactions?itemId=${itemId}`).then(r => r.json()).catch(() => null)
+    setDetails(d)
+    setDetailsLoading(false)
+  }
 
   async function load() {
     setLoading(true)
@@ -150,6 +168,78 @@ export default function AliasEditorPage() {
         </div>
       )}
 
+      {/* Details modal */}
+      {detailsItemId !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2" onClick={() => setDetailsItemId(null)}>
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[80vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="px-3 py-2 bg-blue-50 border-b border-blue-200 flex items-start justify-between gap-2 shrink-0">
+              <div className="min-w-0">
+                <p className="text-[9px] text-blue-600 font-bold uppercase">Item Details</p>
+                <p className="text-[10px] font-semibold text-gray-900 mt-0.5 truncate">{details?.item.canonical_name ?? '…'}</p>
+                {details?.item.status && <p className="text-[8px] text-gray-500 mt-0.5">{details.item.status}{details.item.cf_group ? ` • ${details.item.cf_group}` : ''}</p>}
+              </div>
+              <button onClick={() => setDetailsItemId(null)} className="text-gray-400 hover:text-gray-700 font-bold text-sm shrink-0">×</button>
+            </div>
+            <div className="p-3 overflow-y-auto space-y-3">
+              {detailsLoading ? (
+                <p className="text-[9px] text-gray-400 text-center py-6">Loading…</p>
+              ) : !details ? (
+                <p className="text-[9px] text-red-500 text-center py-6">Failed to load</p>
+              ) : (
+                <>
+                  {details.item.description && (
+                    <div>
+                      <p className="text-[8px] font-bold text-gray-500 uppercase mb-1">Notes</p>
+                      <p className="text-[9px] text-gray-700 whitespace-pre-wrap">{details.item.description}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[8px] font-bold text-gray-500 uppercase mb-1">Sales ({details.sales.length})</p>
+                    {details.sales.length === 0 ? (
+                      <p className="text-[9px] text-gray-400">No sales records</p>
+                    ) : (
+                      <table className="w-full text-[9px]">
+                        <tbody>
+                          {details.sales.map((s, i) => (
+                            <tr key={i} className="border-b border-gray-100">
+                              <td className="py-0.5 pr-2 text-gray-500 whitespace-nowrap">{s.date}</td>
+                              <td className="py-0.5 pr-2 text-gray-700">qty {s.quantity ?? '—'}</td>
+                              <td className="py-0.5 pr-2 text-gray-700">@ {s.item_price ?? '—'}</td>
+                              <td className="py-0.5 pr-2 text-gray-900 font-semibold">₵{s.item_total ?? '—'}</td>
+                              <td className="py-0.5 text-gray-400 text-[8px]">{s.source}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold text-gray-500 uppercase mb-1">Bills ({details.bills.length})</p>
+                    {details.bills.length === 0 ? (
+                      <p className="text-[9px] text-gray-400">No bill records</p>
+                    ) : (
+                      <table className="w-full text-[9px]">
+                        <tbody>
+                          {details.bills.map((b, i) => (
+                            <tr key={i} className="border-b border-gray-100">
+                              <td className="py-0.5 pr-2 text-gray-500 whitespace-nowrap">{b.date}</td>
+                              <td className="py-0.5 pr-2 text-gray-700">qty {b.quantity ?? '—'}</td>
+                              <td className="py-0.5 pr-2 text-gray-700">@ {b.unit_price ?? '—'}</td>
+                              <td className="py-0.5 pr-2 text-gray-900 font-semibold">₵{b.item_total ?? '—'}</td>
+                              <td className="py-0.5 text-gray-400 text-[8px]">{b.source}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="flex-1 overflow-auto min-h-0 border border-gray-200 rounded">
         <table className="w-full border-collapse text-[9px]">
@@ -169,8 +259,16 @@ export default function AliasEditorPage() {
               </tr>
             ) : (
               tableRows.map((row, idx) => (
-                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                  <td className="px-1.5 py-0 text-gray-900 font-semibold truncate max-w-[200px]">{row.canonical_name}</td>
+                <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 transition ${row.group === 'Needs Review' ? 'bg-orange-50' : ''}`}>
+                  <td className="px-1.5 py-0 truncate max-w-[200px]">
+                    <button onClick={() => openDetails(row.item_id)}
+                      className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition text-left">
+                      {row.canonical_name}
+                    </button>
+                    {row.group === 'Needs Review' && (
+                      <span className="ml-1 text-[7px] font-bold text-orange-600 uppercase">⚠ needs review</span>
+                    )}
+                  </td>
                   <td className="px-1.5 py-0 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
                   <td className="px-1.5 py-0 text-gray-700 truncate max-w-[250px]">{row.alias_name}</td>
                   <td className="px-1.5 py-0 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
