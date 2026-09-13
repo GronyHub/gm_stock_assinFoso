@@ -680,7 +680,8 @@ function itemAttentionFlags(
   soldBelowCostDatesByItemId: Map<number, string[]>,
   vcpJumpDatesByItemId: Map<number, string[]>,
   gmcTargetStockByItemId: Map<number, number>,
-  gmcOpenOverageByItemId: Map<number, GmcOpenOverage>
+  gmcOpenOverageByItemId: Map<number, GmcOpenOverage>,
+  lowConfidenceAliasIds: Set<number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -744,6 +745,7 @@ function itemAttentionFlags(
   // becomes a real housekeeping flag once the reviewer confirms it in
   // Item 360 (see LossTab.tsx's needsReview) and cf_group clears to null.
   if (item.group === 'Needs Review') flags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
+  if (lowConfidenceAliasIds.has(item.id)) flags.push({ label: '📋 ALIAS NEEDS CHECK', bg: 'bg-indigo-700' })
   // A day row that made it into the item's own history but ended up with
   // every field blank/zero -- a phantom date with no real activity behind
   // it (e.g. a zero-quantity bill line). Doesn't affect stock math, but is
@@ -978,7 +980,7 @@ function ItemHubPageInner() {
   // entirely" values that DO still fire, now via the Count tab's own small
   // sub-nav instead of a radio in this row -- see inCountTab below and
   // pickCountMode.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2741,6 +2743,11 @@ function ItemHubPageInner() {
     duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))] as number[],
     unlinked_named: (globalFlags?.unlinkedNamed ?? []).map((r: any) => r.item_id) as number[],
     service_violation: serviceViolationIds,
+    // Items whose pre-Zoho alias was resolved by best-guess heuristics
+    // (price/name matching between 2+ candidates) rather than a confident
+    // match -- see /api/flags' lowConfidenceAlias. Worth a manual check;
+    // wrong picks are fixed the same way as any other item, via Merge.
+    low_confidence_alias: (globalFlags?.lowConfidenceAlias ?? []).map((r: any) => r.item_id) as number[],
   }), [liveAllItems, globalFlags, serviceViolationIds])
 
   // Build mode-specific flags array with Live Sale callbacks
@@ -2973,6 +2980,7 @@ function ItemHubPageInner() {
   const liveNoCpIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_cp ?? []), [liveItemsWithViolations])
   const liveNoGroupIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_group ?? []), [liveItemsWithViolations])
   const liveNeedsReviewIds = useMemo(() => new Set<number>(liveItemsWithViolations.needs_review ?? []), [liveItemsWithViolations])
+  const liveLowConfidenceAliasIds = useMemo(() => new Set<number>(liveItemsWithViolations.low_confidence_alias ?? []), [liveItemsWithViolations])
   const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
     const sp = parseFloat(String(item.selling_price)) || 0
     const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
@@ -3057,6 +3065,7 @@ function ItemHubPageInner() {
   const liveNoCpCount = liveNoCpIds.size
   const liveNoGroupCount = liveNoGroupIds.size
   const liveNeedsReviewCount = liveNeedsReviewIds.size
+  const liveLowConfidenceAliasCount = liveLowConfidenceAliasIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3583,10 +3592,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -3632,6 +3641,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveNoGroupIds.has(item.id))
     } else if (liveSaleViolationFilter === 'needsReview') {
       itemsToSort = liveCatalogueItems.filter(item => liveNeedsReviewIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'lowConfidenceAlias') {
+      itemsToSort = liveCatalogueItems.filter(item => liveLowConfidenceAliasIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3666,7 +3677,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -6522,6 +6533,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'needsReview'} onChange={() => pickSaleFilter('needsReview')} className="cursor-pointer w-3 h-3" />
                     <span>Needs Review ({liveNeedsReviewCount})</span>
                   </label></>)}
+                  {/* Pre-Zoho aliases resolved by best-guess price/name
+                      heuristics (2+ candidates, no confident winner) rather
+                      than a solid match -- worth a manual check via Merge if
+                      it turns out wrong, same as Needs Review above. */}
+                  {liveLowConfidenceAliasCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-indigo-700">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'lowConfidenceAlias'} onChange={() => pickSaleFilter('lowConfidenceAlias')} className="cursor-pointer w-3 h-3" />
+                    <span>Alias Needs Check ({liveLowConfidenceAliasCount})</span>
+                  </label></>)}
                   {/* Receipts' own violations (No Cash/Missing Days/Dup
                       Receipt/High WNW/No Attachment) used to live only in
                       Receipts' own dedicated violation row -- folded in here
@@ -7841,7 +7861,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -7897,6 +7917,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             else if (liveSaleViolationFilter === 'noCp') filteredFlags = flags.filter(f => f.label.includes('MISSING COST PRICE'))
                             else if (liveSaleViolationFilter === 'noGroup') filteredFlags = flags.filter(f => f.label.includes('MISSING GROUP'))
                             else if (liveSaleViolationFilter === 'needsReview') filteredFlags = flags.filter(f => f.label.includes('NEEDS REVIEW'))
+                            else if (liveSaleViolationFilter === 'lowConfidenceAlias') filteredFlags = flags.filter(f => f.label.includes('ALIAS NEEDS CHECK'))
                             return filteredFlags.map((f, i) => {
                               // Strip the violation's own name down to just
                               // its number/detail (if it has one) -- picking
@@ -8073,7 +8094,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected

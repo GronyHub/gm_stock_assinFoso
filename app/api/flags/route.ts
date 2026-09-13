@@ -163,6 +163,7 @@ export async function GET() {
     billNoAttachment,
     billNoExpense,
     highWnw,
+    lowConfidenceAlias,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -495,6 +496,19 @@ export async function GET() {
       WHERE cash_counted IS NOT NULL AND (cash_counted - total) > 200
       ORDER BY receipt_date DESC
     `),
+
+    // 14. Items whose pre-Zoho alias was resolved by best-guess (price/name
+    // heuristics picking one of 2+ candidates, see the 78-pair prezoho
+    // disambiguation pass) rather than a confident match -- source
+    // 'prezoho_bulk_low_confidence' marks exactly these, set once at
+    // resolution time and never re-derived, so this is a plain lookup.
+    safeQuery(() => sql`
+      SELECT DISTINCT a.item_id, i.canonical_name AS item_name, a.alias_name
+      FROM item_aliases a
+      JOIN items i ON i.id = a.item_id
+      WHERE a.source = 'prezoho_bulk_low_confidence'
+      ORDER BY item_name
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -588,6 +602,7 @@ export async function GET() {
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
+    lowConfidenceAlias,
   }
 
   // Cache the plain data, not a Response object (see the comment above the
