@@ -3,7 +3,6 @@ import { useState, useEffect, useMemo } from 'react'
 
 type Alias = { id: number; name: string; type: string; source: string | null }
 type Row = { item_id: number; canonical_name: string; cf_group: string | null; needs_review: boolean; aliases: Alias[] }
-type TableRow = { item_id: number; canonical_name: string; group: string | null; needs_review: boolean; alias_name: string; alias_type: string; alias_id: number | null; alias_source: string | null }
 type TxLine = { date: string; quantity: string | null; item_price?: string | null; unit_price?: string | null; item_total: string | null; source: string }
 type ItemDetails = {
   item: { id: number; canonical_name: string; status: string | null; cf_group: string | null; description: string | null }
@@ -11,16 +10,29 @@ type ItemDetails = {
   bills: TxLine[]
 }
 
+function rowHasLowConfidenceAlias(r: Row) {
+  return r.aliases.some(a => a.source === 'prezoho_bulk_low_confidence')
+}
+
 export default function AliasEditorPage() {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [group, setGroup] = useState<string | null>(null)
+  // Independent boolean filters (not exclusive with each other or with the
+  // group chips/search above) -- selecting one narrows the left list down
+  // to exactly the items that need that kind of attention, so those can be
+  // worked through one at a time without hunting for them in the full list.
+  const [needsReviewOnly, setNeedsReviewOnly] = useState(false)
+  const [aliasCheckOnly, setAliasCheckOnly] = useState(false)
+  // Which item's aliases show in the right-hand panel -- a master/detail
+  // split instead of one flat table repeating the canonical name once per
+  // alias, which was what made the old layout hard to scan.
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [movingAlias, setMovingAlias] = useState<{ id: number; name: string; fromItemId: number } | null>(null)
   const [moveSearch, setMoveSearch] = useState('')
   const [moving, setMoving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [merging, setMerging] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
   // "Create standalone item" -- an alternative to picking an existing
   // canonical item in the Move modal, for when the alias genuinely isn't a
@@ -58,28 +70,31 @@ export default function AliasEditorPage() {
     [rows]
   )
 
-  const tableRows: TableRow[] = useMemo(() => {
+  const needsReviewCount = useMemo(() => rows.filter(r => r.needs_review).length, [rows])
+  const aliasCheckCount = useMemo(() => rows.filter(rowHasLowConfidenceAlias).length, [rows])
+
+  const filteredRows: Row[] = useMemo(() => {
     const q = search.toLowerCase()
-    const matchesSearch = (r: Row) => !q ||
-      r.canonical_name.toLowerCase().includes(q) ||
-      r.aliases.some(a => a.name.toLowerCase().includes(q))
-
-    const matchesGroup = (r: Row) => !group || group === 'All' ? true : (r.cf_group ?? 'Ungrouped') === group
-
-    const result: TableRow[] = []
-    rows.forEach(r => {
-      if (matchesSearch(r) && matchesGroup(r)) {
-        if (r.aliases.length === 0) {
-          result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, needs_review: r.needs_review, alias_name: '—', alias_type: '—', alias_id: null, alias_source: null })
-        } else {
-          r.aliases.forEach(a => {
-            result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, needs_review: r.needs_review, alias_name: a.name, alias_type: a.type, alias_id: a.id, alias_source: a.source })
-          })
-        }
-      }
+    return rows.filter(r => {
+      if (needsReviewOnly && !r.needs_review) return false
+      if (aliasCheckOnly && !rowHasLowConfidenceAlias(r)) return false
+      if (group && group !== 'All' && (r.cf_group ?? 'Ungrouped') !== group) return false
+      if (q && !r.canonical_name.toLowerCase().includes(q) && !r.aliases.some(a => a.name.toLowerCase().includes(q))) return false
+      return true
     })
-    return result
-  }, [rows, search, group])
+  }, [rows, search, group, needsReviewOnly, aliasCheckOnly])
+
+  // Keep a selection valid across reloads/filter changes -- e.g. once every
+  // alias on the selected item is confirmed it can drop out of an active
+  // "Alias Needs Check" filter, which should clear the detail panel rather
+  // than silently keep showing a now-filtered-out item.
+  useEffect(() => {
+    if (selectedItemId !== null && !filteredRows.some(r => r.item_id === selectedItemId)) {
+      setSelectedItemId(null)
+    }
+  }, [filteredRows, selectedItemId])
+
+  const selectedRow = useMemo(() => rows.find(r => r.item_id === selectedItemId) ?? null, [rows, selectedItemId])
 
   const moveTargets = useMemo(() => {
     const q = moveSearch.toLowerCase()
@@ -190,7 +205,19 @@ export default function AliasEditorPage() {
             </button>
           ))}
         </div>
-        <p className="text-[9px] text-gray-400">{tableRows.length} shown</p>
+        <div className="flex gap-3 items-center flex-wrap">
+          <label className="flex items-center gap-1 cursor-pointer text-[9px] font-semibold text-orange-700">
+            <input type="checkbox" checked={needsReviewOnly} onChange={e => setNeedsReviewOnly(e.target.checked)}
+              className="cursor-pointer w-3 h-3" />
+            ⚠ Needs Review ({needsReviewCount})
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer text-[9px] font-semibold text-indigo-700">
+            <input type="checkbox" checked={aliasCheckOnly} onChange={e => setAliasCheckOnly(e.target.checked)}
+              className="cursor-pointer w-3 h-3" />
+            🔍 Alias Needs Check ({aliasCheckCount})
+          </label>
+        </div>
+        <p className="text-[9px] text-gray-400">{filteredRows.length} of {rows.length} items shown</p>
       </div>
 
       {/* Move modal */}
@@ -331,74 +358,98 @@ export default function AliasEditorPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto min-h-0 border border-gray-200 rounded">
-        <table className="w-full border-collapse text-[9px]">
-          <thead className="sticky top-0 bg-gray-100 z-10">
-            <tr>
-              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Canonical</th>
-              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Group</th>
-              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300">Alias</th>
-              <th className="px-1.5 py-0.5 text-left font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Type</th>
-              <th className="px-1.5 py-0.5 text-right font-semibold text-gray-600 border-b border-gray-300 whitespace-nowrap">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableRows.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-2 py-4 text-center text-gray-400">No items found</td>
-              </tr>
-            ) : (
-              tableRows.map((row, idx) => (
-                <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 transition ${row.needs_review ? 'bg-orange-50' : row.alias_source === 'prezoho_bulk_low_confidence' ? 'bg-indigo-50' : ''}`}>
-                  <td className="px-1.5 py-0 truncate max-w-[200px]">
-                    <button onClick={() => openDetails(row.item_id)}
-                      className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition text-left">
-                      {row.canonical_name}
-                    </button>
-                    {row.needs_review && (
-                      <span className="ml-1 text-[7px] font-bold text-orange-600 uppercase">⚠ needs review</span>
-                    )}
-                  </td>
-                  <td className="px-1.5 py-0 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
-                  <td className="px-1.5 py-0 text-gray-700 truncate max-w-[250px]">
-                    {row.alias_name}
-                    {row.alias_source === 'prezoho_bulk_low_confidence' && (
-                      <span className="ml-1 text-[7px] font-bold text-indigo-600 uppercase">🔍 needs check</span>
-                    )}
-                  </td>
-                  <td className="px-1.5 py-0 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
-                  <td className="px-1.5 py-0 text-right whitespace-nowrap">
-                    {row.alias_id && (
-                      <>
-                        <button onClick={() => { setMovingAlias({ id: row.alias_id!, name: row.alias_name, fromItemId: row.item_id }); setMoveSearch(''); setStandaloneName(row.alias_name) }}
-                          className="text-[8px] text-orange-600 font-bold hover:text-orange-700 mr-1.5 transition">
-                          Move
-                        </button>
-                        {row.alias_source === 'prezoho_bulk_low_confidence' && (
-                          <button onClick={() => confirmAlias(row.alias_id!)} disabled={confirmingId === row.alias_id}
-                            title="Confirm this alias really does point at the right item"
-                            className="text-[8px] text-indigo-600 font-bold hover:text-indigo-700 mr-1.5 transition disabled:opacity-40">
-                            {confirmingId === row.alias_id ? '…' : '✓ Confirm'}
-                          </button>
+      {/* Master/detail: canonical items on the left (one row each, never
+          repeated), the selected item's own aliases + actions on the
+          right. Replaces the old flat table that repeated the canonical
+          name once per alias, which made a multi-alias item hard to scan
+          and a single-alias one look identical to every other row. */}
+      <div className="flex-1 flex gap-2 min-h-0">
+        <div className="w-[45%] max-w-[280px] shrink-0 overflow-y-auto border border-gray-200 rounded">
+          {filteredRows.length === 0 ? (
+            <p className="text-[9px] text-gray-400 text-center py-6 px-2">No items found</p>
+          ) : (
+            filteredRows.map(r => {
+              const lowConf = rowHasLowConfidenceAlias(r)
+              const selected = r.item_id === selectedItemId
+              return (
+                <button key={r.item_id} onClick={() => setSelectedItemId(r.item_id)}
+                  className={`w-full text-left px-2 py-1.5 border-b border-gray-100 transition
+                    ${selected ? 'bg-blue-100' : r.needs_review ? 'bg-orange-50 hover:bg-orange-100' : lowConf ? 'bg-indigo-50 hover:bg-indigo-100' : 'hover:bg-gray-50'}`}>
+                  <p className="text-[10px] font-semibold text-gray-900 truncate">{r.canonical_name}</p>
+                  <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                    <span className="text-[8px] text-gray-400 truncate">{r.cf_group ?? '—'}</span>
+                    {r.needs_review && <span className="text-[7px] font-bold text-orange-600 uppercase whitespace-nowrap">⚠ review</span>}
+                    {lowConf && <span className="text-[7px] font-bold text-indigo-600 uppercase whitespace-nowrap">🔍 check</span>}
+                  </div>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto border border-gray-200 rounded">
+          {!selectedRow ? (
+            <p className="text-[9px] text-gray-400 text-center py-10 px-3">← Select an item to see its aliases</p>
+          ) : (
+            <div>
+              <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50 sticky top-0 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <button onClick={() => openDetails(selectedRow.item_id)}
+                    className="text-[10px] font-bold text-gray-900 hover:text-blue-600 hover:underline transition text-left truncate block">
+                    {selectedRow.canonical_name}
+                  </button>
+                  <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                    <span className="text-[8px] text-gray-500">{selectedRow.cf_group ?? '—'}</span>
+                    {selectedRow.needs_review && <span className="text-[7px] font-bold text-orange-600 uppercase">⚠ needs review</span>}
+                  </div>
+                </div>
+                <button onClick={() => openDetails(selectedRow.item_id)}
+                  className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition whitespace-nowrap">
+                  Sales/Bills
+                </button>
+              </div>
+              {selectedRow.aliases.length === 0 ? (
+                <p className="text-[9px] text-gray-400 text-center py-6 px-2">No aliases on this item</p>
+              ) : (
+                selectedRow.aliases.map(a => (
+                  <div key={a.id} className="px-2 py-1.5 border-b border-gray-100 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-gray-800 truncate">
+                        {a.name}
+                        {a.source === 'prezoho_bulk_low_confidence' && (
+                          <span className="ml-1 text-[7px] font-bold text-indigo-600 uppercase">🔍 needs check</span>
                         )}
-                        <button onClick={() => deleteAlias(row.alias_id!, row.alias_name)} disabled={deletingId === row.alias_id}
-                          className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
-                          {deletingId === row.alias_id ? '…' : '×'}
+                      </p>
+                      <p className="text-[8px] text-gray-400">{a.type}</p>
+                    </div>
+                    <div className="shrink-0 whitespace-nowrap">
+                      <button onClick={() => { setMovingAlias({ id: a.id, name: a.name, fromItemId: selectedRow.item_id }); setMoveSearch(''); setStandaloneName(a.name) }}
+                        className="text-[8px] text-orange-600 font-bold hover:text-orange-700 mr-1.5 transition">
+                        Move
+                      </button>
+                      {a.source === 'prezoho_bulk_low_confidence' && (
+                        <button onClick={() => confirmAlias(a.id)} disabled={confirmingId === a.id}
+                          title="Confirm this alias really does point at the right item"
+                          className="text-[8px] text-indigo-600 font-bold hover:text-indigo-700 mr-1.5 transition disabled:opacity-40">
+                          {confirmingId === a.id ? '…' : '✓ Confirm'}
                         </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      )}
+                      <button onClick={() => deleteAlias(a.id, a.name)} disabled={deletingId === a.id}
+                        className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
+                        {deletingId === a.id ? '…' : '×'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer info */}
       <div className="text-[8px] text-gray-400 shrink-0">
-        <p>Move to reassign an alias to a different canonical item (or create one from scratch) • × to delete an alias • 🔍 needs check = matched by best guess during the pre-Zoho import, confirm it's right or Move it to the correct item</p>
+        <p>Click an item on the left to see its aliases • Move to reassign an alias to a different canonical item (or create one from scratch) • × to delete an alias • 🔍 needs check = matched by best guess during the pre-Zoho import, confirm it's right or Move it to the correct item</p>
       </div>
     </div>
   )
