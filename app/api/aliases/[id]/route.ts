@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const aliasId = await getIdParam(params)
-    const { item_id, force = false } = await req.json()
+    const { item_id, force = false, alias_type } = await req.json()
 
     const [alias] = await sql`SELECT alias_name FROM item_aliases WHERE id = ${aliasId}`
     if (!alias) return notFound()
@@ -36,7 +36,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (warning) return success({ requires_confirmation: true, warning }, 409)
     }
 
-    await sql`UPDATE item_aliases SET item_id = ${item_id} WHERE id = ${aliasId}`
+    // alias_type is only ever passed when moving an alias onto a brand-new
+    // standalone item created for it (see the Alias Wide Table's "Create
+    // standalone item" flow) -- it now IS that item's own real name, so it
+    // gets 'canonical' the same as every other item's own-name alias,
+    // instead of staying 'sr_variant' from whatever it was before the move.
+    if (alias_type) {
+      await sql`UPDATE item_aliases SET item_id = ${item_id}, alias_type = ${alias_type} WHERE id = ${aliasId}`
+    } else {
+      await sql`UPDATE item_aliases SET item_id = ${item_id} WHERE id = ${aliasId}`
+    }
 
     await sql`
       UPDATE sales_receipt_lines

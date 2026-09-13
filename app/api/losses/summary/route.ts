@@ -36,6 +36,7 @@ type ItemMeta = {
   derived_from_item_id: number | null
   gmc_type: string | null
   description: string | null
+  needs_review: boolean
 }
 
 function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
@@ -108,7 +109,7 @@ export async function GET() {
              i.cf_group, s.calculated_soh,
              i.selling_rate, i.purchase_rate, i.product_type,
              i.units_per_pack, i.converts_to_item_id, i.derived_from_item_id, COALESCE(i.gmc_type, '') AS gmc_type,
-             i.description
+             i.description, i.needs_review
       FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       WHERE (
@@ -122,8 +123,12 @@ export async function GET() {
         -- A freshly-created "Needs Review" stub (see /api/aliases/wide) has no
         -- transactions of its own yet -- without this OR, Item 360 has nothing
         -- to show it at all ("Item #X not found in loaded data"), which is
-        -- exactly the case a reviewer most needs to open and inspect.
-        OR i.cf_group = 'Needs Review'
+        -- exactly the case a reviewer most needs to open and inspect. Keyed
+        -- off items.needs_review (a plain boolean) rather than cf_group, so
+        -- cf_group stays free to hold the item's real category the whole
+        -- time it's under review, instead of being overloaded as the review
+        -- marker itself.
+        OR i.needs_review = true
       )
         AND i.canonical_name NOT ILIKE 'old stop%'
         AND i.canonical_name NOT ILIKE 'old- stop%'
@@ -287,6 +292,7 @@ export async function GET() {
       derived_from_item_id: item.derived_from_item_id,
       gmc_type: item.gmc_type,
       description: item.description,
+      needs_review: item.needs_review,
       count_interval: formatCountInterval(countIntervalLabels.get(item.item_id)),
       ...agg,
     }

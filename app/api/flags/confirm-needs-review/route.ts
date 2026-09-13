@@ -6,7 +6,8 @@ import { NextRequest } from 'next/server'
 // A reviewer confirming, from Item 360's own "Needs Review" banner, that a
 // stub item created from an unidentified pre-Zoho ledger name (see
 // /api/aliases/wide) really is its own standalone product. Only clears the
-// 'Needs Review' cf_group -- it deliberately never touches name/price/status,
+// plain needs_review boolean -- cf_group already holds the item's real
+// category (assigned when the stub was created) and is never touched here,
 // so "correct" really does mean "no change" beyond dropping out of the
 // review queue. The WHERE guard makes this safe to call twice.
 export async function POST(req: NextRequest) {
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
 
   const actor = getActorName(session)
   const [row] = await sql`
-    UPDATE items SET cf_group = NULL
-    WHERE id = ${itemId} AND cf_group = 'Needs Review'
+    UPDATE items SET needs_review = false
+    WHERE id = ${itemId} AND needs_review = true
     RETURNING id, canonical_name
   ` as { id: number; canonical_name: string }[]
 

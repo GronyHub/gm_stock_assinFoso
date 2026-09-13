@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
         i.id AS item_id,
         i.canonical_name,
         i.cf_group,
+        COALESCE(i.needs_review, false) AS needs_review,
         COALESCE(ARRAY_AGG(
-          JSON_BUILD_OBJECT('id', a.id, 'name', a.alias_name, 'type', COALESCE(a.alias_type, 'other'))
+          JSON_BUILD_OBJECT('id', a.id, 'name', a.alias_name, 'type', COALESCE(a.alias_type, 'other'), 'source', a.source)
           ORDER BY a.id DESC
         ) FILTER (WHERE a.id IS NOT NULL), ARRAY[]::json[]) AS aliases,
         COUNT(a.id)::int AS cnt
@@ -30,10 +31,10 @@ export async function GET(req: NextRequest) {
       LEFT JOIN item_aliases a ON a.item_id = i.id
       WHERE (i.status IS NULL OR LOWER(i.status) <> 'inactive')
         AND (${itemId}::int IS NULL OR i.id = ${itemId})
-      GROUP BY i.id, i.canonical_name, i.cf_group
+      GROUP BY i.id, i.canonical_name, i.cf_group, i.needs_review
       HAVING ${itemId}::int IS NOT NULL OR COUNT(a.id) > 0
       ORDER BY cnt DESC
-    ` as unknown as { item_id: number; canonical_name: string; cf_group: string | null; aliases: { id: number; name: string; type: string }[]; cnt: number }[]
+    ` as unknown as { item_id: number; canonical_name: string; cf_group: string | null; needs_review: boolean; aliases: { id: number; name: string; type: string; source: string | null }[]; cnt: number }[]
 
     return success(rows)
   } catch (e) {

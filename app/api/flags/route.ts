@@ -164,6 +164,7 @@ export async function GET() {
     billNoExpense,
     highWnw,
     lowConfidenceAlias,
+    prezohoNotes,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -509,6 +510,18 @@ export async function GET() {
       WHERE a.source = 'prezoho_bulk_low_confidence'
       ORDER BY item_name
     `),
+
+    // 15. Items with at least one unreviewed pre-Zoho ledger note (see
+    // prezoho_text_cells) -- historical context already classified as not
+    // needing backfill, just worth a reviewer's eyes at some point.
+    safeQuery(() => sql`
+      SELECT p.item_id, i.canonical_name AS item_name, COUNT(*)::int AS note_count
+      FROM prezoho_text_cells p
+      JOIN items i ON i.id = p.item_id
+      WHERE p.reviewed = false
+      GROUP BY p.item_id, i.canonical_name
+      ORDER BY item_name
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -602,7 +615,7 @@ export async function GET() {
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
-    lowConfidenceAlias,
+    lowConfidenceAlias, prezohoNotes,
   }
 
   // Cache the plain data, not a Response object (see the comment above the

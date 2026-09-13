@@ -30,6 +30,7 @@ export type SummaryRow = {
   count_interval: string | null
   gmc_type: string | null
   description: string | null
+  needs_review: boolean
   lgAmt: number
   lgQty: number
   lossCount: number
@@ -1208,6 +1209,29 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.item_id])
 
+  // Pre-Zoho ledger day-cells with descriptive text instead of a bare
+  // quantity (see prezoho_text_cells / /api/prezoho-notes) -- already
+  // classified as not sales during the manual review pass, surfaced here
+  // just so a reviewer can glance over them per item instead of only
+  // existing as an export to cross-reference by hand.
+  const [prezohoNotes, setPrezohoNotes] = useState<{ id: number; cell_date: string; raw_text: string; total: string | null; cp: string | null; category: string; reviewed: boolean }[]>([])
+  const [prezohoNotesMarking, setPrezohoNotesMarking] = useState(false)
+  useEffect(() => {
+    fetch(`/api/prezoho-notes?itemId=${item.item_id}`).then(r => r.json())
+      .then(d => setPrezohoNotes(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [item.item_id])
+  const unreviewedPrezohoNotes = prezohoNotes.filter(n => !n.reviewed)
+  async function markPrezohoNotesReviewed() {
+    setPrezohoNotesMarking(true)
+    const res = await fetch('/api/prezoho-notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: item.item_id }),
+    })
+    setPrezohoNotesMarking(false)
+    if (res.ok) setPrezohoNotes(prev => prev.map(n => ({ ...n, reviewed: true })))
+  }
+
   // For the summary panel's Last Sold/Avg Monthly Sales stats -- a single
   // bulk, 2-hour-cached fetch (see /api/items/sale-history's own comment),
   // same shared cache every other Item 360 popup and item/page.tsx's own
@@ -1302,12 +1326,12 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
 
   // Resolve control for a "Needs Review" stub item (see /api/aliases/wide
   // and lib/activeItems.ts). Picking "Correct" is the only branch that
-  // writes anything -- it clears cf_group so the item graduates out of the
-  // review queue into an ordinary catalog item (still possibly missing a
-  // proper group, which is then just the plain NO GROUP housekeeping flag
-  // above, not a review condition). Picking "Wrong" deliberately does
-  // nothing server-side: the fix is the existing Merge picker further down
-  // this same panel, not a state flip here.
+  // writes anything -- it clears the plain needs_review boolean (cf_group
+  // is untouched; it already holds the item's real category, assigned when
+  // the stub was created) so the item graduates out of the review queue.
+  // Picking "Wrong" deliberately does nothing server-side: the fix is the
+  // existing Merge picker further down this same panel, not a state flip
+  // here.
   const [reviewSaving, setReviewSaving] = useState(false)
   const [reviewVerdict, setReviewVerdict] = useState<'correct' | 'wrong' | null>(null)
   async function confirmNeedsReviewCorrect() {
@@ -1319,7 +1343,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
     setReviewSaving(false)
     if (res.ok) {
       setReviewVerdict('correct')
-      onSaved({ cf_group: null })
+      onSaved({ needs_review: false })
     } else {
       alert((await res.json().catch(() => null))?.error ?? 'Could not save.')
     }
@@ -1453,7 +1477,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const noSp = !item.sp || parseFloat(item.sp) <= 0
   const noCp = isGoodsItem && (!item.cp || parseFloat(item.cp) <= 0)
   const noGroup = !item.cf_group
-  const needsReview = item.cf_group === 'Needs Review'
+  const needsReview = item.needs_review
   // Same condition item/page.tsx's own serviceViolationIds uses -- a
   // service whose own count/GMC-take/bill activity is nonzero shouldn't
   // have any (services aren't physically counted or purchased).
@@ -1486,10 +1510,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   if (noSp) summaryFlags.push({ label: '💰 NO SELLING PRICE', bg: 'bg-gray-600' })
   if (noCp) summaryFlags.push({ label: '💵 NO COST PRICE', bg: 'bg-gray-600' })
   if (noGroup) summaryFlags.push({ label: '🏷 NO GROUP', bg: 'bg-gray-600' })
-  // A Needs Review stub already has a non-blank cf_group ('Needs Review'
-  // itself), so it never also trips NO GROUP above -- that only becomes a
-  // real housekeeping flag once the reviewer confirms it below and
-  // cf_group clears to null.
+  // needs_review is a plain boolean, independent of cf_group -- a stub gets
+  // a real category up front (see the categorization done when it was
+  // created) so it can show NO GROUP too if that's genuinely missing,
+  // instead of that being masked until the review itself is resolved.
   if (needsReview) summaryFlags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
   if (isLowSales) summaryFlags.push({ label: `🐌 LOW SALES (${saleHistory!.avg_monthly_qty}/mo)`, bg: 'bg-yellow-600' })
   if (isLongUnsold) summaryFlags.push({ label: neverSold ? '⏳ NEVER SOLD' : `⏳ UNSOLD ${daysSinceLastSale}D`, bg: 'bg-yellow-700' })
@@ -1530,6 +1554,27 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             {reviewVerdict === 'wrong' && (
               <span className="text-gray-500">Use the Merge tool (✎ Edit above) to fold it into the right item.</span>
             )}
+          </div>
+        </div>
+      )}
+
+      {unreviewedPrezohoNotes.length > 0 && (
+        <div className="px-3 py-2 border-b border-gray-200 bg-teal-50 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[8px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} on this item -- already checked, none need backfilling, just worth a look.</p>
+            <button onClick={markPrezohoNotesReviewed} disabled={prezohoNotesMarking}
+              className="shrink-0 text-[8px] font-semibold px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50">
+              {prezohoNotesMarking ? '…' : '✓ Mark Reviewed'}
+            </button>
+          </div>
+          <div className="max-h-32 overflow-y-auto space-y-1">
+            {unreviewedPrezohoNotes.map(n => (
+              <div key={n.id} className="text-[8px] text-gray-600 border-b border-teal-100 pb-1">
+                <span className="font-semibold text-gray-700">{fmtDate(n.cell_date)}</span>
+                <span className="ml-1 text-teal-700">[{n.category}]</span>
+                <span className="ml-1 whitespace-pre-wrap break-words">{n.raw_text || '(blank)'}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

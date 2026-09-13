@@ -1,9 +1,9 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 
-type Alias = { id: number; name: string; type: string }
-type Row = { item_id: number; canonical_name: string; cf_group: string | null; aliases: Alias[] }
-type TableRow = { item_id: number; canonical_name: string; group: string | null; alias_name: string; alias_type: string; alias_id: number | null }
+type Alias = { id: number; name: string; type: string; source: string | null }
+type Row = { item_id: number; canonical_name: string; cf_group: string | null; needs_review: boolean; aliases: Alias[] }
+type TableRow = { item_id: number; canonical_name: string; group: string | null; needs_review: boolean; alias_name: string; alias_type: string; alias_id: number | null; alias_source: string | null }
 type TxLine = { date: string; quantity: string | null; item_price?: string | null; unit_price?: string | null; item_total: string | null; source: string }
 type ItemDetails = {
   item: { id: number; canonical_name: string; status: string | null; cf_group: string | null; description: string | null }
@@ -21,6 +21,16 @@ export default function AliasEditorPage() {
   const [moving, setMoving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [merging, setMerging] = useState<number | null>(null)
+  const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  // "Create standalone item" -- an alternative to picking an existing
+  // canonical item in the Move modal, for when the alias genuinely isn't a
+  // duplicate of anything already in the catalog. Pre-filled with the
+  // alias's own text since that's usually exactly what the new item should
+  // be called.
+  const [standaloneMode, setStandaloneMode] = useState(false)
+  const [standaloneName, setStandaloneName] = useState('')
+  const [creatingStandalone, setCreatingStandalone] = useState(false)
+  const [standaloneError, setStandaloneError] = useState('')
   const [detailsItemId, setDetailsItemId] = useState<number | null>(null)
   const [details, setDetails] = useState<ItemDetails | null>(null)
   const [detailsLoading, setDetailsLoading] = useState(false)
@@ -60,10 +70,10 @@ export default function AliasEditorPage() {
     rows.forEach(r => {
       if (matchesSearch(r) && matchesGroup(r)) {
         if (r.aliases.length === 0) {
-          result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, alias_name: '—', alias_type: '—', alias_id: null })
+          result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, needs_review: r.needs_review, alias_name: '—', alias_type: '—', alias_id: null, alias_source: null })
         } else {
           r.aliases.forEach(a => {
-            result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, alias_name: a.name, alias_type: a.type, alias_id: a.id })
+            result.push({ item_id: r.item_id, canonical_name: r.canonical_name, group: r.cf_group, needs_review: r.needs_review, alias_name: a.name, alias_type: a.type, alias_id: a.id, alias_source: a.source })
           })
         }
       }
@@ -88,6 +98,26 @@ export default function AliasEditorPage() {
     await load()
   }
 
+  // Confirms a best-guess (source='prezoho_bulk_low_confidence') alias
+  // match as correct -- flips just that alias's own source, no item change.
+  async function confirmAlias(aliasId: number) {
+    setConfirmingId(aliasId)
+    await fetch('/api/aliases/confirm-low-confidence', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aliasId }),
+    })
+    setConfirmingId(null)
+    await load()
+  }
+
+  function closeMoveModal() {
+    setMovingAlias(null)
+    setMoveSearch('')
+    setStandaloneMode(false)
+    setStandaloneName('')
+    setStandaloneError('')
+  }
+
   async function moveAlias(targetItemId: number, force = false) {
     if (!movingAlias) return
     setMoving(true)
@@ -104,9 +134,42 @@ export default function AliasEditorPage() {
       }
       return
     }
-    setMovingAlias(null)
-    setMoveSearch('')
+    closeMoveModal()
     await load()
+  }
+
+  // Creates a brand-new item from the alias's own text and moves the alias
+  // onto it (alias_type: 'canonical', since it's now that item's real
+  // name) -- the alternative to Move when nothing existing actually
+  // matches. No mismatch-warning gate here (unlike moveAlias): a fresh item
+  // named after the alias can never "mismatch" it.
+  async function createStandalone() {
+    if (!movingAlias || !standaloneName.trim()) return
+    setCreatingStandalone(true)
+    setStandaloneError('')
+    try {
+      const createRes = await fetch('/api/items', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_name: standaloneName.trim() }),
+      })
+      const created = await createRes.json().catch(() => null)
+      if (!createRes.ok || !created?.id) {
+        setStandaloneError(created?.error ?? 'Could not create item.')
+        return
+      }
+      const moveRes = await fetch(`/api/aliases/${movingAlias.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: created.id, force: true, alias_type: 'canonical' }),
+      })
+      if (!moveRes.ok) {
+        setStandaloneError('Item created, but moving the alias to it failed.')
+        return
+      }
+      closeMoveModal()
+      await load()
+    } finally {
+      setCreatingStandalone(false)
+    }
   }
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
@@ -138,32 +201,60 @@ export default function AliasEditorPage() {
               <p className="text-[9px] text-orange-600 font-bold uppercase">Move Alias</p>
               <p className="text-[10px] font-semibold text-gray-900 mt-0.5 truncate">"{movingAlias.name}"</p>
             </div>
-            <div className="p-2 space-y-2">
-              <input value={moveSearch} onChange={e => setMoveSearch(e.target.value)}
-                placeholder="Search canonical items…" autoFocus
-                className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400" />
-              <div className="max-h-[300px] overflow-y-auto border border-gray-200 rounded">
-                {moveTargets.length === 0 ? (
-                  <p className="text-[9px] text-gray-400 p-2 text-center">No items found</p>
-                ) : (
-                  moveTargets.map(r => (
-                    <button key={r.item_id}
-                      onClick={() => !moving && moveAlias(r.item_id)}
-                      disabled={moving}
-                      className="w-full text-left px-2 py-1 border-b border-gray-100 hover:bg-orange-50 text-[10px] transition disabled:opacity-50">
-                      <p className="font-semibold text-gray-900">{r.canonical_name}</p>
-                      {r.cf_group && <p className="text-[8px] text-gray-400">{r.cf_group}</p>}
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-            <div className="px-3 py-2 border-t border-gray-200 flex gap-1">
-              <button onClick={() => { setMovingAlias(null); setMoveSearch('') }}
-                className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
-                Cancel
-              </button>
-            </div>
+            {!standaloneMode ? (
+              <>
+                <div className="p-2 space-y-2">
+                  <input value={moveSearch} onChange={e => setMoveSearch(e.target.value)}
+                    placeholder="Search canonical items…" autoFocus
+                    className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-orange-400" />
+                  <div className="max-h-[300px] overflow-y-auto border border-gray-200 rounded">
+                    {moveTargets.length === 0 ? (
+                      <p className="text-[9px] text-gray-400 p-2 text-center">No items found</p>
+                    ) : (
+                      moveTargets.map(r => (
+                        <button key={r.item_id}
+                          onClick={() => !moving && moveAlias(r.item_id)}
+                          disabled={moving}
+                          className="w-full text-left px-2 py-1 border-b border-gray-100 hover:bg-orange-50 text-[10px] transition disabled:opacity-50">
+                          <p className="font-semibold text-gray-900">{r.canonical_name}</p>
+                          {r.cf_group && <p className="text-[8px] text-gray-400">{r.cf_group}</p>}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <button onClick={() => setStandaloneMode(true)}
+                    className="w-full text-[9px] font-semibold text-indigo-600 bg-indigo-50 rounded py-1 hover:bg-indigo-100 transition">
+                    + None of these — make it a standalone item
+                  </button>
+                </div>
+                <div className="px-3 py-2 border-t border-gray-200 flex gap-1">
+                  <button onClick={closeMoveModal}
+                    className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-2 space-y-2">
+                  <p className="text-[9px] text-gray-500">Creates a brand-new item using this name, then moves the alias onto it.</p>
+                  <input value={standaloneName} onChange={e => setStandaloneName(e.target.value)}
+                    placeholder="New item name…" autoFocus
+                    className="w-full text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-400" />
+                  {standaloneError && <p className="text-[9px] text-red-600">{standaloneError}</p>}
+                </div>
+                <div className="px-3 py-2 border-t border-gray-200 flex gap-1">
+                  <button onClick={() => { setStandaloneMode(false); setStandaloneError('') }}
+                    className="flex-1 text-[9px] font-semibold text-gray-600 bg-gray-100 rounded py-1 hover:bg-gray-200 transition">
+                    Back
+                  </button>
+                  <button onClick={createStandalone} disabled={creatingStandalone || !standaloneName.trim()}
+                    className="flex-1 text-[9px] font-semibold text-white bg-indigo-600 rounded py-1 hover:bg-indigo-700 transition disabled:opacity-50">
+                    {creatingStandalone ? 'Creating…' : 'Create & Move'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -259,26 +350,38 @@ export default function AliasEditorPage() {
               </tr>
             ) : (
               tableRows.map((row, idx) => (
-                <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 transition ${row.group === 'Needs Review' ? 'bg-orange-50' : ''}`}>
+                <tr key={idx} className={`border-b border-gray-100 hover:bg-gray-50 transition ${row.needs_review ? 'bg-orange-50' : row.alias_source === 'prezoho_bulk_low_confidence' ? 'bg-indigo-50' : ''}`}>
                   <td className="px-1.5 py-0 truncate max-w-[200px]">
                     <button onClick={() => openDetails(row.item_id)}
                       className="font-semibold text-gray-900 hover:text-blue-600 hover:underline transition text-left">
                       {row.canonical_name}
                     </button>
-                    {row.group === 'Needs Review' && (
+                    {row.needs_review && (
                       <span className="ml-1 text-[7px] font-bold text-orange-600 uppercase">⚠ needs review</span>
                     )}
                   </td>
                   <td className="px-1.5 py-0 text-gray-500 text-[8px] truncate max-w-[80px]">{row.group ?? '—'}</td>
-                  <td className="px-1.5 py-0 text-gray-700 truncate max-w-[250px]">{row.alias_name}</td>
+                  <td className="px-1.5 py-0 text-gray-700 truncate max-w-[250px]">
+                    {row.alias_name}
+                    {row.alias_source === 'prezoho_bulk_low_confidence' && (
+                      <span className="ml-1 text-[7px] font-bold text-indigo-600 uppercase">🔍 needs check</span>
+                    )}
+                  </td>
                   <td className="px-1.5 py-0 text-gray-400 text-[8px] whitespace-nowrap">{row.alias_type}</td>
                   <td className="px-1.5 py-0 text-right whitespace-nowrap">
                     {row.alias_id && (
                       <>
-                        <button onClick={() => { setMovingAlias({ id: row.alias_id!, name: row.alias_name, fromItemId: row.item_id }); setMoveSearch('') }}
+                        <button onClick={() => { setMovingAlias({ id: row.alias_id!, name: row.alias_name, fromItemId: row.item_id }); setMoveSearch(''); setStandaloneName(row.alias_name) }}
                           className="text-[8px] text-orange-600 font-bold hover:text-orange-700 mr-1.5 transition">
                           Move
                         </button>
+                        {row.alias_source === 'prezoho_bulk_low_confidence' && (
+                          <button onClick={() => confirmAlias(row.alias_id!)} disabled={confirmingId === row.alias_id}
+                            title="Confirm this alias really does point at the right item"
+                            className="text-[8px] text-indigo-600 font-bold hover:text-indigo-700 mr-1.5 transition disabled:opacity-40">
+                            {confirmingId === row.alias_id ? '…' : '✓ Confirm'}
+                          </button>
+                        )}
                         <button onClick={() => deleteAlias(row.alias_id!, row.alias_name)} disabled={deletingId === row.alias_id}
                           className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
                           {deletingId === row.alias_id ? '…' : '×'}
@@ -295,7 +398,7 @@ export default function AliasEditorPage() {
 
       {/* Footer info */}
       <div className="text-[8px] text-gray-400 shrink-0">
-        <p>Click Move to reassign an alias to a different canonical item • × to delete an alias</p>
+        <p>Move to reassign an alias to a different canonical item (or create one from scratch) • × to delete an alias • 🔍 needs check = matched by best guess during the pre-Zoho import, confirm it's right or Move it to the correct item</p>
       </div>
     </div>
   )

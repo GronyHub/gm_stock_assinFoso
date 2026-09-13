@@ -547,7 +547,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // cost_price vs. item_name/cf_group/selling_rate/purchase_rate/
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
-type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null }
+type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null; needs_review?: boolean }
 type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
@@ -681,7 +681,8 @@ function itemAttentionFlags(
   vcpJumpDatesByItemId: Map<number, string[]>,
   gmcTargetStockByItemId: Map<number, number>,
   gmcOpenOverageByItemId: Map<number, GmcOpenOverage>,
-  lowConfidenceAliasIds: Set<number>
+  lowConfidenceAliasIds: Set<number>,
+  prezohoNotesIds: Set<number>
 ): { label: string; bg: string }[] {
   const soh = Number(item.soh)
   const sp = parseFloat(String(item.selling_price)) || 0
@@ -740,12 +741,12 @@ function itemAttentionFlags(
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
   if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
-  // A Needs Review stub already has a non-blank cf_group ('Needs Review'
-  // itself), so it never also trips MISSING GROUP above -- that only
-  // becomes a real housekeeping flag once the reviewer confirms it in
-  // Item 360 (see LossTab.tsx's needsReview) and cf_group clears to null.
-  if (item.group === 'Needs Review') flags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
+  // needs_review is a plain boolean, independent of cf_group -- a stub gets
+  // a real category up front, so it can trip MISSING GROUP too if that's
+  // genuinely missing, instead of that being masked until review resolves.
+  if (item.needs_review) flags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
   if (lowConfidenceAliasIds.has(item.id)) flags.push({ label: '📋 ALIAS NEEDS CHECK', bg: 'bg-indigo-700' })
+  if (prezohoNotesIds.has(item.id)) flags.push({ label: '📝 LEDGER NOTES', bg: 'bg-teal-700' })
   // A day row that made it into the item's own history but ended up with
   // every field blank/zero -- a phantom date with no real activity behind
   // it (e.g. a zero-quantity bill line). Doesn't affect stock math, but is
@@ -980,7 +981,7 @@ function ItemHubPageInner() {
   // entirely" values that DO still fire, now via the Count tab's own small
   // sub-nav instead of a radio in this row -- see inCountTab below and
   // pickCountMode.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'prezohoNotes' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2734,10 +2735,11 @@ function ItemHubPageInner() {
     no_sp: liveAllItems.filter(i => (parseFloat(String(i.selling_price)) || 0) <= 0).map(i => i.id),
     no_cp: liveAllItems.filter(i => i.product_type !== 'service' && (parseFloat(String(i.acp_price ?? i.cost_price)) || 0) <= 0).map(i => i.id),
     no_group: liveAllItems.filter(i => !i.group).map(i => i.id),
-    // Unidentified pre-Zoho stub items (see /api/aliases/wide) -- a
-    // dedicated filter so they're reachable regardless of the "Live" (no
+    // Unidentified pre-Zoho stub items (see /api/aliases/wide) -- a plain
+    // boolean, independent of cf_group (which holds the item's real
+    // category), so this filter is reachable regardless of the "Live" (no
     // banners at all) view, same reasoning as every other row here.
-    needs_review: liveAllItems.filter(i => i.group === 'Needs Review').map(i => i.id),
+    needs_review: liveAllItems.filter(i => i.needs_review).map(i => i.id),
     // Both sides of every non-dismissed duplicate pair -- ids only, same as
     // the other four keys here.
     duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))] as number[],
@@ -2748,6 +2750,10 @@ function ItemHubPageInner() {
     // match -- see /api/flags' lowConfidenceAlias. Worth a manual check;
     // wrong picks are fixed the same way as any other item, via Merge.
     low_confidence_alias: (globalFlags?.lowConfidenceAlias ?? []).map((r: any) => r.item_id) as number[],
+    // Items with at least one unreviewed pre-Zoho ledger note (see
+    // /api/prezoho-notes) -- historical context, not a data error, just
+    // worth a reviewer's eyes at some point.
+    prezoho_notes: (globalFlags?.prezohoNotes ?? []).map((r: any) => r.item_id) as number[],
   }), [liveAllItems, globalFlags, serviceViolationIds])
 
   // Build mode-specific flags array with Live Sale callbacks
@@ -2981,6 +2987,7 @@ function ItemHubPageInner() {
   const liveNoGroupIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_group ?? []), [liveItemsWithViolations])
   const liveNeedsReviewIds = useMemo(() => new Set<number>(liveItemsWithViolations.needs_review ?? []), [liveItemsWithViolations])
   const liveLowConfidenceAliasIds = useMemo(() => new Set<number>(liveItemsWithViolations.low_confidence_alias ?? []), [liveItemsWithViolations])
+  const livePrezohoNotesIds = useMemo(() => new Set<number>(liveItemsWithViolations.prezoho_notes ?? []), [liveItemsWithViolations])
   const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
     const sp = parseFloat(String(item.selling_price)) || 0
     const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
@@ -3066,6 +3073,7 @@ function ItemHubPageInner() {
   const liveNoGroupCount = liveNoGroupIds.size
   const liveNeedsReviewCount = liveNeedsReviewIds.size
   const liveLowConfidenceAliasCount = liveLowConfidenceAliasIds.size
+  const livePrezohoNotesCount = livePrezohoNotesIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3592,10 +3600,10 @@ function ItemHubPageInner() {
   const liveViolationCountByItemId = useMemo(() => {
     const m = new Map<number, number>()
     for (const item of liveCatalogueItems) {
-      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds).length)
+      m.set(item.id, itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds, livePrezohoNotesIds).length)
     }
     return m
-  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds])
+  }, [liveCatalogueItems, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds, livePrezohoNotesIds])
 
   // The Sale-mode grid's arrangement -- a single list sorted by whichever
   // priority order liveItemSortOrder currently holds (see the Arrange
@@ -3643,6 +3651,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveNeedsReviewIds.has(item.id))
     } else if (liveSaleViolationFilter === 'lowConfidenceAlias') {
       itemsToSort = liveCatalogueItems.filter(item => liveLowConfidenceAliasIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'prezohoNotes') {
+      itemsToSort = liveCatalogueItems.filter(item => livePrezohoNotesIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3677,7 +3687,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds, livePrezohoNotesIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -6542,6 +6552,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'lowConfidenceAlias'} onChange={() => pickSaleFilter('lowConfidenceAlias')} className="cursor-pointer w-3 h-3" />
                     <span>Alias Needs Check ({liveLowConfidenceAliasCount})</span>
                   </label></>)}
+                  {/* Pre-Zoho ledger day-cells that held descriptive text
+                      instead of a bare quantity -- already classified as
+                      not a sale (gmc_use/restock/loss/etc.), just surfaced
+                      here for a reviewer to glance over per item. */}
+                  {livePrezohoNotesCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-teal-700">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'prezohoNotes'} onChange={() => pickSaleFilter('prezohoNotes')} className="cursor-pointer w-3 h-3" />
+                    <span>Ledger Notes ({livePrezohoNotesCount})</span>
+                  </label></>)}
                   {/* Receipts' own violations (No Cash/Missing Days/Dup
                       Receipt/High WNW/No Attachment) used to live only in
                       Receipts' own dedicated violation row -- folded in here
@@ -7861,7 +7880,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     // gain, a duplicate...) -- surface those the same way
                     // regardless of whether this item is also due, instead
                     // of letting the COUNT NOW banner hide them.
-                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds)
+                    const flags = itemAttentionFlags(item, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds, livePrezohoNotesIds)
                     // Darker, thicker borders than the *-100 shades used
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
@@ -7918,6 +7937,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             else if (liveSaleViolationFilter === 'noGroup') filteredFlags = flags.filter(f => f.label.includes('MISSING GROUP'))
                             else if (liveSaleViolationFilter === 'needsReview') filteredFlags = flags.filter(f => f.label.includes('NEEDS REVIEW'))
                             else if (liveSaleViolationFilter === 'lowConfidenceAlias') filteredFlags = flags.filter(f => f.label.includes('ALIAS NEEDS CHECK'))
+                            else if (liveSaleViolationFilter === 'prezohoNotes') filteredFlags = flags.filter(f => f.label.includes('LEDGER NOTES'))
                             return filteredFlags.map((f, i) => {
                               // Strip the violation's own name down to just
                               // its number/detail (if it has one) -- picking
@@ -8094,7 +8114,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Modal */}
             {liveSelectedItem && (() => {
               const due = liveCountStatus.get(liveSelectedItem.id)
-              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds)
+              const flags = itemAttentionFlags(liveSelectedItem, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLowConfidenceAliasIds, livePrezohoNotesIds)
               const expected = Number(liveSelectedItem.soh)
               const enteredCount = liveCountQty === '' ? null : Number(liveCountQty)
               const countShort = enteredCount !== null && !isNaN(enteredCount) && enteredCount < expected
