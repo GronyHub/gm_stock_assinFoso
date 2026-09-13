@@ -4,7 +4,14 @@ import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
 
-class ItemDetailErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
+// Exported so callers that embed <ItemDetailPanel> directly (e.g. the Live
+// Sale grid-edit sheet in item/page.tsx) can wrap the WHOLE panel in it too
+// -- this only catches crashes inside <ItemDetail> itself; a crash in
+// ItemDetailPanel's own body (its own hooks/fetches, above where this
+// boundary starts) would still propagate past it and, with nothing higher
+// up the tree catching it either, blank the whole page instead of just
+// this panel.
+export class ItemDetailErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
   constructor(props: any) {
     super(props)
     this.state = { hasError: false, errorMsg: '' }

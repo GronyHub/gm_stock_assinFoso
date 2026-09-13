@@ -21,7 +21,7 @@ import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
 import type { GmcOpenOverage } from '@/lib/gmcStock'
 import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
-import ItemDetailPanel from './_components/ItemDetailPanel'
+import ItemDetailPanel, { ItemDetailErrorBoundary } from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
@@ -978,7 +978,7 @@ function ItemHubPageInner() {
   // entirely" values that DO still fire, now via the Count tab's own small
   // sub-nav instead of a radio in this row -- see inCountTab below and
   // pickCountMode.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2732,6 +2732,10 @@ function ItemHubPageInner() {
     no_sp: liveAllItems.filter(i => (parseFloat(String(i.selling_price)) || 0) <= 0).map(i => i.id),
     no_cp: liveAllItems.filter(i => i.product_type !== 'service' && (parseFloat(String(i.acp_price ?? i.cost_price)) || 0) <= 0).map(i => i.id),
     no_group: liveAllItems.filter(i => !i.group).map(i => i.id),
+    // Unidentified pre-Zoho stub items (see /api/aliases/wide) -- a
+    // dedicated filter so they're reachable regardless of the "Live" (no
+    // banners at all) view, same reasoning as every other row here.
+    needs_review: liveAllItems.filter(i => i.group === 'Needs Review').map(i => i.id),
     // Both sides of every non-dismissed duplicate pair -- ids only, same as
     // the other four keys here.
     duplicates: [...new Set((globalFlags?.duplicates ?? []).flatMap((d: any) => [d.id1, d.id2]))] as number[],
@@ -2968,6 +2972,7 @@ function ItemHubPageInner() {
   const liveNoSpIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_sp ?? []), [liveItemsWithViolations])
   const liveNoCpIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_cp ?? []), [liveItemsWithViolations])
   const liveNoGroupIds = useMemo(() => new Set<number>(liveItemsWithViolations.no_group ?? []), [liveItemsWithViolations])
+  const liveNeedsReviewIds = useMemo(() => new Set<number>(liveItemsWithViolations.needs_review ?? []), [liveItemsWithViolations])
   const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
     const sp = parseFloat(String(item.selling_price)) || 0
     const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
@@ -3051,6 +3056,7 @@ function ItemHubPageInner() {
   const liveNoSpCount = liveNoSpIds.size
   const liveNoCpCount = liveNoCpIds.size
   const liveNoGroupCount = liveNoGroupIds.size
+  const liveNeedsReviewCount = liveNeedsReviewIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3624,6 +3630,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveNoCpIds.has(item.id))
     } else if (liveSaleViolationFilter === 'noGroup') {
       itemsToSort = liveCatalogueItems.filter(item => liveNoGroupIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'needsReview') {
+      itemsToSort = liveCatalogueItems.filter(item => liveNeedsReviewIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3658,7 +3666,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -6505,6 +6513,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noGroup'} onChange={() => pickSaleFilter('noGroup')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Group ({liveNoGroupCount})</span>
                   </label></>)}
+                  {/* Unidentified pre-Zoho stub items (see /api/aliases/wide)
+                      -- reachable here regardless of the "Live" (no
+                      banners) default view, so they can be managed even
+                      with every other banner turned off. */}
+                  {liveNeedsReviewCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-fuchsia-700">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'needsReview'} onChange={() => pickSaleFilter('needsReview')} className="cursor-pointer w-3 h-3" />
+                    <span>Needs Review ({liveNeedsReviewCount})</span>
+                  </label></>)}
                   {/* Receipts' own violations (No Cash/Missing Days/Dup
                       Receipt/High WNW/No Attachment) used to live only in
                       Receipts' own dedicated violation row -- folded in here
@@ -7879,6 +7896,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             else if (liveSaleViolationFilter === 'noSp') filteredFlags = flags.filter(f => f.label.includes('MISSING SELLING PRICE'))
                             else if (liveSaleViolationFilter === 'noCp') filteredFlags = flags.filter(f => f.label.includes('MISSING COST PRICE'))
                             else if (liveSaleViolationFilter === 'noGroup') filteredFlags = flags.filter(f => f.label.includes('MISSING GROUP'))
+                            else if (liveSaleViolationFilter === 'needsReview') filteredFlags = flags.filter(f => f.label.includes('NEEDS REVIEW'))
                             return filteredFlags.map((f, i) => {
                               // Strip the violation's own name down to just
                               // its number/detail (if it has one) -- picking
@@ -8785,7 +8803,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
                         <h3 className="px-2 py-1 text-[9px] font-bold text-gray-900 border-b border-gray-200">Details</h3>
-                        <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} showRelationsEditor={false} />
+                        {/* Wraps the WHOLE panel, not just LossTab's own inner
+                            boundary (which only covers <ItemDetail> itself) --
+                            a crash anywhere in ItemDetailPanel's own body was
+                            propagating past everything and blanking this
+                            entire page instead of just this "Details"
+                            section. Whatever the actual bug turns out to be,
+                            this at least turns "blank white screen" into a
+                            readable error message. */}
+                        <ItemDetailErrorBoundary>
+                          <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} showRelationsEditor={false} />
+                        </ItemDetailErrorBoundary>
                       </div>
                     )}
                   </div>
