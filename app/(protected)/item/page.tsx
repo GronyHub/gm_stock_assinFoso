@@ -739,6 +739,11 @@ function itemAttentionFlags(
   if (sp <= 0) flags.push({ label: '⚠ MISSING SELLING PRICE', bg: 'bg-orange-600' })
   if (item.product_type !== 'service' && cp <= 0) flags.push({ label: '⚠ MISSING COST PRICE', bg: 'bg-orange-500' })
   if (!item.group) flags.push({ label: '⚠ MISSING GROUP', bg: 'bg-amber-500' })
+  // A Needs Review stub already has a non-blank cf_group ('Needs Review'
+  // itself), so it never also trips MISSING GROUP above -- that only
+  // becomes a real housekeeping flag once the reviewer confirms it in
+  // Item 360 (see LossTab.tsx's needsReview) and cf_group clears to null.
+  if (item.group === 'Needs Review') flags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
   // A day row that made it into the item's own history but ended up with
   // every field blank/zero -- a phantom date with no real activity behind
   // it (e.g. a zero-quantity bill line). Doesn't affect stock math, but is

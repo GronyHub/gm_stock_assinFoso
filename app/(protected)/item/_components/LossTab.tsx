@@ -29,6 +29,7 @@ export type SummaryRow = {
   // actually saved -- see ItemEditForm's cadence field.
   count_interval: string | null
   gmc_type: string | null
+  description: string | null
   lgAmt: number
   lgQty: number
   lossCount: number
@@ -1299,6 +1300,31 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       })
   }, [item.item_id, item.gmc_type])
 
+  // Resolve control for a "Needs Review" stub item (see /api/aliases/wide
+  // and lib/activeItems.ts). Picking "Correct" is the only branch that
+  // writes anything -- it clears cf_group so the item graduates out of the
+  // review queue into an ordinary catalog item (still possibly missing a
+  // proper group, which is then just the plain NO GROUP housekeeping flag
+  // above, not a review condition). Picking "Wrong" deliberately does
+  // nothing server-side: the fix is the existing Merge picker further down
+  // this same panel, not a state flip here.
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [reviewVerdict, setReviewVerdict] = useState<'correct' | 'wrong' | null>(null)
+  async function confirmNeedsReviewCorrect() {
+    setReviewSaving(true)
+    const res = await fetch('/api/flags/confirm-needs-review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: item.item_id }),
+    })
+    setReviewSaving(false)
+    if (res.ok) {
+      setReviewVerdict('correct')
+      onSaved({ cf_group: null })
+    } else {
+      alert((await res.json().catch(() => null))?.error ?? 'Could not save.')
+    }
+  }
+
   async function confirmVcpJump(billId: number) {
     setDismissedVcpJumpBillIds(prev => new Set(prev).add(billId))
     await fetch('/api/flags/dismiss-vcp-jump', {
@@ -1427,6 +1453,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const noSp = !item.sp || parseFloat(item.sp) <= 0
   const noCp = isGoodsItem && (!item.cp || parseFloat(item.cp) <= 0)
   const noGroup = !item.cf_group
+  const needsReview = item.cf_group === 'Needs Review'
   // Same condition item/page.tsx's own serviceViolationIds uses -- a
   // service whose own count/GMC-take/bill activity is nonzero shouldn't
   // have any (services aren't physically counted or purchased).
@@ -1459,6 +1486,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   if (noSp) summaryFlags.push({ label: '💰 NO SELLING PRICE', bg: 'bg-gray-600' })
   if (noCp) summaryFlags.push({ label: '💵 NO COST PRICE', bg: 'bg-gray-600' })
   if (noGroup) summaryFlags.push({ label: '🏷 NO GROUP', bg: 'bg-gray-600' })
+  // A Needs Review stub already has a non-blank cf_group ('Needs Review'
+  // itself), so it never also trips NO GROUP above -- that only becomes a
+  // real housekeeping flag once the reviewer confirms it below and
+  // cf_group clears to null.
+  if (needsReview) summaryFlags.push({ label: '🔍 NEEDS REVIEW', bg: 'bg-fuchsia-700' })
   if (isLowSales) summaryFlags.push({ label: `🐌 LOW SALES (${saleHistory!.avg_monthly_qty}/mo)`, bg: 'bg-yellow-600' })
   if (isLongUnsold) summaryFlags.push({ label: neverSold ? '⏳ NEVER SOLD' : `⏳ UNSOLD ${daysSinceLastSale}D`, bg: 'bg-yellow-700' })
 
@@ -1473,6 +1505,32 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           <p className="text-[8px] font-semibold text-blue-700">
             <span className="text-gray-500">Derived from pack:</span> {parentPackName}
           </p>
+        </div>
+      )}
+
+      {needsReview && reviewVerdict !== 'correct' && (
+        <div className="px-3 py-2 border-b border-gray-200 bg-fuchsia-50 space-y-1.5">
+          <p className="text-[8px] font-bold text-fuchsia-800">🔍 Created from an unidentified pre-Zoho ledger name -- please confirm this is a real, standalone item.</p>
+          {item.description && (
+            <p className="text-[8px] text-gray-600 whitespace-pre-wrap break-words">{item.description}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-3 text-[9px]">
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input type="radio" name={`needs-review-${item.item_id}`} className="cursor-pointer"
+                checked={false} disabled={reviewSaving}
+                onChange={() => confirmNeedsReviewCorrect()} />
+              <span className="font-semibold text-gray-700">Correct -- it's its own item</span>
+            </label>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input type="radio" name={`needs-review-${item.item_id}`} className="cursor-pointer"
+                checked={reviewVerdict === 'wrong'} disabled={reviewSaving}
+                onChange={() => setReviewVerdict('wrong')} />
+              <span className="font-semibold text-gray-700">Wrong -- I'll merge it myself</span>
+            </label>
+            {reviewVerdict === 'wrong' && (
+              <span className="text-gray-500">Use the Merge tool (✎ Edit above) to fold it into the right item.</span>
+            )}
+          </div>
         </div>
       )}
 

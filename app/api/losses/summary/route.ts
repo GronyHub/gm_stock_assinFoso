@@ -35,6 +35,7 @@ type ItemMeta = {
   converts_to_item_id: number | null
   derived_from_item_id: number | null
   gmc_type: string | null
+  description: string | null
 }
 
 function n(v: string | null) { return parseFloat(v ?? '0') || 0 }
@@ -106,15 +107,23 @@ export async function GET() {
       SELECT DISTINCT i.id AS item_id, i.canonical_name AS item_name,
              i.cf_group, s.calculated_soh,
              i.selling_rate, i.purchase_rate, i.product_type,
-             i.units_per_pack, i.converts_to_item_id, i.derived_from_item_id, COALESCE(i.gmc_type, '') AS gmc_type
+             i.units_per_pack, i.converts_to_item_id, i.derived_from_item_id, COALESCE(i.gmc_type, '') AS gmc_type,
+             i.description
       FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
-      WHERE EXISTS (
-        SELECT 1 FROM sales_receipt_lines WHERE item_id = i.id
-        UNION ALL
-        SELECT 1 FROM stock_counts WHERE item_id = i.id
-        UNION ALL
-        SELECT 1 FROM bill_lines WHERE item_id = i.id
+      WHERE (
+        EXISTS (
+          SELECT 1 FROM sales_receipt_lines WHERE item_id = i.id
+          UNION ALL
+          SELECT 1 FROM stock_counts WHERE item_id = i.id
+          UNION ALL
+          SELECT 1 FROM bill_lines WHERE item_id = i.id
+        )
+        -- A freshly-created "Needs Review" stub (see /api/aliases/wide) has no
+        -- transactions of its own yet -- without this OR, Item 360 has nothing
+        -- to show it at all ("Item #X not found in loaded data"), which is
+        -- exactly the case a reviewer most needs to open and inspect.
+        OR i.cf_group = 'Needs Review'
       )
         AND i.canonical_name NOT ILIKE 'old stop%'
         AND i.canonical_name NOT ILIKE 'old- stop%'
@@ -277,6 +286,7 @@ export async function GET() {
       converts_to_item_id: item.converts_to_item_id,
       derived_from_item_id: item.derived_from_item_id,
       gmc_type: item.gmc_type,
+      description: item.description,
       count_interval: formatCountInterval(countIntervalLabels.get(item.item_id)),
       ...agg,
     }
