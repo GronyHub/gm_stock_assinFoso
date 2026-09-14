@@ -1,5 +1,7 @@
 // Simple in-memory cache with TTL support for expensive query results
-// Values are stored per-process; cache survives across requests in the same container
+// Values are stored per-process; cache survives across requests in the same container.
+// Not invalidated by direct SQL writes (e.g. a historical data backfill) --
+// only an app restart or the TTL itself clears a stale entry in that case.
 
 interface CacheEntry<T> {
   value: T
