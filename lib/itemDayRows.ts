@@ -103,9 +103,14 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       -- converts_to_item_id = this item (e.g. Passport Printing consuming this paper).
       -- Kept per-source (grouped by service too) so callers can show a breakdown, not
       -- just a combined total, when more than one service draws on the same stock.
+      -- amount comes from item_total (always populated), not quantity *
+      -- item_price -- a chunk of bizims_historical rows have a real
+      -- item_total but a NULL quantity/item_price (see daily_aliases'
+      -- comment above), which would otherwise silently zero out real
+      -- revenue here.
       SELECT sr.receipt_date::date AS d, src.id AS source_id, src.canonical_name AS source_name,
              SUM(srl.quantity * COALESCE(src.units_per_pack, 1)) AS qty,
-             SUM(srl.quantity * COALESCE(srl.item_price, 0)) AS amount
+             SUM(COALESCE(srl.item_total, 0)) AS amount
       FROM sales_receipt_lines srl
       JOIN sales_receipts sr ON sr.id = srl.receipt_id
       JOIN items src ON src.id = srl.item_id
@@ -284,10 +289,15 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       GROUP BY sr.receipt_date::date
     ),
     daily_aliases AS (
-      -- Only from lines with a real, non-zero quantity -- an empty-shell
-      -- line (raw name recorded but no quantity/customer, i.e. not an
-      -- actual transaction) shouldn't be shown as "the alias recorded that
-      -- day" when nothing else about the day reflects it.
+      -- Only from lines with real activity -- an empty-shell line (raw name
+      -- recorded but no quantity/customer/revenue, i.e. not an actual
+      -- transaction) shouldn't be shown as "the alias recorded that day"
+      -- when nothing else about the day reflects it. Keyed off item_total
+      -- (always populated) rather than quantity -- a chunk of the original
+      -- bizims_historical import left quantity/item_price NULL on ~3,700
+      -- genuinely real rows while still recording the correct item_total,
+      -- and requiring quantity here was silently hiding those real sales'
+      -- own alias/description from the day table.
       SELECT d, STRING_AGG(DISTINCT alias, ' / ' ORDER BY alias) AS aliases
       FROM (
         SELECT sr.receipt_date::date AS d, srl.raw_item_name AS alias
@@ -295,14 +305,14 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
         JOIN sales_receipts sr ON sr.id = srl.receipt_id
         WHERE srl.item_id = ${id}
           AND srl.raw_item_name IS NOT NULL AND TRIM(srl.raw_item_name) <> ''
-          AND srl.quantity IS NOT NULL AND srl.quantity <> 0
+          AND ((srl.quantity IS NOT NULL AND srl.quantity <> 0) OR (srl.item_total IS NOT NULL AND srl.item_total <> 0))
         UNION ALL
         SELECT b.bill_date::date AS d, bl.raw_item_name AS alias
         FROM bill_lines bl
         JOIN bills b ON b.id = bl.bill_id
         WHERE bl.item_id = ${id}
           AND bl.raw_item_name IS NOT NULL AND TRIM(bl.raw_item_name) <> ''
-          AND bl.quantity IS NOT NULL AND bl.quantity <> 0
+          AND ((bl.quantity IS NOT NULL AND bl.quantity <> 0) OR (bl.item_total IS NOT NULL AND bl.item_total <> 0))
       ) sub
       GROUP BY d
     )
