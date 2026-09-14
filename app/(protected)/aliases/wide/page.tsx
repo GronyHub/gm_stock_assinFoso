@@ -108,8 +108,15 @@ export default function AliasEditorPage() {
       .slice(0, 40)
   }, [rows, moveSearch, movingAlias])
 
-  async function deleteAlias(aliasId: number, name: string) {
-    if (!confirm(`Delete alias "${name}"?`)) return
+  // Deleting an item's ONLY alias doesn't clear its "Needs Review" flag or
+  // resolve anything -- it just removes the alias (usually the item's own
+  // self-referencing name), leaving needs_review untouched. Warn distinctly
+  // in that case so it isn't mistaken for a "mark reviewed" action.
+  async function deleteAlias(aliasId: number, name: string, isLastAlias: boolean) {
+    const msg = isLastAlias
+      ? `"${name}" is this item's ONLY alias. Deleting it does NOT confirm or dismiss the item -- use "✓ Correct" (or "Delete Item") above for that. Delete this alias anyway?`
+      : `Delete alias "${name}"?`
+    if (!confirm(msg)) return
     setDeletingId(aliasId)
     await fetch(`/api/aliases/${aliasId}`, { method: 'DELETE' })
     setDeletingId(null)
@@ -490,7 +497,7 @@ export default function AliasEditorPage() {
                           {confirmingId === a.id ? '…' : '✓ Confirm'}
                         </button>
                       )}
-                      <button onClick={() => deleteAlias(a.id, a.name)} disabled={deletingId === a.id}
+                      <button onClick={() => deleteAlias(a.id, a.name, selectedRow.aliases.length === 1)} disabled={deletingId === a.id}
                         className="text-gray-300 hover:text-red-500 font-bold text-xs transition disabled:opacity-40">
                         {deletingId === a.id ? '…' : '×'}
                       </button>

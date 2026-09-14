@@ -32,7 +32,12 @@ export async function GET(req: NextRequest) {
       WHERE (i.status IS NULL OR LOWER(i.status) <> 'inactive')
         AND (${itemId}::int IS NULL OR i.id = ${itemId})
       GROUP BY i.id, i.canonical_name, i.cf_group, i.needs_review
-      HAVING ${itemId}::int IS NOT NULL OR COUNT(a.id) > 0
+      -- needs_review items must show even with zero aliases (e.g. right
+      -- after their only alias gets deleted from this same page) -- without
+      -- this, such an item silently vanishes from its own review list
+      -- while the flag itself stays set, with no way back in short of
+      -- knowing its id.
+      HAVING ${itemId}::int IS NOT NULL OR COUNT(a.id) > 0 OR i.needs_review = true
       ORDER BY cnt DESC
     ` as unknown as { item_id: number; canonical_name: string; cf_group: string | null; needs_review: boolean; aliases: { id: number; name: string; type: string; source: string | null }[]; cnt: number }[]
 
