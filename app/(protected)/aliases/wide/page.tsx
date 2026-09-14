@@ -34,6 +34,9 @@ export default function AliasEditorPage() {
   const [moving, setMoving] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [confirmingId, setConfirmingId] = useState<number | null>(null)
+  const [confirmingReviewId, setConfirmingReviewId] = useState<number | null>(null)
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null)
+  const [itemActionError, setItemActionError] = useState('')
   // "Create standalone item" -- an alternative to picking an existing
   // canonical item in the Move modal, for when the alias genuinely isn't a
   // duplicate of anything already in the catalog. Pre-filled with the
@@ -122,6 +125,42 @@ export default function AliasEditorPage() {
       body: JSON.stringify({ aliasId }),
     })
     setConfirmingId(null)
+    await load()
+  }
+
+  // Confirms an item's own needs_review flag as resolved -- the same
+  // /api/flags/confirm-needs-review Item 360's own "Correct" radio uses.
+  // Without this, the only way to actually clear the flag was to open
+  // every item in Item 360 one at a time; this page could show and filter
+  // by "Needs Review" but never resolve it.
+  async function confirmItemReview(itemId: number) {
+    setConfirmingReviewId(itemId)
+    await fetch('/api/flags/confirm-needs-review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId }),
+    })
+    setConfirmingReviewId(null)
+    await load()
+  }
+
+  // Outright removal for a stub that turns out not to be a real item name
+  // at all (e.g. a catch-all sheet header like "PHOTO EQUIPMENTS") -- the
+  // existing /api/items/[id] DELETE already refuses if it has any real
+  // sales/bills/counts or something converts into it, so this is safe to
+  // expose directly; the error message explains what to do instead
+  // (merge) when it's blocked.
+  async function deleteItem(itemId: number, name: string) {
+    if (!confirm(`Delete "${name}" entirely? This can't be undone.`)) return
+    setDeletingItemId(itemId)
+    setItemActionError('')
+    const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
+    setDeletingItemId(null)
+    if (!res.ok) {
+      const d = await res.json().catch(() => null)
+      setItemActionError(d?.error ?? 'Could not delete item.')
+      return
+    }
+    setSelectedItemId(null)
     await load()
   }
 
@@ -403,11 +442,28 @@ export default function AliasEditorPage() {
                     {selectedRow.needs_review && <span className="text-[7px] font-bold text-orange-600 uppercase">⚠ needs review</span>}
                   </div>
                 </div>
-                <button onClick={() => openDetails(selectedRow.item_id)}
-                  className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition whitespace-nowrap">
-                  Sales/Bills
-                </button>
+                <div className="shrink-0 flex items-center gap-1">
+                  <button onClick={() => openDetails(selectedRow.item_id)}
+                    className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition whitespace-nowrap">
+                    Sales/Bills
+                  </button>
+                  <button onClick={() => deleteItem(selectedRow.item_id, selectedRow.canonical_name)} disabled={deletingItemId === selectedRow.item_id}
+                    title="Delete this item outright (only if it has no sales/bills/counts)"
+                    className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition whitespace-nowrap disabled:opacity-40">
+                    {deletingItemId === selectedRow.item_id ? '…' : 'Delete Item'}
+                  </button>
+                </div>
               </div>
+              {selectedRow.needs_review && (
+                <div className="px-2 py-1.5 border-b border-gray-200 bg-orange-50 flex items-center justify-between gap-2">
+                  <p className="text-[8px] text-orange-800">Confirm this is a real, standalone item -- if it's not (e.g. not an item name at all), delete it above instead.</p>
+                  <button onClick={() => confirmItemReview(selectedRow.item_id)} disabled={confirmingReviewId === selectedRow.item_id}
+                    className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-orange-600 text-white hover:bg-orange-700 transition disabled:opacity-50">
+                    {confirmingReviewId === selectedRow.item_id ? '…' : '✓ Correct'}
+                  </button>
+                </div>
+              )}
+              {itemActionError && <p className="px-2 py-1 text-[8px] text-red-600 bg-red-50 border-b border-red-100">{itemActionError}</p>}
               {selectedRow.aliases.length === 0 ? (
                 <p className="text-[9px] text-gray-400 text-center py-6 px-2">No aliases on this item</p>
               ) : (
@@ -449,7 +505,7 @@ export default function AliasEditorPage() {
 
       {/* Footer info */}
       <div className="text-[8px] text-gray-400 shrink-0">
-        <p>Click an item on the left to see its aliases • Move to reassign an alias to a different canonical item (or create one from scratch) • × to delete an alias • 🔍 needs check = matched by best guess during the pre-Zoho import, confirm it's right or Move it to the correct item</p>
+        <p>Click an item on the left to see its aliases • ⚠ needs review = confirm it's a real standalone item, or Delete Item if it isn't one at all • 🔍 needs check = an alias matched by best guess during the pre-Zoho import, confirm it's right or Move it to the correct item • × deletes just one alias</p>
       </div>
     </div>
   )
