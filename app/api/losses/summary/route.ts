@@ -21,6 +21,7 @@ type DayRow = {
   gmc_qty: string | null
   bills_qty: string | null
   converted_in_qty: string | null
+  has_unknown_qty_revenue: boolean
 }
 
 type ItemMeta = {
@@ -50,8 +51,12 @@ function aggregateItem(rows: DayRow[], sp: number) {
     // A date only needs ONE kind of activity to land in all_dates, but
     // every field on it can still come out 0/blank (e.g. a bill line
     // entered with quantity 0) -- that's a phantom day with no real data
-    // behind it at all, worth flagging on the item.
-    if ((counted === null || counted === 0) && bills === 0 && w === 0 && g === 0 && c === 0) emptyRowCount++
+    // behind it at all, worth flagging on the item. A day whose only line
+    // has real revenue but an unknown quantity (see has_unknown_qty_revenue)
+    // is NOT phantom -- a real sale happened, it just isn't fully recorded
+    // yet -- so it's excluded here the same way Item 360's own day table
+    // stopped hiding it (2026-09-14).
+    if ((counted === null || counted === 0) && bills === 0 && w === 0 && g === 0 && c === 0 && !row.has_unknown_qty_revenue) emptyRowCount++
     if (prev === null) {
       if (counted !== null) prev = counted
     } else {
@@ -182,6 +187,19 @@ export async function GET() {
           AND i.product_type = 'service'
         GROUP BY i.converts_to_item_id, dw.d
       ),
+      -- A sale line with real revenue (item_total) but no recorded quantity
+      -- -- almost entirely the original bizims_historical import's own gap
+      -- (see lib/itemDayRows.ts's daily_aliases comment), still being
+      -- cleared item by item via the Unknown Quantity violation. Without
+      -- this, such a date's wic_qty/gmc_qty come out COALESCE'd to 0 below
+      -- and the day gets wrongly counted as a phantom "Empty Row" even
+      -- though a real sale happened that day.
+      daily_unknown_qty_revenue AS (
+        SELECT srl.item_id, sr.receipt_date::date AS d
+        FROM sales_receipt_lines srl JOIN sales_receipts sr ON sr.id = srl.receipt_id
+        WHERE srl.quantity IS NULL AND srl.item_total IS NOT NULL AND srl.item_total <> 0
+        GROUP BY srl.item_id, sr.receipt_date::date
+      ),
       all_dates AS (
         SELECT item_id, d FROM daily_counts
         UNION SELECT item_id, d FROM daily_wic
@@ -199,7 +217,8 @@ export async function GET() {
              -- records for that same consumption.
              COALESCE(dw.qty, 0) AS wic_qty,
              dg.qty AS gmc_qty, db.qty AS bills_qty,
-             dci.qty AS converted_in_qty
+             dci.qty AS converted_in_qty,
+             (duqr.item_id IS NOT NULL) AS has_unknown_qty_revenue
       FROM all_dates ad
       LEFT JOIN daily_counts dc ON dc.item_id = ad.item_id AND dc.d = ad.d
       LEFT JOIN daily_wic    dw ON dw.item_id = ad.item_id AND dw.d = ad.d
@@ -207,6 +226,7 @@ export async function GET() {
       LEFT JOIN daily_bills  db ON db.item_id = ad.item_id AND db.d = ad.d
       LEFT JOIN daily_converted_in dci ON dci.item_id = ad.item_id AND dci.d = ad.d
       LEFT JOIN daily_consumed_via_service dcs ON dcs.item_id = ad.item_id AND dcs.d = ad.d
+      LEFT JOIN daily_unknown_qty_revenue duqr ON duqr.item_id = ad.item_id AND duqr.d = ad.d
       ORDER BY ad.item_id, ad.d ASC
     `,
     itemCountIntervalLabels(),
