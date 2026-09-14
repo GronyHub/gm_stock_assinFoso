@@ -2195,6 +2195,30 @@ function ItemHubPageInner() {
     const now = new Date()
     return now.toISOString().slice(0, 16)
   })
+  // Whether the staff member has actually opened the datetime picker and
+  // changed it (a deliberate backdate) -- liveTapTime itself is only ever
+  // set once, at page load, and nothing refreshes it after that, so every
+  // tap sent while this stays false used to silently submit that frozen
+  // page-load minute as tapTime instead of the tap's real time. Live Sale
+  // taps often span hours in one browser session (no reload in between),
+  // so this was recording every one of them -- across the whole session,
+  // any item, any staff member -- at the exact same minute, second-
+  // truncated on top (see /api/sales/live-tap's `tapTime + ':00Z'`),
+  // corrupting tap ordering (the "Gap" column), the GMC pack-cycle
+  // before/after split, and the exact overage-exhaustion date. Only send
+  // tapTime at all once this is true; recordTap otherwise omits it so the
+  // server's own `new Date()` fallback records the real, current instant.
+  const [liveTapTimeTouched, setLiveTapTimeTouched] = useState(false)
+  // A deliberate backdate is meant for the tap(s) made right then, not
+  // every tap for the rest of the browser session -- reset both the moment
+  // the sheet closes (covers every one of its 3 close sites at once) so
+  // reopening it starts clean at the real current time again.
+  useEffect(() => {
+    if (!liveSelectedItem) {
+      setLiveTapTime(new Date().toISOString().slice(0, 16))
+      setLiveTapTimeTouched(false)
+    }
+  }, [liveSelectedItem])
   // Editing the selected item's own fields -- opened from an "Edit" button
   // inside the same sale-tap sheet instead of navigating to Item 360, so a
   // quick price/group/count-cadence fix doesn't require leaving the sheet
@@ -3825,7 +3849,7 @@ function ItemHubPageInner() {
           quantity: qtyNum,
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
-          tapTime: liveTapTime,
+          tapTime: liveTapTimeTouched ? liveTapTime : undefined,
         }),
         signal: controller.signal,
       })
@@ -3948,7 +3972,7 @@ function ItemHubPageInner() {
           quantity: qtyNum,
           customPrice: livePrice ? Number(livePrice) : undefined,
           isGMC: liveSaleType === 'GMC',
-          tapTime: liveTapTime,
+          tapTime: liveTapTimeTouched ? liveTapTime : undefined,
         }),
       })
 
@@ -8778,7 +8802,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           <input
                             type="datetime-local"
                             value={liveTapTime}
-                            onChange={e => setLiveTapTime(e.target.value)}
+                            onChange={e => { setLiveTapTime(e.target.value); setLiveTapTimeTouched(true) }}
+                            title="Only sent to the server if you actually change it -- otherwise the tap records the real current time."
                             className="flex-1 min-w-0 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
                           />
                           <button
