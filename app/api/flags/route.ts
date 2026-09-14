@@ -165,6 +165,7 @@ export async function GET() {
     highWnw,
     lowConfidenceAlias,
     prezohoNotes,
+    unknownQty,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -522,6 +523,28 @@ export async function GET() {
       GROUP BY p.item_id, i.canonical_name
       ORDER BY item_name
     `),
+
+    // 16. Items with at least one sale line that has real revenue
+    // (item_total) but an unknown quantity -- the original bizims_historical
+    // import left quantity/item_price NULL on ~3,700 rows while still
+    // recording the correct item_total. Most were reconstructed (2026-09-14)
+    // by dividing item_total by that item's own dominant historical price,
+    // but only where one price covered a large enough share of the item's
+    // known sales to trust; these are the ones left over -- either no
+    // dominant price at all, or too inconsistent to guess safely. Surfaced
+    // so a reviewer can look at each item's own history and decide (accept
+    // an assumed price, leave as-is, or something else) the same way
+    // Passport and the 19-item medium-consistency batch were resolved.
+    safeQuery(() => sql`
+      SELECT srl.item_id, i.canonical_name AS item_name,
+             COUNT(*)::int AS row_count, SUM(srl.item_total) AS revenue
+      FROM sales_receipt_lines srl
+      JOIN items i ON i.id = srl.item_id
+      WHERE srl.quantity IS NULL
+        AND srl.item_total IS NOT NULL AND srl.item_total <> 0
+      GROUP BY srl.item_id, i.canonical_name
+      ORDER BY revenue DESC
+    `),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -615,7 +638,7 @@ export async function GET() {
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
-    lowConfidenceAlias, prezohoNotes,
+    lowConfidenceAlias, prezohoNotes, unknownQty,
   }
 
   // Cache the plain data, not a Response object (see the comment above the

@@ -981,7 +981,7 @@ function ItemHubPageInner() {
   // entirely" values that DO still fire, now via the Count tab's own small
   // sub-nav instead of a radio in this row -- see inCountTab below and
   // pickCountMode.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'prezohoNotes' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'prezohoNotes' | 'unknownQty' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2754,6 +2754,12 @@ function ItemHubPageInner() {
     // /api/prezoho-notes) -- historical context, not a data error, just
     // worth a reviewer's eyes at some point.
     prezoho_notes: (globalFlags?.prezohoNotes ?? []).map((r: any) => r.item_id) as number[],
+    // Items with at least one sale line whose quantity is still unknown
+    // (real item_total, but the original bizims_historical import never
+    // recorded how many units) -- see /api/flags' unknownQty. Worth a
+    // manual per-item price-consistency call, the same way Passport and the
+    // 19-item medium-consistency batch were resolved (2026-09-14).
+    unknown_qty: (globalFlags?.unknownQty ?? []).map((r: any) => r.item_id) as number[],
   }), [liveAllItems, globalFlags, serviceViolationIds])
 
   // Build mode-specific flags array with Live Sale callbacks
@@ -2988,6 +2994,7 @@ function ItemHubPageInner() {
   const liveNeedsReviewIds = useMemo(() => new Set<number>(liveItemsWithViolations.needs_review ?? []), [liveItemsWithViolations])
   const liveLowConfidenceAliasIds = useMemo(() => new Set<number>(liveItemsWithViolations.low_confidence_alias ?? []), [liveItemsWithViolations])
   const livePrezohoNotesIds = useMemo(() => new Set<number>(liveItemsWithViolations.prezoho_notes ?? []), [liveItemsWithViolations])
+  const liveUnknownQtyIds = useMemo(() => new Set<number>(liveItemsWithViolations.unknown_qty ?? []), [liveItemsWithViolations])
   const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
     const sp = parseFloat(String(item.selling_price)) || 0
     const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
@@ -3074,6 +3081,7 @@ function ItemHubPageInner() {
   const liveNeedsReviewCount = liveNeedsReviewIds.size
   const liveLowConfidenceAliasCount = liveLowConfidenceAliasIds.size
   const livePrezohoNotesCount = livePrezohoNotesIds.size
+  const liveUnknownQtyCount = liveUnknownQtyIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3653,6 +3661,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => liveLowConfidenceAliasIds.has(item.id))
     } else if (liveSaleViolationFilter === 'prezohoNotes') {
       itemsToSort = liveCatalogueItems.filter(item => livePrezohoNotesIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'unknownQty') {
+      itemsToSort = liveCatalogueItems.filter(item => liveUnknownQtyIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3687,7 +3697,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds, livePrezohoNotesIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveUnknownQtyIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -6533,6 +6543,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noGroup'} onChange={() => pickSaleFilter('noGroup')} className="cursor-pointer w-3 h-3" />
                     <span>Missing Group ({liveNoGroupCount})</span>
+                  </label></>)}
+                  {/* Items with at least one sale line whose quantity is
+                      still unknown after the bizims_historical import left
+                      it NULL and couldn't be safely reconstructed from a
+                      consistent price (see /api/flags' unknownQty) -- worth
+                      a per-item review, same treatment as Missing Selling
+                      Price/Cost Price/Group above. */}
+                  {liveUnknownQtyCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unknownQty'} onChange={() => pickSaleFilter('unknownQty')} className="cursor-pointer w-3 h-3" />
+                    <span>Unknown Quantity ({liveUnknownQtyCount})</span>
                   </label></>)}
                   {/* Unidentified pre-Zoho stub items (see /api/aliases/wide)
                       -- reachable here regardless of the "Live" (no
