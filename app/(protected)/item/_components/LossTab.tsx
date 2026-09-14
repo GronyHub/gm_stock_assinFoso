@@ -165,14 +165,26 @@ function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: string |
   )
 }
 
-// Wraps CntValue with click-to-edit/delete when this day's count has a live
-// stock_counts row (row.count_id) behind it -- reuses the exact same
-// PUT/DELETE /api/stock/counts/[id] endpoint CountsTab.tsx already calls, so
-// the edit history, gain/loss-reason gate, and audit trail all behave
-// identically no matter which screen the edit came from. A day whose count
-// was only ever deleted (count_id null, history still shown via CntValue)
-// isn't editable -- there's nothing left to edit.
-function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onStartEdit, onQtyChange, onSave, onCancel, onDelete }: {
+// Wraps CntValue with press-and-hold-to-edit/delete when this day's count
+// has a live stock_counts row (row.count_id) behind it -- reuses the exact
+// same PUT/DELETE /api/stock/counts/[id] endpoint CountsTab.tsx already
+// calls, so the edit history, gain/loss-reason gate, and audit trail all
+// behave identically no matter which screen the edit came from. A day whose
+// count was only ever deleted (count_id null, history still shown via
+// CntValue) isn't editable -- there's nothing left to edit.
+//
+// Long-press starts editing (input + Save/Cancel/Del) instead of a plain
+// click -- a click now taps through to onNavigate (jump to this count's own
+// row on the Counts page) instead, so the two gestures cover "see it in
+// context" vs. "fix it right here" without competing for the same tap. This
+// also happens to fix a real bug the old click-to-edit version had: `editing`
+// was computed elsewhere as `countEditId === row.count_id`, and since
+// countEditId's own "nothing selected" sentinel is also null, that
+// comparison was true for every single date with no count at all, not just
+// whichever one was actually clicked -- every empty CNT cell rendered as if
+// already mid-edit, all the time (see ItemDetail's two call sites, now
+// guarded with `row.count_id != null &&`).
+function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onStartEdit, onQtyChange, onSave, onCancel, onDelete, onNavigate }: {
   row: DayRow
   isOwnerLevelUser: boolean
   editing: boolean
@@ -183,7 +195,26 @@ function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onStartEdit,
   onSave: () => void
   onCancel: () => void
   onDelete: () => void
+  onNavigate?: (countId: number) => void
 }) {
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressFired = useRef(false)
+  const LONG_PRESS_MS = 500
+  function startPress() {
+    longPressFired.current = false
+    pressTimer.current = setTimeout(() => { longPressFired.current = true; onStartEdit() }, LONG_PRESS_MS)
+  }
+  function cancelPress() {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null }
+  }
+  function handleClick() {
+    // The physical release after a fired long-press still dispatches a
+    // click right after -- swallow exactly that one instead of also
+    // navigating away from the edit UI it just opened.
+    if (longPressFired.current) { longPressFired.current = false; return }
+    if (row.count_id != null) onNavigate?.(row.count_id)
+  }
+
   if (editing) {
     return (
       <span className="inline-flex flex-col items-end gap-0.5">
@@ -211,8 +242,12 @@ function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onStartEdit,
   const content = <CntValue qty={row.qty_counted} countedBy={row.counted_by} countedAt={row.counted_at} history={row.count_history} />
   if (row.count_id == null) return content
   return (
-    <button type="button" onClick={onStartEdit} title="Click to edit or delete this count"
-      className="hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition">
+    <button type="button"
+      onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress}
+      onContextMenu={e => e.preventDefault()}
+      onClick={handleClick}
+      title="Tap to view in Counts · Press and hold to edit or delete"
+      className="hover:bg-blue-50 rounded px-0.5 -mx-0.5 transition select-none">
       {content}
     </button>
   )
@@ -1178,7 +1213,7 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
-export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, onReceiptClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
+export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, onReceiptClick, onCountClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
   candidatePool: CandidateItem[]
@@ -1192,6 +1227,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // Precise WIC/GMC deep-link -- falls back to onDateClick (date+item-name
   // guess) when a row has no representative receipt id of its own.
   onReceiptClick?: (receiptId: number) => void
+  // A tap (not long-press -- see CntCell) on a day that has a real count
+  // record -- jumps to that exact row on the Counts page.
+  onCountClick?: (countId: number) => void
   showPrices?: boolean
   gainOnly?: boolean
   lossOnly?: boolean
@@ -1942,13 +1980,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntCell row={row} isOwnerLevelUser={isOwnerLevelUser}
-                      editing={countEditId === row.count_id}
+                      editing={row.count_id != null && countEditId === row.count_id}
                       editQty={countEditQty} saving={countSaving}
                       onStartEdit={() => { if (row.count_id != null) { setCountEditId(row.count_id); setCountEditQty(String(parseFloat(row.qty_counted ?? '0') || 0)) } }}
                       onQtyChange={setCountEditQty}
                       onSave={() => countEditId != null && saveCountEdit(countEditId, countEditQty)}
                       onCancel={() => setCountEditId(null)}
-                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)} />
+                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)}
+                      onNavigate={onCountClick} />
                   </td>}
                   {!isService && <td className="px-1 py-0 text-right font-semibold">
                     {row.loss === null ? <span className="text-gray-300">—</span>
@@ -2118,13 +2157,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   </td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-900 whitespace-nowrap">
                     <CntCell row={row} isOwnerLevelUser={isOwnerLevelUser}
-                      editing={countEditId === row.count_id}
+                      editing={row.count_id != null && countEditId === row.count_id}
                       editQty={countEditQty} saving={countSaving}
                       onStartEdit={() => { if (row.count_id != null) { setCountEditId(row.count_id); setCountEditQty(String(parseFloat(row.qty_counted ?? '0') || 0)) } }}
                       onQtyChange={setCountEditQty}
                       onSave={() => countEditId != null && saveCountEdit(countEditId, countEditQty)}
                       onCancel={() => setCountEditId(null)}
-                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)} />
+                      onDelete={() => countEditId != null && deleteCountEdit(countEditId, countEditQty, row.date)}
+                      onNavigate={onCountClick} />
                   </td>}
                   <td className="px-1 py-0 text-right text-gray-600">
                     {row.wic_qty && (onReceiptClick || onDateClick) ? (

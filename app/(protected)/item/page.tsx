@@ -888,6 +888,13 @@ function ItemHubPageInner() {
   const [jumpToReceiptId, setJumpToReceiptId] = useState<number | null>(
     searchParams.get('jumpReceiptId') ? Number(searchParams.get('jumpReceiptId')) : null
   )
+  // Seeded from ?jumpCountId= -- Item 360's CNT column (see LossTab.tsx's
+  // CntCell, tapped rather than long-pressed) opens this in a new tab via
+  // /item?tab=loss&view=counts&jumpCountId=..., same pattern as
+  // jumpToReceiptId above, landing straight on CountsTab's own list view.
+  const [jumpToCountId, setJumpToCountId] = useState<number | null>(
+    searchParams.get('jumpCountId') ? Number(searchParams.get('jumpCountId')) : null
+  )
   const [showItemsLaws, setShowItemsLaws] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('showItemsLaws') === 'true'
@@ -9059,7 +9066,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <TabErrorBoundary>
             <div className="px-4 pt-2 space-y-2">
               <CountsTab items={liveCountsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={null}
-                onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }} />
+                onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }}
+                jumpToCountId={jumpToCountId} onJumpDone={() => setJumpToCountId(null)} />
             </div>
           </TabErrorBoundary>
         )}

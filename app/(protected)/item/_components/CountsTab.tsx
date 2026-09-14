@@ -264,9 +264,15 @@ type Props = {
   // since Counts isn't part of their shared green-bar toolbar (it carries
   // its own toolbar row instead, see the flag buttons below).
   onGoToViolation?: (key: string) => void
+  // Incoming jump from an item's day table (Item 360's Detail section --
+  // see LossTab.tsx's CntCell, tapped rather than long-pressed), same
+  // pattern as SalesTab's own jumpToReceiptId: scrolls straight to that
+  // exact count's row in the list view below and highlights it.
+  jumpToCountId?: number | null
+  onJumpDone?: () => void
 }
 
-function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation }: Props) {
+function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation, jumpToCountId, onJumpDone }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
@@ -319,6 +325,25 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   useEffect(() => { loadDaily() }, [])
   usePolling(loadRecords, 600000, editingId === null)
   usePolling(loadDaily, 600000, editingId === null)
+
+  // See jumpToCountId's own comment on Props -- same target+highlight+
+  // scrollIntoView the History panel's onEntryClick already does above,
+  // just triggered from outside instead of from within this component.
+  useEffect(() => {
+    if (jumpToCountId == null || loading) return
+    const target = records.find(r => r.id === jumpToCountId)
+    if (target) {
+      setShowHistory(false)
+      setShowManual(false)
+      setShowAnalytics(false)
+      setHighlightId(target.id)
+      setTimeout(() => {
+        document.getElementById(`count-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 50)
+    }
+    onJumpDone?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jumpToCountId, loading])
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
