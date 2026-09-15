@@ -19,6 +19,7 @@ import { TrainingGuideModal } from './_components/TrainingGuideModal'
 import { HelpButton } from './_components/HelpButton'
 import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
+import InfoCarousel from './_components/InfoCarousel'
 import type { GmcOpenOverage } from '@/lib/gmcStock'
 import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
 import ItemDetailPanel, { ItemDetailErrorBoundary } from './_components/ItemDetailPanel'
@@ -5978,6 +5979,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh]"
       style={isDesktop ? { height: `calc(100dvh - ${navHeightPx}px)` } : undefined}>
+
+      <InfoCarousel />
 
       {/* ── Body ── No separate header row any more -- Grony Cash/UK/C&H
           (formerly the top tab row) and global search now live inside the
