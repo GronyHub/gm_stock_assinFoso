@@ -4,12 +4,11 @@ import { usePolling } from '@/lib/usePolling'
 
 type Property = {
   id: number
-  expense_date: string
-  expense_account: string
-  description: string | null
+  acquired_date: string
+  name: string
+  acquired_via: 'external_expense' | 'gmc_stock'
   vendor_name: string | null
   amount: string | null
-  is_property: boolean
   availability: string | null
   working: string | null
   location: string | null
@@ -60,10 +59,10 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
   }, [initialTab])
 
   function load() {
-    fetch('/api/expenses')
+    fetch('/api/properties')
       .then(r => r.json())
       .then((data: unknown) => {
-        setProperties(Array.isArray(data) ? (data as Property[]).filter(e => e.is_property) : [])
+        setProperties(Array.isArray(data) ? (data as Property[]) : [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -79,8 +78,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
     const q = search.toLowerCase()
     if (!q) return list
     return list.filter(p =>
-      p.expense_account.toLowerCase().includes(q) ||
-      (p.description ?? '').toLowerCase().includes(q) ||
+      p.name.toLowerCase().includes(q) ||
       (p.vendor_name ?? '').toLowerCase().includes(q) ||
       (p.location ?? '').toLowerCase().includes(q)
     )
@@ -103,7 +101,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
       not_working_reason: property.not_working_reason, not_available_reason: property.not_available_reason,
       ...updates,
     }
-    const res = await fetch(`/api/expenses/${property.id}`, {
+    const res = await fetch(`/api/properties/${property.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         availability: merged.availability, working: merged.working, location: merged.location,
@@ -145,15 +143,15 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-10">No properties classified yet -- mark an expense as a Property from its Edit form on the Expenses page.</p>
+          <p className="text-xs text-gray-400 text-center py-10">No properties classified yet -- mark an expense as a Property from its Edit form on the Expenses page, or mark a GMC tap as a property from Live Sale.</p>
         ) : filtered.map(p => (
           <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-gray-900 truncate">{p.expense_account}</p>
-                <p className="text-[9px] text-gray-400">{fmtShort(p.expense_date)} · ₵{fmt(p.amount)}{p.vendor_name ? ` · ${p.vendor_name}` : ''}</p>
+                <p className="text-xs font-bold text-gray-900 truncate">{p.name}</p>
+                <p className="text-[9px] text-gray-400">{fmtShort(p.acquired_date)} · ₵{fmt(p.amount)}{p.vendor_name ? ` · ${p.vendor_name}` : ''}</p>
               </div>
-              {p.description && <p className="text-[10px] text-gray-500 truncate max-w-[40%]">{p.description}</p>}
+              {p.acquired_via === 'gmc_stock' && <span className="text-[9px] font-semibold text-blue-600 shrink-0">From GMC stock</span>}
             </div>
 
             <div>

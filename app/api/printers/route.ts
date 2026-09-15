@@ -8,12 +8,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const rows = await sql`
-      SELECT id, expense_date, expense_account, description, vendor_name, amount,
-             is_property, property_type, availability, working, location,
+      SELECT id, acquired_date AS expense_date, name AS expense_account, vendor_name, amount,
+             property_type, availability, working, location,
              not_working_reason, not_available_reason
-      FROM expenses
-      WHERE is_property = true AND property_type = 'Printer'
-      ORDER BY expense_date DESC
+      FROM properties
+      WHERE property_type = 'Printer'
+      ORDER BY acquired_date DESC
     `
     return success(rows)
   } catch (e) {

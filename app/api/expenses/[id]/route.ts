@@ -3,7 +3,6 @@ import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
-import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
@@ -77,26 +76,26 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     `
     if (!row) return notFound()
 
-    // Ensure property row exists if is_property toggled on
+    // Ensure a properties row exists if is_property toggled on -- an
+    // external-purchase property always links back to this expense (see
+    // the properties table's CHECK constraint), never lives in
+    // expense_properties (retired in favor of the standalone properties
+    // table so a GMC stock draw can create a property without an expense).
     if (row.is_property) {
       try {
-        await ensureExpensePropertyColumns()
-      } catch (e) {
-        return handleError('PUT /api/expenses/[id] ensureExpensePropertyColumns', e)
-      }
-
-      try {
         await sql`
-          INSERT INTO expense_properties (expense_id, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
-          VALUES (${row.id}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
+          INSERT INTO properties (item_id, name, acquired_date, acquired_via, expense_id, amount, property_status, property_type, availability, working, location, not_working_reason, not_available_reason)
+          VALUES (${relatedItemId ?? null}, ${row.expense_account}, ${row.expense_date}, 'external_expense', ${row.id}, ${row.amount}, 'at_shop', ${propertyType ?? null}, ${availability ?? null}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null})
           ON CONFLICT (expense_id) DO UPDATE SET
-            property_status = COALESCE(EXCLUDED.property_status, expense_properties.property_status),
-            property_type = COALESCE(EXCLUDED.property_type, expense_properties.property_type),
-            availability = COALESCE(EXCLUDED.availability, expense_properties.availability),
-            working = COALESCE(EXCLUDED.working, expense_properties.working),
-            location = COALESCE(EXCLUDED.location, expense_properties.location),
-            not_working_reason = COALESCE(EXCLUDED.not_working_reason, expense_properties.not_working_reason),
-            not_available_reason = COALESCE(EXCLUDED.not_available_reason, expense_properties.not_available_reason),
+            item_id = COALESCE(EXCLUDED.item_id, properties.item_id),
+            name = EXCLUDED.name,
+            amount = EXCLUDED.amount,
+            property_type = COALESCE(EXCLUDED.property_type, properties.property_type),
+            availability = COALESCE(EXCLUDED.availability, properties.availability),
+            working = COALESCE(EXCLUDED.working, properties.working),
+            location = COALESCE(EXCLUDED.location, properties.location),
+            not_working_reason = COALESCE(EXCLUDED.not_working_reason, properties.not_working_reason),
+            not_available_reason = COALESCE(EXCLUDED.not_available_reason, properties.not_available_reason),
             updated_at = NOW()
         `
       } catch (e) {
@@ -110,8 +109,8 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     // convention.
     await logActivity(actor, 'edited expense', describeExpense(row.expense_account, row.amount, row.expense_date), 600)
 
-    const [ep] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM expense_properties WHERE expense_id = ${row.id}`
-    return success({ ...row, property_status: ep?.property_status ?? null, property_type: ep?.property_type ?? null, availability: ep?.availability ?? null, working: ep?.working ?? null, location: ep?.location ?? null, not_working_reason: ep?.not_working_reason ?? null, not_available_reason: ep?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
+    const [p] = await sql`SELECT property_status, property_type, availability, working, location, not_working_reason, not_available_reason FROM properties WHERE expense_id = ${row.id}`
+    return success({ ...row, property_status: p?.property_status ?? null, property_type: p?.property_type ?? null, availability: p?.availability ?? null, working: p?.working ?? null, location: p?.location ?? null, not_working_reason: p?.not_working_reason ?? null, not_available_reason: p?.not_available_reason ?? null, is_related_expense: row.is_related_expense ?? false, related_to_property_id: row.related_to_property_id ?? null, related_expense_reasons: row.related_expense_reasons ?? null })
   } catch (e) {
     return handleError('PUT /api/expenses/[id]', e)
   }
@@ -130,7 +129,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     }
   }
 
-  await sql`DELETE FROM expense_properties WHERE expense_id = ${Number(id)}`
+  await sql`DELETE FROM properties WHERE expense_id = ${Number(id)}`
   const [row] = await sql`
     DELETE FROM expenses WHERE id = ${Number(id)}
     RETURNING id, expense_account, amount, expense_date::date AS expense_date
@@ -166,11 +165,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (!['at_shop', 'not_at_shop', 'spoilt'].includes(body.property_status)) {
       return badRequest('Invalid status')
     }
-    await sql`
-      INSERT INTO expense_properties (expense_id, property_status, updated_at)
-      VALUES (${Number(id)}, ${body.property_status}, NOW())
-      ON CONFLICT (expense_id) DO UPDATE SET property_status = ${body.property_status}, updated_at = NOW()
-    `
+    await sql`UPDATE properties SET property_status = ${body.property_status}, updated_at = NOW() WHERE expense_id = ${Number(id)}`
 
     const [expense] = await sql`SELECT expense_account, amount, expense_date::date AS expense_date FROM expenses WHERE id = ${Number(id)}`
     if (expense) {
@@ -190,13 +185,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return badRequest('Invalid working status')
   }
 
-  await ensureExpensePropertyColumns()
   await sql`
-    INSERT INTO expense_properties (expense_id, availability, working, location, not_working_reason, not_available_reason, updated_at)
-    VALUES (${Number(id)}, ${availability}, ${working ?? null}, ${location ?? null}, ${notWorkingReason ?? null}, ${notAvailableReason ?? null}, NOW())
-    ON CONFLICT (expense_id) DO UPDATE SET
+    UPDATE properties SET
       availability = ${availability}, working = ${working ?? null}, location = ${location ?? null},
       not_working_reason = ${notWorkingReason ?? null}, not_available_reason = ${notAvailableReason ?? null}, updated_at = NOW()
+    WHERE expense_id = ${Number(id)}
   `
 
   const [expense] = await sql`SELECT expense_account, amount, expense_date::date AS expense_date FROM expenses WHERE id = ${Number(id)}`

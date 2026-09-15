@@ -1058,7 +1058,7 @@ export default function ExpensesTab({
       setRelatedItemsLoading(true)
       setRelatedItemsError(null)
       try {
-        const res = await fetch('/api/properties')
+        const res = await fetch('/api/properties?minimal=1')
         if (res.ok) {
           const properties = await res.json()
           setRelatedItems(properties)

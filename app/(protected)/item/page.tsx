@@ -1418,6 +1418,15 @@ function ItemHubPageInner() {
   // count settles it (see GmcOverageGateModal). Reuses the same pending-tap
   // refs above (they're just a "what to resume" slot, not gate-specific).
   const [gmcOverageGate, setGmcOverageGate] = useState<{ itemName: string; targetName: string; given: number; used: number; exhaustedOnDate: string } | null>(null)
+  // Staff-triggered follow-up shown right after a GMC tap succeeds -- lets
+  // staff mark that specific draw from stock as a business property (a
+  // stapler grabbed off the shelf for internal use, say) without it ever
+  // becoming an expense: the properties table links straight to this tap
+  // (source_live_sale_tap_id), so nothing needs a fabricated expense row
+  // just to carry the property/availability/location fields. Only offered
+  // for goods (a service tap has nothing physical to track as a property).
+  const [gmcPropertyPrompt, setGmcPropertyPrompt] = useState<{ tapId: number; itemId: number; itemName: string; amount: number } | null>(null)
+  const [gmcPropertySaving, setGmcPropertySaving] = useState(false)
   // Per-card quantity/price typed directly into the grid (the "tap straight
   // into a card" flow) -- keyed by item id since many cards can be mid-entry
   // at once. Price is seeded from the item's own selling_price only once the
@@ -3916,6 +3925,12 @@ function ItemHubPageInner() {
       setLivePrice('')
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
+
+      // Offer to mark this specific draw as a property -- only makes sense
+      // for a real GMC stock draw of a physical good, not a service tap.
+      if (liveSaleType === 'GMC' && tapItem.product_type !== 'service' && data.tap?.id) {
+        setGmcPropertyPrompt({ tapId: data.tap.id, itemId: tapItem.id, itemName: tapItem.name, amount: priceNum * qtyNum })
+      }
 
       // Check if target GMC item SOH reached 0
       if (data.targetSohAfterReduction !== undefined && data.targetSohAfterReduction !== null) {
@@ -8976,6 +8991,45 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               onGoToGmc={() => resolveOverageGate('gmc')}
               onContinue={() => resolveOverageGate('continue')}
             />
+          )}
+          {gmcPropertyPrompt && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+              <div className="bg-white rounded-2xl shadow-xl max-w-xs w-full p-4 space-y-3">
+                <p className="text-sm font-bold text-gray-900">Mark as a property?</p>
+                <p className="text-xs text-gray-600">
+                  "{gmcPropertyPrompt.itemName}" was just drawn from GMC stock. If this was taken for the business's own use
+                  (not resold), mark it as a property now -- it won't show up as an expense.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button type="button" disabled={gmcPropertySaving}
+                    onClick={async () => {
+                      setGmcPropertySaving(true)
+                      try {
+                        await fetch('/api/properties', {
+                          method: 'POST', headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            itemId: gmcPropertyPrompt.itemId, sourceLiveSaleTapId: gmcPropertyPrompt.tapId,
+                            name: gmcPropertyPrompt.itemName, amount: gmcPropertyPrompt.amount,
+                          }),
+                        })
+                        showToast(`✓ ${gmcPropertyPrompt.itemName} marked as property`, 'success')
+                      } catch {
+                        showToast('Could not save property -- try again from the Properties tab', 'error')
+                      } finally {
+                        setGmcPropertySaving(false)
+                        setGmcPropertyPrompt(null)
+                      }
+                    }}
+                    className="flex-1 text-xs font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg py-2">
+                    {gmcPropertySaving ? 'Saving…' : 'Yes, mark as property'}
+                  </button>
+                  <button type="button" disabled={gmcPropertySaving} onClick={() => setGmcPropertyPrompt(null)}
+                    className="flex-1 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg py-2">
+                    No
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {liveSortOrderModalOpen && (

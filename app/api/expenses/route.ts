@@ -3,7 +3,6 @@ import sql from '@/lib/db'
 import { isConfidentialExpense } from '@/lib/roles'
 import { hasFeature, getUserPermissionsMap } from '@/lib/permissions'
 import { logActivity } from '@/lib/logger'
-import { ensureExpensePropertyColumns } from '@/lib/expenseProperties'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
@@ -37,7 +36,6 @@ export async function GET(req: NextRequest) {
     const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
     await ensureDbInitialized()
-    await ensureExpensePropertyColumns()
 
     try {
       await ensureSchema()
@@ -45,12 +43,12 @@ export async function GET(req: NextRequest) {
         SELECT
           e.id, e.expense_date::date AS expense_date, e.expense_account,
           e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-          e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-          ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+          e.is_property, COALESCE(p.property_status, 'at_shop') AS property_status,
+          p.property_type, p.availability, p.working, p.location, p.not_working_reason, p.not_available_reason,
           e.expense_group, e.entered_by, e.source, e.source_sheet,
           e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
         FROM expenses e
-        LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+        LEFT JOIN properties p ON p.expense_id = e.id
         ORDER BY e.expense_date DESC, e.id DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -66,12 +64,12 @@ export async function GET(req: NextRequest) {
         SELECT
           e.id, e.expense_date::date AS expense_date, e.expense_account,
           e.description, e.cf_justify, e.vendor_name, e.amount, e.cf_expense_type,
-          e.is_property, COALESCE(ep.property_status, 'at_shop') AS property_status,
-          ep.property_type, ep.availability, ep.working, ep.location, ep.not_working_reason, ep.not_available_reason,
+          e.is_property, COALESCE(p.property_status, 'at_shop') AS property_status,
+          p.property_type, p.availability, p.working, p.location, p.not_working_reason, p.not_available_reason,
           e.expense_group, NULL AS entered_by, e.source, e.source_sheet,
           e.is_related_expense, e.related_to_property_id, e.related_expense_reasons
         FROM expenses e
-        LEFT JOIN expense_properties ep ON ep.expense_id = e.id
+        LEFT JOIN properties p ON p.expense_id = e.id
         ORDER BY e.expense_date DESC, e.id DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -137,8 +135,9 @@ export async function POST(req: NextRequest) {
 
     if (isProp) {
       await sql`
-        INSERT INTO expense_properties (expense_id, property_status)
-        VALUES (${row.id}, 'at_shop') ON CONFLICT (expense_id) DO NOTHING
+        INSERT INTO properties (name, acquired_date, acquired_via, expense_id, amount, property_status, source, entered_by)
+        VALUES (${expense_account}, ${expense_date}, 'external_expense', ${row.id}, ${amount}, 'at_shop', 'app', ${enteredBy})
+        ON CONFLICT (expense_id) DO NOTHING
       `
     }
 
