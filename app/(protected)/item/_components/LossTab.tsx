@@ -2017,13 +2017,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                         className="hover:underline">{fmtQs(row.gmc_qty)}</button>
                     ) : fmtQs(row.gmc_qty)}
                   </td>}
-                  {!isService && (
-                    <td className="px-1 py-0 text-right text-blue-500">
-                      {row.sell_price && onDateClick ? (
-                        <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
-                      ) : fmtQs(row.sell_price)}
-                    </td>
-                  )}
+                  <td className="px-1 py-0 text-right text-blue-500">
+                    {row.sell_price && onDateClick ? (
+                      <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
+                    ) : fmtQs(row.sell_price)}
+                  </td>
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
@@ -2119,13 +2117,13 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               {!isService && <th className="px-1 py-0 text-right">Cnt</th>}
               <th className="px-1 py-0 text-right">WIC</th>
               {!isService && !isGmcItem && <th className="px-1 py-0 text-right">GMC</th>}
-              {!isService && <th className="px-1 py-0 text-right" title="Click to jump to that day's sales receipt">SP</th>}
+              <th className="px-1 py-0 text-right" title="Average direct sale price that day -- click to jump to that day's sales receipt">SP</th>
               {!isService && <th className="px-1 py-0 text-right" title="Vendor Cost Price -- most recent real bill on or before this date. Click to jump to that bill">VCP</th>}
               {!isService && <th className="px-1 py-0 text-right text-purple-600" title="Adjusted Cost Price = VCP + that bill's apportioned Shared Expenses">ACP</th>}
               {!isService && !isGmcItem && <th className="px-1 py-0 text-right">BL</th>}
               {!isService && isGmcItem && <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>}
               {!isService && <th className="px-1 py-0 text-right" title={isGmcItem ? 'Stock On Hand -- current stock physically at the shop, running day to day' : undefined}>{isGmcItem ? 'SOH' : 'Exp'}</th>}
-              {!isGmcItem && <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>}
+              {!isGmcItem && !isService && <th className="px-1 py-0 text-left" title="Trade-off records for this date">Trade-Off</th>}
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
@@ -2178,13 +2176,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                         className="hover:underline">{fmtQs(row.gmc_qty)}</button>
                     ) : fmtQs(row.gmc_qty)}
                   </td>}
-                  {!isService && (
-                    <td className="px-1 py-0 text-right text-blue-500">
-                      {row.sell_price && onDateClick ? (
-                        <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
-                      ) : fmtQs(row.sell_price)}
-                    </td>
-                  )}
+                  <td className="px-1 py-0 text-right text-blue-500">
+                    {row.sell_price && onDateClick ? (
+                      <button onClick={() => onDateClick(row.date, item.item_name)} className="hover:underline">{fmtQs(row.sell_price)}</button>
+                    ) : fmtQs(row.sell_price)}
+                  </td>
                   {!isService && (
                     <td className="px-1 py-0 text-right text-gray-500">
                       <VcpCell vcp={row.vcp} billId={row.vcp_bill_id} onBillClick={onBillClick} jump={vcpJumps.get(row.date)} onConfirmJump={row.vcp_bill_id != null ? () => confirmVcpJump(row.vcp_bill_id!) : undefined} />
@@ -2249,7 +2245,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               {!isService && <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
-              <td colSpan={isService ? 2 : 7 + (isGmcItem ? 1 : 3)} />
+              <td colSpan={isService ? 3 : 7 + (isGmcItem ? 1 : 3)} />
             </tr>
           </tfoot>
         </table>
