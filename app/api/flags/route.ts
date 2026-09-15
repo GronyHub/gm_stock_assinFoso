@@ -6,6 +6,7 @@ import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureBillAttachmentsColumn } from '@/lib/billAttachments'
 import { ensureBillExpensesTable } from '@/lib/billExpenses'
 import { ensureDismissedVcpJumpsTable } from '@/lib/vcpJumpDismissals'
+import { getGmcOpenOverageMap } from '@/lib/gmcStock'
 import { success } from '@/lib/api'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
@@ -166,6 +167,7 @@ export async function GET() {
     lowConfidenceAlias,
     prezohoNotes,
     unknownQty,
+    gmcOverage,
   ] = await Promise.all([
 
     // 1. Walk-in customers with no cash counted
@@ -545,6 +547,30 @@ export async function GET() {
       GROUP BY srl.item_id, i.canonical_name
       ORDER BY revenue DESC
     `),
+
+    // 17. GMC targets whose current pack cycle has already used more than
+    // it was given, with no newer pack tapped in yet -- see
+    // lib/gmcStock.ts's getGmcOpenOverageMap, which already computes this
+    // (and already drives the passive "USAGE EXCEEDS PACK" Item 360 card
+    // badge). Surfaced here too so it's a reviewable, filterable violation
+    // instead of only a badge easy to miss. Confirmed as a real, ongoing
+    // risk (2026-09-15): cross-checking srv's MATERIALS purchase log
+    // against M-LAWS_ENTRY's own "before/after new A4" notes showed the
+    // shop kept opening fresh A4 packs through Sept 2025 with zero
+    // matching purchase record, because srv's own log stops recording
+    // 22 May 2025 -- this flag is the ongoing way to catch that going
+    // forward, not just for A4.
+    safeQuery(async () => {
+      const overageMap = await getGmcOpenOverageMap()
+      if (overageMap.size === 0) return []
+      const ids = Array.from(overageMap.keys())
+      const names = await sql`SELECT id, canonical_name FROM items WHERE id = ANY(${ids})`
+      const nameById = new Map(names.map((n: any) => [n.id, n.canonical_name]))
+      return ids.map(id => {
+        const o = overageMap.get(id)!
+        return { item_id: id, item_name: nameById.get(id) ?? `Item ${id}`, given: o.given, used: o.used, exhausted_on_date: o.exhaustedOnDate }
+      })
+    }),
   ])
 
   const filteredDups = duplicates.filter((r: any) => shouldKeepPair(r.name1, r.name2))
@@ -638,7 +664,7 @@ export async function GET() {
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtNotWorn, shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,
-    lowConfidenceAlias, prezohoNotes, unknownQty,
+    lowConfidenceAlias, prezohoNotes, unknownQty, gmcOverage,
   }
 
   // Cache the plain data, not a Response object (see the comment above the

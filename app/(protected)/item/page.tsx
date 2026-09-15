@@ -988,7 +988,7 @@ function ItemHubPageInner() {
   // entirely" values that DO still fire, now via the Count tab's own small
   // sub-nav instead of a radio in this row -- see inCountTab below and
   // pickCountMode.
-  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'prezohoNotes' | 'unknownQty' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
+  const [liveSaleViolationFilter, setLiveSaleViolationFilter] = useState<'countDue' | 'counts' | 'netLoss' | 'netGain' | 'duplicates' | 'unlinked' | 'service' | 'soldBelowCost' | 'vcpJump' | 'emptyRow' | 'negSoh' | 'acpGteSp' | 'noSp' | 'noCp' | 'noGroup' | 'needsReview' | 'lowConfidenceAlias' | 'prezohoNotes' | 'unknownQty' | 'gmcOverage' | 'noViolations' | 'lossbydate' | 'lossbyitems' | 'leastSalesServices' | 'leastSalesGoods' | 'leastSalesGroups' | 'leastPurchased' | 'pl' | 'cab'>('noViolations')
   const [liveCountsRecordStatusFilter, setLiveCountsRecordStatusFilter] = useState<'all' | 'loss' | 'gain' | 'ok'>('all')
   const [liveCountDeleteLoading, setLiveCountDeleteLoading] = useState<number | null>(null)
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
@@ -2791,6 +2791,11 @@ function ItemHubPageInner() {
     // manual per-item price-consistency call, the same way Passport and the
     // 19-item medium-consistency batch were resolved (2026-09-14).
     unknown_qty: (globalFlags?.unknownQty ?? []).map((r: any) => r.item_id) as number[],
+    // GMC targets whose current pack cycle has already used more than it
+    // was given, with no newer pack tapped in yet -- see /api/flags'
+    // gmcOverage (same condition as the passive Item 360 "USAGE EXCEEDS
+    // PACK" card badge, just also surfaced here as a reviewable violation).
+    gmc_overage: (globalFlags?.gmcOverage ?? []).map((r: any) => r.item_id) as number[],
   }), [liveAllItems, globalFlags, serviceViolationIds])
 
   // Build mode-specific flags array with Live Sale callbacks
@@ -3026,6 +3031,7 @@ function ItemHubPageInner() {
   const liveLowConfidenceAliasIds = useMemo(() => new Set<number>(liveItemsWithViolations.low_confidence_alias ?? []), [liveItemsWithViolations])
   const livePrezohoNotesIds = useMemo(() => new Set<number>(liveItemsWithViolations.prezoho_notes ?? []), [liveItemsWithViolations])
   const liveUnknownQtyIds = useMemo(() => new Set<number>(liveItemsWithViolations.unknown_qty ?? []), [liveItemsWithViolations])
+  const liveGmcOverageIds = useMemo(() => new Set<number>(liveItemsWithViolations.gmc_overage ?? []), [liveItemsWithViolations])
   const liveAcpGteSpIds = useMemo(() => new Set<number>(liveAllItems.filter(item => {
     const sp = parseFloat(String(item.selling_price)) || 0
     const cp = parseFloat(String(item.acp_price ?? item.cost_price)) || 0
@@ -3113,6 +3119,7 @@ function ItemHubPageInner() {
   const liveLowConfidenceAliasCount = liveLowConfidenceAliasIds.size
   const livePrezohoNotesCount = livePrezohoNotesIds.size
   const liveUnknownQtyCount = liveUnknownQtyIds.size
+  const liveGmcOverageCount = liveGmcOverageIds.size
 
   // Fetch taps
   useEffect(() => {
@@ -3694,6 +3701,8 @@ function ItemHubPageInner() {
       itemsToSort = liveCatalogueItems.filter(item => livePrezohoNotesIds.has(item.id))
     } else if (liveSaleViolationFilter === 'unknownQty') {
       itemsToSort = liveCatalogueItems.filter(item => liveUnknownQtyIds.has(item.id))
+    } else if (liveSaleViolationFilter === 'gmcOverage') {
+      itemsToSort = liveCatalogueItems.filter(item => liveGmcOverageIds.has(item.id))
     }
     // noViolations shows all items but hides violation banners (handled in render, not filtering)
 
@@ -3728,7 +3737,7 @@ function ItemHubPageInner() {
       }
       return 0
     })
-  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveUnknownQtyIds])
+  }, [liveCatalogueItems, liveCountStatus, liveMode, liveViolationCountByItemId, liveSalesCounts, liveItemSortOrder, liveSaleViolationFilter, liveNetLossIds, liveNetGainByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveEmptyRowCountByItemId, liveNegSohIds, liveAcpGteSpIds, liveNoSpIds, liveNoCpIds, liveNoGroupIds, liveNeedsReviewIds, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveUnknownQtyIds, liveGmcOverageIds])
 
   // How many leading items are due for a count -- only meaningful (and only
   // used to draw the "N items need counting" header + divider) when count
@@ -6585,6 +6594,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unknownQty'} onChange={() => pickSaleFilter('unknownQty')} className="cursor-pointer w-3 h-3" />
                     <span>Unknown Quantity ({liveUnknownQtyCount})</span>
+                  </label></>)}
+                  {/* GMC targets whose current pack cycle has already used
+                      more than it was given, with no newer pack tapped in
+                      yet (see /api/flags' gmcOverage) -- the same condition
+                      as the passive Item 360 "USAGE EXCEEDS PACK" card
+                      badge, surfaced here too so it's reviewable/filterable
+                      instead of easy to miss. */}
+                  {liveGmcOverageCount > 0 && (<><span className="text-gray-400 px-1">·</span>
+                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
+                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'gmcOverage'} onChange={() => pickSaleFilter('gmcOverage')} className="cursor-pointer w-3 h-3" />
+                    <span>GMC Pack Overage ({liveGmcOverageCount})</span>
                   </label></>)}
                   {/* Unidentified pre-Zoho stub items (see /api/aliases/wide)
                       -- reachable here regardless of the "Live" (no
