@@ -8091,6 +8091,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
                                       </p>
                                     )}
+                                    {/* A service has no stock of its own -- what staff
+                                        actually need at a glance is the material it draws
+                                        down (e.g. Passport Picture -> 4x6 singles), read
+                                        from the same liveGmcTargetStock map the GMC-target
+                                        badge/gate logic already keeps current. */}
+                                    {item.product_type === 'service' && item.converts_to_item_id != null && (
+                                      <p className="text-[9px] text-gray-600 leading-tight">
+                                        <span className="text-slate-600 font-semibold">
+                                          {item.converts_to_name ?? 'material'} left = {Math.ceil(liveGmcTargetStock.get(item.converts_to_item_id) ?? 0)}
+                                        </span>
+                                      </p>
+                                    )}
                                     {/* Tap straight into the card: no plain-text price any
                                         more, the Price box below is the only place it shows
                                         up (pre-filled, so most sales never need to touch it).
@@ -8163,6 +8175,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     {item.product_type !== 'service' && (
                                       <>
                                         <span className={formatLoss(liveLossByItemId.get(item.id)).cls}>{formatLoss(liveLossByItemId.get(item.id)).text}</span>
+                                      </>
+                                    )}
+                                    {item.product_type === 'service' && item.converts_to_item_id != null && (
+                                      <>
+                                        <span className="text-slate-600 font-semibold">
+                                          {item.converts_to_name ?? 'material'} left = {Math.ceil(liveGmcTargetStock.get(item.converts_to_item_id) ?? 0)}
+                                        </span>
+                                        <span className="text-gray-400"> · </span>
                                       </>
                                     )}
                                     {item.gmc_type && (

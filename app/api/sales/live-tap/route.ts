@@ -140,23 +140,14 @@ export async function POST(req: NextRequest) {
       WHERE id = ${receipt.id}
     `
 
-    let soh: number | null = null
-    try {
-      const [itemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.id}`
-      if (itemData?.calculated_soh !== null && itemData?.calculated_soh !== undefined) {
-        soh = parseFloat(itemData.calculated_soh)
-      }
-    } catch (e) {
-      console.warn('Failed to fetch SOH:', e)
-    }
-
-    const [tap] = await sql`
-      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh, tapped_at)
-      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh}, ${tapDateTime.toISOString()})
-      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
-    `
-
-    // If this is a service using GMC, reduce the target item's inventory
+    // If this is a service using GMC, reduce the target item's inventory --
+    // moved ahead of the tap insert below so the tap's own `soh` column can
+    // be set to the material's stock (what a service_using_gmc item
+    // actually cares about), not the service's own meaningless calculated_soh
+    // (see the `soh` resolution right after this block: a service never has
+    // purchases/counts/conversions credited to itself, so its own
+    // calculated_soh is just "0 minus everything ever sold under it" -- an
+    // ever-more-negative number with no relation to real stock).
     let targetSohAfterReduction: number | null = null
     let targetItemName: string | null = null
     if (item.product_type === 'service' && item.gmc_type === 'service_using_gmc' && item.converts_to_item_id) {
@@ -209,6 +200,33 @@ export async function POST(req: NextRequest) {
         console.error('[live-tap] Failed to reduce target item SOH:', e instanceof Error ? e.message : String(e))
       }
     }
+
+    // What the sales log's SOH column means depends on what kind of item
+    // this is: a goods item's own calculated_soh is the real stock figure;
+    // a service_using_gmc item has no stock of its own, so it shows the
+    // material's stock instead (targetSohAfterReduction, just computed
+    // above); a plain service (no GMC material at all -- Typing, Design,
+    // Placement) has nothing to show, so null renders as "--" rather than
+    // a made-up number.
+    let soh: number | null = null
+    if (item.product_type === 'service') {
+      soh = targetSohAfterReduction
+    } else {
+      try {
+        const [itemData] = await sql`SELECT calculated_soh FROM item_stock_summary WHERE item_id = ${item.id}`
+        if (itemData?.calculated_soh !== null && itemData?.calculated_soh !== undefined) {
+          soh = parseFloat(itemData.calculated_soh)
+        }
+      } catch (e) {
+        console.warn('Failed to fetch SOH:', e)
+      }
+    }
+
+    const [tap] = await sql`
+      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh, tapped_at)
+      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh}, ${tapDateTime.toISOString()})
+      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
+    `
 
     // Buying a new pack_to_gmc item is itself evidence the previous pack's
     // credited stock is gone -- rather than adding this pack's yield on top
