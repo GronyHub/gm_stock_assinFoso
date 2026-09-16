@@ -43,6 +43,66 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return success({ tapped_at: tap?.tapped_at })
     }
 
+    if (action === 'update-full') {
+      const body = await req.json()
+      const { quantity, customPrice, tappedAt } = body
+
+      const newQty = quantity != null ? Number(quantity) : null
+      const newPrice = customPrice != null ? Number(customPrice) : null
+      const newTappedAt = tappedAt || null
+
+      if (newQty != null && newQty < 1) return badRequest('Quantity must be 1 or more')
+      if (newPrice != null && newPrice <= 0) return badRequest('Price must be greater than 0')
+
+      // Fetch current tap details
+      const [currentTap] = await sql`
+        SELECT id, quantity, price, receipt_line_id, receipt_id, item_name, staff_name
+        FROM live_sale_taps WHERE id = ${id}
+      `
+      if (!currentTap) return badRequest('Tap not found')
+
+      const oldQty = Number(currentTap.quantity) || 1
+      const oldPrice = Number(currentTap.price) || 0
+      const actualNewQty = newQty ?? oldQty
+      const actualNewPrice = newPrice ?? oldPrice
+      const oldTotal = oldQty * oldPrice
+      const newTotal = actualNewQty * actualNewPrice
+
+      // Update the tap
+      await sql`
+        UPDATE live_sale_taps
+        SET quantity = ${actualNewQty}, price = ${actualNewPrice}, tapped_at = ${newTappedAt}
+        WHERE id = ${id}
+      `
+
+      // Update receipt line if it exists
+      if (currentTap.receipt_line_id) {
+        const [line] = await sql`
+          UPDATE sales_receipt_lines
+          SET quantity = ${actualNewQty}, item_total = ${newTotal}
+          WHERE id = ${currentTap.receipt_line_id}
+          RETURNING id
+        `
+
+        // Update receipt total
+        if (line && currentTap.receipt_id) {
+          await sql`
+            UPDATE sales_receipts SET total = (SELECT COALESCE(SUM(item_total), 0) FROM sales_receipt_lines WHERE receipt_id = ${currentTap.receipt_id})
+            WHERE id = ${currentTap.receipt_id}
+          `
+        }
+      }
+
+      const [updatedTap] = await sql`
+        SELECT id, quantity, price, tapped_at FROM live_sale_taps WHERE id = ${id}
+      `
+
+      return success({
+        tap: updatedTap,
+        message: `Updated ${currentTap.item_name}: ${actualNewQty} × ₵${actualNewPrice.toFixed(2)}`
+      })
+    }
+
     return badRequest('Unknown action')
   } catch (e) {
     return handleError('sales/live-taps/[id]', e)

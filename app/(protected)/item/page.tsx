@@ -4121,6 +4121,37 @@ function ItemHubPageInner() {
     }
   }
 
+  async function saveEditingFullTap() {
+    if (!liveEditingFullTapId || liveEditingFullTapId === -1) return
+    setLiveEditingFullTapSaving(true)
+    try {
+      const tapDateTime = liveEditingFullTapForm.tappedAt ? new Date(liveEditingFullTapForm.tappedAt + ':00Z').toISOString() : null
+      const res = await fetch(`/api/sales/live-taps/${liveEditingFullTapId}?action=update-full`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: liveEditingFullTapForm.quantity ? Number(liveEditingFullTapForm.quantity) : null,
+          customPrice: liveEditingFullTapForm.customPrice ? Number(liveEditingFullTapForm.customPrice) : null,
+          tappedAt: tapDateTime
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLiveTaps(prev => prev.map(t => t.id === liveEditingFullTapId ? { ...t, ...data.tap } : t))
+        setLiveEditingFullTapId(null)
+        setLiveEditingFullTapForm({ quantity: '', customPrice: '', tappedAt: '' })
+        showToast(data.message || 'Log entry updated', 'success')
+      } else {
+        const errData = await res.json()
+        showToast(errData.error || 'Could not save log entry', 'error')
+      }
+    } catch (e) {
+      showToast('Could not save log entry', 'error')
+    } finally {
+      setLiveEditingFullTapSaving(false)
+    }
+  }
+
   // Same /api/stock/count contract CountsTab's own CountRow/ManualCountForm
   // already submit through -- a pack-pairing or loss-reason requirement
   // comes back as a 409 with a flag the caller re-submits against once the
@@ -7175,10 +7206,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      // TODO: Implement save logic
-                      setLiveEditingFullTapId(null)
-                    }}
+                    onClick={saveEditingFullTap}
                     disabled={liveEditingFullTapSaving}
                     className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
                   >
