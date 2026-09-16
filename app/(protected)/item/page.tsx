@@ -6241,6 +6241,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && !isDesktop && (
             <>
               {renderCriticalBar()}
+              {/* P&L sub-view controls -- always shown in header */}
+              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
+                  <span>P&amp;L</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Date</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Items</span>
+                </label>
+                {liveNetLossCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
+                    <span>Net Loss ({liveNetLossCount})</span>
+                  </label>
+                )}
+                {liveAcpGteSpCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
+                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
+                  </label>
+                )}
+                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
+                    <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
+                  </label>
+                )}
+              </div>
               <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
             </>
@@ -6248,6 +6281,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
             <>
               {renderCriticalBar()}
+              {/* P&L sub-view controls -- always shown in header */}
+              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
+                  <span>P&amp;L</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Date</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
+                  <span>Loss by Items</span>
+                </label>
+                {liveNetLossCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
+                    <span>Net Loss ({liveNetLossCount})</span>
+                  </label>
+                )}
+                {liveAcpGteSpCount > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
+                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
+                  </label>
+                )}
+                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
+                    <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
+                  </label>
+                )}
+              </div>
               <div className="flex items-center gap-3 overflow-x-auto">
               {/* Today's running sales total (see liveTodaySalesTotal) --
                   first in the slot so it's never scrolled out of view by
@@ -6721,43 +6787,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
             </div>
           )}
-
-
-              {/* P&L sub-view controls -- P&L, Loss by Date, Loss by Items, Net Loss, Cost >= SP, Sold Below Cost */}
-              {outerTab === 'loss' && lossView === 'pl' && (
-                <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
-                    <span>P&amp;L</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Date</span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
-                    <span>Loss by Items</span>
-                  </label>
-                  {liveNetLossCount > 0 && (
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
-                      <span>Net Loss ({liveNetLossCount})</span>
-                    </label>
-                  )}
-                  {liveAcpGteSpCount > 0 && (
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
-                      <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
-                    </label>
-                  )}
-                  {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
-                      <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
-                    </label>
-                  )}
-                </div>
-              )}
           {/* ── Content ── */}
           <div className="relative flex-1 min-h-0 overflow-y-auto">
         {(outerTab === 'loss' && lossView === 'sales') || (outerTab === 'loss' && lossView === 'items') ? (<>
