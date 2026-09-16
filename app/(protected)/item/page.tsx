@@ -2258,6 +2258,9 @@ function ItemHubPageInner() {
   const [liveEditingFullTapSaving, setLiveEditingFullTapSaving] = useState(false)
   const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
   const [liveReconcilingTaps, setLiveReconcilingTaps] = useState(false)
+  const [liveNewEntryOpen, setLiveNewEntryOpen] = useState(false)
+  const [liveNewEntryForm, setLiveNewEntryForm] = useState({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+  const [liveNewEntrySaving, setLiveNewEntrySaving] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
 
   function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -4151,6 +4154,42 @@ function ItemHubPageInner() {
       showToast('Could not save log entry', 'error')
     } finally {
       setLiveEditingFullTapSaving(false)
+    }
+  }
+
+  async function createNewLogEntry() {
+    if (!liveNewEntryForm.itemId || !liveNewEntryForm.quantity || !liveNewEntryForm.customPrice || !liveNewEntryForm.tappedAt) {
+      showToast('Please fill in all fields', 'error')
+      return
+    }
+    setLiveNewEntrySaving(true)
+    try {
+      const tapDateTime = new Date(liveNewEntryForm.tappedAt + ':00Z').toISOString()
+      const res = await fetch('/api/sales/live-tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId: Number(liveNewEntryForm.itemId),
+          quantity: Number(liveNewEntryForm.quantity),
+          customPrice: Number(liveNewEntryForm.customPrice),
+          isGMC: liveNewEntryForm.isGMC,
+          tapTime: liveNewEntryForm.tappedAt
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLiveTaps(prev => [data.tap, ...prev])
+        setLiveNewEntryOpen(false)
+        setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+        showToast(`Added: ${data.tap.item_name}`, 'success')
+      } else {
+        const errData = await res.json()
+        showToast(errData.error || 'Could not create log entry', 'error')
+      }
+    } catch (e) {
+      showToast('Could not create log entry', 'error')
+    } finally {
+      setLiveNewEntrySaving(false)
     }
   }
 
@@ -6859,6 +6898,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   )}
                   <button
                     type="button"
+                    onClick={() => setLiveNewEntryOpen(true)}
+                    title="Add a new log entry"
+                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-blue-100 text-blue-600 hover:bg-blue-200 transition"
+                  >
+                    + New
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setLiveLogShowAnalytics(a => !a)}
                     title="Analytics"
                     className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
@@ -7221,6 +7268,87 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
                   >
                     {liveEditingFullTapSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New log entry modal */}
+          {liveNewEntryOpen && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4 max-h-96 overflow-y-auto">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Add New Log Entry</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Item</label>
+                    <input
+                      type="text"
+                      placeholder="Search item..."
+                      value={liveNewEntryForm.itemId}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, itemId: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                      list="items-list"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveNewEntryForm.quantity}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, quantity: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveNewEntryForm.customPrice}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, customPrice: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      value={liveNewEntryForm.tappedAt}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, tappedAt: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="entry-is-gmc"
+                      checked={liveNewEntryForm.isGMC}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, isGMC: e.target.checked }))}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <label htmlFor="entry-is-gmc" className="text-[11px] font-semibold text-gray-600 cursor-pointer">
+                      GMC (Grony Multimedia as Customer)
+                    </label>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setLiveNewEntryOpen(false)
+                      setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+                    }}
+                    className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createNewLogEntry}
+                    disabled={liveNewEntrySaving}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
+                  >
+                    {liveNewEntrySaving ? 'Creating…' : 'Create'}
                   </button>
                 </div>
               </div>
