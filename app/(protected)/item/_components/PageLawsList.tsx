@@ -1,9 +1,19 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { ASSIGNABLE_STAFF } from './violationAssignments'
+import CarouselSettingsModal from './CarouselSettingsModal'
 import type { LawFilterKey } from './useLawsPanel'
 
-type Law = { id: number; text: string; created_at: string; onViewClick?: () => void }
+type Law = {
+  id: number
+  text: string
+  created_at: string
+  onViewClick?: () => void
+  display_in_carousel?: boolean
+  carousel_message?: string | null
+  carousel_order?: number | null
+  carousel_type?: 'help' | 'law' | 'announcement'
+}
 
 type Task = {
   id: number
@@ -141,6 +151,7 @@ export default function PageLawsList({
   const [menuTaskId, setMenuTaskId] = useState<number | null>(null)
   const [menuGlobalTaskId, setMenuGlobalTaskId] = useState<number | null>(null)
   const [menuGlobalNoteId, setMenuGlobalNoteId] = useState<number | null>(null)
+  const [carouselModalLawId, setCarouselModalLawId] = useState<number | null>(null)
   const lawPress = useLongPress(id => setMenuLawId(id as number))
   const flagPress = useLongPress(id => setMenuFlagKey(id as string))
   const taskPress = useLongPress(id => setMenuTaskId(id as number))
@@ -1039,6 +1050,7 @@ export default function PageLawsList({
                       <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
                       <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 font-semibold">▼</button>
                       <button type="button" onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
+                      <button type="button" onClick={() => setCarouselModalLawId(l.id)} title="Carousel settings" className="text-purple-500 hover:text-purple-700 font-semibold">🎠</button>
                       <button type="button" onClick={() => { setReplyingTo(`law-${l.id}`); fetchReplies('law', l.id) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
                       <button type="button" onClick={() => { remove(l.id); setMenuLawId(null) }} className="text-red-500 hover:text-red-700 font-semibold">×</button>
                     </div>
@@ -1187,6 +1199,26 @@ export default function PageLawsList({
               globalTaskRecurrenceDays, setGlobalTaskRecurrenceDays)
           )}
         </div>
+      )}
+      {carouselModalLawId !== null && laws.find(l => l.id === carouselModalLawId) && (
+        <CarouselSettingsModal
+          lawId={carouselModalLawId}
+          initialSettings={{
+            display_in_carousel: laws.find(l => l.id === carouselModalLawId)?.display_in_carousel ?? false,
+            carousel_message: laws.find(l => l.id === carouselModalLawId)?.carousel_message ?? null,
+            carousel_order: laws.find(l => l.id === carouselModalLawId)?.carousel_order ?? null,
+            carousel_type: (laws.find(l => l.id === carouselModalLawId)?.carousel_type ?? 'law') as 'help' | 'law' | 'announcement',
+          }}
+          onClose={() => setCarouselModalLawId(null)}
+          onSave={(settings) => {
+            const updatedLaws = laws.map(l =>
+              l.id === carouselModalLawId
+                ? { ...l, ...settings }
+                : l
+            )
+            setLaws(updatedLaws)
+          }}
+        />
       )}
     </div>
   )

@@ -2,69 +2,35 @@
 import { useState, useEffect } from 'react'
 
 type InfoItem = {
-  id: string
+  id: number
   text: string
   icon: string
   variant: 'info' | 'warning' | 'success'
 }
 
-const INFO_ITEMS: InfoItem[] = [
-  {
-    id: 'gmc-overage',
-    text: '📦 If a pack shows "usage exceeds" amount given, a physical count is needed.',
-    icon: '⚠️',
-    variant: 'warning',
-  },
-  {
-    id: 'break-timer',
-    text: '☕ Use "Take a Break" button when stepping away for >30 min to keep attendance accurate.',
-    icon: '⏱️',
-    variant: 'info',
-  },
-  {
-    id: 'live-sale',
-    text: '💳 Verify item quantity & price before tapping. Check material stock for services.',
-    icon: '✓',
-    variant: 'success',
-  },
-  {
-    id: 'data-cache',
-    text: '📊 Some dashboards cache data up to 2 hours. Check specific reports for real-time data.',
-    icon: 'ℹ️',
-    variant: 'info',
-  },
-  {
-    id: 'location-required',
-    text: '📍 GPS required to clock in/out. Make sure location services are enabled.',
-    icon: '📱',
-    variant: 'warning',
-  },
-  {
-    id: 'daily-count',
-    text: '📋 Openers must confirm daily stock counts after clocking in.',
-    icon: '☑️',
-    variant: 'info',
-  },
-]
-
 export default function InfoCarousel() {
+  const [items, setItems] = useState<InfoItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
-    if (!isVisible || isPaused || INFO_ITEMS.length === 0) return
+    fetch('/api/carousel-items').then(r => r.json()).then(setItems).catch(() => setItems([]))
+  }, [])
+
+  useEffect(() => {
+    if (!isVisible || isPaused || items.length === 0) return
 
     const timer = setInterval(() => {
-      setCurrentIndex(prev => (prev + 1) % INFO_ITEMS.length)
+      setCurrentIndex(prev => (prev + 1) % items.length)
     }, 6000)
 
     return () => clearInterval(timer)
-  }, [isVisible, isPaused])
+  }, [isVisible, isPaused, items.length])
 
-  if (!isVisible) return null
+  if (!isVisible || items.length === 0) return null
 
-  const current = INFO_ITEMS[currentIndex]
+  const current = items[currentIndex]
   const variantClasses = {
     info: 'bg-blue-50 border-blue-200',
     warning: 'bg-amber-50 border-amber-200',
@@ -81,7 +47,7 @@ export default function InfoCarousel() {
         <span className="text-sm">{current.text}</span>
         <div className="flex gap-2 items-center shrink-0">
           <div className="flex gap-1">
-            {INFO_ITEMS.map((_, idx) => (
+            {items.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
