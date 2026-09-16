@@ -925,8 +925,8 @@ export function TrainingGuideModal({ isOpen, onClose }: {
 
   useEffect(() => {
     if (!isOpen) return
-    fetch('/api/page-laws?scopeKey=items').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
-    fetch('/api/tasks?scope_key=items').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
+    fetch('/api/page-laws').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
+    fetch('/api/tasks').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
   }, [isOpen])
   const lawsByScope = useMemo(() => {
     const map = new Map<string, Law[]>()
