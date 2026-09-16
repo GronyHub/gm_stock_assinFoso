@@ -47,6 +47,7 @@ type Topic = {
 }
 
 type Law = {
+  scope_key?: string
   id: number
   text: string
   created_at: string
@@ -920,12 +921,31 @@ export function TrainingGuideModal({ isOpen, onClose }: {
   const [laws, setLaws] = useState<Law[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [carouselModalLawId, setCarouselModalLawId] = useState<number | null>(null)
+  const [expandedScopes, setExpandedScopes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!isOpen) return
     fetch('/api/page-laws?scopeKey=items').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
     fetch('/api/tasks?scope_key=items').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
   }, [isOpen])
+  const lawsByScope = useMemo(() => {
+    const map = new Map<string, Law[]>()
+    for (const law of laws) {
+      const scope = law.scope_key || "General"
+      if (!map.has(scope)) map.set(scope, [])
+      map.get(scope)!.push(law)
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [laws])
+
+  const toggleScope = (scope: string) => {
+    setExpandedScopes(prev => {
+      const next = new Set(prev)
+      if (next.has(scope)) next.delete(scope)
+      else next.add(scope)
+      return next
+    })
+  }
 
   const allTopics = useMemo(() => {
     const help = TOPICS
@@ -1012,42 +1032,96 @@ export function TrainingGuideModal({ isOpen, onClose }: {
           <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 text-xl font-light leading-none px-1 ml-auto" aria-label="Close">✕</button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 min-h-0 flex overflow-hidden">
-          {/* Topic list -- hidden on phone once a topic is open, so it is one screen at a time there */}
-          <div className={`${mobileDetailOpen ? 'hidden sm:block' : 'block'} w-full sm:w-56 shrink-0 border-r border-gray-200 overflow-y-auto py-2`}>
-            {grouped.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-8 px-3">No topics match "{query}".</p>
-            ) : grouped.map(([group, topics]) => (
-              <div key={group} className="mb-2">
-                <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{group}</p>
-                {topics.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveId(t.id)}
-                    className={`w-full text-left px-3 py-1.5 text-sm transition ${active?.id === t.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    {t.title}
-                  </button>
-                ))}
-              </div>
-            ))}
+{/* Body - Laws & Tasks at top, Help Topics below */}
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+          {/* LAWS & TASKS SECTION */}
+          <div className="border-b border-gray-200 bg-gray-50">
+            <div className="p-3 border-b border-gray-200">
+              <h3 className="text-sm font-bold text-gray-900">⚖️ Laws & Tasks</h3>
+            </div>
+            <div className="overflow-y-auto max-h-56">
+              {lawsByScope.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4 px-3">No laws or tasks yet.</p>
+              ) : (
+                <div className="space-y-1 p-2">
+                  {lawsByScope.map(([scope, scopeLaws]) => {
+                    const isOpenSection = expandedScopes.has(scope)
+                    return (
+                      <div key={scope} className="bg-white border border-gray-200 rounded overflow-hidden">
+                        <div className="flex items-center justify-between px-2 py-1.5">
+                          <button
+                            onClick={() => toggleScope(scope)}
+                            className="flex-1 flex items-center gap-1 text-left min-w-0"
+                          >
+                            <span className="text-gray-400 text-[10px] shrink-0">{isOpenSection ? '▴' : '▾'}</span>
+                            <span className="text-xs font-semibold text-gray-800 truncate">{scope}</span>
+                            <span className="text-[10px] text-gray-400 shrink-0">({scopeLaws.length})</span>
+                          </button>
+                        </div>
+                        {isOpenSection && (
+                          <div className="border-t border-gray-100 px-2 py-1 text-[11px] space-y-0.5">
+                            {scopeLaws.map(law => (
+                              <div key={law.id} className="text-gray-700 py-0.5">
+                                <div className="flex items-start gap-1">
+                                  <span className="text-green-600 shrink-0 font-bold">✓</span>
+                                  <span className="flex-1">{law.text.substring(0, 60)}{law.text.length > 60 ? '...' : ''}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Content */}
-          <div className={`${mobileDetailOpen ? 'block' : 'hidden sm:block'} flex-1 min-w-0 overflow-y-auto p-4`}>
-            {active ? (
-              <div className="space-y-3 max-w-xl">
-                <button onClick={() => setActiveId(null)} className="sm:hidden text-xs font-semibold text-blue-600 hover:underline">← All topics</button>
-                <h3 className="text-lg font-bold text-gray-900">{active.title}</h3>
-                {active.body}
+          {/* HELP TOPICS SECTION */}
+          <div className="flex-1 min-h-0 flex overflow-hidden">
+            {/* Topic list */}
+            <div className={`${mobileDetailOpen ? 'hidden sm:block' : 'block'} w-full sm:w-56 shrink-0 border-r border-gray-200 overflow-y-auto py-2`}>
+              <div className="px-3 py-1.5">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Help Topics</p>
               </div>
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-10">No topics match "{query}".</p>
-            )}
+              {grouped.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-8 px-3">No topics match "{query}".</p>
+              ) : grouped.map(([group, topics]) => (
+                <div key={group} className="mb-2">
+                  <p className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">{group}</p>
+                  {topics.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveId(t.id)}
+                      className={`w-full text-left px-3 py-1.5 text-sm transition ${active?.id === t.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {t.title}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Content */}
+            <div className={`${mobileDetailOpen ? 'block' : 'hidden sm:block'} flex-1 min-w-0 overflow-y-auto p-4`}>
+              {active ? (
+                <div className="space-y-3 max-w-xl">
+                  <button onClick={() => setActiveId(null)} className="sm:hidden text-xs font-semibold text-blue-600 hover:underline">← All topics</button>
+                  <h3 className="text-lg font-bold text-gray-900">{active.title}</h3>
+                  {active.body}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-10">No topics match "{query}".</p>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Footer */}
+        <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2 text-center text-[11px] text-gray-500">
+          Still stuck? Ask a manager -- this guide covers how the page works, not what to do about a specific sale.
+        </div>
         {/* Footer */}
         <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2 text-center text-[11px] text-gray-500">
           Still stuck? Ask a manager -- this guide covers how the page works, not what to do about a specific sale.
