@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo, useState, useEffect, type ReactNode } from 'react'
+import { useMemo, useState, useEffect, type ReactNode, Fragment } from 'react'
 import CarouselSettingsModal from './CarouselSettingsModal'
+import PageLawsList, { type LawFormKind } from './PageLawsList'
+import ContentPage from './ContentPage'
 
 /* -- tiny visual aids -- recreate the real colors/icons/labels used on the
    actual page, without depending on live data (this modal has none) -- */
@@ -913,6 +915,8 @@ const TOPICS: Topic[] = [
   },
 ]
 
+const COMPANY_LAWS_TIME_KEY = '__staff_times_laws__'
+
 export function TrainingGuideModal({ isOpen, onClose }: {
   isOpen: boolean
   onClose: () => void
@@ -923,11 +927,16 @@ export function TrainingGuideModal({ isOpen, onClose }: {
   const [tasks, setTasks] = useState<Task[]>([])
   const [carouselModalLawId, setCarouselModalLawId] = useState<number | null>(null)
   const [expandedScopes, setExpandedScopes] = useState<Set<string>>(new Set())
+  const [openFormByScope, setOpenFormByScope] = useState<Record<string, LawFormKind>>({})
+
+  const loadData = () => {
+    fetch('/api/page-laws').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
+    fetch('/api/tasks').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
+  }
 
   useEffect(() => {
     if (!isOpen) return
-    fetch('/api/page-laws').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
-    fetch('/api/tasks').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
+    loadData()
   }, [isOpen])
   const lawsByScope = useMemo(() => {
     const map = new Map<string, { laws: Law[]; taskCount: number }>()
@@ -1052,56 +1061,70 @@ export function TrainingGuideModal({ isOpen, onClose }: {
             <div className="p-3 border-b border-gray-200">
               <h3 className="text-sm font-bold text-gray-900">⚖️ Laws & Tasks</h3>
             </div>
-            <div className="overflow-y-auto max-h-56">
+            <div className="overflow-y-auto max-h-56 space-y-1 p-2">
+              {/* Company Laws — Time (special fixed entry) */}
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => toggleScope(COMPANY_LAWS_TIME_KEY)}
+                  className="w-full flex items-center gap-2 text-left px-3 py-2.5">
+                  <span className="text-gray-400 text-[10px] shrink-0">{expandedScopes.has(COMPANY_LAWS_TIME_KEY) ? '▴' : '▾'}</span>
+                  <span className="text-sm font-semibold text-gray-800">📖 Company Laws — Time</span>
+                </button>
+                {expandedScopes.has(COMPANY_LAWS_TIME_KEY) && (
+                  <div className="border-t border-gray-100">
+                    <ContentPage contentKey="staff_times_laws" title="⚖️ Company Laws — Time" />
+                  </div>
+                )}
+              </div>
+
+              {/* All other scopes */}
               {lawsByScope.length === 0 ? (
                 <p className="text-xs text-gray-400 text-center py-4 px-3">No laws or tasks yet.</p>
               ) : (
-                <div className="space-y-1 p-2">
-                  {lawsByScope.map(([scope, data]) => {
-                    const isOpenSection = expandedScopes.has(scope)
-                    const total = data.laws.length + data.taskCount
-                    return (
-                      <div key={scope} className="bg-white border border-gray-200 rounded overflow-hidden">
-                        <div className="flex items-center justify-between px-2 py-1.5">
-                          <button
-                            onClick={() => toggleScope(scope)}
-                            className="flex-1 flex items-center gap-1 text-left min-w-0"
-                          >
-                            <span className="text-gray-400 text-[10px] shrink-0">{isOpenSection ? '▴' : '▾'}</span>
-                            <span className="text-xs font-semibold text-gray-800 truncate">{scope}</span>
-                            <span className="text-[10px] text-gray-400 shrink-0">({total})</span>
+                lawsByScope.map(([scope, data]) => {
+                  const isOpenSection = expandedScopes.has(scope)
+                  const total = data.laws.length + data.taskCount
+                  return (
+                    <div key={scope} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="w-full flex items-center justify-between px-3 py-2.5">
+                        <button type="button" onClick={() => toggleScope(scope)} className="flex-1 flex items-center gap-2 text-left min-w-0">
+                          <span className="text-gray-400 text-[10px] shrink-0">{isOpenSection ? '▴' : '▾'}</span>
+                          <span className="text-sm font-semibold text-gray-800 truncate">{scope}</span>
+                          <span className="text-xs text-gray-400 shrink-0">({total})</span>
+                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => {
+                            setOpenFormByScope(prev => ({ ...prev, [scope]: 'law' }))
+                            setExpandedScopes(prev => new Set(prev).add(scope))
+                          }}
+                            className="text-[11px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded border border-blue-200 transition-colors">
+                            + Law
                           </button>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              className="text-[10px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 transition-colors"
-                              title="Add a law to this scope"
-                            >
-                              + Law
-                            </button>
-                            <button
-                              className="text-[10px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition-colors"
-                              title="Add a task to this scope"
-                            >
-                              + Task
-                            </button>
-                          </div>
+                          <button onClick={() => {
+                            setOpenFormByScope(prev => ({ ...prev, [scope]: 'task' }))
+                            setExpandedScopes(prev => new Set(prev).add(scope))
+                          }}
+                            className="text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded border border-emerald-200 transition-colors">
+                            + Task
+                          </button>
                         </div>
-                        {isOpenSection && (
-                          <div className="border-t border-gray-100 px-2 py-1 text-[11px] space-y-0.5">
-                            {data.laws.map(law => (
-                              <div key={law.id} className="text-gray-700 py-0.5">
-                                <div className="flex items-start gap-1">
-                                  <span className="text-green-600 shrink-0 font-bold">✓</span>
-                                  <span className="flex-1">{law.text.substring(0, 60)}{law.text.length > 60 ? '...' : ''}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    )
-                  })}
-                </div>
+                      {isOpenSection && (
+                        <div className="border-t border-gray-100 px-3 pb-3">
+                          <PageLawsList
+                            scopeKey={scope}
+                            isItemsLaws={true}
+                            onChange={loadData}
+                            openForm={openFormByScope[scope] ?? null}
+                            setOpenForm={v => setOpenFormByScope(prev => ({ ...prev, [scope]: v }))}
+                            hideZeroFlags={false}
+                            setHideZeroFlags={() => {}}
+                            activeFilters={new Set()}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
               )}
             </div>
           </div>
@@ -1146,10 +1169,6 @@ export function TrainingGuideModal({ isOpen, onClose }: {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2 text-center text-[11px] text-gray-500">
-          Still stuck? Ask a manager -- this guide covers how the page works, not what to do about a specific sale.
-        </div>
         {/* Footer */}
         <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-2 text-center text-[11px] text-gray-500">
           Still stuck? Ask a manager -- this guide covers how the page works, not what to do about a specific sale.
