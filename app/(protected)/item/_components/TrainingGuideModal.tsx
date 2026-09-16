@@ -65,6 +65,7 @@ type Task = {
   created_by: string
   created_at: string
   assigned_to?: string
+  submenu?: string
 }
 
 const TOPICS: Topic[] = [
@@ -929,14 +930,26 @@ export function TrainingGuideModal({ isOpen, onClose }: {
     fetch('/api/tasks').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
   }, [isOpen])
   const lawsByScope = useMemo(() => {
-    const map = new Map<string, Law[]>()
+    const map = new Map<string, { laws: Law[]; taskCount: number }>()
+
+    // Add all laws grouped by scope
     for (const law of laws) {
       const scope = law.scope_key || "General"
-      if (!map.has(scope)) map.set(scope, [])
-      map.get(scope)!.push(law)
+      if (!map.has(scope)) map.set(scope, { laws: [], taskCount: 0 })
+      map.get(scope)!.laws.push(law)
     }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  }, [laws])
+
+    // Add task counts for each scope
+    for (const task of tasks) {
+      const scope = task.submenu || "General"
+      if (!map.has(scope)) map.set(scope, { laws: [], taskCount: 0 })
+      map.get(scope)!.taskCount += 1
+    }
+
+    return Array.from(map.entries())
+      .map(([scope, data]) => [scope, data] as const)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+  }, [laws, tasks])
 
   const toggleScope = (scope: string) => {
     setExpandedScopes(prev => {
@@ -1044,8 +1057,9 @@ export function TrainingGuideModal({ isOpen, onClose }: {
                 <p className="text-xs text-gray-400 text-center py-4 px-3">No laws or tasks yet.</p>
               ) : (
                 <div className="space-y-1 p-2">
-                  {lawsByScope.map(([scope, scopeLaws]) => {
+                  {lawsByScope.map(([scope, data]) => {
                     const isOpenSection = expandedScopes.has(scope)
+                    const total = data.laws.length + data.taskCount
                     return (
                       <div key={scope} className="bg-white border border-gray-200 rounded overflow-hidden">
                         <div className="flex items-center justify-between px-2 py-1.5">
@@ -1055,7 +1069,7 @@ export function TrainingGuideModal({ isOpen, onClose }: {
                           >
                             <span className="text-gray-400 text-[10px] shrink-0">{isOpenSection ? '▴' : '▾'}</span>
                             <span className="text-xs font-semibold text-gray-800 truncate">{scope}</span>
-                            <span className="text-[10px] text-gray-400 shrink-0">({scopeLaws.length})</span>
+                            <span className="text-[10px] text-gray-400 shrink-0">({total})</span>
                           </button>
                           <div className="flex items-center gap-1 shrink-0">
                             <button
@@ -1074,7 +1088,7 @@ export function TrainingGuideModal({ isOpen, onClose }: {
                         </div>
                         {isOpenSection && (
                           <div className="border-t border-gray-100 px-2 py-1 text-[11px] space-y-0.5">
-                            {scopeLaws.map(law => (
+                            {data.laws.map(law => (
                               <div key={law.id} className="text-gray-700 py-0.5">
                                 <div className="flex items-start gap-1">
                                   <span className="text-green-600 shrink-0 font-bold">✓</span>
