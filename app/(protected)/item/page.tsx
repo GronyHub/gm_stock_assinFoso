@@ -6957,11 +6957,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         <Fragment key={date}>
                           {/* Date header */}
                           <tr className="bg-green-50 border-b border-green-200">
-                            <td colSpan={10} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
-                              {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
-                              {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
+                            <td className="sticky left-0 top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                              {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                             </td>
-                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none flex gap-0.5">
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none flex gap-0.5 items-center justify-center">
                               <button
                                 onClick={() => {
                                   setLiveEditingFullTapId(-1)
@@ -6982,6 +6981,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               >
                                 +
                               </button>
+                            </td>
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                              ₵{formatPrice(dateTotal)}
+                            </td>
+                            <td colSpan={7} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">
+                              <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
                           </tr>
 
