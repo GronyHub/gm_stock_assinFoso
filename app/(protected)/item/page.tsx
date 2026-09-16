@@ -9294,10 +9294,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </TabErrorBoundary>
         )}
         {outerTab === 'uk' && (
-          <TabErrorBoundary><UKTab uk={uk} /></TabErrorBoundary>
+          <TabErrorBoundary><UKTab uk={uk} rolePermissions={rolePermissions} /></TabErrorBoundary>
         )}
         {outerTab === 'ch' && (
-          <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} /></TabErrorBoundary>
+          <TabErrorBoundary><CHTab view={lossView as CHView} childData={ch} rolePermissions={rolePermissions} /></TabErrorBoundary>
         )}
         {outerTab === 'today' && addForm !== 'expense' && (
           <TabErrorBoundary>

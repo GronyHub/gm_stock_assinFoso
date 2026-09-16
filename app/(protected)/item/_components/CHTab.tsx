@@ -1,5 +1,6 @@
 'use client'
 import { useSession } from 'next-auth/react'
+import { hasFeature, type RolePermissionsMap } from '@/lib/permissionsShared'
 import ManageLogPanel from './ManageLogPanel'
 import SubmenuTable from './SubmenuTable'
 import PersonalTab from './PersonalTab'
@@ -23,14 +24,15 @@ import type { useUKData } from './ukViewData'
 // its pickCHView). They also keep UK's tighter Grony-only gate on top of
 // this component's own Grony-or-Joe one, exactly as restrictive as they
 // were before the move.
-export default function CHTab({ view, childData }: { view: CHView; childData: ReturnType<typeof useUKData> }) {
+export default function CHTab({ view, childData, rolePermissions = {} }: { view: CHView; childData: ReturnType<typeof useUKData>; rolePermissions?: RolePermissionsMap }) {
   const { data: session } = useSession()
   const user = session?.user as any
   const role = user?.role ?? ''
   const username = (user?.username ?? user?.name ?? '').toLowerCase()
-  const isOwnerLevel = role === 'owner' || username === 'joe'
 
-  if (!isOwnerLevel) {
+  const canAccess = hasFeature({ role, username }, 'ch', rolePermissions)
+
+  if (!canAccess) {
     return (
       <div className="py-20 text-center space-y-2">
         <p className="text-2xl">🔒</p>
@@ -41,7 +43,8 @@ export default function CHTab({ view, childData }: { view: CHView; childData: Re
 
   const childPerson = CH_CHILD_PERSON[view]
   if (childPerson) {
-    if (username !== 'grony') {
+    const canAccessUK = hasFeature({ role, username }, 'uk', rolePermissions)
+    if (!canAccessUK) {
       return (
         <div className="py-20 text-center space-y-2">
           <p className="text-2xl">🔒</p>

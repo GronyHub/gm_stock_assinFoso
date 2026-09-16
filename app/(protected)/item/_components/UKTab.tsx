@@ -1,5 +1,6 @@
 'use client'
 import { useSession } from 'next-auth/react'
+import { hasFeature, type RolePermissionsMap } from '@/lib/permissionsShared'
 import SubmenuTable from './SubmenuTable'
 import type { useUKData } from './ukViewData'
 
@@ -10,11 +11,15 @@ import type { useUKData } from './ukViewData'
 // actual columns+rows table is shared with CHTab.tsx (see SubmenuTable.tsx)
 // -- Fiifi/Kuukua/Ebo/Odoye's own submenus moved there, but read from the
 // exact same uk_* tables this one does.
-export default function UKTab({ uk }: { uk: ReturnType<typeof useUKData> }) {
+export default function UKTab({ uk, rolePermissions = {} }: { uk: ReturnType<typeof useUKData>; rolePermissions?: RolePermissionsMap }) {
   const { data: session } = useSession()
-  const username = ((session?.user as any)?.username ?? session?.user?.name ?? '').toLowerCase()
+  const user = session?.user as any
+  const username = (user?.username ?? user?.name ?? '').toLowerCase()
+  const role = user?.role ?? ''
 
-  if (username !== 'grony') {
+  const canAccess = hasFeature({ role, username }, 'uk', rolePermissions)
+
+  if (!canAccess) {
     return (
       <div className="py-20 text-center space-y-2">
         <p className="text-2xl">🔒</p>
