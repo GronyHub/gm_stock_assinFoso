@@ -2252,6 +2252,9 @@ function ItemHubPageInner() {
   const [liveEditingTapTime, setLiveEditingTapTime] = useState('')
   const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
   const [liveEditingCountTime, setLiveEditingCountTime] = useState('')
+  const [liveEditingFullTapId, setLiveEditingFullTapId] = useState<number | null>(null)
+  const [liveEditingFullTapForm, setLiveEditingFullTapForm] = useState({ quantity: '', customPrice: '', tappedAt: '' })
+  const [liveEditingFullTapSaving, setLiveEditingFullTapSaving] = useState(false)
   const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
   const [liveReconcilingTaps, setLiveReconcilingTaps] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
@@ -6823,6 +6826,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   )}
                   <button
                     type="button"
+                    title="Edit a log entry"
+                    onClick={() => setLiveEditingFullTapId(-1)}
+                    className="shrink-0 text-gray-400 hover:text-gray-700 font-bold rounded leading-none p-0.5 border-0"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setLiveLogShowAnalytics(a => !a)}
                     title="Analytics"
                     className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
@@ -7082,6 +7093,102 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             </div>
           )}
+
+          {/* Select tap to edit modal */}
+          {liveEditingFullTapId === -1 && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-96 overflow-y-auto p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Select a log entry to edit</h3>
+                <div className="space-y-1">
+                  {liveTaps.filter((t): t is Tap => t != null && !t.undone).map(tap => (
+                    <button
+                      key={tap.id}
+                      onClick={() => {
+                        setLiveEditingFullTapId(tap.id)
+                        setLiveEditingFullTapForm({
+                          quantity: String(tap.quantity || ''),
+                          customPrice: String(tap.price || ''),
+                          tappedAt: tap.tapped_at.slice(0, 16)
+                        })
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded border border-gray-200 transition text-[11px]"
+                    >
+                      <div className="font-semibold text-gray-900">{tap.item_name}</div>
+                      <div className="text-gray-600">₵{tap.price} × {tap.quantity} by {tap.staff_name}</div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setLiveEditingFullTapId(null)}
+                  className="w-full mt-3 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Edit full tap details modal */}
+          {liveEditingFullTapId != null && liveEditingFullTapId !== -1 && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Log Entry</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveEditingFullTapForm.quantity}
+                      onChange={e => setLiveEditingFullTapForm(f => ({ ...f, quantity: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveEditingFullTapForm.customPrice}
+                      onChange={e => setLiveEditingFullTapForm(f => ({ ...f, customPrice: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      value={liveEditingFullTapForm.tappedAt}
+                      onChange={e => setLiveEditingFullTapForm(f => ({ ...f, tappedAt: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setLiveEditingFullTapId(null)
+                      setLiveEditingFullTapForm({ quantity: '', customPrice: '', tappedAt: '' })
+                    }}
+                    className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Implement save logic
+                      setLiveEditingFullTapId(null)
+                    }}
+                    disabled={liveEditingFullTapSaving}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded transition disabled:opacity-50"
+                  >
+                    {liveEditingFullTapSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Sales tab -- the classic Sales Receipts list. Folded in here since it
               had nothing left that justified its own sidebar destination once the
               New Sale form was dropped and its own tap-a-sale case moved to Sale mode. */}
