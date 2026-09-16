@@ -6961,7 +6961,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
-                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none">
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none flex gap-0.5">
                               <button
                                 onClick={() => {
                                   setLiveEditingFullTapId(-1)
@@ -6971,6 +6971,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 className="text-green-600 hover:text-green-800 font-bold text-[10px] leading-none p-0 border-0 bg-transparent"
                               >
                                 ✏️
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setLiveNewEntryOpen(true)
+                                  setLiveNewEntryForm(f => ({ ...f, tappedAt: `${date}T${new Date().toTimeString().slice(0, 5)}` }))
+                                }}
+                                title="Add new items to this day"
+                                className="text-green-600 hover:text-green-800 font-bold text-[11px] leading-none p-0 border-0 bg-transparent"
+                              >
+                                +
                               </button>
                             </td>
                           </tr>
@@ -7181,26 +7191,44 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {/* Select tap to edit modal */}
           {liveEditingFullTapId === -1 && liveEditingCurrentDate && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-              <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-96 overflow-y-auto p-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Select a log entry to edit</h3>
-                <div className="space-y-1">
-                  {liveTaps.filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveEditingCurrentDate)).map(tap => (
-                    <button
-                      key={tap.id}
-                      onClick={() => {
-                        setLiveEditingFullTapId(tap.id)
-                        setLiveEditingFullTapForm({
-                          quantity: String(tap.quantity || ''),
-                          customPrice: String(tap.price || ''),
-                          tappedAt: tap.tapped_at.slice(0, 16)
-                        })
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded border border-gray-200 transition text-[11px]"
-                    >
-                      <div className="font-semibold text-gray-900">{tap.item_name}</div>
-                      <div className="text-gray-600">₵{tap.price} × {tap.quantity} by {tap.staff_name}</div>
-                    </button>
-                  ))}
+              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[500px] overflow-y-auto p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Log Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="bg-gray-100 border-b border-gray-200">
+                        <th className="text-left px-2 py-1 font-semibold text-gray-600">Item</th>
+                        <th className="text-right px-2 py-1 font-semibold text-gray-600">Price</th>
+                        <th className="text-right px-2 py-1 font-semibold text-gray-600">Qty</th>
+                        <th className="text-right px-2 py-1 font-semibold text-gray-600">Total</th>
+                        <th className="text-left px-2 py-1 font-semibold text-gray-600">Staff</th>
+                        <th className="text-left px-2 py-1 font-semibold text-gray-600">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {liveTaps.filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveEditingCurrentDate)).map(tap => (
+                        <tr
+                          key={tap.id}
+                          onClick={() => {
+                            setLiveEditingFullTapId(tap.id)
+                            setLiveEditingFullTapForm({
+                              quantity: String(tap.quantity || ''),
+                              customPrice: String(tap.price || ''),
+                              tappedAt: tap.tapped_at.slice(0, 16)
+                            })
+                          }}
+                          className="border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition"
+                        >
+                          <td className="px-2 py-1.5 text-gray-900 font-semibold">{tap.item_name}</td>
+                          <td className="text-right px-2 py-1.5 text-gray-600">₵{tap.price}</td>
+                          <td className="text-right px-2 py-1.5 text-gray-600">{tap.quantity}</td>
+                          <td className="text-right px-2 py-1.5 text-gray-900 font-semibold">₵{(Number(tap.price) * Number(tap.quantity)).toFixed(2)}</td>
+                          <td className="px-2 py-1.5 text-gray-600">{tap.staff_name}</td>
+                          <td className="px-2 py-1.5 text-gray-600 text-[10px]">{tap.tapped_at.slice(11, 16)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 <button
                   onClick={() => {
@@ -7209,7 +7237,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   }}
                   className="w-full mt-3 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
                 >
-                  Cancel
+                  Close
                 </button>
               </div>
             </div>
