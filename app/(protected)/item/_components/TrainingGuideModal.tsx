@@ -1057,6 +1057,20 @@ export function TrainingGuideModal({ isOpen, onClose }: {
                             <span className="text-xs font-semibold text-gray-800 truncate">{scope}</span>
                             <span className="text-[10px] text-gray-400 shrink-0">({scopeLaws.length})</span>
                           </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              className="text-[10px] font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 transition-colors"
+                              title="Add a law to this scope"
+                            >
+                              + Law
+                            </button>
+                            <button
+                              className="text-[10px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition-colors"
+                              title="Add a task to this scope"
+                            >
+                              + Task
+                            </button>
+                          </div>
                         </div>
                         {isOpenSection && (
                           <div className="border-t border-gray-100 px-2 py-1 text-[11px] space-y-0.5">
