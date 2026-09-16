@@ -16,6 +16,7 @@ import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt,
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
+import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
 import LawsTasksViewer from './_components/LawsTasksViewer'
 import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
@@ -909,6 +910,7 @@ function ItemHubPageInner() {
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [lawsTasksViewerOpen, setLawsTasksViewerOpen] = useState(false)
+  const [globalLawsTasksModalOpen, setGlobalLawsTasksModalOpen] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -8979,13 +8981,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+        <GlobalLawsTasksModal isOpen={globalLawsTasksModalOpen} onClose={() => setGlobalLawsTasksModalOpen(false)} />
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
           <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />
             <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
               📖 Handbook
             </button>
-            <button onClick={() => setLawsTasksViewerOpen(true)} title="Laws & Tasks (Temp Viewer)" aria-label="Laws & Tasks"
+            <button onClick={() => setGlobalLawsTasksModalOpen(true)} title="Laws & Tasks (Temp Viewer)" aria-label="Laws & Tasks"
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-full shadow-lg transition opacity-75">
               ⚖️ Laws & Tasks (Temp)
             </button>
