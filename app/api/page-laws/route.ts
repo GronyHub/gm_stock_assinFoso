@@ -9,13 +9,19 @@ export async function GET(req: NextRequest) {
   if (error) return unauthorized()
 
   const scopeKey = req.nextUrl.searchParams.get('scopeKey')
-  if (!scopeKey) return badRequest('Missing scopeKey')
 
   try {
     await ensureDbInitialized()
     await ensurePageLawsTable()
-    const rows = await sql`SELECT id, text, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
-    return success(rows)
+    if (scopeKey) {
+      // Fetch laws for a specific scope
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
+      return success(rows)
+    } else {
+      // Fetch all laws across all scopes
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type FROM page_laws ORDER BY scope_key, id`
+      return success(rows)
+    }
   } catch (e) {
     return handleError('page-laws GET', e)
   }
