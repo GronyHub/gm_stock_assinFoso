@@ -2253,6 +2253,7 @@ function ItemHubPageInner() {
   const [liveEditingTapSaving, setLiveEditingTapSaving] = useState(false)
   const [liveEditingCountTime, setLiveEditingCountTime] = useState('')
   const [liveEditingFullTapId, setLiveEditingFullTapId] = useState<number | null>(null)
+  const [liveEditingCurrentDate, setLiveEditingCurrentDate] = useState<string | null>(null)
   const [liveEditingFullTapForm, setLiveEditingFullTapForm] = useState({ quantity: '', customPrice: '', tappedAt: '' })
   const [liveEditingFullTapSaving, setLiveEditingFullTapSaving] = useState(false)
   const [liveEditingCountTimeSaving, setLiveEditingCountTimeSaving] = useState(false)
@@ -4139,6 +4140,7 @@ function ItemHubPageInner() {
         const data = await res.json()
         setLiveTaps(prev => prev.map(t => t.id === liveEditingFullTapId ? { ...t, ...data.tap } : t))
         setLiveEditingFullTapId(null)
+        setLiveEditingCurrentDate(null)
         setLiveEditingFullTapForm({ quantity: '', customPrice: '', tappedAt: '' })
         showToast(data.message || 'Log entry updated', 'success')
       } else {
@@ -6857,14 +6859,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   )}
                   <button
                     type="button"
-                    title="Edit a log entry"
-                    onClick={() => setLiveEditingFullTapId(-1)}
-                    className="shrink-0 text-gray-400 hover:text-gray-700 font-bold rounded leading-none p-0.5 border-0"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setLiveLogShowAnalytics(a => !a)}
                     title="Analytics"
                     className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${
@@ -6916,9 +6910,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         <Fragment key={date}>
                           {/* Date header */}
                           <tr className="bg-green-50 border-b border-green-200">
-                            <td colSpan={11} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                            <td colSpan={10} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · Total: ₵{formatPrice(dateTotal)}
                               {' · PF: '}<span className={dateProfitTotal < 0 ? 'text-red-600' : ''}>₵{formatPrice(dateProfitTotal)}</span>
+                            </td>
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none">
+                              <button
+                                onClick={() => {
+                                  setLiveEditingFullTapId(-1)
+                                  setLiveEditingCurrentDate(date)
+                                }}
+                                title="Edit a log entry from this day"
+                                className="text-green-600 hover:text-green-800 font-bold text-[10px] leading-none p-0 border-0 bg-transparent"
+                              >
+                                ✏️
+                              </button>
                             </td>
                           </tr>
 
@@ -7126,12 +7132,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
 
           {/* Select tap to edit modal */}
-          {liveEditingFullTapId === -1 && (
+          {liveEditingFullTapId === -1 && liveEditingCurrentDate && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
               <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-96 overflow-y-auto p-4">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Select a log entry to edit</h3>
                 <div className="space-y-1">
-                  {liveTaps.filter((t): t is Tap => t != null && !t.undone).map(tap => (
+                  {liveTaps.filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveEditingCurrentDate)).map(tap => (
                     <button
                       key={tap.id}
                       onClick={() => {
@@ -7150,7 +7156,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   ))}
                 </div>
                 <button
-                  onClick={() => setLiveEditingFullTapId(null)}
+                  onClick={() => {
+                    setLiveEditingFullTapId(null)
+                    setLiveEditingCurrentDate(null)
+                  }}
                   className="w-full mt-3 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
                 >
                   Cancel
@@ -7199,6 +7208,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <button
                     onClick={() => {
                       setLiveEditingFullTapId(null)
+                      setLiveEditingCurrentDate(null)
                       setLiveEditingFullTapForm({ quantity: '', customPrice: '', tappedAt: '' })
                     }}
                     className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded transition"
