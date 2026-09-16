@@ -16,12 +16,10 @@ import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt,
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
 import { TrainingGuideModal } from './_components/TrainingGuideModal'
-import { HelpButton } from './_components/HelpButton'
 import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
 import InfoCarousel from './_components/InfoCarousel'
 import type { GmcOpenOverage } from '@/lib/gmcStock'
-import GlobalLawsTasksModal from './_components/GlobalLawsTasksModal'
 import ItemDetailPanel, { ItemDetailErrorBoundary } from './_components/ItemDetailPanel'
 import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
 
@@ -909,7 +907,6 @@ function ItemHubPageInner() {
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
   const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
-  const [liveGlobalLawsModalOpen, setLiveGlobalLawsModalOpen] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -8981,11 +8978,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
           <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-            <button onClick={() => setLiveGlobalLawsModalOpen(true)} title="Laws & Tasks" aria-label="Laws & Tasks"
+            <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
-              ⚖️ Laws & Tasks
+              📖 Handbook
             </button>
-            <HelpButton onClick={() => setLiveHelpModalOpen(true)} className="bg-blue-600 text-white hover:text-white hover:bg-blue-700 rounded-full shadow-lg px-3 py-2" />
+            
           </div>
           {/* Global Search's own permanent floating trigger -- mirrors Laws &
               Tasks/Help's bottom-right pair, but bottom-left so it's never
@@ -8999,7 +8996,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             className="fixed bottom-16 left-4 z-40 w-11 h-11 rounded-full bg-gray-700 hover:bg-gray-800 text-white text-lg shadow-lg flex items-center justify-center transition">
             🔍
           </button>
-          <GlobalLawsTasksModal isOpen={liveGlobalLawsModalOpen} onClose={() => setLiveGlobalLawsModalOpen(false)} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
           )}

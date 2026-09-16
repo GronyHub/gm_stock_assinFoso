@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, useEffect, type ReactNode } from 'react'
+import CarouselSettingsModal from './CarouselSettingsModal'
 
 /* -- tiny visual aids -- recreate the real colors/icons/labels used on the
    actual page, without depending on live data (this modal has none) -- */
@@ -31,7 +32,39 @@ function Steps({ items }: { items: ReactNode[] }) {
   )
 }
 
-type Topic = { id: string; title: string; group: string; keywords: string; body: ReactNode }
+type Topic = {
+  id: string
+  title: string
+  group: string
+  keywords: string
+  body: ReactNode
+  type?: 'help' | 'law' | 'task'
+  lawId?: number
+  display_in_carousel?: boolean
+  carousel_message?: string | null
+  carousel_order?: number | null
+  carousel_type?: 'help' | 'law' | 'announcement'
+}
+
+type Law = {
+  id: number
+  text: string
+  created_at: string
+  display_in_carousel?: boolean
+  carousel_message?: string | null
+  carousel_order?: number | null
+  carousel_type?: 'help' | 'law' | 'announcement'
+}
+
+type Task = {
+  id: number
+  title: string
+  notes?: string
+  done: boolean
+  created_by: string
+  created_at: string
+  assigned_to?: string
+}
 
 const TOPICS: Topic[] = [
   {
@@ -884,12 +917,66 @@ export function TrainingGuideModal({ isOpen, onClose }: {
 }) {
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [laws, setLaws] = useState<Law[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [carouselModalLawId, setCarouselModalLawId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetch('/api/page-laws?scopeKey=items').then(r => r.json()).then(setLaws).catch(() => setLaws([]))
+    fetch('/api/tasks?scope_key=items').then(r => r.json()).then(setTasks).catch(() => setTasks([]))
+  }, [isOpen])
+
+  const allTopics = useMemo(() => {
+    const help = TOPICS
+    const lawTopics: Topic[] = laws.map(law => ({
+      id: `law-${law.id}`,
+      title: law.text,
+      group: 'Company Laws',
+      keywords: law.text.toLowerCase(),
+      body: (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-700">{law.text}</p>
+          <button
+            onClick={() => setCarouselModalLawId(law.id)}
+            className="text-xs font-semibold px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700"
+          >
+            🎠 Carousel Settings
+          </button>
+        </div>
+      ),
+      type: 'law',
+      lawId: law.id,
+      display_in_carousel: law.display_in_carousel,
+      carousel_message: law.carousel_message,
+      carousel_order: law.carousel_order,
+      carousel_type: law.carousel_type,
+    }))
+    const taskTopics: Topic[] = tasks.map(task => ({
+      id: `task-${task.id}`,
+      title: task.title,
+      group: 'Announcements',
+      keywords: (task.title + ' ' + (task.notes || '')).toLowerCase(),
+      body: (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700 font-semibold">{task.title}</p>
+          {task.notes && <p className="text-sm text-gray-700">{task.notes}</p>}
+          <div className="text-xs text-gray-500 space-y-0.5 mt-2">
+            {task.assigned_to && <p>📌 Assigned to: {task.assigned_to}</p>}
+            <p>📅 Created: {new Date(task.created_at).toLocaleDateString()}</p>
+          </div>
+        </div>
+      ),
+      type: 'task',
+    }))
+    return [...help, ...lawTopics, ...taskTopics]
+  }, [laws, tasks])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return TOPICS
-    return TOPICS.filter(t => t.title.toLowerCase().includes(q) || t.keywords.includes(q) || t.group.toLowerCase().includes(q))
-  }, [query])
+    if (!q) return allTopics
+    return allTopics.filter(t => t.title.toLowerCase().includes(q) || t.keywords.includes(q) || t.group.toLowerCase().includes(q))
+  }, [query, allTopics])
 
   const grouped = useMemo(() => {
     const map = new Map<string, Topic[]>()
@@ -900,7 +987,7 @@ export function TrainingGuideModal({ isOpen, onClose }: {
     return Array.from(map.entries())
   }, [filtered])
 
-  const picked = activeId ? TOPICS.find(t => t.id === activeId) ?? null : null
+  const picked = activeId ? allTopics.find(t => t.id === activeId) ?? null : null
   const active = picked ?? filtered[0] ?? null
   const mobileDetailOpen = picked !== null
 
@@ -914,7 +1001,7 @@ export function TrainingGuideModal({ isOpen, onClose }: {
       >
         {/* Header */}
         <div className="shrink-0 border-b border-gray-200 px-4 py-3 flex items-center gap-2">
-          <h2 className="text-lg font-bold text-gray-900">Help Guide</h2>
+          <h2 className="text-lg font-bold text-gray-900">Company Handbook</h2>
           <input
             type="text"
             value={query}
@@ -966,6 +1053,24 @@ export function TrainingGuideModal({ isOpen, onClose }: {
           Still stuck? Ask a manager -- this guide covers how the page works, not what to do about a specific sale.
         </div>
       </div>
+      {carouselModalLawId !== null && laws.find(l => l.id === carouselModalLawId) && (
+        <CarouselSettingsModal
+          lawId={carouselModalLawId}
+          initialSettings={{
+            display_in_carousel: laws.find(l => l.id === carouselModalLawId)?.display_in_carousel ?? false,
+            carousel_message: laws.find(l => l.id === carouselModalLawId)?.carousel_message ?? null,
+            carousel_order: laws.find(l => l.id === carouselModalLawId)?.carousel_order ?? null,
+            carousel_type: (laws.find(l => l.id === carouselModalLawId)?.carousel_type ?? 'law') as 'help' | 'law' | 'announcement',
+          }}
+          onClose={() => setCarouselModalLawId(null)}
+          onSave={(settings) => {
+            const updatedLaws = laws.map(l =>
+              l.id === carouselModalLawId ? { ...l, ...settings } : l
+            )
+            setLaws(updatedLaws)
+          }}
+        />
+      )}
     </div>
   )
 }
