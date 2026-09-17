@@ -4826,9 +4826,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             further down this same flex-col), not a mode within the Items/Sales
             grid, so active state reads off lossView instead. */}
         {canSeePL && (
-          <button type="button" onClick={() => pickPL()} title="P&L" className={btnCls(lossView === 'pl', 'bg-cyan-600')}>P&amp;L</button>
-        )}
-        {canSeePL && (
           <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
         )}
         {/* Customers used to only be reachable as a radio inside Receipts'
@@ -6317,33 +6314,34 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <>
               {renderCriticalBar()}
               {/* P&L sub-view controls -- always shown in header */}
-              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
-                <label className="flex items-center gap-1 cursor-pointer">
+              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 overflow-x-auto whitespace-nowrap">
+                <span className="shrink-0">LOSSES:</span>
+                <label className="flex items-center gap-1 cursor-pointer shrink-0">
                   <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
                   <span>P&amp;L</span>
                 </label>
-                <label className="flex items-center gap-1 cursor-pointer">
+                <label className="flex items-center gap-1 cursor-pointer shrink-0">
                   <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
                   <span>Loss by Date</span>
                 </label>
-                <label className="flex items-center gap-1 cursor-pointer">
+                <label className="flex items-center gap-1 cursor-pointer shrink-0">
                   <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
                   <span>Loss by Items</span>
                 </label>
                 {liveNetLossCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
+                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
                     <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
                     <span>Net Loss ({liveNetLossCount})</span>
                   </label>
                 )}
                 {liveAcpGteSpCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
+                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
                     <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
                     <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
                   </label>
                 )}
                 {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
+                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
                     <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
                     <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
                   </label>
@@ -6358,6 +6356,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {renderCriticalBar()}
               {/* P&L sub-view controls -- always shown in header */}
               <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
+                <span>LOSSES:</span>
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
                   <span>P&amp;L</span>
