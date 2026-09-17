@@ -4722,23 +4722,72 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // either here is the only way in besides the GMC overage gate's own
   // "Go to Count" button (which lands on Count Due the same way).
   function renderCriticalBar() {
+    const violationButton = (label: string, count: number, onClick: () => void, textColor: string = 'text-gray-700') => {
+      if (count <= 0) return null
+      return (
+        <button onClick={onClick}
+          className={`${textColor} hover:underline whitespace-nowrap shrink-0 text-[9px] font-medium`}>
+          {label}({count})
+        </button>
+      )
+    }
+
+    const divider = <span className="text-red-300 shrink-0">·</span>
+
     return (
       <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[9px] whitespace-nowrap overflow-x-auto">
         <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">Critical, Do Now</span>
-        <span className="text-red-300">·</span>
-        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
+        {divider}
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'count_due_chart'}
             onChange={pickCountMode}
             className="cursor-pointer w-3 h-3" />
           <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
         </label>
-        {liveNegSohCount > 0 && (<><span className="text-red-300">·</span>
-        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold">
+        {liveNegSohCount > 0 && (<>{divider}
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold shrink-0">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'negative_soh_chart'}
             onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
             className="cursor-pointer w-3 h-3" />
           <span>Negative SOH ({liveNegSohCount})</span>
         </label></>)}
+
+        {/* Sales/Items violations */}
+        {(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
+          <>
+            {divider}
+            <span className="text-gray-600 font-semibold shrink-0">Items;</span>
+            {violationButton('Empty Row', liveEmptyRowCount, () => pickSaleFilter('emptyRow'), 'text-orange-600')}
+            {violationButton('Missing Selling Price', liveNoSpCount, () => pickSaleFilter('noSp'), 'text-orange-600')}
+            {violationButton('Missing Cost Price', liveNoCpCount, () => pickSaleFilter('noCp'), 'text-orange-600')}
+            {violationButton('Duplicates', liveDuplicateItemIds.size, () => pickSaleFilter('duplicates'), 'text-red-600')}
+            {violationButton('Unlinked', liveUnlinkedNamedIds.size, () => pickSaleFilter('unlinked'), 'text-red-600')}
+            {violationButton('Service Violations', liveServiceViolationIdSet.size, () => pickSaleFilter('service'), 'text-red-600')}
+          </>
+        )}
+
+        {/* Sales receipt violations */}
+        {(violationCounts.no_attachment || violationCounts.cost_gte_sell) > 0 && (
+          <>
+            {divider}
+            <span className="text-gray-600 font-semibold shrink-0">Sales;</span>
+            {violationButton('No Attachment', violationCounts.no_attachment || 0, () => pickSalesView('no_attachment'), 'text-orange-600')}
+            {violationButton('Cost ≥ Price', violationCounts.cost_gte_sell || 0, () => pickSalesView('cost_gte_sell'), 'text-red-600')}
+          </>
+        )}
+
+        {/* Bills violations */}
+        {(violationCounts.bill_no_attachment || violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_expense) > 0 && (
+          <>
+            {divider}
+            <span className="text-gray-600 font-semibold shrink-0">Bills;</span>
+            {violationButton('No Attachment', violationCounts.bill_no_attachment || 0, () => jumpToLiveSaleTab('bills', 'bill_no_attachment'), 'text-orange-600')}
+            {violationButton('No Vendor', violationCounts.no_vendor || 0, () => jumpToLiveSaleTab('bills', 'no_vendor'), 'text-orange-600')}
+            {violationButton('No Items', violationCounts.no_items_bills || 0, () => jumpToLiveSaleTab('bills', 'no_items_bills'), 'text-orange-600')}
+            {violationButton('Total Mismatch', violationCounts.bill_total_mismatch || 0, () => jumpToLiveSaleTab('bills', 'bill_total_mismatch'), 'text-orange-600')}
+            {violationButton('No Expense', violationCounts.bill_no_expense || 0, () => jumpToLiveSaleTab('bills', 'bill_no_expense'), 'text-orange-600')}
+          </>
+        )}
       </div>
     )
   }
