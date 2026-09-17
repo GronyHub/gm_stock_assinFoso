@@ -4752,40 +4752,46 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <span>Negative SOH ({liveNegSohCount})</span>
         </label></>)}
 
-        {/* Sales/Items violations */}
-        {(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
+        {/* Items violations */}
+        {(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Items;</span>
             {violationButton('Empty Row', liveEmptyRowCount, () => pickSaleFilter('emptyRow'), 'text-orange-600')}
-            {violationButton('Missing Selling Price', liveNoSpCount, () => pickSaleFilter('noSp'), 'text-orange-600')}
-            {violationButton('Missing Cost Price', liveNoCpCount, () => pickSaleFilter('noCp'), 'text-orange-600')}
+            {violationButton('No SP', liveNoSpCount, () => pickSaleFilter('noSp'), 'text-orange-600')}
+            {violationButton('No CP', liveNoCpCount, () => pickSaleFilter('noCp'), 'text-orange-600')}
+            {violationButton('No Group', violationCounts.no_group || 0, () => pickSaleFilter('noGroup'), 'text-orange-600')}
             {violationButton('Duplicates', liveDuplicateItemIds.size, () => pickSaleFilter('duplicates'), 'text-red-600')}
             {violationButton('Unlinked', liveUnlinkedNamedIds.size, () => pickSaleFilter('unlinked'), 'text-red-600')}
             {violationButton('Service Violations', liveServiceViolationIdSet.size, () => pickSaleFilter('service'), 'text-red-600')}
           </>
         )}
 
-        {/* Sales receipt violations */}
-        {(violationCounts.no_attachment || violationCounts.cost_gte_sell) > 0 && (
+        {/* Receipts violations */}
+        {(violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0 && (
           <>
             {divider}
-            <span className="text-gray-600 font-semibold shrink-0">Sales;</span>
+            <span className="text-gray-600 font-semibold shrink-0">Receipts;</span>
+            {violationButton('No Cash', violationCounts.no_cash || 0, () => pickSalesView('no_cash'), 'text-orange-600')}
+            {violationButton('Missing Days', violationCounts.missing_days || 0, () => pickSalesView('missing_days'), 'text-orange-600')}
+            {violationButton('Dup Receipt', violationCounts.dup_receipt || 0, () => pickSalesView('dup_receipt'), 'text-orange-600')}
             {violationButton('No Attachment', violationCounts.no_attachment || 0, () => pickSalesView('no_attachment'), 'text-orange-600')}
-            {violationButton('Cost ≥ Price', violationCounts.cost_gte_sell || 0, () => pickSalesView('cost_gte_sell'), 'text-red-600')}
+            {violationButton('High WNW', violationCounts.high_wnw || 0, () => pickSalesView('high_wnw'), 'text-red-600')}
+            {violationButton('Cost ≥ Price', violationCounts.sold_below_cost || 0, () => pickSalesView('cost_gte_sell'), 'text-red-600')}
           </>
         )}
 
         {/* Bills violations */}
-        {(violationCounts.bill_no_attachment || violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_expense) > 0 && (
+        {(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump) > 0 && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Bills;</span>
-            {violationButton('No Attachment', violationCounts.bill_no_attachment || 0, () => jumpToLiveSaleTab('bills', 'bill_no_attachment'), 'text-orange-600')}
             {violationButton('No Vendor', violationCounts.no_vendor || 0, () => jumpToLiveSaleTab('bills', 'no_vendor'), 'text-orange-600')}
             {violationButton('No Items', violationCounts.no_items_bills || 0, () => jumpToLiveSaleTab('bills', 'no_items_bills'), 'text-orange-600')}
             {violationButton('Total Mismatch', violationCounts.bill_total_mismatch || 0, () => jumpToLiveSaleTab('bills', 'bill_total_mismatch'), 'text-orange-600')}
+            {violationButton('No Attachment', violationCounts.bill_no_attachment || 0, () => jumpToLiveSaleTab('bills', 'bill_no_attachment'), 'text-orange-600')}
             {violationButton('No Expense', violationCounts.bill_no_expense || 0, () => jumpToLiveSaleTab('bills', 'bill_no_expense'), 'text-orange-600')}
+            {violationButton('VCP Jump', violationCounts.vcp_jump || 0, () => jumpToLiveSaleTab('bills', 'vcp_jump'), 'text-red-600')}
           </>
         )}
       </div>
@@ -6763,35 +6769,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unlinked'} onChange={() => pickSaleFilter('unlinked')} className="cursor-pointer w-3 h-3" />
                     <span>Unlinked ({liveUnlinkedCount})</span>
                   </label></>)}
-                  {liveEmptyRowCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'emptyRow'} onChange={() => pickSaleFilter('emptyRow')} className="cursor-pointer w-3 h-3" />
-                    <span>Empty Row ({liveEmptyRowCount})</span>
-                  </label></>)}
-                  {/* Missing Selling Price/Missing Cost Price/Missing Group
-                      used to only be reachable through the retired All(V)
-                      filter -- promoted to their own buttons here, same
-                      "count > 0, count-gated" treatment as Duplicates/
-                      Service/Unlinked/Empty Row above. Negative Stock moved
-                      to the Count tab's own sub-nav (see inCountTab). Cost >=
-                      Selling Price moved to P&L's sub-nav instead (see
-                      renderCostGteSpTable) -- unlike these, it's an actual
-                      per-sale loss, not a data-hygiene gap. */}
-                  {liveNoSpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noSp'} onChange={() => pickSaleFilter('noSp')} className="cursor-pointer w-3 h-3" />
-                    <span>Missing Selling Price ({liveNoSpCount})</span>
-                  </label></>)}
-                  {liveNoCpCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noCp'} onChange={() => pickSaleFilter('noCp')} className="cursor-pointer w-3 h-3" />
-                    <span>Missing Cost Price ({liveNoCpCount})</span>
-                  </label></>)}
-                  {liveNoGroupCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noGroup'} onChange={() => pickSaleFilter('noGroup')} className="cursor-pointer w-3 h-3" />
-                    <span>Missing Group ({liveNoGroupCount})</span>
-                  </label></>)}
+                  {/* Empty Row / Missing Selling Price / Missing Cost Price / Missing Group
+                      moved to Critical bar at top -- now appear in the Critical bar's
+                      Items section to surface them as a quick shortcut. */}
                   {/* Items with at least one sale line whose quantity is
                       still unknown after the bizims_historical import left
                       it NULL and couldn't be safely reconstructed from a
@@ -6841,30 +6821,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'prezohoNotes'} onChange={() => pickSaleFilter('prezohoNotes')} className="cursor-pointer w-3 h-3" />
                     <span>Ledger Notes ({livePrezohoNotesCount})</span>
                   </label></>)}
-                  {/* Receipts' own violations (No Cash/Missing Days/Dup
-                      Receipt/High WNW/No Attachment) used to live only in
-                      Receipts' own dedicated violation row -- folded in here
-                      instead, so there's one shared violations row for the
-                      whole merged Sales tab rather than a second, separate
-                      one that only showed up while Receipts itself was
-                      open. Sold Below Cost moved out to P&L's sub-nav (see
-                      renderSoldBelowCostTable) -- it's an actual realized
-                      loss, not a bookkeeping gap like the rest of these. */}
-                  {[
-                    { key: 'no_cash', label: 'No Cash', count: globalFlags?.noCash?.length ?? 0 },
-                    { key: 'missing_days', label: 'Missing Days', count: globalFlags?.missingDays?.length ?? 0 },
-                    { key: 'dup_receipt', label: 'Dup Receipt', count: globalFlags?.dupReceipts?.length ?? 0 },
-                    { key: 'high_wnw', label: 'High WNW', count: globalFlags?.highWnw?.length ?? 0 },
-                    { key: 'no_attachment', label: 'No Attachment', count: globalFlags?.noAttachment?.length ?? 0 },
-                  ].filter(v => v.count > 0).map(v => (
-                    <Fragment key={v.key}>
-                      <span className="text-gray-400 px-1">·</span>
-                      <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                        <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales' && liveSalesRadioValue === v.key} onChange={() => pickSalesView(v.key)} className="cursor-pointer w-3 h-3" />
-                        <span>{v.label} ({v.count})</span>
-                      </label>
-                    </Fragment>
-                  ))}
+                  {/* Receipts' own violations moved to Critical bar at top --
+                      No Cash/Missing Days/Dup Receipt/High WNW/No Attachment
+                      now appear in the Critical bar's Receipts section to
+                      surface them as a quick shortcut. */}
                   {/* Receipts' own view toggles (not violations, hence
                       gray/black not red) -- "RC" prefix distinguishes them
                       from this row's other options now that they share it,
@@ -7790,24 +7750,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Vendors
                 </label>
               </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center gap-1 flex-wrap">
-                {[
-                  { key: 'no_vendor', label: 'No Vendor', count: globalFlags?.noVendorBills?.length ?? 0 },
-                  { key: 'no_items_bills', label: 'No Item List', count: globalFlags?.noItemsBills?.length ?? 0 },
-                  { key: 'bill_total_mismatch', label: 'Total Mismatch', count: globalFlags?.billTotalMismatch?.length ?? 0 },
-                  { key: 'bill_no_attachment', label: 'No Attachment', count: globalFlags?.billNoAttachment?.length ?? 0 },
-                  { key: 'bill_no_expense', label: 'No Expense', count: globalFlags?.billNoExpense?.length ?? 0 },
-                  { key: 'vcp_jump', label: 'VCP Jump', count: globalFlags?.vcpJumps?.length ?? 0 },
-                ].sort((a, b) => b.count - a.count).map((v, i) => (
-                  <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[10px]">·</span>}
-                    <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600 text-[10px] shrink-0">
-                      <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === v.key} onChange={() => selectLiveBillsRadio(v.key)} className="cursor-pointer w-2.5 h-2.5" />
-                      <span>{v.label} ({v.count})</span>
-                    </label>
-                  </Fragment>
-                ))}
-              </div>
+              {/* Bills violations moved to Critical bar at top --
+                  No Vendor/No Item List/Total Mismatch/No Attachment/No Expense/VCP Jump
+                  now appear in the Critical bar's Bills section to surface
+                  them as a quick shortcut. */}
               {liveBillsAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
                   <NewBillForm onSuccess={() => setLiveBillsAddingNew(false)} />
