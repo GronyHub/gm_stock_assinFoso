@@ -2261,6 +2261,7 @@ function ItemHubPageInner() {
   const [liveNewEntryOpen, setLiveNewEntryOpen] = useState(false)
   const [liveNewEntryForm, setLiveNewEntryForm] = useState({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
   const [liveNewEntrySaving, setLiveNewEntrySaving] = useState(false)
+  const [liveEditingAddingNewInModal, setLiveEditingAddingNewInModal] = useState(false)
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
 
   function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -6971,16 +6972,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               >
                                 ✏️
                               </button>
-                              <button
-                                onClick={() => {
-                                  setLiveNewEntryOpen(true)
-                                  setLiveNewEntryForm(f => ({ ...f, tappedAt: `${date}T${new Date().toTimeString().slice(0, 5)}` }))
-                                }}
-                                title="Add new items to this day"
-                                className="text-green-600 hover:text-green-800 font-bold text-[11px] leading-none p-0 border-0 bg-transparent"
-                              >
-                                +
-                              </button>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               ₵{formatPrice(dateTotal)}
@@ -7195,10 +7186,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           )}
 
           {/* Select tap to edit modal */}
-          {liveEditingFullTapId === -1 && liveEditingCurrentDate && (
+          {liveEditingFullTapId === -1 && liveEditingCurrentDate && !liveEditingAddingNewInModal && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[500px] overflow-y-auto p-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Log Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
+              <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[500px] overflow-y-auto p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-gray-900">Edit Log Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
+                  <button
+                    onClick={() => {
+                      setLiveEditingAddingNewInModal(true)
+                      setLiveNewEntryForm(f => ({ ...f, tappedAt: `${liveEditingCurrentDate}T${new Date().toTimeString().slice(0, 5)}` }))
+                    }}
+                    title="Add new entry"
+                    className="text-green-600 hover:text-green-800 font-bold text-lg leading-none p-0 border-0 bg-transparent"
+                  >
+                    +
+                  </button>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-[11px]">
                     <thead>
@@ -7207,6 +7210,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         <th className="text-right px-2 py-1 font-semibold text-gray-600">Price</th>
                         <th className="text-right px-2 py-1 font-semibold text-gray-600">Qty</th>
                         <th className="text-right px-2 py-1 font-semibold text-gray-600">Total</th>
+                        <th className="text-center px-2 py-1 font-semibold text-gray-600">Type</th>
                         <th className="text-left px-2 py-1 font-semibold text-gray-600">Staff</th>
                         <th className="text-left px-2 py-1 font-semibold text-gray-600">Time</th>
                       </tr>
@@ -7229,6 +7233,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           <td className="text-right px-2 py-1.5 text-gray-600">₵{tap.price}</td>
                           <td className="text-right px-2 py-1.5 text-gray-600">{tap.quantity}</td>
                           <td className="text-right px-2 py-1.5 text-gray-900 font-semibold">₵{(Number(tap.price) * Number(tap.quantity)).toFixed(2)}</td>
+                          <td className="text-center px-2 py-1.5">
+                            <span className={`text-[10px] font-semibold px-2 py-1 rounded ${tap.is_gmc ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                              {tap.is_gmc ? 'GMC' : 'WIC'}
+                            </span>
+                          </td>
                           <td className="px-2 py-1.5 text-gray-600">{tap.staff_name}</td>
                           <td className="px-2 py-1.5 text-gray-600 text-[10px]">{tap.tapped_at.slice(11, 16)}</td>
                         </tr>
@@ -7245,6 +7254,120 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Add new entry modal (shown from within select modal) */}
+          {liveEditingAddingNewInModal && liveEditingCurrentDate && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
+              <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">Add New Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Item</label>
+                    <input
+                      type="text"
+                      placeholder="Search or select item..."
+                      value={liveNewEntryForm.itemId ? liveCatalogueItems.find(i => String(i.id) === liveNewEntryForm.itemId)?.name || '' : ''}
+                      onChange={e => {
+                        const found = liveCatalogueItems.find(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))
+                        setLiveNewEntryForm(f => ({ ...f, itemId: found ? String(found.id) : '' }))
+                      }}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveNewEntryForm.quantity}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, quantity: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={liveNewEntryForm.customPrice}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, customPrice: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      value={liveNewEntryForm.tappedAt}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, tappedAt: e.target.value }))}
+                      className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 p-2 border border-gray-300 rounded bg-gray-50">
+                    <input
+                      type="checkbox"
+                      id="liveNewEntryTypeGmc"
+                      checked={liveNewEntryForm.isGMC}
+                      onChange={e => setLiveNewEntryForm(f => ({ ...f, isGMC: e.target.checked }))}
+                      className="w-4 h-4 rounded border-gray-300 accent-blue-600"
+                    />
+                    <label htmlFor="liveNewEntryTypeGmc" className="text-sm font-semibold text-gray-900 cursor-pointer flex-1">
+                      {liveNewEntryForm.isGMC ? '📦 GMC' : '🏪 WIC'}
+                    </label>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setLiveEditingAddingNewInModal(false)
+                      setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+                    }}
+                    disabled={liveNewEntrySaving}
+                    className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded disabled:opacity-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const item = liveCatalogueItems.find(i => String(i.id) === liveNewEntryForm.itemId)
+                      if (!item || !liveNewEntryForm.quantity) {
+                        showToast('Missing item or quantity', 'error')
+                        return
+                      }
+                      setLiveNewEntrySaving(true)
+                      try {
+                        const res = await fetch('/api/sales/live-tap', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            itemId: item.id,
+                            quantity: Number(liveNewEntryForm.quantity),
+                            customPrice: liveNewEntryForm.customPrice ? Number(liveNewEntryForm.customPrice) : undefined,
+                            isGMC: liveNewEntryForm.isGMC,
+                            tapTime: liveNewEntryForm.tappedAt || undefined,
+                          }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) throw new Error(data.error || 'Failed to create entry')
+                        setLiveTaps(prev => [data.tap, ...prev])
+                        setLiveEditingAddingNewInModal(false)
+                        setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+                        showToast(`✓ ${item.name} × ${liveNewEntryForm.quantity} added`, 'success')
+                      } catch (e) {
+                        showToast(e instanceof Error ? e.message : 'Error creating entry', 'error')
+                      } finally {
+                        setLiveNewEntrySaving(false)
+                      }
+                    }}
+                    disabled={liveNewEntrySaving || !liveNewEntryForm.itemId || !liveNewEntryForm.quantity}
+                    className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded disabled:opacity-50 transition"
+                  >
+                    {liveNewEntrySaving ? 'Adding...' : 'Add Entry'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
