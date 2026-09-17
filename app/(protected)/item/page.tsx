@@ -6435,6 +6435,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label>
                 )}
               </div>
+              {renderAnalyticsRow()}
               <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
             </>
@@ -6476,6 +6477,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </label>
                 )}
               </div>
+              {renderAnalyticsRow()}
               <div className="flex items-center gap-3 overflow-x-auto">
               {/* Today's running sales total (see liveTodaySalesTotal) --
                   first in the slot so it's never scrolled out of view by
@@ -6714,9 +6716,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it (Count has nothing to filter by group/type/violation --
                   its sub-nav is the only picker it needs). */}
               {showControls && (liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') && !inCountTab && (
-                <>
-                  {renderAnalyticsRow()}
-                  <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
+                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   {/* View-only filters (black) -- All(V) retired: bundling
                       every violation into one button made it impossible to
                       point a staff member at just the one thing to fix.
@@ -6853,7 +6853,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </Fragment>
                   ))}
                 </div>
-                </>
               )}
               {/* Count Due and Negative SOH used to share a small sub-nav
                   here (plus a "Records" option) -- retired, since each is
