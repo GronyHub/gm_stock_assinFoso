@@ -43,8 +43,8 @@ export default function InfoCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="px-4 py-1.5 flex items-center justify-between gap-3 overflow-hidden">
-        <span className="text-sm truncate">{current.text}</span>
+      <div className="px-4 py-1.5 flex items-center justify-between gap-3">
+        <span className="text-sm">{current.text}</span>
         <div className="flex gap-2 items-center shrink-0">
           <div className="flex gap-1">
             {items.map((_, idx) => (

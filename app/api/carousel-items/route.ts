@@ -4,6 +4,35 @@ import { NextResponse } from 'next/server'
 
 export const revalidate = 3600 // 1-hour cache
 
+// Reword long text to fit on a single line (max ~120 chars)
+function shortenMessage(text: string, maxLength: number = 120): string {
+  if (text.length <= maxLength) return text
+
+  // Try to find a good break point (end of a sentence or clause)
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text]
+  let result = ''
+
+  for (const sentence of sentences) {
+    if ((result + sentence).length <= maxLength) {
+      result += sentence
+    } else {
+      break
+    }
+  }
+
+  if (result) return result.trim()
+
+  // If no good sentence break, truncate at word boundary and add key info
+  const words = text.split(' ')
+  result = ''
+  for (const word of words) {
+    if ((result + ' ' + word).length > maxLength - 3) break
+    result += ' ' + word
+  }
+
+  return result.trim() + '...'
+}
+
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json([], { status: 401 })
@@ -26,10 +55,10 @@ export async function GET() {
   }>
 
   // Display all handbook items in carousel (hardcoded to show everything)
-  // Filter out completed tasks (those are handled separately)
+  // Reword long messages to fit on a single line
   const carouselItems = items.map((item, index) => ({
     id: item.id,
-    text: item.carousel_message || item.text,
+    text: shortenMessage(item.carousel_message || item.text),
     icon: item.carousel_type === 'announcement' ? '📢' : item.carousel_type === 'help' ? 'ℹ️' : '📋',
     variant: item.carousel_type === 'announcement' ? 'success' : item.carousel_type === 'help' ? 'info' : 'warning',
     order: item.carousel_order ?? index,
