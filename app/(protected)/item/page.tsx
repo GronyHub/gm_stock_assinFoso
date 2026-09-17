@@ -4798,6 +4798,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     )
   }
 
+  // Analytics row -- decision-making metrics organized by tab. Currently
+  // contains Sales analytics (Least Sales charts for Services/Goods/Groups,
+  // Longest Unbought). Separate from the violation/filter row to keep
+  // decision tools distinct from action-required flags.
+  function renderAnalyticsRow() {
+    return (
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 border-b border-blue-200 text-[9px] whitespace-nowrap overflow-x-auto">
+        <span className="font-extrabold text-blue-700 uppercase tracking-wide shrink-0">Analytics</span>
+        <span className="text-blue-300 shrink-0">·</span>
+        <span className="text-gray-600 font-semibold shrink-0">Sales;</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
+          <input type="radio" name="analyticsRow" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices'} onChange={() => pickSaleFilter('leastSalesServices', { kind: 'least_sales_services' })} className="cursor-pointer w-3 h-3" />
+          <span>Services: Least Sales</span>
+        </label>
+        <span className="text-blue-300 shrink-0">·</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
+          <input type="radio" name="analyticsRow" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGoods'} onChange={() => pickSaleFilter('leastSalesGoods', { kind: 'least_sales_goods' })} className="cursor-pointer w-3 h-3" />
+          <span>Goods: Least Sales</span>
+        </label>
+        <span className="text-blue-300 shrink-0">·</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
+          <input type="radio" name="analyticsRow" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => pickSaleFilter('leastSalesGroups', { kind: 'least_sales_groups' })} className="cursor-pointer w-3 h-3" />
+          <span>Groups: Least Sales</span>
+        </label>
+        <span className="text-blue-300 shrink-0">·</span>
+        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
+          <input type="radio" name="analyticsRow" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased'} onChange={() => pickSaleFilter('leastPurchased', { kind: 'least_purchased' })} className="cursor-pointer w-3 h-3" />
+          <span>Goods: Longest Unbought</span>
+        </label>
+      </div>
+    )
+  }
+
   // Sale mode's own violation-filter radios (Live/Least Sales/Duplicates/
   // etc, further down) now share their row with Log/Receipts -- picking one
   // of these needs to also jump back to the grid itself (itemsPageMode
@@ -6681,7 +6714,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it (Count has nothing to filter by group/type/violation --
                   its sub-nav is the only picker it needs). */}
               {showControls && (liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') && !inCountTab && (
-                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
+                <>
+                  {renderAnalyticsRow()}
+                  <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   {/* View-only filters (black) -- All(V) retired: bundling
                       every violation into one button made it impossible to
                       point a staff member at just the one thing to fix.
@@ -6701,33 +6736,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
                     <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales'} onChange={() => pickItemsMode('sales')} className="cursor-pointer w-3 h-3" />
                     <span>Receipts</span>
-                  </label>
-                  {/* Three read-only charts, not tables -- see LeastSalesChart
-                      and /api/analysis/least-sales. All-time units sold,
-                      lowest first, so a never-sold item/group is the most
-                      visible bar rather than buried at the bottom of a list. */}
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices'} onChange={() => pickSaleFilter('leastSalesServices', { kind: 'least_sales_services' })} className="cursor-pointer w-3 h-3" />
-                    <span>Services: Least Sales</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGoods'} onChange={() => pickSaleFilter('leastSalesGoods', { kind: 'least_sales_goods' })} className="cursor-pointer w-3 h-3" />
-                    <span>Goods: Least Sales</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGroups'} onChange={() => pickSaleFilter('leastSalesGroups', { kind: 'least_sales_groups' })} className="cursor-pointer w-3 h-3" />
-                    <span>Groups: Least Sales</span>
-                  </label>
-                  {/* Purchasing side of the same coin as the three Least
-                      Sales charts above -- how long since a good was last
-                      bought from a vendor, not how long since it sold. */}
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased'} onChange={() => pickSaleFilter('leastPurchased', { kind: 'least_purchased' })} className="cursor-pointer w-3 h-3" />
-                    <span>Goods: Longest Unbought</span>
                   </label>
 
                   {/* Action-required filters (red) - arranged by priority.
@@ -6845,6 +6853,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     </Fragment>
                   ))}
                 </div>
+                </>
               )}
               {/* Count Due and Negative SOH used to share a small sub-nav
                   here (plus a "Records" option) -- retired, since each is
