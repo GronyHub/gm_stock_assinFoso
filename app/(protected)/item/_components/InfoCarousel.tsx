@@ -39,19 +39,19 @@ export default function InfoCarousel() {
 
   return (
     <div
-      className={`border-b ${variantClasses[current.variant]} transition-colors duration-300 text-xs whitespace-nowrap`}
+      className={`border-b ${variantClasses[current.variant]} transition-colors duration-300 whitespace-nowrap`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="px-4 py-1.5 flex items-center justify-between gap-3">
-        <span className="text-sm">{current.text}</span>
-        <div className="flex gap-2 items-center shrink-0">
-          <div className="flex gap-1">
+      <div className="px-2 py-0.5 flex items-center justify-between gap-2">
+        <span className="text-[10px]">{current.text}</span>
+        <div className="flex gap-1 items-center shrink-0">
+          <div className="flex gap-0.5">
             {items.map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
-                className={`w-1 h-1 rounded-full transition-opacity ${
+                className={`w-0.5 h-0.5 rounded-full transition-opacity ${
                   idx === currentIndex ? 'opacity-60' : 'opacity-20'
                 }`}
                 style={{
@@ -67,7 +67,7 @@ export default function InfoCarousel() {
           </div>
           <button
             onClick={() => setIsVisible(false)}
-            className="text-gray-400 hover:text-gray-600 leading-none px-1"
+            className="text-gray-400 hover:text-gray-600 leading-none px-0.5 text-[10px]"
             title="Dismiss"
           >
             ×
