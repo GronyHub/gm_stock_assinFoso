@@ -2262,6 +2262,7 @@ function ItemHubPageInner() {
   const [liveNewEntryForm, setLiveNewEntryForm] = useState({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
   const [liveNewEntrySaving, setLiveNewEntrySaving] = useState(false)
   const [liveEditingAddingNewInModal, setLiveEditingAddingNewInModal] = useState(false)
+  const [liveNewEntryItemSearch, setLiveNewEntryItemSearch] = useState('')
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([])
 
   function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
@@ -7264,18 +7265,39 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Add New Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
                 <div className="space-y-3 mb-4">
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-semibold text-gray-600 mb-1">Item</label>
                     <input
                       type="text"
                       placeholder="Search or select item..."
-                      value={liveNewEntryForm.itemId ? liveCatalogueItems.find(i => String(i.id) === liveNewEntryForm.itemId)?.name || '' : ''}
-                      onChange={e => {
-                        const found = liveCatalogueItems.find(i => i.name.toLowerCase().includes(e.target.value.toLowerCase()))
-                        setLiveNewEntryForm(f => ({ ...f, itemId: found ? String(found.id) : '' }))
-                      }}
+                      value={liveNewEntryForm.itemId ? liveCatalogueItems.find(i => String(i.id) === liveNewEntryForm.itemId)?.name || liveNewEntryItemSearch : liveNewEntryItemSearch}
+                      onChange={e => setLiveNewEntryItemSearch(e.target.value)}
+                      onFocus={() => setLiveNewEntryItemSearch(liveNewEntryItemSearch)}
                       className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                     />
+                    {liveNewEntryItemSearch && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-40 overflow-y-auto">
+                        {liveCatalogueItems
+                          .filter(i => i.name.toLowerCase().includes(liveNewEntryItemSearch.toLowerCase()))
+                          .slice(0, 10)
+                          .map(item => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setLiveNewEntryForm(f => ({ ...f, itemId: String(item.id) }))
+                                setLiveNewEntryItemSearch('')
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition"
+                            >
+                              <div className="font-semibold">{item.name}</div>
+                              <div className="text-[10px] text-gray-600">₵{item.selling_price || '0'}</div>
+                            </button>
+                          ))}
+                        {liveCatalogueItems.filter(i => i.name.toLowerCase().includes(liveNewEntryItemSearch.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-600">No items found</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
@@ -7324,6 +7346,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => {
                       setLiveEditingAddingNewInModal(false)
                       setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+                      setLiveNewEntryItemSearch('')
                     }}
                     disabled={liveNewEntrySaving}
                     className="flex-1 px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-semibold rounded disabled:opacity-50 transition"
@@ -7355,6 +7378,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveTaps(prev => [data.tap, ...prev])
                         setLiveEditingAddingNewInModal(false)
                         setLiveNewEntryForm({ itemId: '', quantity: '', customPrice: '', tappedAt: '', isGMC: false })
+                        setLiveNewEntryItemSearch('')
                         showToast(`✓ ${item.name} × ${liveNewEntryForm.quantity} added`, 'success')
                       } catch (e) {
                         showToast(e instanceof Error ? e.message : 'Error creating entry', 'error')
