@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-export const revalidate = 7200 // 2-hour cache
+export const revalidate = 3600 // 1-hour cache
 
 export async function GET() {
   const session = await auth()
@@ -16,7 +16,6 @@ export async function GET() {
       carousel_order,
       carousel_type
     FROM page_laws
-    WHERE display_in_carousel = true
     ORDER BY carousel_order ASC, id ASC
   ` as unknown as Array<{
     id: number
@@ -26,10 +25,16 @@ export async function GET() {
     carousel_type: string
   }>
 
-  return NextResponse.json(items.map(item => ({
+  // Display all handbook items in carousel (hardcoded to show everything)
+  // Filter out completed tasks (those are handled separately)
+  const carouselItems = items.map((item, index) => ({
     id: item.id,
     text: item.carousel_message || item.text,
     icon: item.carousel_type === 'announcement' ? '📢' : item.carousel_type === 'help' ? 'ℹ️' : '📋',
     variant: item.carousel_type === 'announcement' ? 'success' : item.carousel_type === 'help' ? 'info' : 'warning',
-  })))
+    order: item.carousel_order ?? index,
+  }))
+
+  // Sort by order and return
+  return NextResponse.json(carouselItems.sort((a, b) => a.order - b.order))
 }
