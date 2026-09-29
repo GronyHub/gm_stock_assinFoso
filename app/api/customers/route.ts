@@ -18,6 +18,20 @@ const ensureColumns = once(async () => {
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_visited DATE`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS service_goods TEXT`.catch(() => {})
   await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()`.catch(() => {})
+  await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_id_code TEXT UNIQUE`.catch(() => {})
+
+  // Backfill customer_id_code for existing customers without one
+  const missingIds = await sql`SELECT COUNT(*) as cnt FROM customers WHERE customer_id_code IS NULL`
+  if (missingIds[0]?.cnt > 0) {
+    const customersToUpdate = await sql`
+      SELECT id FROM customers WHERE customer_id_code IS NULL ORDER BY id ASC
+    `
+    for (let i = 0; i < customersToUpdate.length; i++) {
+      const customerId = customersToUpdate[i].id
+      const idCode = `GM${String(customerId).padStart(4, '0')}`
+      await sql`UPDATE customers SET customer_id_code = ${idCode} WHERE id = ${customerId}`.catch(() => {})
+    }
+  }
 })
 
 export async function GET() {
@@ -28,7 +42,7 @@ export async function GET() {
   await ensureColumns()
   const customers = await sql`
     SELECT
-      c.id, c.display_name, c.company_name, c.first_name, c.last_name,
+      c.id, c.customer_id_code, c.display_name, c.company_name, c.first_name, c.last_name,
       c.email, c.phone, c.location, c.status, c.payment_terms_label,
       c.opening_balance, c.credit_limit, c.notes, c.is_internal,
       c.whatsapp_group_added, c.last_visited::text AS last_visited, c.service_goods,
@@ -67,18 +81,24 @@ export async function POST(req: NextRequest) {
   try {
     await initializeDatabase()
     await ensureColumns()
+
+    // Generate customer ID code (GM + 4 digits)
+    const [maxIdRow] = await sql`SELECT COALESCE(MAX(id), 0) as max_id FROM customers`
+    const nextId = maxIdRow.max_id + 1
+    const customerIdCode = `GM${String(nextId).padStart(4, '0')}`
+
     const [customer] = await sql`
       INSERT INTO customers
         (display_name, company_name, first_name, last_name, email, phone, location,
          status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,
-         whatsapp_group_added, last_visited, service_goods)
+         whatsapp_group_added, last_visited, service_goods, customer_id_code)
       VALUES
         (${String(display_name).trim()}, ${company_name || null}, ${first_name || null}, ${last_name || null},
          ${email || null}, ${phone || null}, ${location || null},
          'Active', ${payment_terms_label || null}, ${opening_balance || 0}, ${credit_limit || null}, ${notes || null}, false,
-         ${whatsapp_group_added ?? false}, ${last_visited || null}, ${service_goods || null})
+         ${whatsapp_group_added ?? false}, ${last_visited || null}, ${service_goods || null}, ${customerIdCode})
       RETURNING
-        id, display_name, company_name, first_name, last_name, email, phone, location,
+        id, customer_id_code, display_name, company_name, first_name, last_name, email, phone, location,
         status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,
         whatsapp_group_added, last_visited::text AS last_visited, service_goods, created_at::text AS created_at
     `

@@ -12,6 +12,7 @@ const ReceiptsPage = dynamic(() => import('../receipts/page'), { ssr: false })
 
 type Customer = {
   id: number
+  customer_id_code: string | null
   display_name: string
   company_name: string | null
   first_name: string | null
@@ -56,9 +57,10 @@ const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wid
 
 // Name stays sticky/always-visible (first column); these are the only ones
 // the picker can hide/reorder/rename.
-type ColKey = 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'serviceGoods' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
+type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'serviceGoods' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
+  { key: 'customerId', label: 'Customer ID', align: 'left', tdClass: 'font-semibold text-blue-600', render: v => v.customer_id_code ?? '—' },
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
   { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => v.phone ?? '—' },
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
