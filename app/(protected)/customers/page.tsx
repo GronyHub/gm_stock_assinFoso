@@ -60,7 +60,6 @@ const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wid
 type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'dateRegistered' | 'serviceGoods' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
-  { key: 'customerId', label: 'Customer ID', align: 'left', tdClass: 'font-semibold text-blue-600', render: v => v.customer_id_code ?? '—' },
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
   { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => v.phone ?? '—' },
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
@@ -550,12 +549,16 @@ export default function CustomersPage({
               + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100), 0),
           }}>
             <colgroup>
+              <col style={{ width: 120 }} />
               <col style={{ width: colPrefs.getWidth('name', CUSTOMERS_COL_DEFAULTS.name) }} />
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100) }} />)}
             </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="relative overflow-hidden text-left px-3 py-0.5 font-bold border-b border-r border-gray-200 sticky left-0 z-10 bg-gray-50">
+                <th className="relative overflow-hidden text-left px-3 py-0.5 font-bold border-b border-r border-gray-200 sticky left-0 z-20 bg-gray-50">
+                  <span className="block truncate">ID</span>
+                </th>
+                <th className="relative overflow-hidden text-left px-3 py-0.5 font-bold border-b border-r border-gray-200 sticky left-[120px] z-20 bg-gray-50">
                   <span className="block truncate">Name</span>
                   <ColResizeHandle onResize={d => colPrefs.resizeWidth('name', d, CUSTOMERS_COL_DEFAULTS.name)} onReset={() => colPrefs.resetWidth('name')} />
                 </th>
@@ -568,14 +571,24 @@ export default function CustomersPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((v, i) => (
+              {filtered.map((v, i) => {
+                const isIncomplete = !v.phone || !v.email || !v.location || !v.service_goods
+                return (
                 <tr key={v.id} onClick={() => { setSelected(v); setEditingCustomer(true) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-0 font-semibold text-gray-900 truncate sticky left-0 z-[1] bg-inherit">
-                    {v.is_internal && (
-                      <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
-                    )}
-                    {v.display_name}
+                  <td className="px-3 py-0 font-semibold text-blue-600 truncate sticky left-0 z-10 bg-inherit border-r border-gray-200">
+                    {v.customer_id_code ?? '—'}
+                  </td>
+                  <td className="px-3 py-0 font-semibold text-gray-900 truncate sticky left-[120px] z-10 bg-inherit border-r border-gray-200">
+                    <span className="inline-flex items-center gap-1">
+                      {isIncomplete && (
+                        <span className="text-amber-500 font-bold" title="Incomplete profile">⚠️</span>
+                      )}
+                      {v.is_internal && (
+                        <span className="text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                      )}
+                      {v.display_name}
+                    </span>
                   </td>
                   {colPrefs.shownColumns.map(col => {
                     const meta = CUSTOMER_COL_BY_KEY.get(col.key)!
@@ -586,7 +599,8 @@ export default function CustomersPage({
                     )
                   })}
                 </tr>
-              ))}
+              )
+              })}
             </tbody>
           </table>
         )}
