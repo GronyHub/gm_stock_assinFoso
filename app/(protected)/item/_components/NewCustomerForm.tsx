@@ -15,6 +15,12 @@ type Customer = {
   whatsapp_group_added: boolean
 }
 
+type ExistingCustomer = {
+  id: number
+  display_name: string
+  phone: string | null
+}
+
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
@@ -38,6 +44,25 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
   const [newLocationName, setNewLocationName] = useState('')
   const [addingLocation, setAddingLocation] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [existingCustomers, setExistingCustomers] = useState<ExistingCustomer[]>([])
+  const [duplicatePhone, setDuplicatePhone] = useState<ExistingCustomer | null>(null)
+
+  useEffect(() => {
+    fetch('/api/customers')
+      .then(r => r.json())
+      .then(d => setExistingCustomers(Array.isArray(d) ? d.map((c: any) => ({ id: c.id, display_name: c.display_name, phone: c.phone })) : []))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!phone.trim()) {
+      setDuplicatePhone(null)
+      return
+    }
+    const trimmedPhone = phone.trim()
+    const duplicate = existingCustomers.find(c => c.phone && c.phone.trim() === trimmedPhone)
+    setDuplicatePhone(duplicate ?? null)
+  }, [phone, existingCustomers])
 
   async function addNewLocation() {
     const name = newLocationName.trim()
@@ -115,6 +140,11 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
         <div>
           <label className={labelCls}>Phone</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
+          {duplicatePhone && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5 mt-1">
+              ⚠️ Phone already registered: <span className="font-semibold">{duplicatePhone.display_name}</span>
+            </p>
+          )}
         </div>
         <div>
           <label className={labelCls}>Email</label>
