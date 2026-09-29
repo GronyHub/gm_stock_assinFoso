@@ -262,6 +262,7 @@ export default function CustomersPage({
   const [selected, setSelected] = useState<Customer | null>(null)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
+  const [activeLocation, setActiveLocation] = useState<string | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
 
   // Driven by the global search (page.tsx) landing here already knowing
@@ -286,6 +287,16 @@ export default function CustomersPage({
     email: customers.filter(x => !x.email).length,
     whatsapp: customers.filter(x => !x.whatsapp_group_added).length,
   }), [customers])
+
+  const locationCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    customers.forEach(c => {
+      if (c.location) {
+        counts.set(c.location, (counts.get(c.location) ?? 0) + 1)
+      }
+    })
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+  }, [customers])
   // Reports this page's own flag total up to item/page.tsx's pane badge --
   // these four never went through the centralized violations system other
   // pages' pane badges read from, so the Customers pane row never showed
@@ -309,6 +320,9 @@ export default function CustomersPage({
     else if (activeFlag === 'phone') v = v.filter(x => !x.phone)
     else if (activeFlag === 'email') v = v.filter(x => !x.email)
     else if (activeFlag === 'whatsapp') v = v.filter(x => !x.whatsapp_group_added)
+    if (activeLocation) {
+      v = v.filter(x => x.location === activeLocation)
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       v = v.filter(x =>
@@ -324,7 +338,7 @@ export default function CustomersPage({
       )
     }
     return v
-  }, [customers, activeFlag, search])
+  }, [customers, activeFlag, activeLocation, search])
 
   const totals = useMemo(() => ({
     customers:   customers.length,
@@ -407,12 +421,25 @@ export default function CustomersPage({
           </span>
           <span>{newThisWeek}/{NEW_CUSTOMERS_PER_WEEK_TARGET} this week</span>
         </span>
-        {activeFlag && (
-          <button onClick={() => setActiveFlag(null)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
-            Clear filter
+        {(activeFlag || activeLocation) && (
+          <button onClick={() => { setActiveFlag(null); setActiveLocation(null) }} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
+            Clear filters
           </button>
         )}
       </div>
+
+      {/* Locations filter */}
+      {locationCounts.length > 0 && (
+        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-2">
+          <span className="text-[10px] font-semibold text-gray-600 shrink-0">Filter by location:</span>
+          {locationCounts.map(([loc, count]) => (
+            <button key={loc} onClick={() => setActiveLocation(activeLocation === loc ? null : loc)}
+              className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg transition ${activeLocation === loc ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+              📍 {loc} ({count})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -455,16 +482,8 @@ export default function CustomersPage({
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {!editingCustomer && (
-                <button onClick={() => setEditingCustomer(true)}
-                  className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">
-                  ✏️ Edit
-                </button>
-              )}
-              <button onClick={() => { setSelected(null); setEditingCustomer(false) }}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
-            </div>
+            <button onClick={() => { setSelected(null); setEditingCustomer(false) }}
+              className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
           </div>
 
           {editingCustomer ? (
@@ -550,7 +569,7 @@ export default function CustomersPage({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((v, i) => (
-                <tr key={v.id} onClick={() => { setSelected(v === selected ? null : v); setEditingCustomer(false) }}
+                <tr key={v.id} onClick={() => { setSelected(v); setEditingCustomer(true) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
                   <td className="px-3 py-0 font-semibold text-gray-900 truncate sticky left-0 z-[1] bg-inherit">
                     {v.is_internal && (
