@@ -35,6 +35,8 @@ async function ensureLiveSaleTapsTableImpl() {
   // exactly those (undone but not yet reversed) without re-reversing taps
   // the fixed undo handler already corrected.
   await sql`ALTER TABLE live_sale_taps ADD COLUMN IF NOT EXISTS receipt_reversed BOOLEAN NOT NULL DEFAULT FALSE`.catch(() => {})
+  // Customer ID code (e.g., GM0001) for tracking which customer did the work
+  await sql`ALTER TABLE live_sale_taps ADD COLUMN IF NOT EXISTS customer_id_code TEXT`.catch(() => {})
   // Every tap recorded before this column existed was undone (if at all)
   // through the old handler that never reversed the receipt line -- so on
   // the very first run after adding this column, an undone/unreversed row

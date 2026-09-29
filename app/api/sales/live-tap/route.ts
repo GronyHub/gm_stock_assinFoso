@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode } = await req.json()
     if (!itemId) return badRequest('Missing itemId')
     const qtyNum = Number(quantity)
     if (!Number.isFinite(qtyNum) || qtyNum < 1) {
@@ -223,9 +223,9 @@ export async function POST(req: NextRequest) {
     }
 
     const [tap] = await sql`
-      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh, tapped_at)
-      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh}, ${tapDateTime.toISOString()})
-      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh
+      INSERT INTO live_sale_taps (item_id, item_name, price, staff_name, receipt_id, receipt_line_id, quantity, soh, tapped_at, customer_id_code)
+      VALUES (${item.id}, ${item.canonical_name}, ${price}, ${staffName}, ${receipt.id}, ${line.id}, ${qty}, ${soh}, ${tapDateTime.toISOString()}, ${customerIdCode || null})
+      RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh, customer_id_code
     `
 
     // Buying a new pack_to_gmc item is itself evidence the previous pack's

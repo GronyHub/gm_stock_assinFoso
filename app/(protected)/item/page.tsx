@@ -2203,6 +2203,7 @@ function ItemHubPageInner() {
   const [liveDueWhenOpened, setLiveDueWhenOpened] = useState(false)
   const [liveQty, setLiveQty] = useState('')
   const [livePrice, setLivePrice] = useState('')
+  const [liveCID, setLiveCID] = useState('')
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
   const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
@@ -3884,6 +3885,7 @@ function ItemHubPageInner() {
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
           tapTime: liveTapTimeTouched ? liveTapTime : undefined,
+          customerIdCode: liveCID || undefined,
         }),
         signal: controller.signal,
       })
@@ -3932,6 +3934,7 @@ function ItemHubPageInner() {
       if (!item) setLiveSelectedItem(null)
       setLiveQty('')
       setLivePrice('')
+      setLiveCID('')
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
 
@@ -8850,6 +8853,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   disabled={liveSaving}
                                 />
                               </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-xs font-semibold text-gray-700">Customer ID (optional)</label>
+                              <input
+                                type="text"
+                                inputMode="text"
+                                value={liveCID}
+                                onChange={e => setLiveCID(e.target.value.toUpperCase())}
+                                placeholder="e.g., GM0001"
+                                className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                                disabled={liveSaving}
+                              />
                             </div>
                             {liveTapError && (
                               <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1 text-xs text-red-600 font-medium">
