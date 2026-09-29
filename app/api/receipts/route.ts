@@ -23,7 +23,7 @@ const SELECT_FIELDS = `
       i.document_type, i.customer_name, i.customer_id, i.currency_code,
       i.customer_phone, i.customer_organisation, i.customer_town_district, i.customer_region,
       i.subtotal, i.total, i.balance, i.adjustment, i.notes,
-      c.display_name AS customer_display,
+      c.display_name AS customer_display, c.customer_id_code,
       COALESCE(
         json_agg(
           json_build_object(

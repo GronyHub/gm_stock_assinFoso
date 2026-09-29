@@ -21,6 +21,8 @@ type Receipt = {
   status: string | null
   document_type: string | null
   customer_name: string
+  customer_id: number | null
+  customer_id_code: string | null
   customer_display: string | null
   customer_phone: string | null
   customer_organisation: string | null
@@ -47,7 +49,7 @@ function fmtDate(iso: string) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
-type ColKey = 'number' | 'type' | 'customer' | 'phone' | 'location' | 'date' | 'items' | 'total'
+type ColKey = 'number' | 'type' | 'customerId' | 'customer' | 'phone' | 'location' | 'date' | 'items' | 'total'
 type ReceiptColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (r: Receipt) => ReactNode }
 const RECEIPT_COLUMNS: ReceiptColumn[] = [
   { key: 'number', label: 'Number', align: 'left', tdClass: 'font-semibold text-gray-900', render: r => r.invoice_number },
@@ -55,6 +57,7 @@ const RECEIPT_COLUMNS: ReceiptColumn[] = [
       r.document_type === 'Invoice'
         ? <span className="text-[9px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 rounded px-1.5 py-0.5">Invoice</span>
         : <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded px-1.5 py-0.5">Receipt</span> },
+  { key: 'customerId', label: 'Customer ID', align: 'left', tdClass: 'font-semibold text-blue-600', render: r => r.customer_id_code ?? '—' },
   { key: 'customer', label: 'Customer', align: 'left', tdClass: 'text-gray-700', render: r => r.customer_display ?? r.customer_name },
   { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: r => r.customer_phone ?? '—' },
   { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: r =>
@@ -65,7 +68,7 @@ const RECEIPT_COLUMNS: ReceiptColumn[] = [
 ]
 const RECEIPT_COL_BY_KEY = new Map(RECEIPT_COLUMNS.map(col => [col.key, col]))
 const RECEIPTS_COL_DEFAULTS: Record<string, number> = {
-  number: 130, type: 80, customer: 150, phone: 120, location: 130, date: 110, items: 70, total: 100,
+  number: 130, type: 80, customerId: 100, customer: 150, phone: 120, location: 130, date: 110, items: 70, total: 100,
 }
 
 type DraftLine = { item: string; qty: string; price: string; unit: string; dimensions: string }
