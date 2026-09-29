@@ -299,9 +299,14 @@ export default function CustomersPage({
       const q = search.toLowerCase()
       v = v.filter(x =>
         (x.display_name ?? '').toLowerCase().includes(q) ||
+        (x.customer_id_code ?? '').toLowerCase().includes(q) ||
         (x.company_name ?? '').toLowerCase().includes(q) ||
         (x.email ?? '').toLowerCase().includes(q) ||
-        (x.phone ?? '').toLowerCase().includes(q)
+        (x.phone ?? '').toLowerCase().includes(q) ||
+        (x.location ?? '').toLowerCase().includes(q) ||
+        (x.first_name ?? '').toLowerCase().includes(q) ||
+        (x.last_name ?? '').toLowerCase().includes(q) ||
+        (x.service_goods ?? '').toLowerCase().includes(q)
       )
     }
     return v
