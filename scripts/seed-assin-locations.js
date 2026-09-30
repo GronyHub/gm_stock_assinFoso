@@ -46,7 +46,10 @@ async function seedLocations() {
   let failed = 0;
 
   try {
+    console.log('Attempting to connect to database...');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? '***set***' : 'NOT SET');
     await client.connect();
+    console.log('✓ Connected to database');
 
     for (const location of locations) {
       try {
@@ -85,6 +88,11 @@ async function seedLocations() {
 
 seedLocations().catch(err => {
   console.error('\n❌ Seeding failed:');
-  console.error(err instanceof Error ? err.message : JSON.stringify(err, null, 2));
+  console.error(err);
+  console.error('Error details:', {
+    message: err?.message,
+    code: err?.code,
+    stack: err?.stack
+  });
   process.exit(1);
 });
