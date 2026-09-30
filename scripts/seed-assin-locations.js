@@ -4,6 +4,28 @@
  * Run with: node scripts/seed-assin-locations.js
  */
 
+// Load environment variables from .env.local if not already set
+if (!process.env.DATABASE_URL) {
+  const fs = require('fs');
+  const path = require('path');
+  const envPath = path.join(__dirname, '../.env.local');
+  try {
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    envContent.split('\n').forEach(line => {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        const value = match[2].trim();
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    });
+  } catch (e) {
+    // .env.local not found or couldn't be read
+  }
+}
+
 const locations = [
   "Assin Akonfudi", "Assin Jakai", "Assin Manso", "Assin Fosu", "Assin Praso",
   "Assin Adum", "Assin Nyankumasi", "Assin Bereku", "Assin Kwadaso", "Assin Attakrom",
