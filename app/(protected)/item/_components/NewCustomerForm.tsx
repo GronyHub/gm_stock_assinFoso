@@ -5,6 +5,7 @@ import LocationField from '@/components/LocationField'
 type Customer = {
   id: number
   display_name: string
+  customer_id_code: string | null
   company_name: string | null
   phone: string | null
   email: string | null
@@ -46,6 +47,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
   const [locationError, setLocationError] = useState<string | null>(null)
   const [existingCustomers, setExistingCustomers] = useState<ExistingCustomer[]>([])
   const [duplicatePhone, setDuplicatePhone] = useState<ExistingCustomer | null>(null)
+  const [createdCustomer, setCreatedCustomer] = useState<Customer | null>(null)
 
   useEffect(() => {
     fetch('/api/customers')
@@ -113,11 +115,38 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
     })
     setSaving(false)
     if (res.ok) {
-      onCreated(await res.json())
+      const customer = await res.json()
+      setCreatedCustomer(customer)
     } else {
       const d = await res.json().catch(() => null)
       setError(d?.error ?? 'Could not save customer.')
     }
+  }
+
+  if (createdCustomer) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl p-8 space-y-6 max-w-md mx-auto text-center">
+        <p className="text-3xl font-bold text-blue-600">✓</p>
+        <div className="space-y-2">
+          <p className="text-2xl font-bold text-gray-900">Thank you!</p>
+          <p className="text-gray-600">Your registration has been completed successfully.</p>
+        </div>
+        <div className="bg-blue-50 border-2 border-blue-600 rounded-lg p-6 space-y-2">
+          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Your Customer ID</p>
+          <p className="text-4xl font-bold text-blue-600 font-mono">{createdCustomer.customer_id_code || createdCustomer.id}</p>
+        </div>
+        <div className="space-y-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm font-semibold text-amber-900">⚠️ Important</p>
+          <p className="text-sm text-amber-900">Write down your Customer ID above. You will need it for all future dealings with the company.</p>
+        </div>
+        <button
+          onClick={() => onCreated(createdCustomer)}
+          className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl py-3 transition"
+        >
+          Continue
+        </button>
+      </div>
+    )
   }
 
   return (
