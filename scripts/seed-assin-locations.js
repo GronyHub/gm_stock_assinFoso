@@ -31,31 +31,48 @@ const locations = [
   "Assin Aburonsor", "Assin Aburonti", "Assin Aburoso", "Assin Aburusua"
 ];
 
-const sql = require('../lib/db').default;
+const { Client } = require('pg');
 
 async function seedLocations() {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+
   console.log(`\n📍 Seeding ${locations.length} Assin locations...\n`);
 
   let added = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const location of locations) {
-    try {
-      const existing = await sql`SELECT 1 FROM locations WHERE LOWER(location) = LOWER(${location})`;
+  try {
+    await client.connect();
 
-      if (existing.length > 0) {
-        console.log(`⏭️  Skipped: ${location} (already exists)`);
-        skipped++;
-      } else {
-        await sql`INSERT INTO locations (location) VALUES (${location})`;
-        console.log(`✓ Added: ${location}`);
-        added++;
+    for (const location of locations) {
+      try {
+        const existing = await client.query(
+          'SELECT 1 FROM locations WHERE LOWER(location) = LOWER($1)',
+          [location]
+        );
+
+        if (existing.rows.length > 0) {
+          console.log(`⏭️  Skipped: ${location} (already exists)`);
+          skipped++;
+        } else {
+          await client.query(
+            'INSERT INTO locations (location) VALUES ($1)',
+            [location]
+          );
+          console.log(`✓ Added: ${location}`);
+          added++;
+        }
+      } catch (err) {
+        console.log(`✗ Failed: ${location} - ${err.message}`);
+        failed++;
       }
-    } catch (err) {
-      console.log(`✗ Failed: ${location} - ${err.message}`);
-      failed++;
     }
+  } finally {
+    await client.end();
   }
 
   console.log(`\n✅ Seeding complete!`);
