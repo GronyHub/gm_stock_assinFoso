@@ -84,6 +84,7 @@ async function seedLocations() {
 }
 
 seedLocations().catch(err => {
-  console.error('\n❌ Seeding failed:', err.message);
+  console.error('\n❌ Seeding failed:');
+  console.error(err instanceof Error ? err.message : JSON.stringify(err, null, 2));
   process.exit(1);
 });
