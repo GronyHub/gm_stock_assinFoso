@@ -8697,7 +8697,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
-                                        {!!liveInlineQtyByItemId[item.id] && (
+                                        {(liveInlineQtyByItemId[item.id] ?? '1') && (
                                           <button
                                             type="button"
                                             disabled={liveSaving}
