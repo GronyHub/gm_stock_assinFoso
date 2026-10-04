@@ -3886,7 +3886,7 @@ function ItemHubPageInner() {
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
           tapTime: liveTapTimeTouched ? liveTapTime : undefined,
-          customerIdCode: liveCID || undefined,
+          customerIdCode: liveCID ? `GM${liveCID}` : undefined,
         }),
         signal: controller.signal,
       })
@@ -3984,11 +3984,9 @@ function ItemHubPageInner() {
     const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
     const cidNum = liveInlineCIDByItemId[item.id] ?? ''
 
-    // Prepend GM prefix to customer ID (user only types the number)
-    const cid = cidNum ? `GM${cidNum}` : ''
-
-    // Set the global CID temporarily for this tap
-    setLiveCID(cid)
+    // Set the global CID (without prefix) temporarily for this tap
+    // recordTap will add GM prefix when sending to API
+    setLiveCID(cidNum)
     await recordTap(item, false, qty, price)
 
     // Clear inline state for this item
@@ -8913,9 +8911,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               type="button"
                               onClick={async () => {
                                 try {
-                                  // Prepend GM prefix to customer ID (user only types the number)
-                                  const cid = liveCID ? `GM${liveCID}` : ''
-                                  setLiveCID(cid)
+                                  // recordTap handles prepending GM prefix from liveCID
                                   await recordTap()
                                   setLiveEditingSelectedItem(false)
                                 } catch (e) {
