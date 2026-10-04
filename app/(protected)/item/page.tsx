@@ -1434,6 +1434,7 @@ function ItemHubPageInner() {
   const [liveInlineQtyByItemId, setLiveInlineQtyByItemId] = useState<Record<number, string>>({})
   const [liveInlinePriceByItemId, setLiveInlinePriceByItemId] = useState<Record<number, string>>({})
   const [liveInlineCIDByItemId, setLiveInlineCIDByItemId] = useState<Record<number, string>>({})
+  const [justTappedItemIds, setJustTappedItemIds] = useState<Set<number>>(new Set())
   // Same idea, own map -- the Count Due chart's per-row qty box (see
   // renderCountDueChart/recordInlineCount below). Kept separate from
   // liveInlineQtyByItemId (a sale qty) rather than shared, since the same
@@ -4009,6 +4010,16 @@ function ItemHubPageInner() {
       return next
     })
     setLiveCID('')
+
+    // Show green checkmark briefly after successful tap
+    setJustTappedItemIds(prev => new Set(prev).add(item.id))
+    setTimeout(() => {
+      setJustTappedItemIds(prev => {
+        const next = new Set(prev)
+        next.delete(item.id)
+        return next
+      })
+    }, 1500)
   }
 
   async function recordCountAndSale() {
@@ -8699,7 +8710,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                           disabled={liveSaving}
                                           onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
                                           aria-label={`Record sale for ${item.name}`}
-                                          className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
+                                          className={`shrink-0 w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50 transition-colors ${
+                                            justTappedItemIds.has(item.id) ? 'bg-green-600' : 'bg-red-600 hover:bg-red-700'
+                                          }`}
                                         >
                                           ✓
                                         </button>
