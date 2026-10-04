@@ -886,6 +886,13 @@ function ItemHubPageInner() {
   // Seeded from ?jumpReceiptId= -- Item 360's WIC/GMC columns (see
   // LossTab.tsx's onReceiptClick), same pattern as jumpToBillId above, but
   // going straight to one receipt instead of a date+item-name guess.
+  // Client-side only flag: prevents Live Sale mode from being rendered on
+  // the server, dramatically reducing initial SSR time. Live Sale only renders
+  // after hydration, loading in 2-3s instead of waiting for 12+s of SSR.
+  const [liveSaleMounted, setLiveSaleMounted] = useState(false)
+  useEffect(() => {
+    setLiveSaleMounted(true)
+  }, [])
   const [jumpToReceiptId, setJumpToReceiptId] = useState<number | null>(
     searchParams.get('jumpReceiptId') ? Number(searchParams.get('jumpReceiptId')) : null
   )
@@ -8184,8 +8191,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               table), and Count History (the audit log of who counted/edited/
               deleted what). Moved to its own tab since they're audit/browse
               views, not part of actually tapping a sale. */}
-          {/* Sale mode (the default/landing mode) */}
-          {liveMode === 'sale' && (<>
+          {/* Sale mode (the default/landing mode) -- deferred from SSR by checking
+              liveSaleMounted, which only becomes true after hydration. This prevents
+              the server from spending 12+ seconds rendering this 700+ line feature. */}
+          {liveMode === 'sale' && !liveSaleMounted && (
+            <div className={liveRootClassName + ' flex items-center justify-center'}>
+              <div className="text-center space-y-2">
+                <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading Live Sale…</p>
+              </div>
+            </div>
+          )}
+          {liveMode === 'sale' && liveSaleMounted && (<>
           {liveDebugLogs.length > 0 && (
             <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
               {liveDebugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
