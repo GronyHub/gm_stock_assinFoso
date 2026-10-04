@@ -1,6 +1,7 @@
 import sql from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { once } from '@/lib/once'
+import { getSortedGhanaTowns } from '@/lib/ghanaLocations'
 
 const ensureLocationsTable = once(async () => {
   try {
@@ -22,6 +23,10 @@ export async function GET() {
     await sql`ALTER TABLE vendors ADD COLUMN IF NOT EXISTS location TEXT`.catch(() => {})
     await ensureLocationsTable()
 
+    // Start with Ghana towns (Assin prioritized, then Central Region, then others)
+    const ghanaLocationsSet = new Set(getSortedGhanaTowns())
+
+    // Add custom locations from database (not already in Ghana towns list)
     const customersVendorsRows = await sql`
       SELECT location FROM customers WHERE location IS NOT NULL AND location <> ''
       UNION
@@ -29,15 +34,14 @@ export async function GET() {
     `
     const managedRows = await sql`SELECT location FROM managed_locations ORDER BY location`
 
-    const allLocations = new Set<string>()
     customersVendorsRows.forEach((r: any) => {
-      if (r.location) allLocations.add(r.location)
+      if (r.location) ghanaLocationsSet.add(r.location)
     })
     managedRows.forEach((r: any) => {
-      if (r.location) allLocations.add(r.location)
+      if (r.location) ghanaLocationsSet.add(r.location)
     })
 
-    return NextResponse.json(Array.from(allLocations).sort())
+    return NextResponse.json(Array.from(ghanaLocationsSet))
   } catch (e) {
     console.error('get locations', e)
     return NextResponse.json([], { status: 500 })
