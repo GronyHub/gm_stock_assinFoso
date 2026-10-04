@@ -8664,7 +8664,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <input
                                             type="number" inputMode="decimal" placeholder="Qty"
-                                            value={liveInlineQtyByItemId[item.id] ?? ''}
+                                            value={liveInlineQtyByItemId[item.id] ?? '1'}
                                             onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
