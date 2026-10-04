@@ -2978,11 +2978,15 @@ function ItemHubPageInner() {
   ], [liveCurrentView])
 
   // Fetch items (Live Sale's own catalogue -- see LiveItem's own comment)
+  // Deferred to 1500ms to avoid duplicating the same request the Items tab makes
   useEffect(() => {
-    fetch('/api/items/all')
-      .then(r => r.json())
-      .then(d => { setLiveAllItems(Array.isArray(d) ? d : []); setLiveItemsLoading(false) })
-      .catch(() => setLiveItemsLoading(false))
+    const t = setTimeout(() => {
+      fetch('/api/items/all')
+        .then(r => r.json())
+        .then(d => { setLiveAllItems(Array.isArray(d) ? d : []); setLiveItemsLoading(false) })
+        .catch(() => setLiveItemsLoading(false))
+    }, 1500)
+    return () => clearTimeout(t)
   }, [])
 
   // Items with at least one past GMC (internal-use) sale on record, and how
@@ -2996,14 +3000,17 @@ function ItemHubPageInner() {
   const [liveGmcItemIds, setLiveGmcItemIds] = useState<Set<number>>(new Set())
   const [liveGmcUsageCounts, setLiveGmcUsageCounts] = useState<Map<number, number>>(new Map())
   useEffect(() => {
-    fetch('/api/items/gmc-ids')
-      .then(r => r.json())
-      .then(d => {
-        const rows: { item_id: number; count: number }[] = Array.isArray(d) ? d : []
-        setLiveGmcItemIds(new Set(rows.map(r => r.item_id)))
-        setLiveGmcUsageCounts(new Map(rows.map(r => [r.item_id, r.count])))
-      })
-      .catch(() => {})
+    const t = setTimeout(() => {
+      fetch('/api/items/gmc-ids')
+        .then(r => r.json())
+        .then(d => {
+          const rows: { item_id: number; count: number }[] = Array.isArray(d) ? d : []
+          setLiveGmcItemIds(new Set(rows.map(r => r.item_id)))
+          setLiveGmcUsageCounts(new Map(rows.map(r => [r.item_id, r.count])))
+        })
+        .catch(() => {})
+    }, 1800)
+    return () => clearTimeout(t)
   }, [])
 
   // Current stock of every GMC conversion target, and (see open_overage
@@ -3027,20 +3034,27 @@ function ItemHubPageInner() {
     setLiveGmcOpenOverage(new Map(rows.filter(r => r.open_overage).map(r => [r.item_id, r.open_overage!])))
   }
   useEffect(() => {
-    fetch('/api/items/gmc-target-stock').then(r => r.json()).then(applyGmcTargetStock).catch(() => {})
+    const t = setTimeout(() => {
+      fetch('/api/items/gmc-target-stock').then(r => r.json()).then(applyGmcTargetStock).catch(() => {})
+    }, 1800)
+    return () => clearTimeout(t)
   }, [])
   usePolling(() => {
     fetch('/api/items/gmc-target-stock').then(r => r.json()).then(applyGmcTargetStock).catch(() => {})
   }, 60000)
 
   // Shared across every staff member -- see /api/item-sort-order.
+  // Deferred since not critical for initial render
   useEffect(() => {
-    fetch('/api/item-sort-order')
-      .then(r => r.json())
-      .then((d: { order?: ItemSortKey[] }) => {
-        if (Array.isArray(d?.order) && d.order.length === DEFAULT_ITEM_SORT_ORDER.length) setLiveItemSortOrder(d.order)
-      })
-      .catch(() => {})
+    const t = setTimeout(() => {
+      fetch('/api/item-sort-order')
+        .then(r => r.json())
+        .then((d: { order?: ItemSortKey[] }) => {
+          if (Array.isArray(d?.order) && d.order.length === DEFAULT_ITEM_SORT_ORDER.length) setLiveItemSortOrder(d.order)
+        })
+        .catch(() => {})
+    }, 1600)
+    return () => clearTimeout(t)
   }, [])
 
   // Persists immediately (no separate Save step) -- any staff member can
@@ -3066,28 +3080,36 @@ function ItemHubPageInner() {
   // is built from (/api/losses/summary), shown inline next to price/cost/
   // stock/count-interval so a loss-prone item is visible without opening
   // its Item 360 detail. Fetched once, same as the GMC id set above.
+  // Deferred to avoid blocking on expensive aggregation query.
   const [liveLossByItemId, setLiveLossByItemId] = useState<Map<number, { lossCount: number; lgAmt: number; lgQty: number; gainCount: number; emptyRowCount: number }>>(new Map())
   useEffect(() => {
-    fetch('/api/losses/summary')
-      .then(r => r.json())
-      .then((d: { item_id: number; lossCount: number; lgAmt: number; lgQty: number; gainCount: number; emptyRowCount: number }[]) => {
-        setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, lgQty: r.lgQty, gainCount: r.gainCount, emptyRowCount: r.emptyRowCount }]) : []))
-      })
-      .catch(() => {})
+    const t = setTimeout(() => {
+      fetch('/api/losses/summary')
+        .then(r => r.json())
+        .then((d: { item_id: number; lossCount: number; lgAmt: number; lgQty: number; gainCount: number; emptyRowCount: number }[]) => {
+          setLiveLossByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { lossCount: r.lossCount, lgAmt: r.lgAmt, lgQty: r.lgQty, gainCount: r.gainCount, emptyRowCount: r.emptyRowCount }]) : []))
+        })
+        .catch(() => {})
+    }, 2000)
+    return () => clearTimeout(t)
   }, [])
 
   // First/last recorded sale date and average monthly quantity per item --
   // off the item's full sales_receipt_lines history (see
   // /api/items/sale-history), shown next to CP/SP/SOH same as the loss
   // figures above. Fetched once, same pattern.
+  // Deferred to avoid blocking on expensive history aggregation query.
   const [liveSaleHistoryByItemId, setLiveSaleHistoryByItemId] = useState<Map<number, { firstSaleDate: string; lastSaleDate: string; avgMonthlyQty: number }>>(new Map())
   useEffect(() => {
-    fetch('/api/items/sale-history')
-      .then(r => r.json())
-      .then((d: { item_id: number; first_sale_date: string; last_sale_date: string; avg_monthly_qty: number }[]) => {
-        setLiveSaleHistoryByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { firstSaleDate: r.first_sale_date, lastSaleDate: r.last_sale_date, avgMonthlyQty: r.avg_monthly_qty }]) : []))
-      })
-      .catch(() => {})
+    const t = setTimeout(() => {
+      fetch('/api/items/sale-history')
+        .then(r => r.json())
+        .then((d: { item_id: number; first_sale_date: string; last_sale_date: string; avg_monthly_qty: number }[]) => {
+          setLiveSaleHistoryByItemId(new Map(Array.isArray(d) ? d.map(r => [r.item_id, { firstSaleDate: r.first_sale_date, lastSaleDate: r.last_sale_date, avgMonthlyQty: r.avg_monthly_qty }]) : []))
+        })
+        .catch(() => {})
+    }, 2000)
+    return () => clearTimeout(t)
   }, [])
 
   // Id sets for the three itemAttentionFlag checks that need cross-item data
