@@ -8694,17 +8694,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
-                                        {(liveInlineQtyByItemId[item.id] || liveInlinePriceByItemId[item.id]) && (
-                                          <button
-                                            type="button"
-                                            disabled={liveSaving}
-                                            onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
-                                            aria-label={`Record sale for ${item.name}`}
-                                            className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
-                                          >
-                                            ✓
-                                          </button>
-                                        )}
+                                        <button
+                                          type="button"
+                                          disabled={liveSaving}
+                                          onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
+                                          aria-label={`Record sale for ${item.name}`}
+                                          className="shrink-0 w-5 h-5 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50"
+                                        >
+                                          ✓
+                                        </button>
                                       </div>
                                     )}
                                   </>
