@@ -3979,7 +3979,7 @@ function ItemHubPageInner() {
   // recordTap's existing guards (clock-in gate, qty/price validation, count-
   // overdue block from the API) so this isn't a second, divergent code path.
   async function recordInlineTap(item: LiveItem) {
-    const qty = liveInlineQtyByItemId[item.id]
+    const qty = liveInlineQtyByItemId[item.id] ?? '1'
     if (!qty) return
     const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
     const cidNum = liveInlineCIDByItemId[item.id] ?? ''
