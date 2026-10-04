@@ -3982,7 +3982,10 @@ function ItemHubPageInner() {
     const qty = liveInlineQtyByItemId[item.id]
     if (!qty) return
     const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
-    const cid = liveInlineCIDByItemId[item.id] ?? ''
+    const cidNum = liveInlineCIDByItemId[item.id] ?? ''
+
+    // Prepend GM prefix to customer ID (user only types the number)
+    const cid = cidNum ? `GM${cidNum}` : ''
 
     // Set the global CID temporarily for this tap
     setLiveCID(cid)
@@ -8682,14 +8685,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
-                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                          <span className="text-[9px] text-gray-400 font-semibold">GM</span>
                                           <input
-                                            type="text" inputMode="text"
+                                            type="text" inputMode="numeric"
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
-                                            onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.toUpperCase() }))}
+                                            onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            placeholder="CID"
+                                            placeholder="123"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
@@ -8887,15 +8891,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             </div>
                             <div className="space-y-2">
                               <label className="block text-xs font-semibold text-gray-700">Customer ID (optional)</label>
-                              <input
-                                type="text"
-                                inputMode="text"
-                                value={liveCID}
-                                onChange={e => setLiveCID(e.target.value.toUpperCase())}
-                                placeholder="e.g., GM0001"
-                                className="w-full text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
-                                disabled={liveSaving}
-                              />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg px-3 py-2">GM</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={liveCID}
+                                  onChange={e => setLiveCID(e.target.value.replace(/[^0-9]/g, ''))}
+                                  placeholder="e.g., 123"
+                                  className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
+                                  disabled={liveSaving}
+                                />
+                              </div>
                             </div>
                             {liveTapError && (
                               <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1 text-xs text-red-600 font-medium">
@@ -8906,6 +8913,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               type="button"
                               onClick={async () => {
                                 try {
+                                  // Prepend GM prefix to customer ID (user only types the number)
+                                  const cid = liveCID ? `GM${liveCID}` : ''
+                                  setLiveCID(cid)
                                   await recordTap()
                                   setLiveEditingSelectedItem(false)
                                 } catch (e) {

@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { sendRegistrationEmail } from '@/lib/mailer'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 
@@ -80,11 +81,19 @@ export async function POST(req: NextRequest) {
         (${displayName}, ${firstName}, ${lastName}, ${email || null}, ${phone}, ${location || null},
          'Active', ${notes}, false, ${joinGroup}, ${services.join(', ') || null}, 'self_register', 0)
       RETURNING id`
-    // GM number from the row's own id -- no race between two people registering at once.
-    const code = `GM${String(row.id).padStart(4, '0')}`
+    // Customer ID from the row's own id -- no race between two people registering at once.
+    const code = `GM${row.id}`
     await sql`UPDATE customers SET customer_id_code = ${code} WHERE id = ${row.id}`
 
     await logActivity('Online form', 'self-registered customer', `${code} – ${displayName}`, 0).catch(() => {})
+
+    // Send registration confirmation email if email provided
+    if (email) {
+      await sendRegistrationEmail(email, firstName, code).catch(err => {
+        console.error('Failed to send registration email:', err)
+      })
+    }
+
     return NextResponse.json({ ok: true, code })
   } catch (e) {
     console.error('public register', e)

@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { sendTransactionEmail } from '@/lib/mailer'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -307,6 +308,24 @@ export async function POST(req: NextRequest) {
     console.log('[live-tap] Duration calc:', { itemId: item.id, itemName: item.canonical_name, productType: item.product_type, qty, unitTimeSeconds, estimatedDurationSeconds })
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
+
+    // Send transaction email if customer ID provided
+    if (customerIdCode) {
+      try {
+        const [customer] = await sql`
+          SELECT first_name, email FROM customers WHERE customer_id_code = ${customerIdCode}
+        `
+        if (customer?.email) {
+          await sendTransactionEmail(customer.email, customer.first_name, customerIdCode, [
+            { name: item.canonical_name, qty, price }
+          ]).catch(err => {
+            console.error('[live-tap] Failed to send transaction email:', err)
+          })
+        }
+      } catch (err) {
+        console.error('[live-tap] Error looking up customer for email:', err)
+      }
+    }
 
     return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
