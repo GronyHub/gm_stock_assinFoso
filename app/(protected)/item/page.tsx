@@ -1433,6 +1433,7 @@ function ItemHubPageInner() {
   // user actually edits it; until then the input just displays that default.
   const [liveInlineQtyByItemId, setLiveInlineQtyByItemId] = useState<Record<number, string>>({})
   const [liveInlinePriceByItemId, setLiveInlinePriceByItemId] = useState<Record<number, string>>({})
+  const [liveInlineCIDByItemId, setLiveInlineCIDByItemId] = useState<Record<number, string>>({})
   // Same idea, own map -- the Count Due chart's per-row qty box (see
   // renderCountDueChart/recordInlineCount below). Kept separate from
   // liveInlineQtyByItemId (a sale qty) rather than shared, since the same
@@ -3981,13 +3982,32 @@ function ItemHubPageInner() {
     const qty = liveInlineQtyByItemId[item.id]
     if (!qty) return
     const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
+    const cid = liveInlineCIDByItemId[item.id] ?? ''
+
+    // Set the global CID temporarily for this tap
+    setLiveCID(cid)
     await recordTap(item, false, qty, price)
+
+    // Clear inline state for this item
     setLiveInlineQtyByItemId(prev => {
       if (!(item.id in prev)) return prev
       const next = { ...prev }
       delete next[item.id]
       return next
     })
+    setLiveInlinePriceByItemId(prev => {
+      if (!(item.id in prev)) return prev
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
+    setLiveInlineCIDByItemId(prev => {
+      if (!(item.id in prev)) return prev
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
+    setLiveCID('')
   }
 
   async function recordCountAndSale() {
@@ -8659,6 +8679,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                          />
+                                        </label>
+                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                          <input
+                                            type="text" inputMode="text"
+                                            value={liveInlineCIDByItemId[item.id] ?? ''}
+                                            onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.toUpperCase() }))}
+                                            onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                            onClick={e => e.stopPropagation()}
+                                            placeholder="CID"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
