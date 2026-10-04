@@ -1,5 +1,6 @@
 import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { getCached } from '@/lib/cacheStore'
 import { aliasMismatchWarning } from '@/lib/aliasSanity'
 import { ensureDismissedAliasReviews } from '@/lib/dismissedAliasReviews'
 
@@ -8,7 +9,7 @@ export async function GET() {
   if (error) return error
 
   try {
-    const rows = await sql`
+    const rows = await getCached('aliases:audit', 300, () => sql`
       SELECT raw_name, item_id, canonical_name, source, SUM(cnt)::int AS cnt FROM (
         SELECT srl.raw_item_name AS raw_name, srl.item_id, i.canonical_name, 'sales' AS source, COUNT(*)::int AS cnt
         FROM sales_receipt_lines srl
@@ -24,7 +25,7 @@ export async function GET() {
       ) combined
       GROUP BY raw_name, item_id, canonical_name, source
       ORDER BY cnt DESC
-    `
+    `)
 
     const flagged = (rows as { raw_name: string; item_id: number; canonical_name: string; source: string; cnt: number }[])
       .map(r => ({ ...r, warning: aliasMismatchWarning(r.raw_name, r.canonical_name) }))
