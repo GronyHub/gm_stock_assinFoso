@@ -312,6 +312,7 @@ type Item = {
   unit_name: string | null
   product_type: string
   calculated_soh: number
+  count_interval?: string | null
 }
 
 type ErrorCategory = 'loss' | 'sales' | 'bills' | 'cab' | 'team'
@@ -1215,7 +1216,22 @@ function ItemHubPageInner() {
     })
   }
 
+  function loadCountIntervals() {
+    fetch('/api/items/count-intervals').then(r => r.json()).then(d => {
+      if (d && typeof d === 'object') {
+        setItems(prev => prev.map(item => ({
+          ...item,
+          count_interval: d[item.id] ?? null
+        })))
+      }
+    }).catch(() => {})
+  }
+
   useEffect(() => { loadItems() }, [])
+  useEffect(() => {
+    const t = setTimeout(() => loadCountIntervals(), 1500)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(loadItems, 600000)
 
   // Group filter options -- deliberately NOT derived from `items` above.

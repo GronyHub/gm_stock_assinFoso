@@ -38,47 +38,41 @@ export async function GET(req: NextRequest) {
 
   try {
     await Promise.all([ensureUnitTimeColumn(), ensureAdjustedCostPriceColumn(), ensureDerivedFromColumn()])
-    const [rows, intervals] = await Promise.all([
-      sql`
-        SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
-               COALESCE(s.calculated_soh, 0) AS soh,
-               COALESCE(i.selling_rate, 0) AS selling_price,
-               COALESCE(i.purchase_rate, 0) AS cost_price,
-               COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) AS acp_price,
-               COALESCE(i.product_type, 'goods') AS product_type,
-               COALESCE(i.gmc_type, '') AS gmc_type,
-               i.converts_to_item_id,
-               target.canonical_name AS converts_to_name,
-               i.derived_from_item_id,
-               COALESCE(i.units_per_pack, 1) AS units_per_pack,
-               i.unit_time_seconds,
-               COALESCE(i.needs_review, false) AS needs_review,
-               NOW() AS updated_at
-        FROM active_items i
-        LEFT JOIN item_stock_summary s ON s.item_id = i.id
-        LEFT JOIN items target ON target.id = i.converts_to_item_id
-        WHERE LOWER(COALESCE(i.status, '')) != 'service'
-        ORDER BY i.canonical_name
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `,
-      itemCountIntervalLabels().catch(e => {
-        console.error('itemCountIntervalLabels failed, every item will show no count_interval:', e instanceof Error ? e.message : String(e))
-        return new Map<number, string>()
-      }),
-    ])
+    const rows = await sql`
+      SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
+             COALESCE(s.calculated_soh, 0) AS soh,
+             COALESCE(i.selling_rate, 0) AS selling_price,
+             COALESCE(i.purchase_rate, 0) AS cost_price,
+             COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) AS acp_price,
+             COALESCE(i.product_type, 'goods') AS product_type,
+             COALESCE(i.gmc_type, '') AS gmc_type,
+             i.converts_to_item_id,
+             target.canonical_name AS converts_to_name,
+             i.derived_from_item_id,
+             COALESCE(i.units_per_pack, 1) AS units_per_pack,
+             i.unit_time_seconds,
+             COALESCE(i.needs_review, false) AS needs_review,
+             NOW() AS updated_at
+      FROM active_items i
+      LEFT JOIN item_stock_summary s ON s.item_id = i.id
+      LEFT JOIN items target ON target.id = i.converts_to_item_id
+      WHERE LOWER(COALESCE(i.status, '')) != 'service'
+      ORDER BY i.canonical_name
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `
     if (rows.length === limit) {
       console.warn(`items/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
     }
-    const withIntervals = (rows as { id: number }[]).map(r => ({ ...r, count_interval: formatCountInterval(intervals.get(r.id)) }))
+    const withoutIntervals = rows as { id: number }[]
 
-    // Cache default request
+    // Cache default request (WITHOUT count_interval to avoid blocking on expensive computation)
     if (limit === 50000 && offset === 0) {
-      cachedItems = withIntervals
+      cachedItems = withoutIntervals
       cachedItemsTime = now
     }
 
-    return NextResponse.json(await withFreshGmcSoh(withIntervals))
+    return NextResponse.json(await withFreshGmcSoh(withoutIntervals))
   } catch (e) {
     console.error('items/all primary query failed, falling back to items table (no soh/count_interval):', e instanceof Error ? e.message : String(e))
     try {
