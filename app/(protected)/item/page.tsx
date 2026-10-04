@@ -8684,14 +8684,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                           />
                                         </label>
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
-                                          <span className="text-[9px] text-gray-400 font-semibold">GM</span>
                                           <input
                                             type="text" inputMode="numeric"
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
                                             onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            placeholder="123"
+                                            placeholder="GM"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
                                           />
                                         </label>
