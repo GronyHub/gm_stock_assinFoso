@@ -37,22 +37,41 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
       <div className="max-w-md mx-auto">
-        <div className="bg-[#14213D] text-white rounded-t-2xl px-5 py-5">
-          <h1 className="text-2xl font-extrabold">Grony Multimedia</h1>
-          <p className="text-sm text-orange-200">Assin Foso · Near GCB Bank · 024 853 3826</p>
+        <div className="bg-[#14213D] text-white rounded-t-2xl px-5 py-6">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.png" alt="Grony Multimedia" className="h-12 w-auto" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-center">Grony Multimedia</h1>
+          <p className="text-sm text-orange-200 text-center">Assin Foso · Near GCB Bank · 024 853 3826</p>
         </div>
         <div className="h-1.5 bg-[#E85D04]" />
         <div className="bg-white rounded-b-2xl shadow p-5">
           {done ? (
-            <div className="text-center py-6">
+            <div className="text-center py-6 space-y-4">
+              <p className="text-lg font-bold text-[#14213D]">✓ Registration Complete!</p>
               <p className="text-gray-700">{done.existing ? 'You are already registered. Your customer number is:' : 'Thank you for registering! Your customer number is:'}</p>
-              <p className="text-5xl font-extrabold text-[#E85D04] font-mono my-4">{done.code}</p>
-              <p className="text-sm text-gray-600">Please <b>save this number</b> and include it whenever you send us work on WhatsApp.</p>
-              <a href="https://wa.me/233248533826" className="inline-block mt-5 bg-green-600 text-white font-semibold rounded-lg px-5 py-2.5">Back to WhatsApp</a>
+              <div className="bg-orange-50 border-2 border-[#E85D04] rounded-lg p-4">
+                <p className="text-5xl font-extrabold text-[#E85D04] font-mono">{done.code}</p>
+              </div>
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-left space-y-2">
+                <p className="text-sm font-semibold text-blue-900">📝 Important:</p>
+                <p className="text-sm text-blue-800"><b>Save this number.</b> When you send us work on WhatsApp, type this customer ID on the page where you upload your document or in the message.</p>
+              </div>
+              <p className="text-xs text-gray-500">This helps us track your jobs faster and serve you better.</p>
+              <a href="https://wa.me/233248533826" className="inline-block mt-5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-6 py-3">Go Back to WhatsApp</a>
             </div>
           ) : (
-            <form onSubmit={submit} className="space-y-4">
-              <p className="text-sm text-gray-600">Register once (1 minute) and get your own <b>customer number</b> for faster service.</p>
+            <form onSubmit={submit} className="space-y-5">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-3">
+                <p className="text-sm font-semibold text-blue-900 mb-1">Why register?</p>
+                <ul className="text-xs text-blue-800 space-y-1">
+                  <li>✓ Get your own customer ID for faster service</li>
+                  <li>✓ We track your jobs and orders accurately</li>
+                  <li>✓ Easier communication on WhatsApp</li>
+                  <li>✓ Special offers just for registered customers</li>
+                </ul>
+              </div>
+              <p className="text-sm text-gray-600">Takes only <b>1 minute.</b> Fill in your details below:</p>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className={label}>First name *</label><input className={input} value={f.first_name} onChange={set('first_name')} required /></div>
                 <div><label className={label}>Last name *</label><input className={input} value={f.last_name} onChange={set('last_name')} required /></div>
