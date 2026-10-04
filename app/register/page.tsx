@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const SERVICES = [
   'Printing Press Services', 'Large Format Printing', 'Sale of Printing Materials',
@@ -19,8 +19,49 @@ export default function RegisterPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState<{ code: string; existing?: boolean } | null>(null)
+  const [locations, setLocations] = useState<string[]>([])
+  const [showAddLocation, setShowAddLocation] = useState(false)
+  const [newLocation, setNewLocation] = useState('')
+  const [addingLocation, setAddingLocation] = useState(false)
+  const [locationError, setLocationError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/public/locations')
+      .then(r => r.json())
+      .then(data => setLocations(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value })
   const toggle = (s: string) => setServices(services.includes(s) ? services.filter(x => x !== s) : [...services, s])
+
+  async function addNewLocation() {
+    const name = newLocation.trim()
+    if (!name) return
+
+    setAddingLocation(true)
+    setLocationError('')
+    try {
+      const res = await fetch('/api/public/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location: name }),
+      })
+
+      if (res.ok) {
+        setNewLocation('')
+        setF({ ...f, location: name })
+        setLocations(prev => [...new Set([...prev, name])].sort())
+        setShowAddLocation(false)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setLocationError(data.error || 'Could not add location.')
+      }
+    } catch (err) {
+      setLocationError('Failed to add location.')
+    } finally {
+      setAddingLocation(false)
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError('')
@@ -78,7 +119,37 @@ export default function RegisterPage() {
               </div>
               <div><label className={label}>Phone / WhatsApp number *</label><input className={input} type="tel" inputMode="tel" placeholder="024 123 4567" value={f.phone} onChange={set('phone')} required /></div>
               <div><label className={label}>Email (optional)</label><input className={input} type="email" value={f.email} onChange={set('email')} /></div>
-              <div><label className={label}>Town / area</label><input className={input} placeholder="e.g. Assin Foso" value={f.location} onChange={set('location')} /></div>
+              <div className="border border-gray-300 rounded-lg p-3 bg-blue-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className={label}>Town / area</label>
+                  <button type="button" onClick={() => setShowAddLocation(!showAddLocation)}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+                    {showAddLocation ? '− Manage' : '+ Add Location'}
+                  </button>
+                </div>
+
+                {showAddLocation && (
+                  <div className="bg-white border border-blue-200 rounded-lg p-2 space-y-2">
+                    <div className="flex gap-2">
+                      <input value={newLocation} onChange={e => setNewLocation(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addNewLocation()}
+                        placeholder="Type new area (e.g., Kumasi, Cape Coast)"
+                        className="flex-1 bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400" />
+                      <button type="button" onClick={addNewLocation} disabled={addingLocation || !newLocation.trim()}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold rounded transition">
+                        {addingLocation ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                    {locationError && <p className="text-xs text-red-600">{locationError}</p>}
+                    <p className="text-[10px] text-gray-500">Add your town or area if it's not in the list below.</p>
+                  </div>
+                )}
+
+                <select className={input} value={f.location} onChange={set('location')}>
+                  <option value="">Choose your area…</option>
+                  {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                </select>
+              </div>
               <div>
                 <label className={label}>Services you are interested in</label>
                 <div className="grid grid-cols-1 gap-1.5">
