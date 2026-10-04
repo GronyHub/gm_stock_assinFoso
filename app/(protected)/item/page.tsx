@@ -1090,7 +1090,11 @@ function ItemHubPageInner() {
       })
       .catch(() => {})
   }
-  useEffect(() => { fetchStaff() }, [])
+  // Defer staff loading - only used for sidebar staff pages, not critical for main grid
+  useEffect(() => {
+    const t = setTimeout(() => fetchStaff(), 1200)
+    return () => clearTimeout(t)
+  }, [])
   // Was under Neon's 5-minute auto-suspend window; bumped to match the
   // 10-minute "background data" tier used elsewhere so a quiet moment can
   // actually let the database sleep.
@@ -1227,7 +1231,11 @@ function ItemHubPageInner() {
       setLossGroups(Array.isArray(d) ? d : [])
     }).catch(() => {})
   }
-  useEffect(() => { loadLossGroups() }, [])
+  // Defer loss groups loading - only used for Loss tab filtering, not critical for initial grid
+  useEffect(() => {
+    const t = setTimeout(() => loadLossGroups(), 1200)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(loadLossGroups, 600000)
 
   // Renaming a group from the Group dropdown itself, rather than one item
