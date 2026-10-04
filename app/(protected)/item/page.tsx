@@ -1193,8 +1193,20 @@ function ItemHubPageInner() {
   const [itemsInlineExtra, setItemsInlineExtra] = useState<ItemsInlineExtra | null>(null)
 
   function loadItems() {
-    fetch('/api/items').then(r => r.json()).then(d => {
-      setItems(Array.isArray(d) ? d : [])
+    fetch('/api/items/all').then(r => r.json()).then(d => {
+      // Transform /api/items/all response to Item type format
+      const transformed = Array.isArray(d) ? d.map((item: any) => ({
+        id: item.id,
+        item_name: item.name,
+        cf_group: item.group,
+        selling_rate: String(item.selling_price || 0),
+        purchase_rate: String(item.cost_price || 0),
+        units_per_pack: item.units_per_pack ? String(item.units_per_pack) : null,
+        unit_name: null,
+        product_type: item.product_type || 'goods',
+        calculated_soh: Number(item.soh ?? 0),
+      })) : []
+      setItems(transformed)
       setItemsLoading(false)
     })
   }
