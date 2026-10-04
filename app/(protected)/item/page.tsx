@@ -3814,6 +3814,10 @@ function ItemHubPageInner() {
   }
 
   async function recordTap(item?: LiveItem, bypassGate = false, overrideQty?: string, overridePrice?: string, bypassOverageGate = false) {
+    if (!session) {
+      showToast('You must be logged in to record a sale', 'error')
+      return
+    }
     if (!bypassGate && !clockGateDismissed && myClockedInToday === false) {
       pendingTapItemRef.current = item
       pendingTapQtyRef.current = overrideQty
@@ -3980,6 +3984,10 @@ function ItemHubPageInner() {
   // recordTap's existing guards (clock-in gate, qty/price validation, count-
   // overdue block from the API) so this isn't a second, divergent code path.
   async function recordInlineTap(item: LiveItem) {
+    if (!session) {
+      showToast('You must be logged in to record a sale', 'error')
+      return
+    }
     const qty = liveInlineQtyByItemId[item.id] ?? '1'
     if (!qty) return
     const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
@@ -8676,38 +8684,41 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <input
                                             type="number" inputMode="decimal" placeholder="Qty"
+                                            disabled={!session}
                                             value={liveInlineQtyByItemId[item.id] ?? '1'}
                                             onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <span className="text-[9px] text-gray-400">₵</span>
                                           <input
                                             type="number" inputMode="decimal"
+                                            disabled={!session}
                                             value={liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)}
                                             onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <input
                                             type="text" inputMode="numeric"
+                                            disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
                                             onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
                                             placeholder="GM"
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent"
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
                                         <button
                                           type="button"
-                                          disabled={liveSaving}
+                                          disabled={liveSaving || !session}
                                           onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
                                           aria-label={`Record sale for ${item.name}`}
                                           className={`shrink-0 w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50 transition-colors ${
