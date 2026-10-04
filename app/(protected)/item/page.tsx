@@ -1317,7 +1317,12 @@ function ItemHubPageInner() {
     }).catch(() => {})
   }
 
-  useEffect(() => { loadBadgeData() }, [])
+  // Defer badge loading until after page is interactive. These are counts
+  // in the left sidebar, not needed for the main Live Sale grid to render.
+  useEffect(() => {
+    const t = setTimeout(() => loadBadgeData(), 1000)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(loadBadgeData, 600000)
 
   const violationCounts: Record<string, number> = useMemo(() => {
@@ -1900,8 +1905,12 @@ function ItemHubPageInner() {
   // change would.
   const [rolePermissions, setRolePermissions] = useState<RolePermissionsMap>({})
   const [permsLoaded, setPermsLoaded] = useState(false)
+  // Defer permissions loading - not critical for initial render
   useEffect(() => {
-    fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(d => { setRolePermissions(d); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
+    const t = setTimeout(() => {
+      fetch('/api/user-permissions').then(r => r.ok ? r.json() : {}).then(d => { setRolePermissions(d); setPermsLoaded(true) }).catch(() => setPermsLoaded(true))
+    }, 600)
+    return () => clearTimeout(t)
   }, [])
   // Custom Cash/Manage row order (Settings > Reorder Lists) -- shared with
   // ReorderListsPanel via props so a move there is reflected in this same
@@ -1919,7 +1928,11 @@ function ItemHubPageInner() {
   // minute, at a small fraction of the request volume.
   const [paneOrder, setPaneOrder] = useState<PaneOrderMap>({})
   const fetchPaneOrder = () => fetch('/api/pane-order').then(r => r.ok ? r.json() : {}).then(setPaneOrder).catch(() => {})
-  useEffect(() => { fetchPaneOrder() }, [])
+  // Defer pane config loading - cosmetic sidebar settings not needed for initial render
+  useEffect(() => {
+    const t = setTimeout(() => fetchPaneOrder(), 800)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(fetchPaneOrder, 600000)
   // Same shared-with-everyone pattern as paneOrder above, but for display
   // labels instead of row order -- see ReorderListsPanel.tsx and
@@ -1928,7 +1941,11 @@ function ItemHubPageInner() {
   // changes, so this can't orphan any of that data.
   const [paneLabels, setPaneLabels] = useState<Record<string, string>>({})
   const fetchPaneLabels = () => fetch('/api/pane-labels').then(r => r.ok ? r.json() : {}).then(setPaneLabels).catch(() => {})
-  useEffect(() => { fetchPaneLabels() }, [])
+  // Defer pane config loading - cosmetic sidebar settings not needed for initial render
+  useEffect(() => {
+    const t = setTimeout(() => fetchPaneLabels(), 800)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(fetchPaneLabels, 600000)
   const paneLabel = (key: string, fallback: string) => paneLabels[key] ?? fallback
   // Same shared-with-everyone pattern again, but for which section a Cash
@@ -1942,7 +1959,11 @@ function ItemHubPageInner() {
   // isSelfTitled/chipLabel/chipBorder end up applied per row.
   const [paneGroups, setPaneGroups] = useState<Record<string, { group_name: string | null; standalone: boolean }>>({})
   const fetchPaneGroups = () => fetch('/api/pane-groups').then(r => r.ok ? r.json() : {}).then(setPaneGroups).catch(() => {})
-  useEffect(() => { fetchPaneGroups() }, [])
+  // Defer pane config loading - cosmetic sidebar settings not needed for initial render
+  useEffect(() => {
+    const t = setTimeout(() => fetchPaneGroups(), 800)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(fetchPaneGroups, 600000)
   // Same shared-with-everyone pattern again, but for which rows are hidden
   // from the sidebar entirely -- see /api/pane-hidden and
@@ -1952,7 +1973,11 @@ function ItemHubPageInner() {
   // later brings it straight back with everything intact.
   const [paneHidden, setPaneHidden] = useState<Record<string, boolean>>({})
   const fetchPaneHidden = () => fetch('/api/pane-hidden').then(r => r.ok ? r.json() : {}).then(setPaneHidden).catch(() => {})
-  useEffect(() => { fetchPaneHidden() }, [])
+  // Defer pane config loading - cosmetic sidebar settings not needed for initial render
+  useEffect(() => {
+    const t = setTimeout(() => fetchPaneHidden(), 800)
+    return () => clearTimeout(t)
+  }, [])
   usePolling(fetchPaneHidden, 600000)
   // New Sale/Live Sale/Log used to be hardcoded sub-buttons nested under
   // the Sales row, then their own standalone rows. Now Sales, Bills, and
