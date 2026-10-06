@@ -222,12 +222,12 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
       <div>
         <label className={labelCls}>Document Type</label>
         <div className="flex gap-1.5">
-          <button type="button" onClick={() => setDocType('Receipt')}
+          <button type="button" onClick={() => setDocumentType('Receipt')}
             className={`flex-1 text-sm font-semibold rounded-lg py-2 transition
               ${documentType === 'Receipt' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
             Receipt
           </button>
-          <button type="button" onClick={() => setDocType('Invoice')}
+          <button type="button" onClick={() => setDocumentType('Invoice')}
             className={`flex-1 text-sm font-semibold rounded-lg py-2 transition
               ${documentType === 'Invoice' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
             Invoice
