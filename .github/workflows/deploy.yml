@@ -51,7 +51,8 @@ jobs:
           script: |
             set -e
             cd /root/app
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             npm install
             rm -rf .next
             npm run build
