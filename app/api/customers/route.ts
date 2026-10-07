@@ -28,7 +28,7 @@ const ensureColumns = once(async () => {
     `
     for (let i = 0; i < customersToUpdate.length; i++) {
       const customerId = customersToUpdate[i].id
-      const idCode = `GM${String(customerId).padStart(4, '0')}`
+      const idCode = `GM${customerId}`
       await sql`UPDATE customers SET customer_id_code = ${idCode} WHERE id = ${customerId}`.catch(() => {})
     }
   }
@@ -82,10 +82,10 @@ export async function POST(req: NextRequest) {
     await initializeDatabase()
     await ensureColumns()
 
-    // Generate customer ID code (GM + 4 digits)
+    // Generate customer ID code (GM + number, no padding)
     const [maxIdRow] = await sql`SELECT COALESCE(MAX(id), 0) as max_id FROM customers`
     const nextId = maxIdRow.max_id + 1
-    const customerIdCode = `GM${String(nextId).padStart(4, '0')}`
+    const customerIdCode = `GM${nextId}`
 
     const [customer] = await sql`
       INSERT INTO customers

@@ -97,6 +97,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, code })
   } catch (e) {
     console.error('public register', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again or WhatsApp 024 853 3826.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again or WhatsApp 053 432 8977.' }, { status: 500 })
   }
 }

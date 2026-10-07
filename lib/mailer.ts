@@ -50,7 +50,7 @@ export async function sendRegistrationEmail(to: string, name: string, customerId
         <p style="margin:0;color:#1e293b;font-weight:600">Your Customer ID:</p>
         <p style="margin:8px 0;font-size:28px;font-weight:bold;color:#2563eb;font-family:monospace">${customerId}</p>
       </div>
-      <p>Use this ID for all your orders and dealings with us. You can also contact us on WhatsApp at <strong>024 853 3826</strong>.</p>
+      <p>Use this ID for all your orders and dealings with us. You can also contact us on WhatsApp at <strong>053 432 8977</strong>.</p>
       <p style="color:#64748b;font-size:13px">Keep this email safe for your records.</p>
     </div>
   `)
@@ -88,7 +88,7 @@ export async function sendTransactionEmail(to: string, name: string, customerId:
         <p style="margin:0;color:#1e293b;font-size:16px;font-weight:600">Total: ₵${total.toFixed(2)}</p>
       </div>
       <p style="color:#64748b;font-size:13px;margin-top:16px">Customer ID: <strong>${customerId}</strong></p>
-      <p style="color:#64748b;font-size:13px">Questions? Contact us on WhatsApp at <strong>024 853 3826</strong></p>
+      <p style="color:#64748b;font-size:13px">Questions? Contact us on WhatsApp at <strong>053 432 8977</strong></p>
     </div>
   `)
 }

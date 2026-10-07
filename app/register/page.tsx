@@ -83,7 +83,7 @@ export default function RegisterPage() {
             <img src="/logo.png" alt="Grony Multimedia" className="h-12 w-auto" />
           </div>
           <h1 className="text-2xl font-extrabold text-center">Grony Multimedia</h1>
-          <p className="text-sm text-orange-200 text-center">Assin Foso · Near GCB Bank · 024 853 3826</p>
+          <p className="text-sm text-orange-200 text-center">Assin Foso · Near GCB Bank · 053 432 8977</p>
         </div>
         <div className="h-1.5 bg-[#E85D04]" />
         <div className="bg-white rounded-b-2xl shadow p-5">
@@ -99,7 +99,7 @@ export default function RegisterPage() {
                 <p className="text-sm text-blue-800"><b>Save this number.</b> When you send us work on WhatsApp, type this customer ID on the page where you upload your document or in the message.</p>
               </div>
               <p className="text-xs text-gray-500">This helps us track your jobs faster and serve you better.</p>
-              <a href="https://wa.me/233248533826" className="inline-block mt-5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-6 py-3">Go Back to WhatsApp</a>
+              <a href="https://wa.me/233534328977" className="inline-block mt-5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-6 py-3">Go Back to WhatsApp</a>
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-5">
