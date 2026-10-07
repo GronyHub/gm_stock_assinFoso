@@ -6455,7 +6455,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
+              <SidePaneButton icon="✅" label="Standards" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
+                onClick={() => { window.location.href = '/standards' }} />
+              <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
                 onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
             {outerTab !== 'uk' && canOpenSettings && (
