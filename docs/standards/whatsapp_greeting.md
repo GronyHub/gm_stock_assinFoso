@@ -26,8 +26,12 @@ https://app.gronymultimedia.com/register
 Please quote your customer number whenever you send us work, and send all work and payments in this chat only.
 
 Call / WhatsApp / Mobile Money: 053 432 8977
-Website: [WEBSITE]
+
+Join our community group for offers, new products and tips:
+https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
+
+Website: www.gronymultimedia.com
 Facebook: [FACEBOOK PAGE]
-TikTok: [TIKTOK]
+TikTok: https://www.tiktok.com/@grony.multimedia
 Email: [PROFESSIONAL EMAIL]
 Open: [DAYS AND HOURS]
