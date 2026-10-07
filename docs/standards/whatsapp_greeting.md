@@ -2,7 +2,7 @@
 
 Save in WhatsApp Business -> Business tools -> Greeting message -> paste -> Recipients: Everyone -> Save.
 Only save it after app.gronymultimedia.com/register is live and tested.
-Items in [SQUARE BRACKETS] are gaps for the owner to fill. Do not publish until none remain.
+No gaps remain. Confirm info@ forwarding works before publishing.
 
 ---
 
@@ -33,7 +33,7 @@ https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 Website: www.gronymultimedia.com
 Facebook: https://www.facebook.com/share/1F5K2JTViP/
 TikTok: https://www.tiktok.com/@grony.multimedia
-Email: [PROFESSIONAL EMAIL]
+Email: info@gronymultimedia.com
 
 
 ---
@@ -53,5 +53,6 @@ Join our group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 www.gronymultimedia.com
 Facebook: https://www.facebook.com/share/1F5K2JTViP/
 TikTok: https://www.tiktok.com/@grony.multimedia
+Email: info@gronymultimedia.com
 
-(544 characters. Email goes in the full version once info@ works.)
+(576 characters.)
