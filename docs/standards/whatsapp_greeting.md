@@ -31,7 +31,7 @@ Join our community group for offers, new products and tips:
 https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 
 Website: www.gronymultimedia.com
-Facebook: [FACEBOOK PAGE]
+Facebook: https://www.facebook.com/share/1F5K2JTViP/
 TikTok: https://www.tiktok.com/@grony.multimedia
 Email: [PROFESSIONAL EMAIL]
 Open: [DAYS AND HOURS]
