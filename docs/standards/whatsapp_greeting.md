@@ -35,3 +35,23 @@ Facebook: https://www.facebook.com/share/1F5K2JTViP/
 TikTok: https://www.tiktok.com/@grony.multimedia
 Email: [PROFESSIONAL EMAIL]
 Open: [DAYS AND HOURS]
+
+
+---
+
+## Short version (for the WhatsApp Business greeting box, about 600 character limit)
+
+Hello and welcome to *Grony Multimedia*, Assin Foso (near GCB Bank)!
+
+Printing, large format, software & AI, internet cafe, computer accessories, photo/video/audio, hiring and admissions.
+
+*Register in 1 minute and get your own customer number:*
+https://app.gronymultimedia.com/register
+Quote it whenever you send work.
+
+Call/WhatsApp/MoMo: 053 432 8977
+Open: [DAYS AND HOURS]
+Join our group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
+www.gronymultimedia.com
+
+(465 characters. Facebook, TikTok and email go on the website and the full version.)
