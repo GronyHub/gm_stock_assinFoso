@@ -229,7 +229,7 @@ svc("CV · LETTER · FORM · INVITATION",[
 ])
 svc("SCAN",[
  "Place the document flat on <b>B</b>; scan to PDF (Epson Scan 2).",
- "Name it with the GM number and what it is, e.g. “GM0024 – results slip”.",
+ "Name it with the GM number and what it is, e.g. “GM24 – results slip”.",
  "Send on WhatsApp or email if asked; keep a copy in the GM folder.",
 ])
 svc("PHOTOCOPY",[

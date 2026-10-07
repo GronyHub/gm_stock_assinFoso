@@ -87,7 +87,7 @@ check("B. DURING THE DAY – all day, not once","",[
  "Customers kept out of the inner shop (staff only) – politely asked to step outside.",
  "Seated, standing only for passport photos or large format; assistant routes customers and passes items.",
  "Every new customer registered with a <b>GM number</b>."+HOW("Greeting message sends app.gronymultimedia.com/register automatically. If missed, send the link or add them in the app → New Customer."),
- "Each customer's files <b>only</b> in a folder named with their GM number; WhatsApp contact saved as “GM0024 – Full Name”.",
+ "Each customer's files <b>only</b> in a folder named with their GM number; WhatsApp contact saved as “GM24 – Full Name”.",
  "Customer details and logins kept private – never shared or reused.",
  "<b>Every customer is taken seriously</b> – greeted, listened to, order written down, a time given – above all anyone who has <b>walked in to request work</b>.",
  "<b>Complaints logged:</b> every customer complaint and every case of staff incompetence is written on the complaint log on the <b>left of the glass showcase</b>, with date and details.",
@@ -111,7 +111,7 @@ check("B. DURING THE DAY – all day, not once","",[
 ])
 # ---------------- C STATION
 check("B2. CUSTOMER TRUST – COMPANY CHANNELS ONLY","The company number is also the Mobile Money number.",[
- "The customer's <b>WhatsApp chat is the source of truth</b>: reply there, send receipts there, put every conversation about their work and every payment there."+HOW("Rename the contact to their company code: “GM0024 – Full Name”."),
+ "The customer's <b>WhatsApp chat is the source of truth</b>: reply there, send receipts there, put every conversation about their work and every payment there."+HOW("Rename the contact to their company code: “GM24 – Full Name”."),
  "Customer not sending work on WhatsApp? Ask them to send “<b>hi</b>” to the company number, then <b>save the contact</b> with their GM number.",
  "<b>Work goes only through official company channels</b> – the company number, email address and website – never to personal numbers or personal WhatsApp lines.",
  "<b>No personal phone number</b> – mine or any staff member's – is given to any customer.",
@@ -254,7 +254,7 @@ check("M. SYSTEMS &amp; CUSTOMER REGISTRATION","",[
  "<b>Registration form live</b> at app.gronymultimedia.com/register (Claude Code: CLAUDE_CODE_PROMPT.md) and tested.",
  "Greeting message saved – only after the form is live."+HOW("Message = intro + services + registration link + website, Facebook, TikTok, professional email, phone &amp; hours. WhatsApp Business → Business tools → Greeting message → paste → Recipients: Everyone → Save."),
  "Quick reply <b>/jingle</b> saved with the jingle audio."+HOW("Business tools → Quick replies → + → shortcut /jingle → attach audio → Save."),
- "Existing customer folders renamed to their GM numbers.",
+ "Existing customer folders <b>and WhatsApp contacts</b> renamed to the new GM format (GM24, not GM0024)."+HOW("One-time: rename each “GM0024 – Name” contact and folder to “GM24 – Name”. Numbers have no leading zeros."),
  "Each staff member has their own Chrome profile.",
  "AnyDesk on Grony 1 &amp; 2; address sent to owner."+HOW("anydesk.com → install → send the address. Accept only when the owner has called first."),
  "Fast-pace processes written and pasted at the stations; this checklist printed and posted.",
