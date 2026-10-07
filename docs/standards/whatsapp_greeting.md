@@ -23,7 +23,9 @@ We do:
 *New here? Register in 1 minute and get your own customer number (e.g. GM24):*
 https://app.gronymultimedia.com/register
 
-Please quote your customer number whenever you send us work, and send all work and payments in this chat only.
+We keep your files only if you register and agree to it. Once registered, quote your customer number and we will find your work or send earlier versions without you sending it again. If you do not register, we do not keep your files.
+
+Send all work and payments in this chat only.
 
 Call / WhatsApp / Mobile Money: 053 432 8977
 
@@ -40,19 +42,19 @@ Email: info@gronymultimedia.com
 
 ## Short version (for the WhatsApp Business greeting box, about 600 character limit)
 
-Hello and welcome to *Grony Multimedia*, Assin Foso (near GCB Bank)!
+Welcome to *Grony Multimedia*, Assin Foso (near GCB Bank)!
 
-Printing, large format, software & AI, internet cafe, computer accessories, photo/video/audio, hiring and admissions.
+Printing, large format, software & AI, internet cafe, photo/video, hiring, admissions.
 
-*Register in 1 minute and get your own customer number:*
+*Register (1 minute) for your customer number:*
 https://app.gronymultimedia.com/register
-Quote it whenever you send work.
+We keep your files only if you register and agree. Then quote your number to get copies without resending.
 
 Call/WhatsApp/MoMo: 053 432 8977
-Join our group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
+Group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 www.gronymultimedia.com
 Facebook: https://www.facebook.com/share/1F5K2JTViP/
 TikTok: https://www.tiktok.com/@grony.multimedia
 Email: info@gronymultimedia.com
 
-(576 characters.)
+(591 characters.)
