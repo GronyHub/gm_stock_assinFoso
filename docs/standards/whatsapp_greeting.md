@@ -51,5 +51,7 @@ Quote it whenever you send work.
 Call/WhatsApp/MoMo: 053 432 8977
 Join our group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 www.gronymultimedia.com
+Facebook: https://www.facebook.com/share/1F5K2JTViP/
+TikTok: https://www.tiktok.com/@grony.multimedia
 
-(442 characters. Facebook, TikTok and email go on the website and the full version.)
+(544 characters. Email goes in the full version once info@ works.)

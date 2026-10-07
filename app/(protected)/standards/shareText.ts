@@ -11,7 +11,9 @@ Quote it whenever you send work.
 
 Call/WhatsApp/MoMo: 053 432 8977
 Join our group: ${GROUP_URL}
-www.gronymultimedia.com`
+www.gronymultimedia.com
+Facebook: https://www.facebook.com/share/1F5K2JTViP/
+TikTok: https://www.tiktok.com/@grony.multimedia`
 
 export const GREETING_FULL = `Hello and welcome to *Grony Multimedia*, Assin Foso (near GCB Bank)!
 
