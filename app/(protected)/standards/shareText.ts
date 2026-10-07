@@ -1,19 +1,17 @@
 export const REGISTER_URL = 'https://app.gronymultimedia.com/register'
 export const GROUP_URL = 'https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p'
 
-export const GREETING_SHORT = `Welcome to *Grony Multimedia*, Assin Foso (near GCB)!
+export const GREETING_SHORT = `Welcome to *Grony Multimedia*, Assin Foso (near GCB): printing, large format, software, photo/video & more!
 
-Printing, large format, software, internet cafe, photo/video, hiring.
-
-*Register (1 minute) for your customer number:*
+*Register for your customer number:*
 ${REGISTER_URL}
-We keep your files only if you register and agree. Then quote your number to get copies without resending: faster work, lower cost.
+We keep your files only if you register and agree. Quote your number to get copies without resending: faster work, lower cost.
 
 Call/WhatsApp/MoMo: 053 432 8977
 Group: ${GROUP_URL}
-www.gronymultimedia.com
-Facebook: https://www.facebook.com/share/1F5K2JTViP/
-TikTok: https://www.tiktok.com/@grony.multimedia
+https://www.gronymultimedia.com
+Like our Facebook page: https://www.facebook.com/share/1F5K2JTViP/
+Join our TikTok page: https://www.tiktok.com/@grony.multimedia
 Email: info@gronymultimedia.com`
 
 export const GREETING_FULL = `Hello and welcome to *Grony Multimedia*, Assin Foso (near GCB Bank)!
@@ -42,7 +40,7 @@ Call / WhatsApp / Mobile Money: 053 432 8977
 Join our community group for offers, new products and tips:
 ${GROUP_URL}
 
-Website: www.gronymultimedia.com
-Facebook: https://www.facebook.com/share/1F5K2JTViP/
-TikTok: https://www.tiktok.com/@grony.multimedia
+Website: https://www.gronymultimedia.com
+Like our Facebook page: https://www.facebook.com/share/1F5K2JTViP/
+Join our TikTok page: https://www.tiktok.com/@grony.multimedia
 Email: info@gronymultimedia.com`

@@ -32,9 +32,9 @@ Call / WhatsApp / Mobile Money: 053 432 8977
 Join our community group for offers, new products and tips:
 https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
 
-Website: www.gronymultimedia.com
-Facebook: https://www.facebook.com/share/1F5K2JTViP/
-TikTok: https://www.tiktok.com/@grony.multimedia
+Website: https://www.gronymultimedia.com
+Like our Facebook page: https://www.facebook.com/share/1F5K2JTViP/
+Join our TikTok page: https://www.tiktok.com/@grony.multimedia
 Email: info@gronymultimedia.com
 
 
@@ -42,19 +42,17 @@ Email: info@gronymultimedia.com
 
 ## Short version (for the WhatsApp Business greeting box, about 600 character limit)
 
-Welcome to *Grony Multimedia*, Assin Foso (near GCB)!
+Welcome to *Grony Multimedia*, Assin Foso (near GCB): printing, large format, software, photo/video & more!
 
-Printing, large format, software, internet cafe, photo/video, hiring.
-
-*Register (1 minute) for your customer number:*
+*Register for your customer number:*
 https://app.gronymultimedia.com/register
-We keep your files only if you register and agree. Then quote your number to get copies without resending: faster work, lower cost.
+We keep your files only if you register and agree. Quote your number to get copies without resending: faster work, lower cost.
 
 Call/WhatsApp/MoMo: 053 432 8977
 Group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p
-www.gronymultimedia.com
-Facebook: https://www.facebook.com/share/1F5K2JTViP/
-TikTok: https://www.tiktok.com/@grony.multimedia
+https://www.gronymultimedia.com
+Like our Facebook page: https://www.facebook.com/share/1F5K2JTViP/
+Join our TikTok page: https://www.tiktok.com/@grony.multimedia
 Email: info@gronymultimedia.com
 
-(594 characters.)
+(597 characters.)
