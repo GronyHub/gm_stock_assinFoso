@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [f, setF] = useState({ first_name: '', last_name: '', phone: '', email: '', location: '', heard_from: '', website: '' })
   const [services, setServices] = useState<string[]>([])
   const [joinGroup, setJoinGroup] = useState(true)
+  const [filesConsent, setFilesConsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState<{ code: string; existing?: boolean } | null>(null)
@@ -67,7 +68,7 @@ export default function RegisterPage() {
     e.preventDefault(); setBusy(true); setError('')
     try {
       const r = await fetch('/api/public/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...f, services, join_group: joinGroup }) })
+        body: JSON.stringify({ ...f, services, join_group: joinGroup, files_consent: filesConsent }) })
       const d = await r.json()
       if (!r.ok) setError(d.error || 'Please try again.')
       else setDone({ code: d.code, existing: d.existing })
@@ -169,6 +170,11 @@ export default function RegisterPage() {
                 <input type="checkbox" className="w-4 h-4 mt-0.5 accent-orange-600" checked={joinGroup} onChange={e => setJoinGroup(e.target.checked)} />
                 Add me to the Grony Multimedia WhatsApp group for offers and updates
               </label>
+              <label className="flex items-start gap-2 text-sm text-gray-800 bg-slate-50 border border-gray-200 rounded-lg p-3">
+                <input type="checkbox" className="w-4 h-4 mt-0.5 accent-orange-600 shrink-0" checked={filesConsent} onChange={e => setFilesConsent(e.target.checked)} />
+                <span>Yes, keep my files so I can ask for copies or earlier versions by quoting my customer number. I can ask Grony Multimedia to delete them at any time.</span>
+              </label>
+              <p className="text-xs text-gray-500 -mt-3">If you leave this unticked, we do not keep your files after the job.</p>
               {/* honeypot -- hidden from people, bots fill it */}
               <input type="text" tabIndex={-1} autoComplete="off" value={f.website} onChange={set('website')} className="hidden" aria-hidden="true" />
               {error && <p className="text-sm text-red-600">{error}</p>}

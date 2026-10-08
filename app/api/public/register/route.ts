@@ -3,6 +3,7 @@ import { logActivity } from '@/lib/logger'
 import { sendRegistrationEmail } from '@/lib/mailer'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
+import { ensureCustomerInviteColumns, FILES_CONSENT_VERSION } from '@/lib/customerInvite'
 
 const SERVICES = [
   'Printing Press Services', 'Large Format Printing', 'Sale of Printing Materials',
@@ -53,12 +54,14 @@ export async function POST(req: NextRequest) {
     const services: string[] = Array.isArray(body.services)
       ? body.services.filter((s: unknown) => SERVICES.includes(String(s))) : []
     const joinGroup = body.join_group === true
+    const filesConsent = body.files_consent === true
 
     if (!firstName || !lastName) return NextResponse.json({ error: 'Please enter your first and last name.' }, { status: 400 })
     if (!phone) return NextResponse.json({ error: 'Please enter a valid Ghana phone number (e.g. 024 123 4567).' }, { status: 400 })
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Please check your email address.' }, { status: 400 })
 
     await ensureColumns()
+    await ensureCustomerInviteColumns()
 
     // Already registered? Give back their existing number instead of a duplicate.
     const existing = await sql`
@@ -84,6 +87,11 @@ export async function POST(req: NextRequest) {
     // Customer ID from the row's own id -- no race between two people registering at once.
     const code = `GM${row.id}`
     await sql`UPDATE customers SET customer_id_code = ${code} WHERE id = ${row.id}`
+    if (filesConsent) {
+      await sql`UPDATE customers SET files_consent = true, files_consent_at = now(), files_consent_version = ${FILES_CONSENT_VERSION}, profile_completed_at = now() WHERE id = ${row.id}`
+    } else {
+      await sql`UPDATE customers SET profile_completed_at = now() WHERE id = ${row.id}`
+    }
 
     await logActivity('Online form', 'self-registered customer', `${code} – ${displayName}`, 0).catch(() => {})
 

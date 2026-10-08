@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 import NewCustomerForm from '../item/_components/NewCustomerForm'
+import QuickAddPanel from './QuickAddPanel'
 
 // Cust. Receipts and New Customer folded in here as tabs (same treatment
 // Live Sale's own switcher got) since neither had anything left that
@@ -249,7 +250,7 @@ export default function CustomersPage({
   initialSearch?: string; onFlagCountChange?: (n: number) => void
   jumpToTabSeq?: number; jumpToTab?: 'customers' | 'receipts' | 'new' | null
 } = {}) {
-  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>('customers')
+  const [mode, setMode] = useState<'customers' | 'receipts' | 'new' | 'quick'>('customers')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
@@ -358,6 +359,7 @@ export default function CustomersPage({
         <button type="button" onClick={() => setMode('customers')} className={btnCls(mode === 'customers')}>Customers</button>
         <button type="button" onClick={() => setMode('receipts')} className={btnCls(mode === 'receipts')}>Cust. Receipts</button>
         <button type="button" onClick={() => setMode('new')} className={btnCls(mode === 'new')}>+ New Customer</button>
+        <button type="button" onClick={() => setMode('quick')} className={btnCls(mode === 'quick')}>WhatsApp quick-add</button>
       </div>
     )
   }
@@ -370,6 +372,18 @@ export default function CustomersPage({
           <h1 className="text-lg font-bold text-gray-900">Cust. Receipts</h1>
         </div>
         <ReceiptsPage />
+      </div>
+    )
+  }
+
+  if (mode === 'quick') {
+    return (
+      <div>
+        {renderModeSwitcher()}
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg font-bold text-gray-900">WhatsApp quick-add</h1>
+        </div>
+        <QuickAddPanel onChanged={loadCustomers} />
       </div>
     )
   }
