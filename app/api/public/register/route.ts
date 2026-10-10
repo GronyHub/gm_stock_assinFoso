@@ -3,7 +3,7 @@ import { logActivity } from '@/lib/logger'
 import { sendRegistrationEmail } from '@/lib/mailer'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
-import { ensureCustomerInviteColumns, FILES_CONSENT_VERSION } from '@/lib/customerInvite'
+import { ensureCustomerProfileColumns, FILES_CONSENT_VERSION } from '@/lib/customerProfile'
 
 const SERVICES = [
   'Printing Press Services', 'Large Format Printing', 'Sale of Printing Materials',
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Please check your email address.' }, { status: 400 })
 
     await ensureColumns()
-    await ensureCustomerInviteColumns()
+    await ensureCustomerProfileColumns()
 
     // Already registered? Give back their existing number instead of a duplicate.
     const existing = await sql`

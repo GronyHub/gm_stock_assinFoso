@@ -4,7 +4,8 @@ import { logActivity } from '@/lib/logger'
 import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
-import { ensureCustomerInviteColumns, normalizeGhPhone } from '@/lib/customerInvite'
+import { ensureCustomerProfileColumns, normalizeGhPhone, welcomeWhatsAppUrl } from '@/lib/customerProfile'
+import { sendRegistrationEmail } from '@/lib/mailer'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -41,7 +42,7 @@ export async function GET() {
 
   await initializeDatabase()
   await ensureColumns()
-  await ensureCustomerInviteColumns()
+  await ensureCustomerProfileColumns()
   const customers = await sql`
     SELECT
       c.id, c.customer_id_code, c.display_name, c.company_name, c.first_name, c.last_name,
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
   try {
     await initializeDatabase()
     await ensureColumns()
-    await ensureCustomerInviteColumns()
+    await ensureCustomerProfileColumns()
 
     // Generate customer ID code (GM + number, no padding)
     const [maxIdRow] = await sql`SELECT COALESCE(MAX(id), 0) as max_id FROM customers`
@@ -113,8 +114,23 @@ export async function POST(req: NextRequest) {
     // 10 minutes flat -- a "typing" action, same convention as the other
     // manual-entry forms (bills, expenses, purchase orders, vendors).
     await logActivity(enteredBy, 'added customer', customer.display_name, 600)
+
+    // Welcome email goes out straight away when an email was given. A failed
+    // send never blocks registration; the result is returned so staff can see it.
+    let welcomeEmail: 'sent' | 'failed' | 'skipped' = 'skipped'
+    if (customer.email) {
+      try {
+        await sendRegistrationEmail(customer.email, first_name || customer.display_name, customer.customer_id_code)
+        welcomeEmail = 'sent'
+      } catch (err) {
+        welcomeEmail = 'failed'
+        console.error('welcome email failed', err)
+      }
+    }
     return success({
       ...customer,
+      welcome_email: welcomeEmail,
+      welcome_whatsapp_url: welcomeWhatsAppUrl(cleanPhone, String(first_name || customer.display_name), customer.customer_id_code),
       receipt_count: 0, receipt_total: '0', receipt_balance: '0',
       invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
     })
