@@ -97,6 +97,8 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
   async function submit() {
     setError(null)
     if (!displayName.trim()) { setError('Customer name is required.'); return }
+    if (!phone.trim()) { setError('Phone number is required.'); return }
+    if (phone.replace(/\D/g, '').length < 9) { setError('Please enter a valid phone number, for example 024 123 4567.'); return }
 
     setSaving(true)
     const res = await fetch('/api/customers', {
@@ -104,7 +106,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
       body: JSON.stringify({
         display_name: displayName.trim(),
         company_name: companyName.trim() || null,
-        phone: phone.trim() || null,
+        phone: phone.trim(),
         email: email.trim() || null,
         location: location.trim() || null,
         notes: notes.trim() || null,
@@ -167,8 +169,8 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls}>Phone</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} className={inputCls} />
+          <label className={labelCls}>Phone *</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" required className={inputCls} />
           {duplicatePhone && (
             <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5 mt-1">
               ⚠️ Phone already registered: <span className="font-semibold">{duplicatePhone.display_name}</span>

@@ -4,7 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
-import { ensureCustomerInviteColumns } from '@/lib/customerInvite'
+import { ensureCustomerInviteColumns, normalizeGhPhone } from '@/lib/customerInvite'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -77,6 +77,10 @@ export async function POST(req: NextRequest) {
   if (!display_name || !String(display_name).trim()) {
     return badRequest('Customer name is required')
   }
+  const cleanPhone = normalizeGhPhone(phone)
+  if (!cleanPhone) {
+    return badRequest('A valid phone number is required, for example 024 123 4567.')
+  }
 
   const enteredBy = getActorName(session)
 
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
          whatsapp_group_added, last_visited, service_goods, customer_id_code, source, added_by)
       VALUES
         (${String(display_name).trim()}, ${company_name || null}, ${first_name || null}, ${last_name || null},
-         ${email || null}, ${phone || null}, ${location || null},
+         ${email || null}, ${cleanPhone}, ${location || null},
          'Active', ${payment_terms_label || null}, ${opening_balance || 0}, ${credit_limit || null}, ${notes || null}, false,
          ${whatsapp_group_added ?? false}, ${last_visited || null}, ${service_goods || null}, ${customerIdCode}, 'staff_added', ${enteredBy})
       RETURNING
