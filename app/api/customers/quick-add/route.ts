@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
     const token = newInviteToken()
     const [row] = await sql`
       INSERT INTO customers
-        (display_name, first_name, last_name, phone, status, is_internal, whatsapp_group_added, source, opening_balance, invite_token, invited_at, notes)
+        (display_name, first_name, last_name, phone, status, is_internal, whatsapp_group_added, source, added_by, opening_balance, invite_token, invited_at, notes)
       VALUES
-        (${name || 'WhatsApp contact'}, NULL, NULL, ${phone}, 'Active', false, false, 'whatsapp_quick_add', 0, ${token}, now(),
+        (${name || 'WhatsApp contact'}, NULL, NULL, ${phone}, 'Active', false, false, 'whatsapp_quick_add', ${getActorName(session)}, 0, ${token}, now(),
          ${'Added from WhatsApp by ' + getActorName(session)})
       RETURNING id, display_name, phone`
     const code = `GM${row.id}`

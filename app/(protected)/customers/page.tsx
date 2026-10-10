@@ -31,6 +31,8 @@ type Customer = {
   last_visited: string | null
   service_goods: string | null
   created_at: string
+  source?: string | null
+  added_by?: string | null
   receipt_count: number
   receipt_total: string
   receipt_balance: string
@@ -56,9 +58,16 @@ function c(v: string | null | undefined) {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
+function addedByLabel(v: Customer) {
+  if (v.source === 'self_register') return 'Self-registered'
+  if (v.source === 'whatsapp_quick_add') return `WhatsApp quick-add${v.added_by ? ' · ' + v.added_by : ''}`
+  if (v.source === 'staff_added' || v.added_by) return `Staff${v.added_by ? ' · ' + v.added_by : ''}`
+  return 'Zoho import / unknown'
+}
+
 // Name stays sticky/always-visible (first column); these are the only ones
 // the picker can hide/reorder/rename.
-type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'dateRegistered' | 'serviceGoods' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
+type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'status' | 'lastVisited' | 'dateRegistered' | 'serviceGoods' | 'addedBy' | 'whatsapp' | 'sales' | 'outstanding' | 'receiptCount'
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
@@ -73,6 +82,7 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'lastVisited', label: 'Last Visited', align: 'left', tdClass: 'text-gray-600', render: v => fmtDateShort(v.last_visited) },
   { key: 'dateRegistered', label: 'Date Registered', align: 'left', tdClass: 'text-gray-600', render: v => fmtDateShort(v.created_at) },
   { key: 'serviceGoods', label: 'Service/Goods', align: 'left', tdClass: 'text-gray-600', render: v => v.service_goods ?? '—' },
+  { key: 'addedBy', label: 'Added By', align: 'left', tdClass: 'text-gray-600', render: v => addedByLabel(v) },
   { key: 'whatsapp', label: 'WhatsApp Grp', align: 'left', tdClass: '', render: v => (
       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.whatsapp_group_added ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
         {v.whatsapp_group_added ? '✓ Added' : '✗ Not Added'}
@@ -87,7 +97,7 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
 const CUSTOMER_COL_BY_KEY = new Map(CUSTOMER_COLUMNS.map(col => [col.key, col]))
 const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
   name: 150, customerId: 100, company: 150, phone: 120, email: 180, location: 130, status: 90,
-  lastVisited: 110, dateRegistered: 130, serviceGoods: 140, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
+  lastVisited: 110, dateRegistered: 130, serviceGoods: 140, addedBy: 150, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
 }
 
 function EditCustomerForm({ customer, onSaved, onCancel, onDeleted }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void; onDeleted?: () => void }) {

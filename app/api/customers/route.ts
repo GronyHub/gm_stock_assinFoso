@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
+import { ensureCustomerInviteColumns } from '@/lib/customerInvite'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -40,13 +41,14 @@ export async function GET() {
 
   await initializeDatabase()
   await ensureColumns()
+  await ensureCustomerInviteColumns()
   const customers = await sql`
     SELECT
       c.id, c.customer_id_code, c.display_name, c.company_name, c.first_name, c.last_name,
       c.email, c.phone, c.location, c.status, c.payment_terms_label,
       c.opening_balance, c.credit_limit, c.notes, c.is_internal,
       c.whatsapp_group_added, c.last_visited::text AS last_visited, c.service_goods,
-      c.created_at::text AS created_at,
+      c.created_at::text AS created_at, c.source, c.added_by,
       COUNT(DISTINCT sr.id)::int              AS receipt_count,
       COALESCE(SUM(sr.total), 0)::numeric     AS receipt_total,
       COALESCE(SUM(sr.balance), 0)::numeric   AS receipt_balance,
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
   try {
     await initializeDatabase()
     await ensureColumns()
+    await ensureCustomerInviteColumns()
 
     // Generate customer ID code (GM + number, no padding)
     const [maxIdRow] = await sql`SELECT COALESCE(MAX(id), 0) as max_id FROM customers`
@@ -91,12 +94,12 @@ export async function POST(req: NextRequest) {
       INSERT INTO customers
         (display_name, company_name, first_name, last_name, email, phone, location,
          status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,
-         whatsapp_group_added, last_visited, service_goods, customer_id_code)
+         whatsapp_group_added, last_visited, service_goods, customer_id_code, source, added_by)
       VALUES
         (${String(display_name).trim()}, ${company_name || null}, ${first_name || null}, ${last_name || null},
          ${email || null}, ${phone || null}, ${location || null},
          'Active', ${payment_terms_label || null}, ${opening_balance || 0}, ${credit_limit || null}, ${notes || null}, false,
-         ${whatsapp_group_added ?? false}, ${last_visited || null}, ${service_goods || null}, ${customerIdCode})
+         ${whatsapp_group_added ?? false}, ${last_visited || null}, ${service_goods || null}, ${customerIdCode}, 'staff_added', ${enteredBy})
       RETURNING
         id, customer_id_code, display_name, company_name, first_name, last_name, email, phone, location,
         status, payment_terms_label, opening_balance, credit_limit, notes, is_internal,

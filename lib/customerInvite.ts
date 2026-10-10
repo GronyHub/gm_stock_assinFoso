@@ -22,6 +22,7 @@ export const ensureCustomerInviteColumns = once(async () => {
     'files_consent_at TIMESTAMPTZ',
     'files_consent_version TEXT',
     'source TEXT',
+    'added_by TEXT',
   ]
   for (const c of cols) await sql.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS ${c}`).catch(() => {})
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS customers_invite_token_idx ON customers (invite_token) WHERE invite_token IS NOT NULL`.catch(() => {})
