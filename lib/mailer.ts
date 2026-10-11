@@ -7,6 +7,11 @@ function esc(v: string) {
   return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+// Always sent from the shop's official address. Deliberately not read from
+// RESEND_FROM: the droplet's env still held noreply@, and replies to that
+// address went nowhere. info@ forwards to the shop Gmail (Namecheap).
+const FROM = 'Grony Multimedia <info@gronymultimedia.com>'
+
 async function sendEmail(to: string, subject: string, html: string) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -15,7 +20,8 @@ async function sendEmail(to: string, subject: string, html: string) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM ?? 'Grony Multimedia <onboarding@resend.dev>',
+      from: FROM,
+      reply_to: 'info@gronymultimedia.com',
       to,
       subject,
       html,
