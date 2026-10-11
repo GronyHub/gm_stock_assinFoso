@@ -4894,7 +4894,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     }
 
     const divider = <span className="text-red-300 shrink-0">·</span>
-    if (only === 'items' && !(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0)) return null
+    if (only === 'items' && !(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0)) return null
     if (only === 'receipts' && !((violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0)) return null
     if (only === 'bills' && !(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump)) return null
 
@@ -4919,7 +4919,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </>)}
 
         {/* Items violations */}
-        {show('items') && (liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
+        {show('items') && (liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0) && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Items;</span>
@@ -4927,9 +4927,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {violationButton('No SP', liveNoSpCount, () => pickSaleFilter('noSp'), 'text-orange-600')}
             {violationButton('No CP', liveNoCpCount, () => pickSaleFilter('noCp'), 'text-orange-600')}
             {violationButton('No Group', violationCounts.no_group || 0, () => pickSaleFilter('noGroup'), 'text-orange-600')}
-            {violationButton('Duplicates', liveDuplicateItemIds.size, () => pickSaleFilter('duplicates'), 'text-red-600')}
-            {violationButton('Unlinked', liveUnlinkedNamedIds.size, () => pickSaleFilter('unlinked'), 'text-red-600')}
-            {violationButton('Service Violations', liveServiceViolationIdSet.size, () => pickSaleFilter('service'), 'text-red-600')}
           </>
         )}
 
@@ -6381,7 +6378,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   here too now that it's reachable from there. */}
               {/* The Items hub's former top tabs, each its own row. */}
               <SidePaneButton icon="🛒" label="Live Sale" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('sale'))} onClick={() => goItemsMode('sale')} />
+                active={paneActive(modeActive('sale'))} onClick={() => goSaleFilter('noViolations')} />
               <SidePaneButton icon="📈" label="Sales" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="🧾" label="Receipts" mode={cashDisplayMode} divider
@@ -6933,21 +6930,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       Every violation it used to be the only way to see is
                       now its own dedicated button in the red "action-
                       required" group below instead. */}
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'noViolations'} onChange={() => pickSaleFilter('noViolations')} className="cursor-pointer w-3 h-3" />
-                    <span>Live</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'log'} onChange={() => pickItemsMode('log')} className="cursor-pointer w-3 h-3" />
-                    <span>Log</span>
-                  </label>
-                  <span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sales'} onChange={() => pickItemsMode('sales')} className="cursor-pointer w-3 h-3" />
-                    <span>Receipts</span>
-                  </label>
+                  {/* Live / Log / Receipts radios removed -- each has its own sidebar row. */}
 
+                  {itemsPageMode !== 'sales' && (<>
                   {/* Action-required filters (red) - arranged by priority.
                       Count Due moved to the Count tab (full-page chart, same
                       as Records/Loss by Date/Items/Net Loss) and Negative
@@ -7048,6 +7033,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       from this row's other options now that they share it,
                       same reasoning as Records/Log/Receipts already needing
                       to read unambiguously alongside everything else here. */}
+                  </>)}
+                  {itemsPageMode === 'sales' && (<>
                   {[
                     { key: 'history', label: 'RC History' },
                     { key: 'bars_only', label: 'RC Bars Only' },
@@ -7062,6 +7049,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </label>
                     </Fragment>
                   ))}
+                  </>)}
                 </div>
               )}
               {/* Count Due and Negative SOH used to share a small sub-nav
@@ -7820,11 +7808,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Attach
                 </label>
                 <ColumnsPickerButton prefs={liveSalesColPrefs} radioStyle />
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Help
-                </label>
               </div>
               {/* Row 2: "All" -- part of the same mutually-exclusive radio
                   group as everything else here (History/Bars Only/WIC/GMC's
@@ -7916,11 +7899,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Analytics
                 </label>
                 <ColumnsPickerButton prefs={liveBillsColPrefs} radioStyle />
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveHelpModalOpen} onClick={() => setLiveHelpModalOpen(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Help
-                </label>
               </div>
               {/* Rows 2-3: one mutually-exclusive radio group -- All/New Bill/Bars
                   Only/History (black) first, then the violation filters (red, with
@@ -7947,26 +7925,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
                 </label>
-                {/* Swaps Bills' own content area for POTab rendered inline
-                    (same "exclusive view selector" treatment as New Bill/
-                    History above), rather than navigating to the separate
-                    lossView==='purchaseOrders' destination. */}
-                <label title="Purchase Orders, opened inline"
-                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'purchase_orders'} onChange={() => selectLiveBillsRadio('purchase_orders')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Purchase Orders
-                </label>
-                {/* Swaps Bills' own content area for VendorsPage rendered
-                    inline, same treatment as Purchase Orders just above --
-                    rather than navigating to the separate
-                    lossView==='vendors' destination. */}
-                <label title="Vendors, opened inline"
-                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 cursor-pointer select-none">
-                  <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'vendors'} onChange={() => selectLiveBillsRadio('vendors')}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Vendors
-                </label>
+                {/* Purchase Orders and Vendors have their own sidebar rows. */}
               </div>
               {/* Bills violations moved to Critical bar at top --
                   No Vendor/No Item List/Total Mismatch/No Attachment/No Expense/VCP Jump
