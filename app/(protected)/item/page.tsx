@@ -6379,9 +6379,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* The Items hub's former top tabs, each its own row. */}
               <SidePaneButton icon="🛒" label="Live Sale" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('sale'))} onClick={() => goSaleFilter('noViolations')} />
-              <SidePaneButton icon="📈" label="Sales" mode={cashDisplayMode} divider
+              <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
-              <SidePaneButton icon="🧾" label="Receipts" mode={cashDisplayMode} divider
+              <SidePaneButton icon="🧾" label="Sales Rec" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('sales'))} badge={salesFlagsCount} onClick={() => goItemsMode('sales')} />
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
