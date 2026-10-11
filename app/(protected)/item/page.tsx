@@ -993,6 +993,9 @@ function ItemHubPageInner() {
   // the same renderLossesByDateTable/renderLossesByItemsTable this
   // component already has rather than building new ones.
   const [plSubView, setPlSubView] = useState<'pl' | 'loss_by_date' | 'loss_by_items' | 'net_loss' | 'cost_gte_sp' | 'sold_below_cost'>('pl')
+  // Sidebar's expandable Losses / Analytics rows.
+  const [lossesOpen, setLossesOpen] = useState(false)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
   // 'pl'/'cab' are dead values now -- P&L/CAB moved to their own top-level
   // tabs (see pickLossView/canSeePL in renderTabSwitcher), so nothing sets
   // this to either any more. Left in the type rather than torn out, since
@@ -4878,7 +4881,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // between them and no way to embed one inside the other, so picking
   // either here is the only way in besides the GMC overage gate's own
   // "Go to Count" button (which lands on Count Due the same way).
-  function renderCriticalBar() {
+  function renderCriticalBar(only?: 'counts' | 'items' | 'receipts' | 'bills') {
+    const show = (k: 'counts' | 'items' | 'receipts' | 'bills') => !only || only === k
     const violationButton = (label: string, count: number, onClick: () => void, textColor: string = 'text-gray-700') => {
       if (count <= 0) return null
       return (
@@ -4890,27 +4894,32 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     }
 
     const divider = <span className="text-red-300 shrink-0">·</span>
+    if (only === 'items' && !(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0)) return null
+    if (only === 'receipts' && !((violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0)) return null
+    if (only === 'bills' && !(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump)) return null
 
     return (
       <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[9px] whitespace-nowrap overflow-x-auto">
-        <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">Critical, Do Now</span>
+        <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">{only ? 'Flags' : 'Critical, Do Now'}</span>
+        {show('counts') && (<>
         {divider}
         <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'count_due_chart'}
-            onChange={pickCountMode}
+            onChange={goCountMode}
             className="cursor-pointer w-3 h-3" />
           <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
         </label>
         {liveNegSohCount > 0 && (<>{divider}
         <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold shrink-0">
           <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'negative_soh_chart'}
-            onChange={() => { pickCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
+            onChange={() => { goCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
             className="cursor-pointer w-3 h-3" />
           <span>Negative SOH ({liveNegSohCount})</span>
         </label></>)}
+        </>)}
 
         {/* Items violations */}
-        {(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
+        {show('items') && (liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0 || liveDuplicateItemIds.size > 0 || liveUnlinkedNamedIds.size > 0 || liveServiceViolationIdSet.size > 0) && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Items;</span>
@@ -4925,7 +4934,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
 
         {/* Receipts violations */}
-        {(violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0 && (
+        {show('receipts') && (violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0 && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Receipts;</span>
@@ -4939,7 +4948,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
 
         {/* Bills violations */}
-        {(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump) > 0 && (
+        {show('bills') && (violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump) > 0 && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Bills;</span>
@@ -4953,6 +4962,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
       </div>
     )
+  }
+
+  // Flags now sit on the tab they belong to instead of one bar at the top of
+  // every page.
+  function renderSectionFlags() {
+    if (outerTab !== 'loss') return null
+    let section: 'counts' | 'items' | 'receipts' | 'bills' | null = null
+    if (lossView === 'counts' || inCountTab) section = 'counts'
+    else if (lossView === 'items' || lossView === 'sales') {
+      if (itemsPageMode === 'bills') section = 'bills'
+      else if (itemsPageMode === 'sales') section = 'receipts'
+      else if (itemsPageMode === 'sale' || itemsPageMode === 'log') section = 'items'
+    }
+    return section ? renderCriticalBar(section) : null
   }
 
   // Analytics row -- decision-making metrics organized by tab. Currently
@@ -5022,6 +5045,32 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   function pickPL() {
     pickLossView('pl')
     setPlSubView('pl')
+  }
+
+  // Sidebar rows for the Items hub's former top tabs. Each lands on the same
+  // grid/mode the old tab switcher buttons did; from any other full-page
+  // view (Vendors, Counts, P&L, ...) they first step back to the grid.
+  function toGrid() {
+    if (lossView !== 'items' && lossView !== 'sales') pickLossView('sales')
+  }
+  function goItemsMode(mode: 'sale' | 'log' | 'sales' | 'bills' | 'expenses' | 'manage' | 'advert' | 'gronyChecks') {
+    toGrid()
+    pickItemsMode(mode)
+  }
+  function goSaleFilter(filter: typeof liveSaleViolationFilter, view: typeof liveSaleView = null) {
+    toGrid()
+    pickSaleFilter(filter, view)
+  }
+  function goCountMode() {
+    toGrid()
+    pickCountMode()
+  }
+  function modeActive(mode: string) {
+    return (lossView === 'items' || lossView === 'sales') && !inCountTab && itemsPageMode === mode
+  }
+  function goLossSubView(v: typeof plSubView) {
+    pickLossView('pl')
+    setPlSubView(v)
   }
 
   function renderTabSwitcher(compact: boolean) {
@@ -6330,6 +6379,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* Home moved to the tab switcher itself (first tab, above
                   Sale/Log/Sales/Bills/Expenses) -- no longer needs a row
                   here too now that it's reachable from there. */}
+              {/* The Items hub's former top tabs, each its own row. */}
+              <SidePaneButton icon="🛒" label="Live Sale" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('sale'))} onClick={() => goItemsMode('sale')} />
+              <SidePaneButton icon="📈" label="Sales" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
+              <SidePaneButton icon="🧾" label="Receipts" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('sales'))} badge={salesFlagsCount} onClick={() => goItemsMode('sales')} />
+              <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
+              <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('expenses'))} badge={expensesFlagsCount} onClick={() => goItemsMode('expenses')} />
+              <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
+              <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
+              <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => pickLossView('customers')} />
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
@@ -6341,7 +6407,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       // Sale/Log/Sales/Bills/Expenses tab switcher now (none
                       // of them has its own CASH_ITEMS row any more), so
                       // that's where their combined flag count needs to show.
-                      : v.key === 'items' ? (itemsFlagsCount + expensesFlagsCount + vendorsFlagsCount + customersFlagsCount)
+                      : v.key === 'items' ? itemsFlagsCount
                       : v.key === 'cab' ? cabFlagsCount
                       // Own row now instead of folded into Sales' badge --
                       // see LossView's 'counts' comment.
@@ -6351,6 +6417,66 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
+              {canSeePL && (
+                <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
+                  active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
+              )}
+              {canSeePL && (
+                <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
+                  active={paneActive(lossView === 'cab')} badge={cabFlagsCount} onClick={() => pickLossView('cab')} />
+              )}
+              <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={lossByDateFlagsCount}
+                onClick={() => setLossesOpen(o => !o)} />
+              {lossesOpen && (<>
+                <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider
+                  active={paneActive(lossView === 'pl' && plSubView === 'loss_by_date')} onClick={() => goLossSubView('loss_by_date')} />
+                <SidePaneButton icon="•" label="Loss by Items" mode={cashDisplayMode} divider
+                  active={paneActive(lossView === 'pl' && plSubView === 'loss_by_items')} onClick={() => goLossSubView('loss_by_items')} />
+                {liveNetLossCount > 0 && (
+                  <SidePaneButton icon="•" label={`Net Loss (${liveNetLossCount})`} mode={cashDisplayMode} divider
+                    active={paneActive(lossView === 'pl' && plSubView === 'net_loss')} onClick={() => goLossSubView('net_loss')} />
+                )}
+                {liveAcpGteSpCount > 0 && (
+                  <SidePaneButton icon="•" label={`Cost ≥ Selling Price (${liveAcpGteSpCount})`} mode={cashDisplayMode} divider
+                    active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
+                )}
+                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
+                  <SidePaneButton icon="•" label={`Sold Below Cost (${globalFlags?.costGteSell?.length ?? 0})`} mode={cashDisplayMode} divider
+                    active={paneActive(lossView === 'pl' && plSubView === 'sold_below_cost')} onClick={() => goLossSubView('sold_below_cost')} />
+                )}
+              </>)}
+              <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider
+                active={paneActive(itemsPageMode === 'sale' && ['leastSalesServices', 'leastSalesGoods', 'leastSalesGroups', 'leastPurchased'].includes(liveSaleViolationFilter))}
+                onClick={() => setAnalyticsOpen(o => !o)} />
+              {analyticsOpen && (<>
+                <SidePaneButton icon="•" label="Services: Least Sales" mode={cashDisplayMode} divider
+                  active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices')}
+                  onClick={() => goSaleFilter('leastSalesServices', { kind: 'least_sales_services' })} />
+                <SidePaneButton icon="•" label="Goods: Least Sales" mode={cashDisplayMode} divider
+                  active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGoods')}
+                  onClick={() => goSaleFilter('leastSalesGoods', { kind: 'least_sales_goods' })} />
+                <SidePaneButton icon="•" label="Groups: Least Sales" mode={cashDisplayMode} divider
+                  active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGroups')}
+                  onClick={() => goSaleFilter('leastSalesGroups', { kind: 'least_sales_groups' })} />
+                <SidePaneButton icon="•" label="Goods: Longest Unbought" mode={cashDisplayMode} divider
+                  active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
+                  onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
+              </>)}
+              {(canSeeManage || canSeeTeam) && (
+                <SidePaneButton icon="🛠" label="Manage" mode={cashDisplayMode} divider
+                  active={paneActive(modeActive('manage'))} onClick={() => goItemsMode('manage')} />
+              )}
+              {canSeeManage && (
+                <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
+                  active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
+              )}
+              {canSeeManage && (
+                <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
+                  active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
+              )}
+              <SidePaneButton icon="📖" label="Handbook" mode={cashDisplayMode} divider
+                active={false} onClick={() => setLiveHelpModalOpen(true)} />
             </div>
             )}
 
@@ -6557,86 +6683,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               unchanged -- Nav is hidden entirely below the md breakpoint
               (nothing to portal into), so both render in place exactly as
               before. */}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && !isDesktop && (
+          {outerTab === 'loss' && !isDesktop && (
             <>
-              {renderCriticalBar()}
-              {/* P&L sub-view controls -- always shown in header */}
-              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 overflow-x-auto whitespace-nowrap">
-                <span className="shrink-0">LOSSES:</span>
-                <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                  <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
-                  <span>P&amp;L</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
-                  <span>Loss by Date</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
-                  <span>Loss by Items</span>
-                </label>
-                {liveNetLossCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                    <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
-                    <span>Net Loss ({liveNetLossCount})</span>
-                  </label>
-                )}
-                {liveAcpGteSpCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                    <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
-                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
-                  </label>
-                )}
-                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
-                    <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
-                    <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
-                  </label>
-                )}
-              </div>
-              {renderAnalyticsRow()}
               <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
             </>
           )}
-          {outerTab === 'loss' && (lossView === 'items' || lossView === 'sales' || lossView === 'pl' || lossView === 'cab' || lossView === 'customers') && isDesktop && navSlotEl && createPortal(
+          {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <>
-              {renderCriticalBar()}
-              {/* P&L sub-view controls -- always shown in header */}
-              <div className="px-2 py-1 border-b border-gray-200 bg-gray-50 flex items-center gap-3 text-[10px] font-semibold text-gray-700 flex-wrap">
-                <span>LOSSES:</span>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="plSubView" checked={plSubView === 'pl'} onChange={() => setPlSubView('pl')} className="cursor-pointer w-3 h-3" />
-                  <span>P&amp;L</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_date'} onChange={() => setPlSubView('loss_by_date')} className="cursor-pointer w-3 h-3" />
-                  <span>Loss by Date</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name="plSubView" checked={plSubView === 'loss_by_items'} onChange={() => setPlSubView('loss_by_items')} className="cursor-pointer w-3 h-3" />
-                  <span>Loss by Items</span>
-                </label>
-                {liveNetLossCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'net_loss'} onChange={() => setPlSubView('net_loss')} className="cursor-pointer w-3 h-3" />
-                    <span>Net Loss ({liveNetLossCount})</span>
-                  </label>
-                )}
-                {liveAcpGteSpCount > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'cost_gte_sp'} onChange={() => setPlSubView('cost_gte_sp')} className="cursor-pointer w-3 h-3" />
-                    <span>Cost ≥ Selling Price ({liveAcpGteSpCount})</span>
-                  </label>
-                )}
-                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                  <label className="flex items-center gap-1 cursor-pointer">
-                    <input type="radio" name="plSubView" checked={plSubView === 'sold_below_cost'} onChange={() => setPlSubView('sold_below_cost')} className="cursor-pointer w-3 h-3" />
-                    <span>Sold Below Cost ({globalFlags?.costGteSell?.length ?? 0})</span>
-                  </label>
-                )}
-              </div>
-              {renderAnalyticsRow()}
               <div className="flex items-center gap-3 overflow-x-auto">
               {/* Today's running sales total (see liveTodaySalesTotal) --
                   first in the slot so it's never scrolled out of view by
@@ -6648,13 +6702,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </span>
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
-              <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 shrink-0">
-                {renderTabSwitcher(true)}
-              </div>
               </div>
             </>,
             navSlotEl
           )}
+
+          {renderSectionFlags()}
 
           {/* This row (and the staff bar/portal above) shows for Items
               (lossView 'items' -- the sidebar row), 'sales' (the same
@@ -6699,7 +6752,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it drops out entirely (via the outer condition below) when
                   there's nothing to show, which is the common case (Sales
                   view, or Items view before customizing columns). */}
-              {(!isDesktop || lossView === 'items') && (
+              {lossView === 'items' && (
               <div className="px-6 py-1.5 border-b border-gray-200">
                 {liveMode === 'sale' && renderModeProgressSummary(true, true)}
                 {isDesktop ? (
@@ -6716,9 +6769,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 ) : (
                 <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 min-w-0">
                   <div />
-                  <div className="flex items-center justify-center gap-1.5 overflow-x-auto min-w-0">
-                    {renderTabSwitcher(true)}
-                  </div>
+                  <div />
                   <div className="flex items-center gap-3 shrink-0 justify-self-end">
                     {/* Control buttons next to tab switcher */}
                     {lossView === 'items' && (
