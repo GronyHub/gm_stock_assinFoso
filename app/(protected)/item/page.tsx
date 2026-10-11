@@ -15,14 +15,12 @@ import { formatGapMins } from '@/lib/fmtGap'
 import { LossDialog, GainDialog, PairingDialog, type LossExtra, type LossPrompt, type GainExtra, type GainPrompt, type PairingPrompt } from './_components/CountDialogs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './_components/ItemEditForm'
 import HistoryPanel from './_components/HistoryPanel'
-import { TrainingGuideModal } from './_components/TrainingGuideModal'
-import LawsTasksViewer from './_components/LawsTasksViewer'
 import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
 // import InfoCarousel from './_components/InfoCarousel'
 import type { GmcOpenOverage } from '@/lib/gmcStock'
 import ItemDetailPanel, { ItemDetailErrorBoundary } from './_components/ItemDetailPanel'
-import { AliasPicker, MatchPicker, MergeItemPicker, type AliasRecord, type MatchRecord, type CandidateItem } from './_components/LossTab'
+import type { AliasRecord, MatchRecord, CandidateItem } from './_components/LossTab'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
   state = { error: false, message: '' }
@@ -66,6 +64,14 @@ import ServicesGroupTable from './_components/ServicesGroupTable'
 import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
+// Pickers live in LossTab.tsx (150 KB). Importing them statically pulled the
+// whole file into the first page load and defeated the dynamic() LossTab below.
+const AliasPicker     = dynamic(() => import('./_components/LossTab').then(m => m.AliasPicker),     { ssr: false })
+const MatchPicker     = dynamic(() => import('./_components/LossTab').then(m => m.MatchPicker),     { ssr: false })
+const MergeItemPicker = dynamic(() => import('./_components/LossTab').then(m => m.MergeItemPicker), { ssr: false })
+// Opened on demand only -- no reason to ship them with the first load.
+const TrainingGuideModal = dynamic(() => import('./_components/TrainingGuideModal').then(m => m.TrainingGuideModal), { ssr: false })
+const LawsTasksViewer    = dynamic(() => import('./_components/LawsTasksViewer'), { ssr: false })
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
@@ -9674,9 +9680,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
-          <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />
+          {liveHelpModalOpen && <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />}
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-          <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />
+          {lawsTasksViewerOpen && <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />}
             <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
               className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
               📖 Handbook
