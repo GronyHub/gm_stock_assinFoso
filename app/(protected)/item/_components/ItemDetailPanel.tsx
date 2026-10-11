@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useMemo, Component, ReactNode } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { ItemDetailErrorBoundary } from './ItemDetailErrorBoundary'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow, type AliasRecord, type MatchRecord, type CandidateItem } from './LossTab'
@@ -11,32 +12,6 @@ import { ItemDetail, AliasPicker, MatchPicker, MergeItemPicker, type SummaryRow,
 // boundary starts) would still propagate past it and, with nothing higher
 // up the tree catching it either, blank the whole page instead of just
 // this panel.
-export class ItemDetailErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; errorMsg: string }> {
-  constructor(props: any) {
-    super(props)
-    this.state = { hasError: false, errorMsg: '' }
-  }
-  static getDerivedStateFromError(error: any) {
-    return {
-      hasError: true,
-      errorMsg: error?.message || String(error) || 'Unknown error in ItemDetail'
-    }
-  }
-  componentDidCatch(e: any) {
-    console.error('[ItemDetailPanel] ItemDetail render error:', e)
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded">
-          <p className="text-red-700 text-sm font-semibold mb-1">ItemDetail Render Error</p>
-          <p className="text-red-600 text-xs whitespace-pre-wrap break-words font-mono">{this.state.errorMsg}</p>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
 
 interface CountRecord {
   id: number

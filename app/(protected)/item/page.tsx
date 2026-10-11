@@ -19,7 +19,7 @@ import ClockInGateModal from './_components/ClockInGateModal'
 import GmcOverageGateModal from './_components/GmcOverageGateModal'
 // import InfoCarousel from './_components/InfoCarousel'
 import type { GmcOpenOverage } from '@/lib/gmcStock'
-import ItemDetailPanel, { ItemDetailErrorBoundary } from './_components/ItemDetailPanel'
+import { ItemDetailErrorBoundary } from './_components/ItemDetailErrorBoundary'
 import type { AliasRecord, MatchRecord, CandidateItem } from './_components/LossTab'
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { error: boolean; message: string }> {
@@ -58,14 +58,15 @@ import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_compo
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
 import SettingsPane from './_components/SettingsPane'
-import UKSettingsPanel from './_components/UKSettingsPanel'
 import { applyPaneOrder, buildPaneRuns, flattenPaneRuns, type PaneOrderMap } from './_components/paneOrder'
 import ServicesGroupTable from './_components/ServicesGroupTable'
-import ExpenseOrdersPanel from './_components/ExpenseOrdersPanel'
 import dynamic from 'next/dynamic'
 const loading = (h: string) => <div className={`py-10 text-center text-gray-400 text-sm`}>{h}</div>
 // Pickers live in LossTab.tsx (150 KB). Importing them statically pulled the
 // whole file into the first page load and defeated the dynamic() LossTab below.
+const ExpenseOrdersPanel = dynamic(() => import('./_components/ExpenseOrdersPanel'), { ssr: false })
+const UKSettingsPanel = dynamic(() => import('./_components/UKSettingsPanel'), { ssr: false })
+const ItemDetailPanel = dynamic(() => import('./_components/ItemDetailPanel'), { ssr: false })
 const AliasPicker     = dynamic(() => import('./_components/LossTab').then(m => m.AliasPicker),     { ssr: false })
 const MatchPicker     = dynamic(() => import('./_components/LossTab').then(m => m.MatchPicker),     { ssr: false })
 const MergeItemPicker = dynamic(() => import('./_components/LossTab').then(m => m.MergeItemPicker), { ssr: false })
