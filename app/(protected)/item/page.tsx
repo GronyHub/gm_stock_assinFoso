@@ -2993,13 +2993,30 @@ function ItemHubPageInner() {
 
   // Fetch items (Live Sale's own catalogue -- see LiveItem's own comment)
   // Deferred to 1500ms to avoid duplicating the same request the Items tab makes
+  // Retries a few times and only ever REPLACES the list with a real, non-empty
+  // array. It used to treat any failed/non-array response (Neon cold start,
+  // a restarting server, a dropped connection) as "zero items" -- the grid
+  // then showed "No items found" until a manual refresh happened to succeed.
+  const [liveItemsError, setLiveItemsError] = useState(false)
+  async function loadLiveItems(retries = 3): Promise<boolean> {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const r = await fetch('/api/items/all')
+        if (r.ok) {
+          const d = await r.json()
+          if (Array.isArray(d) && d.length > 0) {
+            setLiveAllItems(d); setLiveItemsError(false); setLiveItemsLoading(false)
+            return true
+          }
+        }
+      } catch {}
+      if (i < retries) await new Promise(res => setTimeout(res, 1000 * (i + 1)))
+    }
+    setLiveItemsError(true); setLiveItemsLoading(false)
+    return false
+  }
   useEffect(() => {
-    const t = setTimeout(() => {
-      fetch('/api/items/all')
-        .then(r => r.json())
-        .then(d => { setLiveAllItems(Array.isArray(d) ? d : []); setLiveItemsLoading(false) })
-        .catch(() => setLiveItemsLoading(false))
-    }, 1500)
+    const t = setTimeout(() => { void loadLiveItems() }, 1500)
     return () => clearTimeout(t)
   }, [])
 
@@ -4635,7 +4652,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // Refetch the full catalogue so this item's price/group/count-interval
     // label update everywhere else in Live Sale (grid, other views), not
     // just inside this sheet.
-    fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    void loadLiveItems(1)
     setLiveEditingSelectedItem(false)
   }
 
@@ -4670,7 +4687,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         })
       }
       // Refresh the item list so grid shows updated values
-      fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+      void loadLiveItems(1)
     } catch (e) {
       throw e
     }
@@ -4698,7 +4715,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       setLiveEditError('')
       setLiveGridEditError('')
       // Refresh items list
-      fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+      void loadLiveItems(1)
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : 'Failed to save conversion target'
       setLiveEditError(errorMsg)
@@ -4735,7 +4752,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       return
     }
     // Refresh items list so grid shows updated values everywhere
-    fetch('/api/items/all').then(r => r.json()).then(d => setLiveAllItems(Array.isArray(d) ? d : [])).catch(() => {})
+    void loadLiveItems(1)
     setLiveEditingGridItemId(null)
   }
 
@@ -8490,7 +8507,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* New Item Form */}
             {liveCurrentView?.kind === 'newItem' && (
               <div className="flex-1 overflow-y-auto px-4 py-4">
-                <NewItemForm onSuccess={() => { setLiveCurrentView(null); setLiveAllItems([]) }} />
+                <NewItemForm onSuccess={() => { setLiveCurrentView(null); void loadLiveItems() }} />
               </div>
             )}
 
@@ -8627,6 +8644,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
                 {liveItemsLoading ? (
                   <p className="text-xs text-gray-400 text-center py-8">Loading…</p>
+                ) : liveAllItems.length === 0 && liveItemsError ? (
+                  <div className="text-center py-8 space-y-2">
+                    <p className="text-sm text-red-600">Couldn&apos;t load items.</p>
+                    <button onClick={() => { setLiveItemsLoading(true); void loadLiveItems() }}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
+                  </div>
                 ) : liveCatalogueItems.length === 0 ? (
                   <p className="text-xs text-gray-400 text-center py-8">
                     {liveCurrentView ? 'No items in this view' : 'No items found'}
