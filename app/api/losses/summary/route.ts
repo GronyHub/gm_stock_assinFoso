@@ -6,6 +6,7 @@ import { computeChainLossSummary } from '@/lib/packChain'
 import { ensureActiveItemsView } from '@/lib/activeItems'
 import { itemCountIntervalLabels, formatCountInterval } from '@/lib/countRules'
 import { NextResponse } from 'next/server'
+import { isMaintenanceCall } from '@/lib/maintenanceAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,8 +93,13 @@ function aggregateItem(rows: DayRow[], sp: number) {
 }
 
 export async function GET() {
-  const { error } = await requireAuth()
-  if (error) return error
+  // The in-process cache warmer (instrumentation.ts) calls this with the
+  // maintenance secret so the first real user after a cache expiry doesn't
+  // pay the ~2 s query.
+  if (!(await isMaintenanceCall())) {
+    const { error } = await requireAuth()
+    if (error) return error
+  }
 
   const cacheHeaders = {
     'Cache-Control': 'max-age=7200', // 2 hours for client/browser
