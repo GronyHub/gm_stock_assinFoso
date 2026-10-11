@@ -253,12 +253,15 @@ export default function CustomersPage({
   // Customer" and the global search's page-jump list both land here now
   // that neither is its own LossView any more. Seq is a plain incrementing
   // counter so the same tab can be jumped to twice in a row and still fire.
-  jumpToTabSeq = 0, jumpToTab = null,
+  jumpToTabSeq = 0, jumpToTab = null, lockedMode,
 }: {
   initialSearch?: string; onFlagCountChange?: (n: number) => void
   jumpToTabSeq?: number; jumpToTab?: 'customers' | 'receipts' | 'new' | null
+  // When set (the Items hub sidebar gives Cust. Receipts and New Customer
+  // their own rows), the page opens on that view and hides its own switcher.
+  lockedMode?: 'customers' | 'receipts' | 'new'
 } = {}) {
-  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>('customers')
+  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>(lockedMode ?? 'customers')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
@@ -358,6 +361,7 @@ export default function CustomersPage({
   // Pinned above everything else, identical on all three tabs -- same
   // "always one line, own top row" treatment Live Sale's own switcher got.
   function renderModeSwitcher() {
+    if (lockedMode) return null
     const btnCls = (active: boolean) =>
       `px-2.5 py-1 text-xs font-bold rounded-md transition whitespace-nowrap shrink-0 ${
         active ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'

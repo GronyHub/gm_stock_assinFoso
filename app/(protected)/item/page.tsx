@@ -1568,6 +1568,7 @@ function ItemHubPageInner() {
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
   function pickLossView(view: LossView) {
+    if (view === 'customers') setCustomersJumpTab('customers')
     setOuterTab('loss')
     setLossView(view)
     setViolation(null)
@@ -6392,7 +6393,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => pickLossView('customers')} />
+                active={paneActive(lossView === 'customers' && customersJumpTab === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab('customers')} />
+              <SidePaneButton icon="🧾" label="Cust. Receipts" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'customers' && customersJumpTab === 'receipts')} onClick={() => jumpToCustomersTab('receipts')} />
+              <SidePaneButton icon="➕" label="New Customer" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'customers' && customersJumpTab === 'new')} onClick={() => jumpToCustomersTab('new')} />
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
@@ -9857,8 +9862,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
             <div className="px-4 pt-2 space-y-2">
-              <CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount}
-                jumpToTabSeq={customersJumpSeq} jumpToTab={customersJumpTab} />
+              <CustomersPage key={customersJumpTab} initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount}
+                lockedMode={customersJumpTab} />
             </div>
           </TabErrorBoundary>
         )}
