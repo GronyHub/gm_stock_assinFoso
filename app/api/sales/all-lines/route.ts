@@ -39,6 +39,6 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     console.error('sales/all-lines error:', e instanceof Error ? e.message : String(e))
     // A 200 with [] here used to make a failed query look like "no lines".
-    return success({ error: 'Failed to load sales lines' }, 500)
+    return success([], 500)
   }
 }

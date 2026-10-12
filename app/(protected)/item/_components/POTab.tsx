@@ -158,15 +158,25 @@ export default function POTab({ search }: Props) {
   const [draftOnly, setDraftOnly] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('poTable', PO_COLUMNS)
 
-  function loadList() {
-    fetch('/api/purchase-orders').then(r => r.json()).then(d => {
-      setPos(Array.isArray(d) ? d : [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+  // Retries and only replaces the list with a real array (see BillsTab).
+  const [listLoadError, setListLoadError] = useState(false)
+  async function loadList(retries = 0): Promise<void> {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const r = await fetch('/api/purchase-orders')
+        if (r.ok) {
+          const d = await r.json()
+          if (Array.isArray(d)) { setPos(d); setListLoadError(false); setLoading(false); return }
+        }
+      } catch {}
+      if (i < retries) await new Promise(res => setTimeout(res, 1000 * (i + 1)))
+    }
+    setListLoadError(true)
+    setLoading(false)
   }
 
-  useEffect(() => { loadList() }, [])
-  usePolling(loadList, 600000, !receiveOpen && !editMode)
+  useEffect(() => { void loadList(3) }, [])
+  usePolling(() => { void loadList() }, 600000, !receiveOpen && !editMode)
 
   useEffect(() => {
     fetch('/api/vendors').then(r => r.json()).then(d => setVendors(Array.isArray(d) ? d : [])).catch(() => {})
@@ -683,7 +693,13 @@ export default function POTab({ search }: Props) {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No purchase orders</p>}
+        {filtered.length === 0 && pos.length === 0 && listLoadError ? (
+          <div className="text-center py-10 space-y-2">
+            <p className="text-sm text-red-600">Couldn&apos;t load purchase orders.</p>
+            <button onClick={() => { setLoading(true); void loadList(3) }}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
+          </div>
+        ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No purchase orders</p>}
       </div>
       {viewingItemId != null && (
         <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />

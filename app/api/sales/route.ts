@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     } catch (e2) {
       console.error('sales/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
       // 200 + [] made a failed query look like "no receipts" to the client.
-      return success({ error: 'Failed to load receipts' }, 500)
+      return success([], 500)
     }
   }
 }

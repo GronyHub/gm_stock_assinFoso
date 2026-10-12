@@ -401,28 +401,38 @@ function BillsTab({
     }
   }, [violation, flags])
 
-  function loadBills() {
-    Promise.all([
-      fetch('/api/bills').then(r => r.json()),
-      fetch('/api/bills/all-lines').then(r => r.json()),
-      fetch('/api/bills/expenses').then(r => r.json()),
-    ]).then(([billsData, linesData, expensesData]) => {
-      setBills(Array.isArray(billsData) ? billsData : [])
-      const map: Record<number, BillLine[]> = {}
-      if (Array.isArray(linesData)) {
-        for (const l of linesData) {
-          if (!map[l.bill_id]) map[l.bill_id] = []
-          map[l.bill_id].push(l)
+  // Retries and only replaces the lists with real arrays -- a failed or
+  // timed-out request used to show up as "no bills" until a lucky reload.
+  const [billsLoadError, setBillsLoadError] = useState(false)
+  async function loadBills(retries = 0): Promise<void> {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const rs = await Promise.all([fetch('/api/bills'), fetch('/api/bills/all-lines'), fetch('/api/bills/expenses')])
+        if (rs.every(r => r.ok)) {
+          const [billsData, linesData, expensesData] = await Promise.all(rs.map(r => r.json()))
+          if (Array.isArray(billsData) && Array.isArray(linesData) && Array.isArray(expensesData)) {
+            setBills(billsData)
+            const map: Record<number, BillLine[]> = {}
+            for (const l of linesData) {
+              if (!map[l.bill_id]) map[l.bill_id] = []
+              map[l.bill_id].push(l)
+            }
+            setLinesMap(map)
+            setBillExpenses(expensesData)
+            setBillsLoadError(false)
+            setLoading(false)
+            return
+          }
         }
-      }
-      setLinesMap(map)
-      setBillExpenses(Array.isArray(expensesData) ? expensesData : [])
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      } catch {}
+      if (i < retries) await new Promise(res => setTimeout(res, 1000 * (i + 1)))
+    }
+    setBillsLoadError(true)
+    setLoading(false)
   }
 
-  useEffect(() => { loadBills() }, [])
-  usePolling(loadBills, 600000, editingBillId === null)
+  useEffect(() => { void loadBills(3) }, [])
+  usePolling(() => { void loadBills() }, 600000, editingBillId === null)
 
   const billsById = useMemo(() => {
     const m: Record<number, Bill> = {}
@@ -1150,7 +1160,13 @@ function BillsTab({
             })}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
+        {filtered.length === 0 && bills.length === 0 && billsLoadError ? (
+          <div className="text-center py-10 space-y-2">
+            <p className="text-sm text-red-600">Couldn&apos;t load bills.</p>
+            <button onClick={() => { setLoading(true); void loadBills(3) }}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
+          </div>
+        ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
         </div>
       </div>
       {viewingItemId != null && (

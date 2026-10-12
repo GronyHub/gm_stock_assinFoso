@@ -54,7 +54,7 @@ export async function GET() {
     return success(rows)
   } catch (e) {
     console.error('training quizzes GET error:', e)
-    return success([])
+    return success([], 500)  // real failure status; [] body keeps callers that skip res.ok working
   }
 }
 

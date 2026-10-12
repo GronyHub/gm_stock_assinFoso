@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       return success(withOptional)
     } catch (e2) {
       console.error('bills/route.ts fallback error:', e2 instanceof Error ? e2.message : String(e2))
-      return success([])
+      return success([], 500)  // real failure status; [] body keeps callers that skip res.ok working
     }
   }
 }

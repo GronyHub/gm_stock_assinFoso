@@ -17,7 +17,7 @@ export async function GET() {
     `
     return success(rows)
   } catch (e) {
-    return success([])
+    return success([], 500)  // real failure status; [] body keeps callers that skip res.ok working
   }
 }
 
