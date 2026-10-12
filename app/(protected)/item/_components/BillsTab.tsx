@@ -18,7 +18,7 @@ const BILLS_COL_DEFAULTS: Record<string, number> = {
 // Phone layout: narrow number columns so the whole table can be shrunk to one
 // screen (see the fit-to-width zoom in BillsTab's render).
 const BILLS_COL_DEFAULTS_COMPACT: Record<string, number> = {
-  item: 110, quantity: 34, unitPrice: 44, sharedExpenses: 44, adjustedCost: 46, itemTotal: 54, currentCost: 46, costDiff: 40, newSp: 50,
+  item: 96, quantity: 34, unitPrice: 44, sharedExpenses: 44, adjustedCost: 46, itemTotal: 54, currentCost: 46, costDiff: 40, newSp: 50,
 }
 
 type BillExpense = { id: number; bill_id: number; description: string | null; amount: string; migrated_from_expense_id?: number | null; source?: string | null; created_at?: string }
@@ -423,6 +423,10 @@ function BillsTab({
     return () => mq.removeEventListener('change', apply)
   }, [])
   const colDefaults = compact ? BILLS_COL_DEFAULTS_COMPACT : BILLS_COL_DEFAULTS
+  // On a phone the compact widths always win over any width saved from an
+  // earlier drag-resize -- a wide saved Item column was what pushed every
+  // other column off screen.
+  const wOf = (key: string) => compact ? colDefaults[key] ?? 60 : colPrefs.getWidth(key, colDefaults[key] ?? 80)
   async function loadBills(retries = 0): Promise<void> {
     for (let i = 0; i <= retries; i++) {
       try {
@@ -981,8 +985,8 @@ function BillsTab({
     </div>
   )
 
-  const tableNaturalWidth = colPrefs.getWidth('item', colDefaults.item)
-    + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, colDefaults[c.key] ?? 80), 0)
+  const tableNaturalWidth = wOf('item')
+    + colPrefs.shownColumns.reduce((s, c) => s + wOf(c.key), 0)
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -997,8 +1001,8 @@ function BillsTab({
           zoom: compact && wrapWidth > 0 ? Math.min(1, Math.max(0.5, wrapWidth / tableNaturalWidth)) : undefined,
         }}>
           <colgroup>
-            <col style={{ width: colPrefs.getWidth('item', colDefaults.item) }} />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, colDefaults[c.key] ?? 80) }} />)}
+            <col style={{ width: wOf('item') }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: wOf(c.key) }} />)}
           </colgroup>
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
@@ -1096,11 +1100,11 @@ function BillsTab({
                       className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                       <td className={`sticky left-0 z-10 px-1 py-0 text-gray-900 overflow-hidden ${row.unresolved || (row.itemId && !row.convertsToItemId && row.gmcType !== 'gmc') ? 'bg-red-50' : 'bg-white group-hover:bg-gray-50'}`}>
                         {row.itemId ? (
-                          <button type="button" onClick={() => setViewingItemId(row.itemId)} className="block truncate text-blue-600 hover:underline text-left">
+                          <button type="button" onClick={() => setViewingItemId(row.itemId)} className={compact ? 'block text-blue-600 hover:underline text-left leading-tight break-words line-clamp-2' : 'block truncate text-blue-600 hover:underline text-left'}>
                             {row.itemName}
                           </button>
                         ) : (
-                          <span className="block truncate text-red-600">{row.itemName}</span>
+                          <span className={compact ? 'block text-red-600 leading-tight break-words line-clamp-2' : 'block truncate text-red-600'}>{row.itemName}</span>
                         )}
                       </td>
                       {colPrefs.shownColumns.map(c => {
