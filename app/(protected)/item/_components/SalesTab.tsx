@@ -274,26 +274,38 @@ function SalesTab({
     }
   }, [flags, flagsLoading])
 
-  function loadReceipts() {
-    Promise.all([
-      fetch('/api/sales').then(r => r.json()),
-      fetch('/api/sales/all-lines').then(r => r.json()),
-    ]).then(([receiptsData, linesData]) => {
-      setReceipts(Array.isArray(receiptsData) ? receiptsData : [])
-      const map: Record<number, Line[]> = {}
-      if (Array.isArray(linesData)) {
-        for (const l of linesData) {
-          if (!map[l.receipt_id]) map[l.receipt_id] = []
-          map[l.receipt_id].push(l)
+  // Retries a few times and only replaces the lists with real arrays. A failed
+  // or timed-out request used to be treated as "no receipts" -- the tab showed
+  // an empty list until a manual reload happened to succeed.
+  const [loadError, setLoadError] = useState(false)
+  async function loadReceipts(retries = 0): Promise<void> {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const [r1, r2] = await Promise.all([fetch('/api/sales'), fetch('/api/sales/all-lines')])
+        if (r1.ok && r2.ok) {
+          const [receiptsData, linesData] = await Promise.all([r1.json(), r2.json()])
+          if (Array.isArray(receiptsData) && Array.isArray(linesData)) {
+            setReceipts(receiptsData)
+            const map: Record<number, Line[]> = {}
+            for (const l of linesData) {
+              if (!map[l.receipt_id]) map[l.receipt_id] = []
+              map[l.receipt_id].push(l)
+            }
+            setLinesMap(map)
+            setLoadError(false)
+            setLoading(false)
+            return
+          }
         }
-      }
-      setLinesMap(map)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+      } catch {}
+      if (i < retries) await new Promise(res => setTimeout(res, 1000 * (i + 1)))
+    }
+    setLoadError(true)
+    setLoading(false)
   }
 
-  useEffect(() => { loadReceipts() }, [])
-  usePolling(loadReceipts, 600000, editingId === null)
+  useEffect(() => { void loadReceipts(3) }, [])
+  usePolling(() => { void loadReceipts() }, 600000, editingId === null)
 
   const groupItemNames = useMemo(() => {
     if (!groupFilter || groupFilter === 'All') return null
@@ -984,7 +996,13 @@ function SalesTab({
         })}
         </tbody>
       </table>
-      {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
+      {filtered.length === 0 && receipts.length === 0 && loadError ? (
+        <div className="text-center py-10 space-y-2">
+          <p className="text-sm text-red-600">Couldn&apos;t load receipts.</p>
+          <button onClick={() => { setLoading(true); void loadReceipts(3) }}
+            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
+        </div>
+      ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
     </div>
     {showBulkAttach && (
       <BulkAttachForms receipts={receipts} onClose={() => setShowBulkAttach(false)}
