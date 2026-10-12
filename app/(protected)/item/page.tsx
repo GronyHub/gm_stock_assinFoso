@@ -66,6 +66,7 @@ const loading = (h: string) => <div className={`py-10 text-center text-gray-400 
 // whole file into the first page load and defeated the dynamic() LossTab below.
 const ExpenseOrdersPanel = dynamic(() => import('./_components/ExpenseOrdersPanel'), { ssr: false })
 const UKSettingsPanel = dynamic(() => import('./_components/UKSettingsPanel'), { ssr: false })
+const Item360Page = dynamic(() => import('./_components/Item360Page'), { ssr: false, loading: () => loading('Loading…') })
 const ItemDetailPanel = dynamic(() => import('./_components/ItemDetailPanel'), { ssr: false })
 const AliasPicker     = dynamic(() => import('./_components/LossTab').then(m => m.AliasPicker),     { ssr: false })
 const MatchPicker     = dynamic(() => import('./_components/LossTab').then(m => m.MatchPicker),     { ssr: false })
@@ -150,7 +151,7 @@ type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'custome
   // Manual Count, Analytics) -- previously only reachable indirectly as a
   // "fix this violation" deep link (see ViolationFixPanel.tsx), now its own
   // CASH_ITEMS row so it's a real, navigable destination on its own.
-  | 'counts'
+  | 'counts' | 'item360'
   // Cust. Receipts and New Customer folded into Customers' own tabs (same
   // treatment Sales/Bills/Loss by Date/Expenses got inside Live Sale) -- see
   // jumpToCustomersTab, since neither is a real LossView any more.
@@ -302,7 +303,7 @@ const IDENTITY_GROUP_LABELS: Record<string, string> = new Proxy({}, { get: (_, p
 // pickLossView('vendors' | 'customers' | 'purchaseOrders' | 'pl' | 'cab')
 // directly -- listed here explicitly so this bounce still catches an
 // account without Cash access landing on one of them.
-const CASH_VIEW_KEYS = new Set<LossView>([...CASH_ITEMS.map(v => v.key), 'vendors', 'customers', 'purchaseOrders', 'pl', 'cab'])
+const CASH_VIEW_KEYS = new Set<LossView>([...CASH_ITEMS.map(v => v.key), 'item360', 'vendors', 'customers', 'purchaseOrders', 'pl', 'cab'])
 // Feeds the green bar's search placeholder ("Search Items", "Search
 // Sales", ...) so it reads as this page's own filter box, distinct from
 // the unrelated global search (magnifying glass icon, bottom of the
@@ -1417,17 +1418,17 @@ function ItemHubPageInner() {
   // number on the button is never out of step with what you'd see there.
   const violationCountByType = (types: string[]) =>
     cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
-  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'cost_gte_sell', 'dup_receipts', 'no_attachment', 'high_wnw'])
+  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'dup_receipts', 'no_attachment', 'high_wnw'])
   const itemsFlagsCount = violationCountByType([
-    'no_group', 'duplicates', 'not_in_inventory', 'neg_soh', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
+    'no_group', 'duplicates', 'not_in_inventory', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
   ]) + nameConflictsCount
   const billsFlagsCount = violationCountByType(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense'])
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
-  const countsFlagsCount = violationCountByType(['daily', '7day', '15day'])
-  const lossByDateFlagsCount = violationCountByType(['gains'])
+  const countsFlagsCount = violationCountByType(['daily', '7day', '15day', 'neg_soh'])
+  const lossByDateFlagsCount = violationCountByType(['gains', 'cost_gte_sell'])
   // These three pages' own flags (Expenses' similar-account/bundled-
   // description/no-vendor, Customers' and Vendors' missing-contact-info)
   // never went through the centralized violations system above -- they're
@@ -2029,6 +2030,7 @@ function ItemHubPageInner() {
   // a plain row again like any other -- no more addForm-based sub-item
   // special-casing needed.
   function cashItemActive(key: string) {
+    if (key === 'counts') return lossView === 'counts' || inCountTab
     return lossView === key
   }
   function cashItemClick(key: string) {
@@ -4896,7 +4898,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
     const divider = <span className="text-red-300 shrink-0">·</span>
     if (only === 'items' && !(liveEmptyRowCount > 0 || liveNoSpCount > 0 || liveNoCpCount > 0 || violationCounts.no_group > 0)) return null
-    if (only === 'receipts' && !((violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0)) return null
+    if (only === 'receipts' && !((violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw) > 0)) return null
     if (only === 'bills' && !(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump)) return null
 
     return (
@@ -4932,7 +4934,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
 
         {/* Receipts violations */}
-        {show('receipts') && (violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw || violationCounts.sold_below_cost) > 0 && (
+        {show('receipts') && (violationCounts.no_cash || violationCounts.missing_days || violationCounts.dup_receipt || violationCounts.no_attachment || violationCounts.high_wnw) > 0 && (
           <>
             {divider}
             <span className="text-gray-600 font-semibold shrink-0">Receipts;</span>
@@ -4941,7 +4943,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {violationButton('Dup Receipt', violationCounts.dup_receipt || 0, () => pickSalesView('dup_receipt'), 'text-orange-600')}
             {violationButton('No Attachment', violationCounts.no_attachment || 0, () => pickSalesView('no_attachment'), 'text-orange-600')}
             {violationButton('High WNW', violationCounts.high_wnw || 0, () => pickSalesView('high_wnw'), 'text-red-600')}
-            {violationButton('Cost ≥ Price', violationCounts.sold_below_cost || 0, () => pickSalesView('cost_gte_sell'), 'text-red-600')}
           </>
         )}
 
@@ -4971,7 +4972,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     else if (lossView === 'items' || lossView === 'sales') {
       if (itemsPageMode === 'bills') section = 'bills'
       else if (itemsPageMode === 'sales') section = 'receipts'
-      else if (itemsPageMode === 'sale' || itemsPageMode === 'log') section = 'items'
+      else if (itemsPageMode === 'sale') section = 'items'
     }
     return section ? renderCriticalBar(section) : null
   }
@@ -6424,6 +6425,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
+              <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider
+                active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
               {canSeePL && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
                   active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
@@ -6932,7 +6935,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   rather than floating a second, unrelated filter row above
                   it (Count has nothing to filter by group/type/violation --
                   its sub-nav is the only picker it needs). */}
-              {showControls && (liveMode === 'sale' || liveMode === 'log' || liveMode === 'sales') && !inCountTab && (
+              {showControls && (liveMode === 'sale' || liveMode === 'sales') && !inCountTab && (
                 <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
                   {/* View-only filters (black) -- All(V) retired: bundling
                       every violation into one button made it impossible to
@@ -6942,7 +6945,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       required" group below instead. */}
                   {/* Live / Log / Receipts radios removed -- each has its own sidebar row. */}
 
-                  {itemsPageMode !== 'sales' && (<>
+                  {itemsPageMode === 'sale' && (<>
                   {/* Action-required filters (red) - arranged by priority.
                       Count Due moved to the Count tab (full-page chart, same
                       as Records/Loss by Date/Items/Net Loss) and Negative
@@ -9879,6 +9882,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }}
                 jumpToCountId={jumpToCountId} onJumpDone={() => setJumpToCountId(null)} />
             </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'item360' && (
+          <TabErrorBoundary>
+            <Item360Page />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (
