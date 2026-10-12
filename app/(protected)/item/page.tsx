@@ -6378,8 +6378,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Sale/Log/Sales/Bills/Expenses) -- no longer needs a row
                   here too now that it's reachable from there. */}
               {/* The Items hub's former top tabs, each its own row. */}
-              <SidePaneButton icon="🛒" label="Live Sale" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('sale'))} onClick={() => goSaleFilter('noViolations')} />
+              {/* Items and Live Sale are the same screen -- one row. Lands on
+                  the 'items' view (the superset: it also has the columns
+                  picker) in plain Live mode, clearing any filter. */}
+              <SidePaneButton icon="🛒" label={paneLabel('items', 'Items / Live Sale')} mode={cashDisplayMode} divider
+                active={paneActive(modeActive('sale'))} badge={itemsFlagsCount}
+                taskBadge={taskCountFor(cashItemTaskScope('items'))}
+                onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="🧾" label="Sales Rec" mode={cashDisplayMode} divider
@@ -6398,7 +6403,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(lossView === 'customers' && customersJumpTab === 'receipts')} onClick={() => jumpToCustomersTab('receipts')} />
               <SidePaneButton icon="➕" label="New Customer" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'customers' && customersJumpTab === 'new')} onClick={() => jumpToCustomersTab('new')} />
-              {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
+              {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => v.key !== 'items' && (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
                     active={paneActive(cashItemActive(v.key))} divider
