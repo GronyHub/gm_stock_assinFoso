@@ -379,12 +379,22 @@ export default function ReceiptsPage() {
   const [showForm, setShowForm] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('receiptsTable', RECEIPT_COLUMNS)
 
-  useEffect(() => {
-    fetch('/api/receipts')
-      .then(r => r.json())
-      .then(d => { setReceipts(Array.isArray(d) ? d : []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+  const [loadError, setLoadError] = useState(false)
+  async function loadReceipts(retries = 3) {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const r = await fetch('/api/receipts')
+        if (r.ok) {
+          const d = await r.json()
+          if (Array.isArray(d)) { setReceipts(d); setLoadError(false); setLoading(false); return }
+        }
+      } catch {}
+      if (i < retries) await new Promise(res => setTimeout(res, 1000 * (i + 1)))
+    }
+    setLoadError(true)
+    setLoading(false)
+  }
+  useEffect(() => { void loadReceipts() }, [])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return receipts
@@ -518,7 +528,13 @@ export default function ReceiptsPage() {
       {/* Receipt table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         {filtered.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-sm">No receipts found.</p>
+          loadError && receipts.length === 0 ? (
+          <div className="py-10 text-center space-y-2">
+            <p className="text-sm text-red-600">Couldn&apos;t load receipts.</p>
+            <button onClick={() => { setLoading(true); void loadReceipts() }}
+              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
+          </div>
+        ) : <p className="py-10 text-center text-gray-400 text-sm">No receipts found.</p>
         ) : (
           <table className="border-collapse text-[11px]" style={{
             tableLayout: 'fixed',

@@ -46,7 +46,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const [receipt] = await sql.query(`
     SELECT ${SELECT_FIELDS}
     WHERE i.id = $1
-    GROUP BY i.id, c.display_name
+    GROUP BY i.id, c.id
   `, [Number(id)])
 
   if (!receipt) return notFound()

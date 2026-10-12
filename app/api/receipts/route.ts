@@ -49,12 +49,19 @@ export async function GET() {
 
   await ensureDbInitialized()
   await ensureColumns()
-  const receipts = await sql.query(`
-    SELECT ${SELECT_FIELDS}
-    GROUP BY i.id, c.display_name
-    ORDER BY i.invoice_date DESC, i.invoice_number DESC
-  `)
-  return success(receipts)
+  try {
+    const receipts = await sql.query(`
+      SELECT ${SELECT_FIELDS}
+      GROUP BY i.id, c.id
+      ORDER BY i.invoice_date DESC, i.invoice_number DESC
+    `)
+    return success(receipts)
+  } catch (e) {
+    // This query silently broke once (a GROUP BY mistake) and the page just
+    // showed "No receipts found" -- log it and return a real failure status.
+    console.error('receipts GET error:', e instanceof Error ? e.message : String(e))
+    return success([], 500)
+  }
 }
 
 // Every receipt here is paid in full once issued -- no draft/overdue/balance
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest) {
     const [created] = await sql.query(`
       SELECT ${SELECT_FIELDS}
       WHERE i.id = $1
-      GROUP BY i.id, c.display_name
+      GROUP BY i.id, c.id
     `, [invoice.id])
 
     await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
