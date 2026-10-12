@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useState, useEffect, useMemo, memo } from 'react'
+import { Fragment, useState, useEffect, useMemo, memo, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
@@ -13,6 +13,12 @@ type Item = { id: number; item_name: string; cf_group: string | null; selling_pr
 
 const BILLS_COL_DEFAULTS: Record<string, number> = {
   item: 200, quantity: 70, unitPrice: 90, sharedExpenses: 90, adjustedCost: 90, itemTotal: 100, currentCost: 100, costDiff: 80, newSp: 110,
+}
+
+// Phone layout: narrow number columns so the whole table can be shrunk to one
+// screen (see the fit-to-width zoom in BillsTab's render).
+const BILLS_COL_DEFAULTS_COMPACT: Record<string, number> = {
+  item: 110, quantity: 34, unitPrice: 44, sharedExpenses: 44, adjustedCost: 46, itemTotal: 54, currentCost: 46, costDiff: 40, newSp: 50,
 }
 
 type BillExpense = { id: number; bill_id: number; description: string | null; amount: string; migrated_from_expense_id?: number | null; source?: string | null; created_at?: string }
@@ -404,6 +410,19 @@ function BillsTab({
   // Retries and only replaces the lists with real arrays -- a failed or
   // timed-out request used to show up as "no bills" until a lucky reload.
   const [billsLoadError, setBillsLoadError] = useState(false)
+  // Fit-to-width: on a phone, shrink the whole table (zoom) so every column is
+  // visible without sideways scrolling, down to a readable floor.
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [wrapWidth, setWrapWidth] = useState(0)
+  const [compact, setCompact] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)')
+    const apply = () => setCompact(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  const colDefaults = compact ? BILLS_COL_DEFAULTS_COMPACT : BILLS_COL_DEFAULTS
   async function loadBills(retries = 0): Promise<void> {
     for (let i = 0; i <= retries; i++) {
       try {
@@ -962,26 +981,32 @@ function BillsTab({
     </div>
   )
 
+  const tableNaturalWidth = colPrefs.getWidth('item', colDefaults.item)
+    + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, colDefaults[c.key] ?? 80), 0)
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" ref={el => {
+          wrapRef.current = el
+          if (el && el.clientWidth !== wrapWidth) setWrapWidth(el.clientWidth)
+        }}>
         <table className="border-collapse text-[10px]" style={{
           tableLayout: 'fixed',
-          width: colPrefs.getWidth('item', BILLS_COL_DEFAULTS.item)
-            + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, BILLS_COL_DEFAULTS[c.key] ?? 80), 0),
+          width: tableNaturalWidth,
+          zoom: compact && wrapWidth > 0 ? Math.min(1, Math.max(0.5, wrapWidth / tableNaturalWidth)) : undefined,
         }}>
           <colgroup>
-            <col style={{ width: colPrefs.getWidth('item', BILLS_COL_DEFAULTS.item) }} />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, BILLS_COL_DEFAULTS[c.key] ?? 80) }} />)}
+            <col style={{ width: colPrefs.getWidth('item', colDefaults.item) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, colDefaults[c.key] ?? 80) }} />)}
           </colgroup>
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
-              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, BILLS_COL_DEFAULTS.item)} onReset={() => colPrefs.resetWidth('item')}
+              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, colDefaults.item)} onReset={() => colPrefs.resetWidth('item')}
                 className="text-[9px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
               {colPrefs.shownColumns.map((c, i) => (
                 <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[9px]"
-                  onResize={d => colPrefs.resizeWidth(c.key, d, BILLS_COL_DEFAULTS[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  onResize={d => colPrefs.resizeWidth(c.key, d, colDefaults[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
                   {c.label}
                 </ResizableTh>
               ))}
