@@ -2,6 +2,7 @@
 import { Fragment, useState, useEffect, useMemo, memo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
+import { useFitWidth } from '@/lib/useFitWidth'
 import HistoryPanel from './HistoryPanel'
 import type { ColumnPrefs } from './columnPrefs'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
@@ -233,6 +234,7 @@ function SalesTab({
 }: Props) {
   const [receipts, setReceipts] = useState<Receipt[]>([])
   const [loading, setLoading] = useState(true)
+  const { compact: compactSales } = useFitWidth()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   // Under Bars Only, clicking a bar reveals just that receipt's item lines
@@ -703,8 +705,8 @@ function SalesTab({
           disagreeing by a few px, clipping CC's leading characters. */}
       <table className="w-full table-fixed border-collapse text-[10px]">
         <colgroup>
-          <col style={{ width: '40%' }} />
-          {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: `${c.width}%` }} />)}
+          <col style={{ width: compactSales ? '30%' : '40%' }} />
+          {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: `${compactSales ? (c.width ?? 0) * 0.85 : c.width}%` }} />)}
         </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>

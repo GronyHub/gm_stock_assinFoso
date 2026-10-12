@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useFitWidth } from '@/lib/useFitWidth'
 import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
@@ -96,6 +97,12 @@ const CUSTOMER_COL_BY_KEY = new Map(CUSTOMER_COLUMNS.map(col => [col.key, col]))
 const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
   name: 150, customerId: 100, company: 150, phone: 120, email: 180, location: 130, status: 90,
   lastVisited: 110, dateRegistered: 130, serviceGoods: 140, addedBy: 150, whatsapp: 100, sales: 100, outstanding: 110, receiptCount: 80,
+}
+
+// Phone layout (see useFitWidth).
+const CUSTOMERS_COL_COMPACT: Record<string, number> = {
+  name: 100, customerId: 50, company: 80, phone: 78, email: 100, location: 70, status: 50,
+  lastVisited: 60, dateRegistered: 62, serviceGoods: 70, addedBy: 70, whatsapp: 55, sales: 55, outstanding: 60, receiptCount: 40,
 }
 
 function EditCustomerForm({ customer, onSaved, onCancel, onDeleted }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void; onDeleted?: () => void }) {
@@ -275,6 +282,11 @@ export default function CustomersPage({
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
   const [activeLocation, setActiveLocation] = useState<string | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('customersTable', CUSTOMER_COLUMNS)
+  const { compact, wrapRef, zoomFor } = useFitWidth()
+  // On a phone the compact widths win over widths saved from an earlier drag.
+  const idColWidth = compact ? 50 : 120
+  const custWidth = (key: string) => compact ? (CUSTOMERS_COL_COMPACT[key] ?? 60) : colPrefs.getWidth(key, CUSTOMERS_COL_DEFAULTS[key] ?? 100)
+  const cellPx = compact ? 'px-1' : 'px-3'
 
   // Driven by the global search (page.tsx) landing here already knowing
   // which customer to show -- also covers re-arriving with a different
@@ -552,26 +564,27 @@ export default function CustomersPage({
       )}
 
       {/* Customer table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+      <div ref={wrapRef} className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No customers found.</p>
         ) : (
           <table className="border-collapse text-[11px]" style={{
             tableLayout: 'fixed',
-            width: colPrefs.getWidth('name', CUSTOMERS_COL_DEFAULTS.name)
-              + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100), 0),
+            width: idColWidth + custWidth('name')
+              + colPrefs.shownColumns.reduce((s, c) => s + custWidth(c.key), 0),
+            zoom: zoomFor(idColWidth + custWidth('name') + colPrefs.shownColumns.reduce((s, c) => s + custWidth(c.key), 0)),
           }}>
             <colgroup>
-              <col style={{ width: 120 }} />
-              <col style={{ width: colPrefs.getWidth('name', CUSTOMERS_COL_DEFAULTS.name) }} />
-              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, CUSTOMERS_COL_DEFAULTS[c.key] ?? 100) }} />)}
+              <col style={{ width: idColWidth }} />
+              <col style={{ width: custWidth('name') }} />
+              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: custWidth(c.key) }} />)}
             </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
-                <th className="relative overflow-hidden text-left px-3 py-0.5 font-bold border-b border-r border-gray-200 sticky left-0 z-20 bg-gray-50">
+                <th className={`relative overflow-hidden text-left ${cellPx} py-0.5 font-bold border-b border-r border-gray-200 sticky left-0 z-20 bg-gray-50`}>
                   <span className="block truncate">ID</span>
                 </th>
-                <th className="relative overflow-hidden text-left px-3 py-0.5 font-bold border-b border-r border-gray-200 sticky left-[120px] z-20 bg-gray-50">
+                <th style={{ left: idColWidth }} className={`relative overflow-hidden text-left ${cellPx} py-0.5 font-bold border-b border-r border-gray-200 sticky z-20 bg-gray-50`}>
                   <span className="block truncate">Name</span>
                   <ColResizeHandle onResize={d => colPrefs.resizeWidth('name', d, CUSTOMERS_COL_DEFAULTS.name)} onReset={() => colPrefs.resetWidth('name')} />
                 </th>
@@ -589,10 +602,10 @@ export default function CustomersPage({
                 return (
                 <tr key={v.id} onClick={() => { setSelected(v); setEditingCustomer(true) }}
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
-                  <td className="px-3 py-0 font-semibold text-blue-600 truncate sticky left-0 z-10 bg-inherit border-r border-gray-200">
+                  <td className={`${cellPx} py-0 font-semibold text-blue-600 truncate sticky left-0 z-10 bg-inherit border-r border-gray-200`}>
                     {v.customer_id_code ?? '—'}
                   </td>
-                  <td className="px-3 py-0 font-semibold text-gray-900 truncate sticky left-[120px] z-10 bg-inherit border-r border-gray-200">
+                  <td style={{ left: idColWidth }} className={`${cellPx} py-0 font-semibold text-gray-900 ${compact ? 'break-words leading-tight' : 'truncate'} sticky z-10 bg-inherit border-r border-gray-200`}>
                     <span className="inline-flex items-center gap-1">
                       {isIncomplete && (
                         <span className="text-amber-500 font-bold" title="Incomplete profile">⚠️</span>
@@ -606,7 +619,7 @@ export default function CustomersPage({
                   {colPrefs.shownColumns.map(col => {
                     const meta = CUSTOMER_COL_BY_KEY.get(col.key)!
                     return (
-                      <td key={col.key} className={`px-3 py-0 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
+                      <td key={col.key} className={`${cellPx} py-0 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>
                         {meta.render(v)}
                       </td>
                     )

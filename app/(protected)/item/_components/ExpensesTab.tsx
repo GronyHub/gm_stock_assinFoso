@@ -1,4 +1,5 @@
 'use client'
+import { useFitWidth } from '@/lib/useFitWidth'
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
@@ -104,6 +105,13 @@ const EXPENSES_COL_DEFAULTS: Record<string, number> = {
   date: 92, amt: 90, account: 260, group: 100, is_property: 85, amount: 90, expense_type: 100, vendor: 120, source: 90, by: 80,
   is_related_expense: 95, related_property: 120, related_reasons: 130, property_status: 100,
   property_type: 80, availability: 90, working: 90, location: 100, reason: 120,
+}
+
+// Phone layout (see useFitWidth): narrow columns, names wrap, whole table zooms to fit.
+const EXPENSES_COL_COMPACT: Record<string, number> = {
+  date: 50, account: 110, amt: 52, group: 60, is_property: 40, amount: 50, expense_type: 60, vendor: 70, source: 50, by: 45,
+  is_related_expense: 50, related_property: 70, related_reasons: 70, property_status: 60,
+  property_type: 50, availability: 55, working: 55, location: 60, reason: 70,
 }
 
 const EXPENSE_GROUPS = ['Utilities']
@@ -369,11 +377,14 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
     return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
-  const dateWidth = colPrefs.getWidth('date', EXPENSES_COL_DEFAULTS.date)
-  const accountWidth = colPrefs.getWidth('account', EXPENSES_COL_DEFAULTS.account)
-  const amtWidth = colPrefs.getWidth('amt', EXPENSES_COL_DEFAULTS.amt)
+  const { compact, wrapRef, zoomFor } = useFitWidth()
+  // On a phone the compact widths win over widths saved from an earlier drag.
+  const wOf = (k: string) => compact ? (EXPENSES_COL_COMPACT[k] ?? 60) : colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100)
+  const dateWidth = wOf('date')
+  const accountWidth = wOf('account')
+  const amtWidth = wOf('amt')
   const tableWidth = dateWidth + accountWidth + amtWidth
-    + visibleKeys.reduce((s, k) => s + colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100), 0)
+    + visibleKeys.reduce((s, k) => s + wOf(k), 0)
 
   // Pulled out of the tbody's own .map so groupedRows (the By Account/By
   // Vendor views) can share this same row rendering across every group's
@@ -721,13 +732,13 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-    <table className="border-collapse text-[9px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
+    <div ref={wrapRef} className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+    <table className="border-collapse text-[9px]" style={{ tableLayout: 'fixed', width: tableWidth, zoom: zoomFor(tableWidth) }}>
       <colgroup>
         <col style={{ width: dateWidth }} />
         <col style={{ width: accountWidth }} />
         <col style={{ width: amtWidth }} />
-        {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, EXPENSES_COL_DEFAULTS[k] ?? 100) }} />)}
+        {visibleKeys.map(k => <col key={k} style={{ width: wOf(k) }} />)}
       </colgroup>
       <thead className="sticky top-0 z-30">
         <tr className="bg-gray-50">
