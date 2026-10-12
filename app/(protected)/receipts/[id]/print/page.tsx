@@ -1,4 +1,5 @@
 'use client'
+import { COMPANY } from '@/lib/companyInfo'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 
@@ -118,9 +119,12 @@ export default function ReceiptPrintPage() {
         doc.text('GRONY MULTIMEDIA', 14, y0 + 6)
         doc.setFont('helvetica', 'normal')
       }
-      doc.setFontSize(9)
-      doc.setTextColor(140, 140, 140)
-      doc.text('Assin Foso', 14, y0 + 18)
+      doc.setFontSize(8.5)
+      doc.setTextColor(110, 110, 110)
+      doc.text(COMPANY.location, 14, y0 + 18)
+      doc.setFontSize(8)
+      doc.text(`Tel / WhatsApp / MoMo: ${COMPANY.phone}`, 14, y0 + 22)
+      doc.text(`${COMPANY.email}  |  ${COMPANY.website}`, 14, y0 + 26)
       doc.setTextColor(0, 0, 0)
 
       const docTypeText = (receipt.document_type ?? 'Receipt').toUpperCase()
@@ -137,7 +141,7 @@ export default function ReceiptPrintPage() {
       doc.text(`Printed ${fmtGhanaTime(generatedAt)} GMT`, pageWidth - 14, y0 + 19, { align: 'right' })
       doc.setTextColor(0, 0, 0)
 
-      let y = y0 + 30
+      let y = y0 + 34
       doc.setDrawColor(20, 20, 20)
       doc.setLineWidth(0.5)
       doc.line(14, y, pageWidth - 14, y)
@@ -200,6 +204,13 @@ export default function ReceiptPrintPage() {
       doc.setFontSize(8)
       doc.setTextColor(140, 140, 140)
       doc.text('Thank you for your business.', pageWidth / 2, y + 6, { align: 'center' })
+      doc.setFontSize(7.5)
+      const svcLines = doc.splitTextToSize(`Our services: ${COMPANY.services.join('  |  ')}`, pageWidth - 28)
+      doc.text(svcLines, pageWidth / 2, y + 12, { align: 'center' })
+      doc.text(
+        `${COMPANY.location}  |  ${COMPANY.phone}  |  ${COMPANY.email}  |  ${COMPANY.website}`,
+        pageWidth / 2, y + 12 + svcLines.length * 3.5 + 2, { align: 'center', maxWidth: pageWidth - 28 },
+      )
 
       doc.save(`${receipt.invoice_number}.pdf`)
     } finally {
@@ -229,7 +240,9 @@ export default function ReceiptPrintPage() {
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="Grony Multimedia" className="h-12 w-auto mb-1" />
-            <p className="text-xs text-gray-500">Assin Foso</p>
+            <p className="text-xs text-gray-500">{COMPANY.location}</p>
+            <p className="text-[11px] text-gray-500">Tel / WhatsApp / MoMo: {COMPANY.phone}</p>
+            <p className="text-[11px] text-gray-500">{COMPANY.email} | {COMPANY.website}</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold uppercase tracking-wide text-gray-900">{docType}</p>
@@ -295,7 +308,11 @@ export default function ReceiptPrintPage() {
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-400 border-t border-gray-100 pt-4">Thank you for your business.</p>
+        <div className="text-center border-t border-gray-100 pt-4 space-y-1">
+          <p className="text-xs text-gray-400">Thank you for your business.</p>
+          <p className="text-[10px] text-gray-500">Our services: {COMPANY.services.join(' | ')}</p>
+          <p className="text-[10px] text-gray-500">{COMPANY.location} | {COMPANY.phone} | {COMPANY.email} | {COMPANY.website}</p>
+        </div>
       </div>
     </div>
   )
