@@ -62,7 +62,7 @@ curl -X POST http://localhost:3000/api/maintenance/optimize-db \
 
 # Hosting
 
-Moved off Vercel to a self-hosted DigitalOcean Droplet (London) to cut
+Moved off Vercel to a self-hosted DigitalOcean Droplet (New York region, nyc1 -- measured 2026-10-13; the database is in Neon us-east-1, ~24 ms away) to cut
 recurring cost. Live at `https://app.gronymultimedia.com`, served by Caddy
 (automatic HTTPS) reverse-proxying to a Next.js app run under pm2 on port
 3000. `git push` to `main` triggers `.github/workflows/deploy.yml`, which

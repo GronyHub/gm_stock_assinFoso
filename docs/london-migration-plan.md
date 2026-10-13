@@ -1,5 +1,7 @@
 # Move the database from US East to London
 
+> **CANCELLED 2026-10-13.** The premise was wrong. The droplet is **not** in London: it is in the DigitalOcean New York/New Jersey region (hostname `...-nyc1`, IP geolocates to North Bergen, NJ). Measured from the droplet: old database (N. Virginia) median **24 ms** per query; the empty London database median **89 ms**. Moving the database to London would make the app slower. Do not follow this plan. Kept for the record and for the helper scripts.
+
 Prepared 2026-10-13. **Nothing has been changed yet.** Do this on a Sunday (shop closed).
 
 ## Why

@@ -23,12 +23,16 @@ for (const [name, url] of targets) {
     await sql`SELECT 1`
     times.push(performance.now() - t)
   }
-  let heavy = null
+  // The same small join, 5 times: the first run is often slower (cold cache),
+  // the later ones show the steady-state cost.
+  const heavy = []
   try {
-    const t = performance.now()
-    await sql`SELECT count(*) FROM sales_receipts sr LEFT JOIN customers c ON c.id = sr.customer_id`
-    heavy = performance.now() - t
+    for (let i = 0; i < 5; i++) {
+      const t = performance.now()
+      await sql`SELECT count(*) FROM sales_receipts sr LEFT JOIN customers c ON c.id = sr.customer_id`
+      heavy.push(performance.now() - t)
+    }
   } catch {}
   console.log(`${name.padEnd(4)} SELECT 1: median ${median(times).toFixed(0)} ms, min ${Math.min(...times).toFixed(0)}, max ${Math.max(...times).toFixed(0)}`
-    + (heavy != null ? ` | join query ${heavy.toFixed(0)} ms` : ''))
+    + (heavy.length ? ` | join query runs (ms): ${heavy.map(h => h.toFixed(0)).join(', ')}` : ''))
 }
