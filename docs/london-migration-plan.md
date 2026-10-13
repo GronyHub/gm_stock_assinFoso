@@ -18,6 +18,9 @@ Prepared 2026-10-13. **Nothing has been changed yet.** Do this on a Sunday (shop
 
 Neon cannot move a project between regions, so the plan is a **new project in `aws-eu-west-2` (London)** plus a copy of the data. The old project stays untouched as the fallback.
 
+## Status log
+- 2026-10-13: empty London project created: **`still-queen-41279218`** ("Grony Finance London", aws-eu-west-2, Postgres 18.6, compute 0.25-1 CU to match the old project). No data copied; the live app still uses the old database.
+
 ## Before the day
 1. **Create the new project** in London (name e.g. "Grony Finance London"). Empty; no effect on the live app. Copy its **direct** connection string (not the "pooled" one) and keep it private.
 2. **Prove the gain first** (read-only), on the droplet:
