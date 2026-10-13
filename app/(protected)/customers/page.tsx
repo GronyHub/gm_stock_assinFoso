@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
+import { prefetchReceipts } from '@/lib/receiptsPrefetch'
 import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
@@ -302,7 +303,19 @@ export default function CustomersPage({
       .then(d => { setCustomers(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
   }
-  useEffect(() => { loadCustomers() }, [])
+  // The customer list (receipt/invoice totals for every customer) is only needed
+  // on the Customers view itself -- Cust. Receipts and New Customer used to
+  // download it too, for nothing, before showing anything.
+  useEffect(() => {
+    if (lockedMode === 'receipts') {
+      prefetchReceipts()
+      void import('../receipts/page')
+      return
+    }
+    if (lockedMode === 'new') return
+    loadCustomers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const flagCounts = useMemo(() => ({
     location: customers.filter(x => !x.location).length,

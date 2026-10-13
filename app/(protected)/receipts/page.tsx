@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { takeReceiptsPrefetch } from '@/lib/receiptsPrefetch'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
 import NewCustomerForm from '../item/_components/NewCustomerForm'
 
@@ -383,7 +384,7 @@ export default function ReceiptsPage() {
   async function loadReceipts(retries = 3) {
     for (let i = 0; i <= retries; i++) {
       try {
-        const r = await fetch('/api/receipts')
+        const r = await ((i === 0 ? takeReceiptsPrefetch() : null) ?? fetch('/api/receipts'))
         if (r.ok) {
           const d = await r.json()
           if (Array.isArray(d)) { setReceipts(d); setLoadError(false); setLoading(false); return }
