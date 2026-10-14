@@ -68,7 +68,11 @@ async function sendPush(staffName: string, action: string, details: string | und
   const vapidEmail = process.env.VAPID_EMAIL
   const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY
-  if (!vapidEmail || !vapidPublic || !vapidPrivate) return
+  if (!vapidEmail || !vapidPublic || !vapidPrivate) {
+    // Was a silent return -- a missing key on the server looked exactly like "no one to notify".
+    console.error('push: VAPID_EMAIL / NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not all set -- no push notifications will be sent')
+    return
+  }
 
   try {
     const webpush = (await import('web-push')).default
@@ -88,7 +92,7 @@ async function sendPush(staffName: string, action: string, details: string | und
       title: 'Grony',
       body: `${staffName}: ${action}${details ? ` — ${details}` : ''}`,
     })
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       subs.map(s =>
         webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -96,7 +100,22 @@ async function sendPush(staffName: string, action: string, details: string | und
         )
       )
     )
-  } catch {
-    // silent
+    // A phone that uninstalled/blocked notifications answers 404/410 forever;
+    // drop those so they stop being retried, and log everything else.
+    let failed = 0
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i]
+      if (r.status === 'fulfilled') continue
+      const code = (r.reason as { statusCode?: number })?.statusCode
+      if (code === 404 || code === 410) {
+        await sql`DELETE FROM push_subscriptions WHERE endpoint = ${subs[i].endpoint}`.catch(() => {})
+      } else {
+        failed++
+        console.error('push send failed:', code ?? '', (r.reason as Error)?.message ?? r.reason)
+      }
+    }
+    if (failed) console.error(`push: ${failed} of ${subs.length} sends failed`)
+  } catch (e) {
+    console.error('push error:', e instanceof Error ? e.message : String(e))
   }
 }
