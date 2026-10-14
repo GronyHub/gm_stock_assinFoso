@@ -18,7 +18,17 @@ export default function PushSubscriber() {
       // Only subscribe if permission already granted or not yet asked
       if (Notification.permission === 'denied') return
 
-      const existing = await reg.pushManager.getSubscription()
+      let existing = await reg.pushManager.getSubscription()
+      // One-time renewal per device: a subscription the push service has
+      // already expired still looks "existing" to the browser, so it was never
+      // replaced and sends to it fail forever. Drop it once and re-subscribe.
+      try {
+        if (existing && localStorage.getItem('grony_push_renewed_v2') !== '1') {
+          await existing.unsubscribe()
+          existing = null
+        }
+        localStorage.setItem('grony_push_renewed_v2', '1')
+      } catch { /* private mode etc. -- fall through with what we have */ }
       if (existing) {
         // Re-sync to server in case it was lost
         await syncSub(existing)
