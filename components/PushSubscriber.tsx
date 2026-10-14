@@ -18,16 +18,27 @@ export default function PushSubscriber() {
       // Only subscribe if permission already granted or not yet asked
       if (Notification.permission === 'denied') return
 
+      // Without the public key (not set at build time) subscribing is
+      // impossible -- and dropping a subscription we can't replace would only
+      // make things worse -- so do nothing.
+      if (!VAPID_PUBLIC) return
+      const serverKey = urlBase64ToUint8Array(VAPID_PUBLIC)
+
       let existing = await reg.pushManager.getSubscription()
-      // One-time renewal per device: a subscription the push service has
-      // already expired still looks "existing" to the browser, so it was never
-      // replaced and sends to it fail forever. Drop it once and re-subscribe.
+      // Replace a subscription made with a different key (the server's keys
+      // changed) or never renewed (expired ones still look "existing" to the
+      // browser and fail silently on every send). Renewed once per device.
       try {
-        if (existing && localStorage.getItem('grony_push_renewed_v2') !== '1') {
-          await existing.unsubscribe()
-          existing = null
+        if (existing) {
+          const cur = existing.options?.applicationServerKey
+          const sameKey = !!cur && new Uint8Array(cur).length === serverKey.length
+            && new Uint8Array(cur).every((v, i) => v === serverKey[i])
+          if (!sameKey || localStorage.getItem('grony_push_renewed_v3') !== '1') {
+            await existing.unsubscribe()
+            existing = null
+          }
         }
-        localStorage.setItem('grony_push_renewed_v2', '1')
+        localStorage.setItem('grony_push_renewed_v3', '1')
       } catch { /* private mode etc. -- fall through with what we have */ }
       if (existing) {
         // Re-sync to server in case it was lost
@@ -41,7 +52,7 @@ export default function PushSubscriber() {
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+        applicationServerKey: serverKey,
       })
       await syncSub(sub)
     }).catch(() => {})
