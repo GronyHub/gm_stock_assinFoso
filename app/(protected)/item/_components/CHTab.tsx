@@ -34,7 +34,10 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
   const role = user?.role ?? ''
   const username = (user?.username ?? user?.name ?? '').toLowerCase()
 
-  const canAccess = hasFeature({ role, username }, 'ch', rolePermissions)
+  const hasCH = hasFeature({ role, username }, 'ch', rolePermissions)
+  // Care rows open with either full C&H access or the caretaker permission;
+  // every other C&H row still needs full C&H access.
+  const canAccess = hasCH || (view.startsWith('ch_care_') && hasFeature({ role, username }, 'caretaker', rolePermissions))
 
   if (!canAccess) {
     return (

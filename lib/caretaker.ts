@@ -41,11 +41,19 @@ export function caretakerName(session: SessionLike): string {
   return ((session?.user?.username ?? session?.user?.name ?? '') as string).toLowerCase()
 }
 
-// Beatrice's role (children_manager) plus the owners. Everyone else is out.
-export function canCaretake(session: SessionLike): boolean {
-  const u = session?.user
+// Who may use the caretaker pages: the children_manager role (Beatrice), the
+// owners, and anyone granted the 'caretaker' permission on the Roles &
+// Permissions screen (user_permissions row) -- e.g. Marian.
+export async function canCaretake(session: SessionLike): Promise<boolean> {
+  const u = session?.user as { id?: string; role?: string | null; username?: string | null; name?: string | null } | undefined
   if (!u) return false
-  return u.role === 'children_manager' || isOwnerLevel(u as { role?: string; username?: string; name?: string | null })
+  if (u.role === 'children_manager' || isOwnerLevel(u)) return true
+  const id = Number(u.id)
+  if (!id) return false
+  try {
+    const rows = await sql`SELECT allowed FROM user_permissions WHERE user_id = ${id} AND feature_key = 'caretaker'`
+    return !!rows[0]?.allowed
+  } catch { return false }
 }
 
 export function isOwnerSession(session: SessionLike): boolean {

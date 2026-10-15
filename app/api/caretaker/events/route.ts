@@ -11,7 +11,7 @@ const KINDS = new Set(['wake', 'health', 'meal', 'behaviour', 'school_need', 'ho
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session) return unauthorized()
-  if (!canCaretake(session)) return success([], 403)
+  if (!(await canCaretake(session))) return success([], 403)
   await ensureCaretakerTables()
   const date = req.nextUrl.searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return badRequest('Bad date')
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return unauthorized()
-  if (!canCaretake(session)) return badRequest('Not allowed')
+  if (!(await canCaretake(session))) return badRequest('Not allowed')
   await ensureCaretakerTables()
   const b = await req.json().catch(() => null)
   if (!b || !KINDS.has(b.kind)) return badRequest('Unknown record type')

@@ -8,7 +8,7 @@ const MAX_SIZE = 15 * 1024 * 1024
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session || !canCaretake(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !(await canCaretake(session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const form = await req.formData()
   const file = form.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })

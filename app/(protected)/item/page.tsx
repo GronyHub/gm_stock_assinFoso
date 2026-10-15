@@ -2097,7 +2097,11 @@ function ItemHubPageInner() {
   const canSeeUsers = perm('users')
   const canViewPortalAs = perm('view_portal_as')
   const canSeeUK = isGrony || perm('uk')
+  const canSeeCaretake = perm('caretaker')
   const canSeeCH = isOwnerOrJoe || perm('ch')
+  // The C&H tab shows for full C&H access OR just the caretaker permission
+  // (then only the Care rows, see the pane below).
+  const canSeeCHTab = canSeeCH || canSeeCaretake
   // Settings is worth opening if there's anything at all inside it --
   // Roles & Permissions itself stays canManage-only regardless (root config
   // shouldn't be grantable through the system it configures). Team no
@@ -6562,7 +6566,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.filter(item => item.key !== 'ch_care_log' || isOwnerOrJoe).map((item, i) => (
+              {CH_ITEMS.filter(item => (item.key !== 'ch_care_log' || isOwnerOrJoe) && (canSeeCH || item.key.startsWith('ch_care_'))).map((item, i) => (
                 <div key={item.key}>
                   <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
@@ -6640,7 +6644,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
             <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
-              {(canSeeUK || canSeeCH) && (
+              {(canSeeUK || canSeeCHTab) && (
                 <button onClick={() => changeTab('loss')} title="Biz"
                   style={{ color: PANE_ACCENT.loss }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
@@ -6656,7 +6660,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   🇬🇧 UK
                 </button>
               )}
-              {canSeeCH && (
+              {canSeeCHTab && (
                 <button onClick={() => changeTab('ch')} title="C&H"
                   style={{ color: PANE_ACCENT.ch }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition

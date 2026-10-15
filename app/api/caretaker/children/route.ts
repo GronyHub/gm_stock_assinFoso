@@ -8,7 +8,7 @@ import { CHILDREN } from '@/lib/caretakerShared'
 export async function GET() {
   const session = await auth()
   if (!session) return unauthorized()
-  if (!canCaretake(session)) return success([], 403)
+  if (!(await canCaretake(session))) return success([], 403)
   await ensureCaretakerTables()
   const rows = await sql`SELECT name, photo_url FROM care_children`
   const byName = new Map(rows.map(r => [r.name as string, r.photo_url as string | null]))
@@ -19,7 +19,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const session = await auth()
   if (!session) return unauthorized()
-  if (!canCaretake(session)) return badRequest('Not allowed')
+  if (!(await canCaretake(session))) return badRequest('Not allowed')
   await ensureCaretakerTables()
   const b = await req.json().catch(() => null)
   if (!b || !(CHILDREN as readonly string[]).includes(b.name)) return badRequest('Unknown child')

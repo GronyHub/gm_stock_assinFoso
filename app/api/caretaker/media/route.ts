@@ -7,7 +7,7 @@ import { canCaretake } from '@/lib/caretaker'
 // Children's photos are private, so this is never served without a session.
 export async function GET(req: NextRequest) {
   const session = await auth()
-  if (!session || !canCaretake(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !(await canCaretake(session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const pathname = req.nextUrl.searchParams.get('p')
   if (!pathname || !pathname.startsWith('caretaker/')) return NextResponse.json({ error: 'Bad path' }, { status: 400 })
   try {
