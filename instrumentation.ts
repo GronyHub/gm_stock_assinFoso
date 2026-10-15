@@ -32,4 +32,11 @@ export async function register() {
     void warm()
     setInterval(() => void warm(), INTERVAL_MS).unref()
   }, FIRST_DELAY_MS).unref()
+
+  // Caretaker reminders / missed-item alerts. Ticks every minute but only
+  // touches the database at the minutes listed in lib/careAlerts.ts.
+  // Turn off with CARETAKER_ALERTS=off.
+  setInterval(() => {
+    void import('./lib/careAlerts').then(m => m.careAlertsTick()).catch(e => console.error('careAlerts tick failed:', e instanceof Error ? e.message : String(e)))
+  }, 60000).unref()
 }

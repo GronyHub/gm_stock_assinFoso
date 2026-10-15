@@ -4,6 +4,10 @@ import { hasFeature, type RolePermissionsMap } from '@/lib/permissionsShared'
 import ManageLogPanel from './ManageLogPanel'
 import SubmenuTable from './SubmenuTable'
 import PersonalTab from './PersonalTab'
+import CareToday from './CareToday'
+import CareLog from './CareLog'
+import { CareNight, CareRules } from './CareChecks'
+import { isOwnerLevel } from '@/lib/roles'
 import { CH_ITEMS, CH_CHILD_PERSON, type CHView } from './chViewData'
 import type { useUKData } from './ukViewData'
 
@@ -38,6 +42,16 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
         <p className="text-2xl">🔒</p>
         <p className="text-gray-500 text-sm">This page is private.</p>
       </div>
+    )
+  }
+
+  // Caretaker pages: Beatrice (role children_manager) and the owners.
+  if (view === 'ch_care_today') return <CareToday />
+  if (view === 'ch_care_night') return <CareNight />
+  if (view === 'ch_care_rules') return <CareRules />
+  if (view === 'ch_care_log') {
+    return isOwnerLevel({ role, username }) ? <CareLog /> : (
+      <div className="py-20 text-center space-y-2"><p className="text-2xl">🔒</p><p className="text-gray-500 text-sm">Only Grony and Joe can see the log.</p></div>
     )
   }
 

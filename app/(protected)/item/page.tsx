@@ -2083,6 +2083,15 @@ function ItemHubPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
+  // The caretaker (role children_manager) works only in C&H -- land her there
+  // once permissions are known, instead of on a Cash page she can't use.
+  const caretakerLandedRef = useRef(false)
+  useEffect(() => {
+    if (!permsLoaded || caretakerLandedRef.current || role !== 'children_manager') return
+    caretakerLandedRef.current = true
+    if (outerTab !== 'ch') changeTab('ch')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permsLoaded, role])
   const canSeePL = perm('pl')
   const canSeeTeam = perm('team')
   const canSeeUsers = perm('users')
@@ -6553,7 +6562,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.map((item, i) => (
+              {CH_ITEMS.filter(item => item.key !== 'ch_care_log' || isOwnerOrJoe).map((item, i) => (
                 <div key={item.key}>
                   <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
