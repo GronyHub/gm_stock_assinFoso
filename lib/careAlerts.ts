@@ -78,7 +78,7 @@ async function pushTo(who: 'owners' | 'caretaker', title: string, body: string) 
   const webpush = (await import('web-push')).default
   webpush.setVapidDetails(email, pub, priv)
   const subs = who === 'owners'
-    ? await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'owner' OR LOWER(au.username) = 'joe'`
+    ? await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'owner' OR LOWER(au.username) = 'joe' OR au.id IN (SELECT user_id FROM user_permissions WHERE feature_key = 'care_log' AND allowed)`
     : await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'children_manager'`
   const payload = JSON.stringify({ title, body })
   const results = await Promise.allSettled(subs.map(s => webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)))

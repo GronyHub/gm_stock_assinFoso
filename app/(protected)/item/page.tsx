@@ -2101,7 +2101,7 @@ function ItemHubPageInner() {
   const canSeeCH = isOwnerOrJoe || perm('ch')
   // The C&H tab shows for full C&H access OR just the caretaker permission
   // (then only the Care rows, see the pane below).
-  const canSeeCHTab = canSeeCH || canSeeCaretake
+  const canSeeCHTab = canSeeCH || canSeeCaretake || perm('care_log')
   // Settings is worth opening if there's anything at all inside it --
   // Roles & Permissions itself stays canManage-only regardless (root config
   // shouldn't be grantable through the system it configures). Team no
@@ -6566,7 +6566,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.filter(item => (item.key !== 'ch_care_log' || isOwnerOrJoe) && (canSeeCH || item.key.startsWith('ch_care_'))).map((item, i) => (
+              {CH_ITEMS.filter(item => (item.key !== 'ch_care_log' || isOwnerOrJoe || perm('care_log')) && (canSeeCH || item.key.startsWith('ch_care_'))).map((item, i) => (
                 <div key={item.key}>
                   <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
