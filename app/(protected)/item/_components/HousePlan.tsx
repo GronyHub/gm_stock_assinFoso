@@ -19,6 +19,9 @@ const ROOMS: Room[] = [
   { id: 'beatrice', label: "Beatrice's room", x: 480, y: 150, w: 200, h: 110, area: "Beatrice's room", note: 'Its door opens onto the living room.' },
   { id: 'living', label: 'Living room', x: 360, y: 270, w: 320, h: 190, area: 'Living room', note: 'The children sleep here. Has its own exit door.' },
   { id: 'joe', label: "Joe's room", x: 20, y: 460, w: 280, h: 100, note: 'Door on the left of the corridor leg.' },
+  { id: 'veranda', label: 'Front veranda & gate', x: 320, y: 470, w: 360, h: 60, fill: '#ecfccb', note: 'Veranda with a pillar and a burglar-proof gate and door at the front of the house.' },
+  { id: 'backyard', label: 'Backyard: well & clothesline', x: 320, y: 540, w: 210, h: 100, fill: '#ecfccb', note: 'Covered well and the clothesline (washing and weeding happen here).' },
+  { id: 'tank', label: 'Water tank & pump', x: 540, y: 540, w: 140, h: 100, fill: '#cffafe', note: 'Water tank on a block tower. Turn on the water pumping machine to fill it; fetch water from here.' },
   { id: 'yard', label: 'Outside', x: 480, y: 20, w: 200, h: 120, fill: '#ecfccb', area: 'Outside & exits' },
 ]
 // Doors: [x, y, w, h, isExit]
@@ -42,7 +45,7 @@ export default function HousePlan() {
     <div className="max-w-2xl space-y-3 px-3 pb-16 pt-3">
       <h1 className="text-lg font-bold text-gray-900">House plan</h1>
       <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Draft layout drawn from the photos. If a room is in the wrong place, tell Claude which one and it will be moved.</p>
-      <svg viewBox="0 0 700 580" className="w-full rounded-xl border border-gray-200 bg-white" role="img" aria-label="Plan of the house">
+      <svg viewBox="0 0 700 660" className="w-full rounded-xl border border-gray-200 bg-white" role="img" aria-label="Plan of the house">
         {ROOMS.map(r => {
           const done = clean(r.area)
           const fill = r.fill ?? (done ? '#bbf7d0' : r.area ? '#e0f2fe' : '#e5e7eb')
@@ -58,7 +61,7 @@ export default function HousePlan() {
           )
         })}
         {DOORS.map(([x, y, w, h, exit], i) => <rect key={i} x={x} y={y} width={w} height={h} fill={exit ? '#dc2626' : '#f59e0b'} />)}
-        <text x="350" y="575" textAnchor="middle" fontSize="12" fill="#6b7280">Orange = door · Red = exit to outside · Green room = cleaned today (no cobwebs ticked)</text>
+        <text x="350" y="655" textAnchor="middle" fontSize="12" fill="#6b7280">Orange = door · Red = exit to outside · Green room = cleaned today (no cobwebs ticked)</text>
       </svg>
       {sel && (
         <div className="rounded-xl border border-gray-200 bg-white p-3">

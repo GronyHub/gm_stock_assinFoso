@@ -1,7 +1,6 @@
 import sql from './db'
 import { ensureCaretakerTables } from './caretaker'
-import { CHILDREN, HOUSE_AREAS, dayType, isSchoolDay, ROUTINE_GRACE_MIN } from './caretakerShared'
-import { getRoutineForTick } from './careRoutine'
+import { CHILDREN, HOUSE_AREAS, isSchoolDay } from './caretakerShared'
 
 // Scheduled caretaker reminders and missed-item alerts. Runs from
 // instrumentation.ts once a minute, but only touches the database at the
@@ -70,14 +69,15 @@ for (const p of ['Morning']) {
   ITEMS.push({ key: `rules-${p}-weekend`, time: '12:00', days: 'weekend', to: 'owners', title: 'Missed: house rules', build: rulesMissing(p) })
 }
 
-async function pushTo(who: 'owners' | 'caretaker', title: string, body: string) {
+async function pushTo(who: 'owners' | 'caretaker', title: string, body: string, exceptUser = '') {
   const email = process.env.VAPID_EMAIL, pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY
   if (!email || !pub || !priv) { console.error('careAlerts: VAPID keys not set -- alert not sent:', body); return }
   const webpush = (await import('web-push')).default
   webpush.setVapidDetails(email, pub, priv)
-  const subs = who === 'owners'
-    ? await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'owner' OR LOWER(au.username) = 'joe' OR au.id IN (SELECT user_id FROM user_permissions WHERE feature_key = 'care_log' AND allowed)`
-    : await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'children_manager'`
+  const all = who === 'owners'
+    ? await sql`SELECT ps.endpoint, ps.p256dh, ps.auth, ps.username FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'owner' OR LOWER(au.username) = 'joe' OR au.id IN (SELECT user_id FROM user_permissions WHERE feature_key = 'care_log' AND allowed)`
+    : await sql`SELECT ps.endpoint, ps.p256dh, ps.auth, ps.username FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username) WHERE au.role = 'children_manager'`
+  const subs = all.filter(s => !exceptUser || String(s.username ?? '').toLowerCase() !== exceptUser)
   const payload = JSON.stringify({ title, body })
   const results = await Promise.allSettled(subs.map(s => webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)))
   for (let i = 0; i < results.length; i++) {
@@ -96,21 +96,9 @@ export async function careAlertsTick(now = new Date()) {
   // claim below guarantees each alert is sent only once per day.
   const due = new Set([hhmm(now), hhmm(new Date(now.getTime() - 60000)), hhmm(new Date(now.getTime() - 120000))])
   const school = isSchoolDay(now)
-  const todays = ITEMS.filter(i => due.has(i.time) && (i.days === 'all' || (i.days === 'school' && school) || (i.days === 'weekend' && !school)))
-  // Important routine tiles: alert once if still unrecorded 30 minutes after their time.
-  const routineItems = await getRoutineForTick().catch(() => [])
-  const addMin = (hm: string) => { const t = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3)) + ROUTINE_GRACE_MIN; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` }
-  for (const r of routineItems) {
-    if (!r.important || r.day_type !== dayType(now) || !due.has(addMin(r.time))) continue
-    const kids: string[] = r.scope === 'all' ? [...CHILDREN] : [r.scope]
-    todays.push({
-      key: `routine-${r.id}`, time: addMin(r.time), days: 'all', to: 'owners', title: 'Missed: routine',
-      build: c => {
-        const m = kids.filter(k => !c.events.some(e => e.kind === 'routine' && e.child === k && e.extra?.routine_id === r.id))
-        return m.length ? `${r.time} "${r.title}" not recorded for: ${m.join(', ')}` : null
-      },
-    })
-  }
+  const todays = ITEMS.filter(i => i.to === 'caretaker' && due.has(i.time) && (i.days === 'all' || (i.days === 'school' && school) || (i.days === 'weekend' && !school)))
+  // Missed-item alerts to the owners are switched off for now (owner's choice):
+  // owners are notified when a record is made instead, see notifyRecord().
   if (!todays.length) return
 
   await ensureCaretakerTables()
@@ -139,4 +127,11 @@ export async function careAlertsTick(now = new Date()) {
       console.error('careAlerts error:', item.key, e instanceof Error ? e.message : String(e))
     }
   }
+}
+
+// Tells the owners (and Marian) that someone just recorded or tapped something.
+// Never throws and never blocks the save; the person who tapped is not told.
+export function notifyRecord(by: string, body: string) {
+  if (process.env.CARETAKER_ALERTS === 'off') return
+  void pushTo('owners', 'Care record', `${body} (${by})`, by.toLowerCase()).catch(e => console.error('notifyRecord:', e instanceof Error ? e.message : String(e)))
 }

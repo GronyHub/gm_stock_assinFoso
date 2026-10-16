@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { success, badRequest, unauthorized } from '@/lib/api'
 import { canCaretake, caretakerName, ensureCaretakerTables } from '@/lib/caretaker'
 import { CHILDREN } from '@/lib/caretakerShared'
+import { notifyRecord } from '@/lib/careAlerts'
 
 // POST { routine_id, done: string[], not_done?: string[], note? }
 // Writes one care_events row per child (value 'Done' or 'Not done'), stamped
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
         inserted.push(row)
       }
     }
+    const parts = [done.length ? `${item.title} done: ${done.join(', ')}` : '', notDone.length ? `${item.title} NOT done: ${notDone.join(', ')}` : ''].filter(Boolean)
+    notifyRecord(who, parts.join('; '))
     return success(inserted, 201)
   } catch (e) {
     console.error('routine complete error:', e instanceof Error ? e.message : String(e))

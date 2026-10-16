@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { success, badRequest, unauthorized } from '@/lib/api'
 import { canCaretake, caretakerName, ensureCaretakerTables } from '@/lib/caretaker'
 import { CHILDREN } from '@/lib/caretakerShared'
+import { notifyRecord } from '@/lib/careAlerts'
 
 const KINDS = new Set(['wake', 'health', 'meal', 'behaviour', 'school_need', 'homework', 'skin', 'hair', 'activity', 'night', 'house', 'routine'])
 
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
       VALUES (${child}, ${b.kind}, ${value}, ${note}, ${photo}, ${extra}::jsonb, ${caretakerName(session)})
       RETURNING id, child, kind, value, note, photo_url, extra, recorded_by, recorded_at
     `
+    notifyRecord(caretakerName(session), `${child ?? 'House'}: ${b.kind}${value ? ' - ' + value : ''}${note ? ' (' + note.slice(0, 60) + ')' : ''}`)
     return success(row, 201)
   } catch (e) {
     console.error('caretaker events POST error:', e instanceof Error ? e.message : String(e))

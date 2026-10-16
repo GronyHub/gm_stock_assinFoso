@@ -31,7 +31,7 @@ export const OPTIONS: Record<string, { label: string; values: string[]; note?: b
   hair:        { label: 'Hair check', values: ['Neat', 'Bushy', 'Needs combing / plaiting'], note: true, photo: false },
 }
 
-export const HOUSE_CHORES = ['Ironing', 'Mopping', 'Sweeping', 'Fetching water', 'Turning on water pump', 'Cooking', 'Scrubbing', 'Removing cobwebs', 'Weeding', 'Washing clothes', 'Washing dishes', 'Cleaning bathroom', 'Dusting', 'Rubbish disposal']
+export const HOUSE_CHORES = ['Ironing', 'Mopping', 'Sweeping', 'Fetching water', 'Turning on water pump', 'Cooking', 'Scrubbing', 'Removing cobwebs', 'Weeding', 'Washing clothes', 'Washing dishes', 'Cleaning bathroom', 'Dusting', 'Rubbish disposal', 'Making bed', 'Tidying room', 'Washing own clothes', 'Polishing shoes', 'Setting table', 'Packing school bag']
 export const ACTIVITIES =['Walk', 'Cooking', 'Cleaning together', 'Games', 'Reading', 'Homework help', 'Watching TV together', 'Prayers', 'Singing', 'Other']
 
 export const HOUSE_AREAS = [
