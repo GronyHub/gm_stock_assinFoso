@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { success, badRequest, unauthorized } from '@/lib/api'
-import { canCaretake, canManageRoutine } from '@/lib/caretaker'
+import { canCaretake, canManageRoutine, canSeeCH } from '@/lib/caretaker'
 import { ensureCareJob, JOB_SECTIONS } from '@/lib/careJob'
 
 // GET -> the rules, each with the signatures that still count (same version).
@@ -16,8 +16,13 @@ export async function GET() {
     const signs = await sql`SELECT s.rule_id, s.signed_name, s.signed_by, s.signed_at FROM care_job_signs s
       JOIN care_job_rules r ON r.id = s.rule_id AND r.version = s.rule_version WHERE r.active ORDER BY s.signed_at`
     const u = session.user as { role?: string | null }
+    // Private observations about the caretaker: only for people who may see C&H, never her.
+    const canObserve = await canSeeCH(session)
+    const obs = canObserve ? await sql`SELECT id, rule_id, kind, note, obs_date::text AS obs_date, logged_by FROM care_job_obs ORDER BY obs_date DESC, id DESC` : []
     return success({
-      rules: rules.map(r => ({ ...r, signs: signs.filter(s => s.rule_id === r.id) })),
+      canObserve,
+      general: obs.filter(o => o.rule_id == null),
+      rules: rules.map(r => ({ ...r, signs: signs.filter(s => s.rule_id === r.id), obs: obs.filter(o => o.rule_id === r.id) })),
       canEdit: await canManageRoutine(session),
       canSign: u.role === 'children_manager',
     })

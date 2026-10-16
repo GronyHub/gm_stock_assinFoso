@@ -34,6 +34,9 @@ async function ensureImpl() {
   await sql`CREATE TABLE IF NOT EXISTS care_job_signs (
     id SERIAL PRIMARY KEY, rule_id INTEGER NOT NULL, rule_version INTEGER NOT NULL, rule_text TEXT NOT NULL,
     signed_name TEXT NOT NULL, signed_by TEXT NOT NULL, signed_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
+  await sql`CREATE TABLE IF NOT EXISTS care_job_obs (
+    id SERIAL PRIMARY KEY, rule_id INTEGER, kind TEXT NOT NULL DEFAULT 'note', note TEXT NOT NULL,
+    obs_date DATE NOT NULL DEFAULT CURRENT_DATE, logged_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM care_job_rules`
   if (n === 0) for (let i = 0; i < SEED.length; i++) await sql`INSERT INTO care_job_rules (section, text, position) VALUES (${SEED[i][0]}, ${SEED[i][1]}, ${i + 1})`.catch(() => {})
 }
