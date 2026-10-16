@@ -87,3 +87,17 @@ export async function canManageRoutine(session: SessionLike): Promise<boolean> {
 export function isOwnerSession(session: SessionLike): boolean {
   return !!session?.user && isOwnerLevel(session.user as { role?: string; username?: string; name?: string | null })
 }
+
+// Private C&H pages (observations about the caretaker etc.): owners and anyone
+// granted the 'ch' permission (e.g. Marian) -- never the caretaker herself.
+export async function canSeeCH(session: SessionLike): Promise<boolean> {
+  const u = session?.user as { id?: string; role?: string | null; username?: string | null; name?: string | null } | undefined
+  if (!u || u.role === 'children_manager') return false
+  if (isOwnerLevel(u)) return true
+  const id = Number(u.id)
+  if (!id) return false
+  try {
+    const rows = await sql`SELECT allowed FROM user_permissions WHERE user_id = ${id} AND feature_key = 'ch'`
+    return !!rows[0]?.allowed
+  } catch { return false }
+}

@@ -2,7 +2,7 @@
 // (see manageViewData.ts/staffViewData.ts for that split's reasoning) since
 // C&H is its own private area with no relationship to any of them.
 export type CHView =
-  | 'ch_care_today' | 'ch_care_rules' | 'ch_care_log' | 'ch_care_routine' | 'ch_care_plan'
+  | 'ch_care_today' | 'ch_care_rules' | 'ch_care_job' | 'ch_obs' | 'ch_care_log' | 'ch_care_routine' | 'ch_care_plan'
   | 'ch_fiifi' | 'ch_kuukua' | 'ch_ebo' | 'ch_odoye'
   | 'ch_inside_house' | 'ch_outside_house' | 'ch_other_land'
   | 'ch_car_to_school' | 'ch_visitors' | 'ch_personal'
@@ -11,6 +11,9 @@ export const CH_ITEMS: { key: CHView; label: string; icon: string }[] = [
   // Caretaker area (Beatrice's one-tap records + the owners' log of them).
   { key: 'ch_care_today', label: 'Care Today', icon: '🧒' },
   { key: 'ch_care_rules', label: 'House Rules', icon: '✅' },
+  { key: 'ch_care_job', label: 'Job & Rules', icon: '📜' },
+  // Private notes about the caretaker -- key deliberately NOT ch_care_*, so she never sees it.
+  { key: 'ch_obs', label: 'Observations', icon: '👁️' },
   { key: 'ch_care_log', label: 'Care Log', icon: '📒' },
   { key: 'ch_care_routine', label: 'Routine', icon: '🗓️' },
   { key: 'ch_care_plan', label: 'House Plan', icon: '🗺️' },

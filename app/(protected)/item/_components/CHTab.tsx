@@ -8,6 +8,7 @@ import CareToday from './CareToday'
 import CareLog from './CareLog'
 import CareRoutineEditor from './CareRoutineEditor'
 import HousePlan from './HousePlan'
+import ContentPage from './ContentPage'
 import { CareRules } from './CareChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { CH_ITEMS, CH_CHILD_PERSON, type CHView } from './chViewData'
@@ -53,6 +54,7 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
   // Caretaker pages: Beatrice (role children_manager) and the owners.
   if (view === 'ch_care_today') return <CareToday />
   if (view === 'ch_care_rules') return <CareRules />
+  if (view === 'ch_care_job') return <ContentPage contentKey="ch_job_rules" title="Job & Rules" />
   // Everyone who can use the care pages sees the same pages -- the Log and
   // the Routine included. Only changing the routine itself stays with the
   // owners and the care supervisors.

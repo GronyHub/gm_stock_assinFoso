@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
+import { canSeeCH } from '@/lib/caretaker'
 import { NextRequest } from 'next/server'
 
 // Daily checklist/log entries for the Grony Manage categories that have no
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest) {
 
   // Regular category view
   if (!category) return badRequest('Missing category')
+  if (category.startsWith('ch_') && !(await canSeeCH(session))) return success([])
   // Restricts to one staff member's own entries (who the entry is ABOUT,
   // not who wrote it) -- used by a staff member's personal page so it shows
   // a filtered slice of team_behaviour_log/staff_display instead of the
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
   if (!category || typeof category !== 'string') {
     return badRequest('Missing category')
   }
+  if (category.startsWith('ch_') && !(await canSeeCH(session))) return badRequest('Not allowed')
   if (!notes && !photo_url) {
     return badRequest('Add a note or a photo')
   }

@@ -30,6 +30,38 @@ const ensureManageContent = once(async () => {
 // Grony Manage tabs" layout the app no longer has). Both pages that used to
 // show this key are gone; nothing reads it any more.
 const DEFAULTS: Record<string, string> = {
+  ch_job_rules: `# Caretaker: Job & Rules
+
+*Draft written from what the owner has said so far. The owner edits this page with the Edit button.*
+
+## Your job
+You are the caretaker of the house and look after the four children: Fiifi, Kuukua, Ebo and Odoye. You keep them safe, healthy, clean, fed, on time and well behaved, and you keep the house clean.
+
+## Your responsibilities
+- Get the children up by 5:30am, teeth brushed by 5:45am, bathed by 6:30am, dressed by 6:45am, breakfast finished by 7:15am, and leaving for school by 7:30am (Monday to Friday).
+- Receive them back from school at 4:30pm: they undress and put on house clothes, then eat at 6:30pm and bathe after supper.
+- Sweep the house at 8pm and have the children in bed by 8:30pm.
+- Do the night checks at 10pm, 1am and 4am for every child: fan, mosquitoes, posture, bedwetting (especially Fiifi), and that they are covered and safe.
+- Watch the children's health, food, skin, hair, school needs, homework and behaviour, and record them.
+- Tap each tile in Care Today when it is done, and log extra activities, house chores and behaviour. Records show the real time.
+- Take the daily bathroom photos and keep every room clean, with no cobwebs.
+- Do the house chores: sweeping, mopping, washing, ironing, cooking, fetching water, turning on the water pumping machine, weeding and the rest. The children help with age-suitable chores.
+
+## Do
+- Sit with the children and give them your attention.
+- Record things as they happen, not later from memory.
+- Tell the owners at once about any illness, injury, fight, or anything unusual.
+- Keep the house, bathrooms, kitchen, yard and water area clean.
+- Keep the gate and doors locked at night.
+
+## Don't
+- Do not make or take phone calls near the children.
+- Do not leave the children alone or unchecked at night.
+- Do not leave cobwebs, dirt or rubbish in the house.
+- Do not tap a tile for something that was not done.
+- Do not let visitors in without the owners knowing.
+
+*More rules will be added here as the owner confirms them.*`,
   training_laws: `# Company Laws
 
 No company policies have been added here yet -- the owner will add them.`,
