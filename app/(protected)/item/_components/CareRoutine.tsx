@@ -26,6 +26,7 @@ export type Tile = {
   important: boolean
   item: RoutineItem | null     // null = an extra activity or a night check
   kind: 'routine' | 'extra' | 'night'
+  date?: string                // the day this tile belongs to (YYYY-MM-DD)
   slot?: string                // night checks: '22:00' | '01:00' | '04:00'
   night?: string               // night checks: the evening the night began (YYYY-MM-DD)
   ev?: CareEvent               // the record, once tapped
@@ -47,20 +48,20 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
     const kids = item.scope === 'all' ? [...CHILDREN] : [item.scope]
     for (const child of kids) {
       if (childFilter && child !== childFilter) continue
-      const ev = offset === 0
+      const ev = offset <= 0
         ? routineEvents.find(e => e.child === child && (e.extra as { routine_id?: number } | null)?.routine_id === item.id)
         : undefined
       const state: Tile['state'] = offset > 0 ? 'future'
         : ev ? (ev.value === 'Not done' ? 'notdone' : 'done')
         : routineState(item, false, nowMin)
-      tiles.push({ key: `${item.id}-${child}`, child, time: item.time, title: item.title, important: item.important, item, kind: 'routine', ev, state })
+      tiles.push({ key: `${item.id}-${child}`, child, time: item.time, title: item.title, important: item.important, item, kind: 'routine', date: dayKey(date), ev, state })
     }
   }
-  if (offset === 0) {
+  if (offset <= 0) {
     for (const e of routineEvents) {
       const x = e.extra as { adhoc?: boolean; title?: string } | null
       if (!x?.adhoc || !e.child || (childFilter && e.child !== childFilter)) continue
-      tiles.push({ key: `adhoc-${e.id}`, child: e.child, time: hhmm(e.recorded_at), title: x.title ?? 'Extra activity', important: false, item: null, kind: 'extra', ev: e, state: 'done' })
+      tiles.push({ key: `adhoc-${e.id}`, child: e.child, time: hhmm(e.recorded_at), title: x.title ?? 'Extra activity', important: false, item: null, kind: 'extra', date: dayKey(date), ev: e, state: 'done' })
     }
   }
   // Night checks (10pm, 1am, 4am) are tiles too. The 1am and 4am checks of a
@@ -70,12 +71,12 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
     const night = slot === '22:00' ? dayKey(date) : dayKey(prev)
     for (const child of CHILDREN) {
       if (childFilter && child !== childFilter) continue
-      const ev = offset === 0
+      const ev = offset <= 0
         ? events.find(e => e.kind === 'night' && e.child === child && (e.extra as { night?: string; slot?: string } | null)?.night === night && (e.extra as { slot?: string } | null)?.slot === slot)
         : undefined
       const m = minutesOf(slot)
       const state: Tile['state'] = offset > 0 ? 'future' : ev ? 'done' : nowMin >= m + ROUTINE_GRACE_MIN ? 'overdue' : nowMin >= m ? 'due' : 'upcoming'
-      tiles.push({ key: `night-${slot}-${child}`, child, time: slot, title: 'Night check', important: false, item: null, kind: 'night', slot, night, ev, state })
+      tiles.push({ key: `night-${slot}-${child}`, child, time: slot, title: 'Night check', important: false, item: null, kind: 'night', date: dayKey(date), slot, night, ev, state })
     }
   }
   // Chronological: a recorded tile sits at the minute it was really tapped, a
@@ -136,7 +137,7 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
   items: RoutineItem[]; events: CareEvent[]; photos: Record<string, string | null>; date: Date; offset: number; now: Date
   childFilter?: string | null; onTap: (t: Tile) => void; onEdit: (t: Tile) => void
 }) {
-  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
+  const nowMin = offset < 0 ? 1440 : now.getUTCHours() * 60 + now.getUTCMinutes()
   const tiles = buildTiles(items, events, date, offset, childFilter, nowMin)
   if (!tiles.length) return <p className="text-xs text-gray-400">Nothing planned.</p>
   // Runs of neighbouring tiles with the same activity share one label (max 4 a run).
@@ -154,7 +155,7 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
           <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
           <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
             {g.tiles.map(t => (
-              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0}
+              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 || (offset < 0 && (t.kind !== 'night' || !!t.ev))}
                 onTap={() => onTap(t)} onEdit={() => onEdit(t)} />
             ))}
           </div>
@@ -245,7 +246,7 @@ const MINUTE_CHOICES = [5, 10, 15, 20, 30, 45, 60]
 
 // Long-press / tap-on-record sheet for one tile: record Done / Not done, say
 // how long it took, add a note, flip the answer, or revert it entirely.
-export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: string | null; onClose: () => void; onSaved: (msg: string) => void }) {
+export function TileSheet({ t, photo, past = false, onClose, onSaved }: { t: Tile; photo?: string | null; past?: boolean; onClose: () => void; onSaved: (msg: string) => void }) {
   const ex = (t.ev?.extra ?? {}) as { minutes?: number; support?: 'alone' | 'support' }
   const ex2 = (t.ev?.extra ?? {}) as { done_at?: string }
   const [doneAt, setDoneAt] = useState(ex2.done_at ?? '')
@@ -271,7 +272,7 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
   const json = { 'Content-Type': 'application/json' }
   const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/caretaker/routine/complete', {
     method: 'POST', headers: json,
-    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, support: support ?? undefined, done_at: doneAt || undefined, note: note || undefined }),
+    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, support: support ?? undefined, done_at: doneAt || (past ? t.time : undefined), date: past ? t.date : undefined, note: note || undefined }),
   }), `${value}: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)
   const patch = (body: Record<string, unknown>, msg: string) => run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify(body) }), msg)
   const revert = () => { if (confirm(`Remove this record and put "${t.title}" back to waiting for ${t.child}?`)) void run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'DELETE' }), `Reverted: ${t.child} · ${t.title}`) }
@@ -288,7 +289,7 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
           <Avatar name={t.child} url={photo} ring={RING[t.state]} />
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-gray-900">{t.child} · {t.title}</p>
-            <p className="text-xs text-gray-500">{t.ev ? `${t.ev.value === 'Not done' ? 'Not done' : 'Done'} at ${evTime(t.ev)} (logged ${hhmm(t.ev.recorded_at)}) by ${t.ev.recorded_by}` : `Planned ${t.time} · not recorded yet`}</p>
+            <p className="text-xs text-gray-500">{t.ev ? `${t.ev.value === 'Not done' ? 'Not done' : 'Done'}${past ? ' on ' + t.date : ''} at ${evTime(t.ev)} (logged ${hhmm(t.ev.recorded_at)}) by ${t.ev.recorded_by}` : `Planned ${t.time} · not recorded yet`}</p>
           </div>
         </div>
 
@@ -299,9 +300,9 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
               className={`flex-1 rounded-xl py-2.5 text-sm font-bold ${support === k ? (k === 'alone' ? 'bg-green-600 text-white' : 'bg-orange-500 text-white') : 'bg-gray-100 text-gray-700'}`}>{label}</button>
           ))}
         </div>
-        <p className="text-xs font-bold uppercase text-gray-500">Time it was done {t.ev ? `(logged at ${hhmm(t.ev.recorded_at)})` : '(blank = now)'}</p>
+        <p className="text-xs font-bold uppercase text-gray-500">Time it was done {t.ev ? `(logged at ${hhmm(t.ev.recorded_at)})` : past ? `(blank = planned ${t.time})` : '(blank = now)'}</p>
         <div className="flex flex-wrap items-center gap-2">
-          {[5, 10, 15, 30, 60].map(m => (
+          {(past ? [] : [5, 10, 15, 30, 60]).map(m => (
             <button key={m} type="button" onClick={() => { const base = t.ev ? new Date(t.ev.recorded_at) : new Date(); const d = new Date(base.getTime() - m * 60000); setDoneAt(`${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`) }}
               className="rounded-full bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-800">{m} min ago</button>
           ))}

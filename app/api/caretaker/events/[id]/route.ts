@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!b.done_at) delete extra.done_at
     else {
       const rec = new Date(row.recorded_at as string)
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.done_at) || Number(b.done_at.slice(0, 2)) * 60 + Number(b.done_at.slice(3)) > rec.getUTCHours() * 60 + rec.getUTCMinutes()) return badRequest('The time done cannot be later than when it was logged')
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.done_at) || Number(b.done_at.slice(0, 2)) * 60 + Number(b.done_at.slice(3)) > rec.getUTCHours() * 60 + rec.getUTCMinutes() && rec.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)) return badRequest('The time done cannot be later than when it was logged')
       extra.done_at = b.done_at
     }
   }

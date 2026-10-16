@@ -8,6 +8,34 @@ type ChildInfo = { name: string; photo_url: string | null }
 
 // Beatrice's home screen: a tile per child, one-tap records, school run,
 // activities and bedtime. Every record is stamped with the SERVER's time.
+// Earlier days: pick one of the last 7 days and fix its tiles (record a missed
+// one at the right time, change Done / Not done, time taken, support, revert).
+function PastDays({ routine, photos, now, flash }: { routine: RoutineItem[]; photos: Record<string, string | null>; now: Date; flash: (m: string) => void }) {
+  const [back, setBack] = useState(0)
+  const [pick, setPick] = useState<Tile | null>(null)
+  const d = new Date(now.getTime() - back * 86400000)
+  const { events, refresh } = useCareEvents(dayKey(d), back ? 120000 : 3600000)
+  return (
+    <section className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <h2 className="mr-1 text-sm font-bold text-gray-800">Earlier days</h2>
+        {[1, 2, 3, 4, 5, 6, 7].map(n => {
+          const x = new Date(now.getTime() - n * 86400000)
+          return <button key={n} type="button" onClick={() => setBack(back === n ? 0 : n)}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${back === n ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{x.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })}</button>
+        })}
+      </div>
+      {back > 0 && (
+        <>
+          <p className="text-[11px] text-gray-500">Tap a tile to record it at the right time, or change what was recorded.</p>
+          <DayTiles items={routine} events={events} photos={photos} date={d} offset={-back} now={now} onTap={setPick} onEdit={setPick} />
+        </>
+      )}
+      {pick && <TileSheet key={pick.key} t={pick} photo={photos[pick.child]} past onClose={() => setPick(null)} onSaved={msg => { flash(msg); void refresh() }} />}
+    </section>
+  )
+}
+
 export default function CareToday() {
   const date = dayKey()
   const { events, error, refresh } = useCareEvents(date)
@@ -115,6 +143,8 @@ export default function CareToday() {
           )
         })}
       </section>
+
+      <PastDays routine={routine.items} photos={photos} now={now} flash={flash} />
 
       <section className="space-y-2">
         <h2 className="text-sm font-bold text-gray-700">House</h2>
