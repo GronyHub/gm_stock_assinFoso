@@ -54,6 +54,8 @@ import { COLUMNS as EXPENSES_COLUMNS, type ColKey as ExpensesColKey } from './_c
 import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
+import CareChildTiles from './_components/CareChildTiles'
+import { requestOpenChild } from './_components/careUtils'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -6564,6 +6566,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
+              {(canSeeCH || canSeeCaretake || perm('care_log')) && (
+                <CareChildTiles onOpen={name => { if (lossView !== 'ch_care_today') pickCHView('ch_care_today'); requestOpenChild(name) }} />
+              )}
               {CH_ITEMS.filter(item => (canSeeCH || item.key.startsWith('ch_care_'))
                 && (item.key !== 'ch_personal' || isOwnerOrJoe)
                 && (!CH_CHILD_PERSON[item.key] || canSeeUK)).map((item, i) => (

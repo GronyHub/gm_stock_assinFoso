@@ -21,6 +21,14 @@ export default function CareToday() {
   const photos: Record<string, string | null> = Object.fromEntries(children.map(c => [c.name, c.photo_url]))
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t) }, [])
+  // A tile in the left pane asks for a child's page to open.
+  useEffect(() => {
+    const open = (name?: string) => { if (name && (CHILDREN as readonly string[]).includes(name)) setOpenChild(name) }
+    open(window.__careOpenChild); window.__careOpenChild = undefined
+    const handler = (e: Event) => { open((e as CustomEvent<string>).detail); window.__careOpenChild = undefined }
+    window.addEventListener('care-open-child', handler)
+    return () => window.removeEventListener('care-open-child', handler)
+  }, [])
   useEffect(() => {
     fetch('/api/caretaker/children').then(r => r.json()).then(d => { if (Array.isArray(d)) setChildren(d) }).catch(() => {})
   }, [])
@@ -77,36 +85,8 @@ export default function CareToday() {
   ]
 
   return (
-    <div className="px-3 pt-3 pb-24 space-y-4 max-w-xl mx-auto">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Care today</h1>
-        <p className="text-sm text-gray-500 tabular-nums">{date} · {clock} GMT</p>
-      </div>
+    <div className="px-2 pt-2 pb-24 space-y-3 max-w-xl mx-auto">
       {error && <p className="text-xs text-red-600">Couldn&apos;t refresh the records. Your taps still save.</p>}
-
-      <div className="grid grid-cols-2 gap-3">
-        {children.map(c => {
-          const mine = events.filter(e => e.child === c.name)
-          const woke = mine.find(e => e.kind === 'wake')
-          const last = mine.at(-1)
-          return (
-            <button key={c.name} type="button" onClick={() => setOpenChild(c.name)}
-              className="rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-sm active:bg-blue-50">
-              <div className="flex items-center gap-3">
-                {c.photo_url
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={c.photo_url} alt={c.name} className="h-14 w-14 rounded-full object-cover" />
-                  : <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">{c.name[0]}</span>}
-                <div className="min-w-0">
-                  <p className="font-bold text-gray-900">{c.name}</p>
-                  <p className="text-[11px] text-gray-500">{woke ? `Woke ${hhmm(woke.recorded_at)}` : 'Not woken yet'}</p>
-                </div>
-              </div>
-              <p className="mt-2 truncate text-[11px] text-gray-500">{last ? `Last: ${last.kind.replace('_', ' ')}${last.value ? ` · ${last.value}` : ''} ${hhmm(last.recorded_at)}` : 'No records yet'}</p>
-            </button>
-          )
-        })}
-      </div>
 
       <section className="space-y-4">
         {routine.error && <p className="text-xs text-red-600">Couldn&apos;t load the routine.</p>}
@@ -116,7 +96,7 @@ export default function CareToday() {
           return (
             <div key={offset} className="space-y-2">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-gray-800">{label} · {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}</h2>
+                <h2 className="text-sm font-bold text-gray-800">{label} · {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}{offset === 0 ? ` · ${clock}` : ''}</h2>
                 {offset === 0 && <button type="button" onClick={() => setAddExtra(true)} className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-bold text-white">+ Extra activity</button>}
               </div>
               {offset > 0 && <p className="text-[11px] text-gray-500">Look only. These can be recorded on the day.</p>}

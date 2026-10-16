@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACTIVITIES, CHILDREN, dayType, minutesOf, routineState, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { hhmm } from './careUtils'
 
@@ -59,23 +59,52 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
   return tiles.sort((a, b) => minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
 }
 
-const STYLE: Record<Tile['state'], string> = {
-  done: 'border-green-300 bg-green-50',
-  notdone: 'border-gray-300 bg-gray-100 opacity-80',
-  overdue: 'border-red-300 bg-red-50',
-  due: 'border-amber-300 bg-amber-50',
-  upcoming: 'border-gray-200 bg-white',
-  future: 'border-gray-200 bg-gray-50',
+const RING: Record<Tile['state'], string> = {
+  done: 'ring-green-500',
+  notdone: 'ring-gray-400',
+  overdue: 'ring-red-500',
+  due: 'ring-amber-400',
+  upcoming: 'ring-gray-300',
+  future: 'ring-gray-200',
+}
+const TIME_COLOR: Record<Tile['state'], string> = {
+  done: 'text-green-700', notdone: 'text-gray-500', overdue: 'text-red-600', due: 'text-amber-600', upcoming: 'text-gray-600', future: 'text-gray-400',
 }
 
-function Avatar({ name, url }: { name: string; url?: string | null }) {
+function Avatar({ name, url, ring }: { name: string; url?: string | null; ring?: string }) {
+  const cls = `h-7 w-7 shrink-0 rounded-full ring-2 ${ring ?? 'ring-transparent'}`
   return url
     // eslint-disable-next-line @next/next/no-img-element
-    ? <img src={url} alt={name} className="h-9 w-9 shrink-0 rounded-full object-cover" />
-    : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{name[0]}</span>
+    ? <img src={url} alt={name} className={`${cls} object-cover`} />
+    : <span className={`${cls} flex items-center justify-center bg-blue-100 text-xs font-bold text-blue-700`}>{name[0]}</span>
 }
 
-// A day's tiles wrapped into rows (scroll down, no sideways swiping).
+// One tiny tile = the child's photo + a time. Tap = done now. Press and hold
+// (about half a second) = "not done".
+function TileButton({ t, photo, live, onTap, onSkip }: { t: Tile; photo?: string | null; live: boolean; onTap: () => void; onSkip: () => void }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const held = useRef(false)
+  const show = t.ev ? hhmm(t.ev.recorded_at) : t.time
+  return (
+    <button type="button" disabled={!live} title={`${t.child}: ${t.title}`}
+      onPointerDown={() => { held.current = false; if (live && (t.state === 'overdue' || t.state === 'due')) timer.current = setTimeout(() => { held.current = true; onSkip() }, 600) }}
+      onPointerUp={() => { if (timer.current) clearTimeout(timer.current); if (live && !held.current) onTap() }}
+      onPointerLeave={() => { if (timer.current) clearTimeout(timer.current) }}
+      onContextMenu={e => e.preventDefault()}
+      className="flex min-w-0 flex-1 select-none flex-col items-center gap-0.5 rounded-md py-0.5 disabled:cursor-default active:bg-gray-100">
+      <span className="relative">
+        <Avatar name={t.child} url={photo} ring={RING[t.state]} />
+        {t.state === 'done' && <span className="absolute -right-1 -top-1 rounded-full bg-green-600 px-[3px] text-[7px] leading-3 text-white">✓</span>}
+        {t.state === 'notdone' && <span className="absolute -right-1 -top-1 rounded-full bg-gray-500 px-[3px] text-[7px] leading-3 text-white">✕</span>}
+      </span>
+      <span className={`text-[9px] font-bold leading-none tabular-nums ${TIME_COLOR[t.state]}`}>{show}</span>
+    </button>
+  )
+}
+
+// A day's tiles. Tiles sharing an activity form a group: the activity name once,
+// above its children's tiles, two groups per row (8 tiles a row). The tiles wrap
+// into rows, so the day is read by scrolling down, not sideways.
 export function DayTiles({ items, events, photos, date, offset, now, childFilter = null, onTap, onSkip }: {
   items: RoutineItem[]; events: CareEvent[]; photos: Record<string, string | null>; date: Date; offset: number; now: Date
   childFilter?: string | null; onTap: (t: Tile) => void; onSkip: (t: Tile) => void
@@ -83,38 +112,26 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
   const tiles = buildTiles(items, events, date, offset, childFilter, nowMin)
   if (!tiles.length) return <p className="text-xs text-gray-400">Nothing planned.</p>
+  const groups: { key: string; title: string; time: string; important: boolean; tiles: Tile[] }[] = []
+  for (const t of tiles) {
+    const key = t.item ? `${t.time}|${t.title}` : `x|${t.title}|${t.time}`
+    let g = groups.find(x => x.key === key)
+    if (!g) { g = { key, title: t.title, time: t.time, important: t.important, tiles: [] }; groups.push(g) }
+    g.tiles.push(t)
+  }
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {tiles.map(t => {
-        const live = offset === 0 && !t.ev && t.item
-        return (
-          <div key={t.key} className={`flex flex-col rounded-xl border p-2 ${STYLE[t.state]}`}>
-            <button type="button" disabled={!live} onClick={() => onTap(t)} className="flex-1 text-left disabled:cursor-default active:opacity-70">
-              <div className="flex items-center gap-2">
-                <Avatar name={t.child} url={photos[t.child]} />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-gray-900">{t.child}</p>
-                  <p className="text-[11px] tabular-nums text-gray-500">
-                    {t.item ? `Plan ${t.time}` : 'Extra'}{t.important ? ' · Important' : ''}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-1.5 text-sm font-semibold leading-snug text-gray-900">{t.title}</p>
-              <p className={`mt-1 text-[11px] font-bold ${t.state === 'done' ? 'text-green-700' : t.state === 'overdue' ? 'text-red-700' : t.state === 'due' ? 'text-amber-700' : 'text-gray-500'}`}>
-                {t.state === 'done' && t.ev ? `✓ Done ${hhmm(t.ev.recorded_at)}`
-                  : t.state === 'notdone' && t.ev ? `Not done ${hhmm(t.ev.recorded_at)}`
-                  : t.state === 'overdue' ? 'OVERDUE · tap when done'
-                  : t.state === 'due' ? 'Due now · tap when done'
-                  : t.state === 'upcoming' ? 'Tap when done'
-                  : 'Planned'}
-              </p>
-            </button>
-            {live && (t.state === 'overdue' || t.state === 'due') && (
-              <button type="button" onClick={() => onSkip(t)} className="mt-1 self-end text-[10px] font-semibold text-gray-500 underline">Not done</button>
-            )}
+    <div className="flex flex-wrap gap-x-2 gap-y-2.5">
+      {groups.map(g => (
+        <div key={g.key} className={childFilter ? 'w-[calc(25%-6px)]' : 'w-[calc(50%-4px)]'}>
+          <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
+          <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
+            {g.tiles.map(t => (
+              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 && !t.ev && !!t.item}
+                onTap={() => onTap(t)} onSkip={() => onSkip(t)} />
+            ))}
           </div>
-        )
-      })}
+        </div>
+      ))}
     </div>
   )
 }

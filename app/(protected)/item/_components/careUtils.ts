@@ -65,3 +65,12 @@ export function useCareEvents(date: string, pollMs = 60000) {
   }, [refresh, pollMs])
   return { events, error, refresh, setEvents }
 }
+
+// The four child tiles live in the left pane (CareChildTiles); tapping one asks
+// Care Today to open that child's page. `pending` covers the case where Care
+// Today is not on screen yet and mounts a moment later.
+declare global { interface Window { __careOpenChild?: string } }
+export function requestOpenChild(name: string) {
+  window.__careOpenChild = name
+  window.dispatchEvent(new CustomEvent('care-open-child', { detail: name }))
+}
