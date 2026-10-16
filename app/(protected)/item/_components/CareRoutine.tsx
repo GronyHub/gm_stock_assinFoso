@@ -99,15 +99,16 @@ function Avatar({ name, url, ring }: { name: string; url?: string | null; ring?:
 }
 
 // One tiny tile = the child's photo + a time. Tap = done now. Press and hold
-// (about half a second) = "not done".
-function TileButton({ t, photo, live, onTap, onSkip }: { t: Tile; photo?: string | null; live: boolean; onTap: () => void; onSkip: () => void }) {
+// (about half a second) = edit sheet (done / not done / time taken / revert).
+// Tapping a tile that already has a record opens the same sheet.
+function TileButton({ t, photo, live, onTap, onEdit }: { t: Tile; photo?: string | null; live: boolean; onTap: () => void; onEdit: () => void }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
   const show = t.ev ? hhmm(t.ev.recorded_at) : t.time
   return (
     <button type="button" disabled={!live} title={`${t.child}: ${t.title}`}
-      onPointerDown={() => { held.current = false; if (live && t.kind === 'routine' && (t.state === 'overdue' || t.state === 'due')) timer.current = setTimeout(() => { held.current = true; onSkip() }, 600) }}
-      onPointerUp={() => { if (timer.current) clearTimeout(timer.current); if (live && !held.current) onTap() }}
+      onPointerDown={() => { held.current = false; if (live) timer.current = setTimeout(() => { held.current = true; onEdit() }, 600) }}
+      onPointerUp={() => { if (timer.current) clearTimeout(timer.current); if (live && !held.current) { if (t.ev) onEdit(); else onTap() } }}
       onPointerLeave={() => { if (timer.current) clearTimeout(timer.current) }}
       onContextMenu={e => e.preventDefault()}
       className="flex min-w-0 flex-1 select-none flex-col items-center gap-0.5 rounded-md py-0.5 disabled:cursor-default active:bg-gray-100">
@@ -124,9 +125,9 @@ function TileButton({ t, photo, live, onTap, onSkip }: { t: Tile; photo?: string
 // A day's tiles. Tiles sharing an activity form a group: the activity name once,
 // above its children's tiles, two groups per row (8 tiles a row). The tiles wrap
 // into rows, so the day is read by scrolling down, not sideways.
-export function DayTiles({ items, events, photos, date, offset, now, childFilter = null, onTap, onSkip }: {
+export function DayTiles({ items, events, photos, date, offset, now, childFilter = null, onTap, onEdit }: {
   items: RoutineItem[]; events: CareEvent[]; photos: Record<string, string | null>; date: Date; offset: number; now: Date
-  childFilter?: string | null; onTap: (t: Tile) => void; onSkip: (t: Tile) => void
+  childFilter?: string | null; onTap: (t: Tile) => void; onEdit: (t: Tile) => void
 }) {
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
   const tiles = buildTiles(items, events, date, offset, childFilter, nowMin)
@@ -145,8 +146,8 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
           <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
           <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
             {g.tiles.map(t => (
-              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 && !t.ev && t.kind !== 'extra'}
-                onTap={() => onTap(t)} onSkip={() => onSkip(t)} />
+              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0}
+                onTap={() => onTap(t)} onEdit={() => onEdit(t)} />
             ))}
           </div>
         </div>
@@ -208,6 +209,103 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
         <button type="button" disabled={busy || !title.trim() || kids.length === 0} onClick={() => void save()}
           className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save now'}</button>
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+const MINUTE_CHOICES = [5, 10, 15, 20, 30, 45, 60]
+
+// Long-press / tap-on-record sheet for one tile: record Done / Not done, say
+// how long it took, add a note, flip the answer, or revert it entirely.
+export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: string | null; onClose: () => void; onSaved: (msg: string) => void }) {
+  const ex = (t.ev?.extra ?? {}) as { minutes?: number }
+  const [minutes, setMinutes] = useState<number | null>(ex.minutes ?? null)
+  const [note, setNote] = useState(t.ev?.note ?? '')
+  const [title, setTitle] = useState(t.title)
+  const [time, setTime] = useState(t.time)
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function run(fn: () => Promise<Response>, msg: string) {
+    setBusy(true); setErr('')
+    try {
+      const res = await fn()
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error ?? 'Could not save')
+      onSaved(msg); onClose()
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
+  const json = { 'Content-Type': 'application/json' }
+  const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/caretaker/routine/complete', {
+    method: 'POST', headers: json,
+    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, note: note || undefined }),
+  }), `${value}: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)
+  const patch = (body: Record<string, unknown>, msg: string) => run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify(body) }), msg)
+  const revert = () => { if (confirm(`Remove this record and put "${t.title}" back to waiting for ${t.child}?`)) void run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'DELETE' }), `Reverted: ${t.child} · ${t.title}`) }
+  const saveTile = () => run(() => fetch(`/api/caretaker/routine/${t.item!.id}`, {
+    method: 'PUT', headers: json,
+    body: JSON.stringify({ day_type: t.item!.day_type, time, title, scope: t.item!.scope, important: t.item!.important }),
+  }), `Tile updated: ${title} at ${time}`)
+
+  const isRoutine = t.kind === 'routine' && !!t.item
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+      <div className="max-h-[88vh] w-full space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          <Avatar name={t.child} url={photo} ring={RING[t.state]} />
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold text-gray-900">{t.child} · {t.title}</p>
+            <p className="text-xs text-gray-500">{t.ev ? `${t.ev.value === 'Not done' ? 'Not done' : 'Recorded'} at ${hhmm(t.ev.recorded_at)} by ${t.ev.recorded_by}` : `Planned ${t.time} · not recorded yet`}</p>
+          </div>
+        </div>
+
+        <p className="text-xs font-bold uppercase text-gray-500">Time taken</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {MINUTE_CHOICES.map(m => (
+            <button key={m} type="button" onClick={() => setMinutes(minutes === m ? null : m)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${minutes === m ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'}`}>{m} min</button>
+          ))}
+          <input type="number" min={1} max={600} inputMode="numeric" value={minutes && !MINUTE_CHOICES.includes(minutes) ? minutes : ''} placeholder="Other"
+            onChange={e => setMinutes(e.target.value ? Number(e.target.value) : null)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" />
+        </div>
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        {err && <p className="text-sm text-red-600">{err}</p>}
+
+        {!t.ev && isRoutine && (
+          <div className="flex gap-2">
+            <button type="button" disabled={busy} onClick={() => void record('Done')} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Done now</button>
+            <button type="button" disabled={busy} onClick={() => void record('Not done')} className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white disabled:opacity-40">Not done</button>
+          </div>
+        )}
+        {t.ev && (
+          <>
+            <button type="button" disabled={busy} onClick={() => void patch({ minutes, note: note || null }, `Saved: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)}
+              className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save time and note</button>
+            {t.kind === 'routine' && (
+              <button type="button" disabled={busy} onClick={() => void patch({ value: t.ev!.value === 'Not done' ? 'Done' : 'Not done', minutes, note: note || null }, `Changed: ${t.child} · ${t.title}`)}
+                className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {t.ev.value === 'Not done' ? 'Done' : 'Not done'}</button>
+            )}
+            <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (revert to waiting)</button>
+          </>
+        )}
+
+        {isRoutine && (
+          <div className="space-y-2 border-t border-gray-100 pt-3">
+            <button type="button" onClick={() => setEditing(e => !e)} className="text-sm font-semibold text-blue-700">{editing ? 'Hide' : 'Edit this tile (name and planned time)'}</button>
+            {editing && (
+              <>
+                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+                <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+                <button type="button" disabled={busy || !title.trim() || !time} onClick={() => void saveTile()} className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white disabled:opacity-40">Save tile</button>
+                <p className="text-[11px] text-gray-500">Only the people supervising the caretaker can change a tile. This changes it for every child and every day.</p>
+              </>
+            )}
+          </div>
+        )}
+        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>
   )

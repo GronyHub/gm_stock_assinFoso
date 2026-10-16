@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
     if (!r) return badRequest('Unknown routine item')
     item = { id: r.id as number, title: r.title as string }
   }
+  const mins = Math.round(Number(b?.minutes))
+  const minutes = mins >= 1 && mins <= 600 ? mins : null
   const who = caretakerName(session)
   try {
     const inserted = []
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
       for (const child of children) {
         const [row] = await sql`
           INSERT INTO care_events (child, kind, value, note, extra, recorded_by)
-          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify(item.id ? { routine_id: item.id, title: item.title } : { adhoc: true, title: item.title })}::jsonb, ${who})
+          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify({ ...(item.id ? { routine_id: item.id } : { adhoc: true }), title: item.title, ...(minutes ? { minutes } : {}) })}::jsonb, ${who})
           RETURNING id, child, kind, value, note, photo_url, extra, recorded_by, recorded_at`
         inserted.push(row)
       }

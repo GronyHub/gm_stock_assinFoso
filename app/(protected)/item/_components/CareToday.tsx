@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ACTIVITIES, CHILDREN, OPTIONS, dayKey, isSchoolDay, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { hhmm, postCareEvent, uploadCarePhoto, useCareEvents } from './careUtils'
-import { AddExtraSheet, DayTiles, NightSheet, useRoutine, type Tile } from './CareRoutine'
+import { AddExtraSheet, DayTiles, NightSheet, TileSheet, useRoutine, type Tile } from './CareRoutine'
 
 type ChildInfo = { name: string; photo_url: string | null }
 
@@ -19,6 +19,7 @@ export default function CareToday() {
   const [addExtra, setAddExtra] = useState(false)
   const [nightPick, setNightPick] = useState<Tile | null>(null)
   const [undo, setUndo] = useState<number | null>(null)
+  const [editTile, setEditTile] = useState<Tile | null>(null)
   const photos: Record<string, string | null> = Object.fromEntries(children.map(c => [c.name, c.photo_url]))
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t) }, [])
@@ -54,8 +55,10 @@ export default function CareToday() {
       void refresh()
     } catch (e) { flash(`NOT saved: ${(e as Error).message}. Try again.`) }
   }
-  function skipTile(t: Tile) {
-    if (confirm(`Mark "${t.title}" as NOT done for ${t.child}?`)) void tapTile(t, true)
+  // Long press (or tapping a tile that already has a record) opens its edit sheet.
+  function openTile(t: Tile) {
+    if (t.kind === 'night' && !t.ev) setNightPick(t)
+    else setEditTile(t)
   }
   async function undoLast() {
     if (!undo) return
@@ -102,7 +105,7 @@ export default function CareToday() {
               </div>
               {offset > 0 && <p className="text-[11px] text-gray-500">Look only. These can be recorded on the day.</p>}
               <DayTiles items={routine.items} events={events} photos={photos} date={d} offset={offset} now={now}
-                onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onSkip={skipTile} />
+                onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onEdit={openTile} />
             </div>
           )
         })}
@@ -147,6 +150,7 @@ export default function CareToday() {
         <NightSheet child={nightPick.child} slot={nightPick.slot} night={nightPick.night} photo={photos[nightPick.child]}
           onClose={() => setNightPick(null)} onSaved={msg => { flash(msg); void refresh() }} />
       )}
+      {editTile && <TileSheet key={editTile.key} t={editTile} photo={photos[editTile.child]} onClose={() => setEditTile(null)} onSaved={msg => { flash(msg); void refresh() }} />}
       {addExtra && <AddExtraSheet photos={photos} onClose={() => setAddExtra(false)} onSaved={msg => { flash(msg); void refresh() }} />}
       {toast && (
         <div className="fixed bottom-4 left-1/2 z-50 flex w-[92%] max-w-sm -translate-x-1/2 items-center gap-3 rounded-xl bg-gray-900/95 px-4 py-3 text-sm text-white shadow-lg">
@@ -156,7 +160,7 @@ export default function CareToday() {
       )}
       {openChild && (
         <ChildSheet child={children.find(c => c.name === openChild)!} onClose={() => setOpenChild(null)}
-          events={events} routine={routine.items} now={now} photos={photos} onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onSkip={skipTile}
+          events={events} routine={routine.items} now={now} photos={photos} onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onEdit={openTile}
           onSaved={msg => { flash(msg); void refresh() }}
           onPhoto={url => setChildren(cs => cs.map(c => c.name === openChild ? { ...c, photo_url: url } : c))} />
       )}
@@ -164,7 +168,7 @@ export default function CareToday() {
   )
 }
 
-function ChildSheet({ child, events, routine, now, photos, onTap, onSkip, onClose, onSaved, onPhoto }: { child: ChildInfo; events: CareEvent[]; routine: RoutineItem[]; now: Date; photos: Record<string, string | null>; onTap: (t: Tile) => void; onSkip: (t: Tile) => void; onClose: () => void; onSaved: (m: string) => void; onPhoto: (u: string) => void }) {
+function ChildSheet({ child, events, routine, now, photos, onTap, onEdit, onClose, onSaved, onPhoto }: { child: ChildInfo; events: CareEvent[]; routine: RoutineItem[]; now: Date; photos: Record<string, string | null>; onTap: (t: Tile) => void; onEdit: (t: Tile) => void; onClose: () => void; onSaved: (m: string) => void; onPhoto: (u: string) => void }) {
   const [picker, setPicker] = useState<string | null>(null)
   const [hw, setHw] = useState<{ brought: string; done: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -218,7 +222,7 @@ function ChildSheet({ child, events, routine, now, photos, onTap, onSkip, onClos
           <div className="mt-5 space-y-5">
             <section className="space-y-2">
               <h2 className="text-sm font-bold text-gray-700">{child.name}&apos;s routine today</h2>
-              <DayTiles items={routine} events={events} photos={photos} date={now} offset={0} now={now} childFilter={child.name} onTap={onTap} onSkip={onSkip} />
+              <DayTiles items={routine} events={events} photos={photos} date={now} offset={0} now={now} childFilter={child.name} onTap={onTap} onEdit={onEdit} />
             </section>
             <section className="space-y-1">
               <h2 className="text-sm font-bold text-gray-700">What has happened today</h2>
