@@ -53,16 +53,13 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
   if (view === 'ch_care_today') return <CareToday />
   if (view === 'ch_care_night') return <CareNight />
   if (view === 'ch_care_rules') return <CareRules />
+  // Everyone who can use the care pages sees the same pages -- the Log and
+  // the Routine included. Only changing the routine itself stays with the
+  // owners and the care supervisors.
   if (view === 'ch_care_routine') {
-    return (isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)) ? <CareRoutineEditor /> : (
-      <div className="py-20 text-center space-y-2"><p className="text-2xl">🔒</p><p className="text-gray-500 text-sm">Only the people supervising the caretaker can change the routine.</p></div>
-    )
+    return <CareRoutineEditor canEdit={isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)} />
   }
-  if (view === 'ch_care_log') {
-    return (isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)) ? <CareLog /> : (
-      <div className="py-20 text-center space-y-2"><p className="text-2xl">🔒</p><p className="text-gray-500 text-sm">Only the people supervising the caretaker can see the log.</p></div>
-    )
-  }
+  if (view === 'ch_care_log') return <CareLog />
 
   const childPerson = CH_CHILD_PERSON[view]
   if (childPerson) {

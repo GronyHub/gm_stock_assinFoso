@@ -5,7 +5,7 @@ import { useRoutine } from './CareRoutine'
 
 // For the owners and supervisors (Marian): the list of timed tiles Beatrice
 // works through. Changes apply at once; deleted tiles keep their history.
-export default function CareRoutineEditor() {
+export default function CareRoutineEditor({ canEdit = false }: { canEdit?: boolean }) {
   const { items, error, refresh } = useRoutine()
   const [tab, setTab] = useState<'school' | 'weekend'>('school')
   const [editing, setEditing] = useState<Partial<RoutineItem> | null>(null)
@@ -37,6 +37,7 @@ export default function CareRoutineEditor() {
   return (
     <div className="max-w-2xl space-y-3 px-3 pb-16 pt-3">
       <h1 className="text-lg font-bold text-gray-900">Daily routine</h1>
+      {!canEdit && <p className="text-xs text-gray-500">This is the plan for the day. Grony, Joe and Marian can change it.</p>}
       <p className="text-xs text-gray-500">Times are GMT. Tiles marked Important send you a phone alert if they are not recorded 30 minutes after their time.</p>
       <div className="flex gap-2">
         {(['school', 'weekend'] as const).map(t => (
@@ -46,8 +47,10 @@ export default function CareRoutineEditor() {
       </div>
       {error && <p className="text-sm text-red-600">Couldn&apos;t load the routine.</p>}
       {msg && <p className="text-sm text-red-600">{msg}</p>}
-      <button type="button" onClick={() => setEditing({ day_type: tab, time: '', title: '', scope: 'all', important: false })}
-        className="w-full rounded-xl bg-green-600 py-3 text-sm font-bold text-white">+ Add a tile</button>
+      {canEdit && (
+        <button type="button" onClick={() => setEditing({ day_type: tab, time: '', title: '', scope: 'all', important: false })}
+          className="w-full rounded-xl bg-green-600 py-3 text-sm font-bold text-white">+ Add a tile</button>
+      )}
       <div className="space-y-1.5">
         {shown.map(i => (
           <div key={i.id} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2">
@@ -56,8 +59,8 @@ export default function CareRoutineEditor() {
               <p className="text-sm text-gray-900">{i.title}</p>
               <p className="text-[11px] text-gray-500">{i.scope === 'all' ? 'All children' : i.scope}{i.important ? ' · Important' : ''}</p>
             </div>
-            <button type="button" onClick={() => setEditing(i)} className="text-xs font-bold text-blue-600">Edit</button>
-            <button type="button" onClick={() => void remove(i.id)} className="text-xs font-bold text-red-600">Remove</button>
+            {canEdit && <button type="button" onClick={() => setEditing(i)} className="text-xs font-bold text-blue-600">Edit</button>}
+            {canEdit && <button type="button" onClick={() => void remove(i.id)} className="text-xs font-bold text-red-600">Remove</button>}
           </div>
         ))}
       </div>
