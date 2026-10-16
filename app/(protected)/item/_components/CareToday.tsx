@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ACTIVITIES, CHILDREN, OPTIONS, dayKey, isSchoolDay, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { hhmm, postCareEvent, uploadCarePhoto, useCareEvents } from './careUtils'
-import { AddExtraSheet, DayTiles, useRoutine, type Tile } from './CareRoutine'
+import { AddExtraSheet, DayTiles, NightSheet, useRoutine, type Tile } from './CareRoutine'
 
 type ChildInfo = { name: string; photo_url: string | null }
 
@@ -17,6 +17,7 @@ export default function CareToday() {
   const [now, setNow] = useState(() => new Date())
   const routine = useRoutine()
   const [addExtra, setAddExtra] = useState(false)
+  const [nightPick, setNightPick] = useState<Tile | null>(null)
   const [undo, setUndo] = useState<number | null>(null)
   const photos: Record<string, string | null> = Object.fromEntries(children.map(c => [c.name, c.photo_url]))
 
@@ -101,7 +102,7 @@ export default function CareToday() {
               </div>
               {offset > 0 && <p className="text-[11px] text-gray-500">Look only. These can be recorded on the day.</p>}
               <DayTiles items={routine.items} events={events} photos={photos} date={d} offset={offset} now={now}
-                onTap={t => void tapTile(t)} onSkip={skipTile} />
+                onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onSkip={skipTile} />
             </div>
           )
         })}
@@ -142,6 +143,10 @@ export default function CareToday() {
         ))}
       </section>
 
+      {nightPick && nightPick.slot && nightPick.night && (
+        <NightSheet child={nightPick.child} slot={nightPick.slot} night={nightPick.night} photo={photos[nightPick.child]}
+          onClose={() => setNightPick(null)} onSaved={msg => { flash(msg); void refresh() }} />
+      )}
       {addExtra && <AddExtraSheet photos={photos} onClose={() => setAddExtra(false)} onSaved={msg => { flash(msg); void refresh() }} />}
       {toast && (
         <div className="fixed bottom-4 left-1/2 z-50 flex w-[92%] max-w-sm -translate-x-1/2 items-center gap-3 rounded-xl bg-gray-900/95 px-4 py-3 text-sm text-white shadow-lg">
@@ -151,7 +156,7 @@ export default function CareToday() {
       )}
       {openChild && (
         <ChildSheet child={children.find(c => c.name === openChild)!} onClose={() => setOpenChild(null)}
-          events={events} routine={routine.items} now={now} photos={photos} onTap={t => void tapTile(t)} onSkip={skipTile}
+          events={events} routine={routine.items} now={now} photos={photos} onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onSkip={skipTile}
           onSaved={msg => { flash(msg); void refresh() }}
           onPhoto={url => setChildren(cs => cs.map(c => c.name === openChild ? { ...c, photo_url: url } : c))} />
       )}

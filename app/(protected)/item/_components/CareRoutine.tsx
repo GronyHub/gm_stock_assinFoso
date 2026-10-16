@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ACTIVITIES, CHILDREN, dayType, minutesOf, routineState, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
+import { ACTIVITIES, CHILDREN, NIGHT_CHECKS, NIGHT_SLOTS, dayKey, dayType, minutesOf, routineState, ROUTINE_GRACE_MIN, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
+import { postCareEvent } from './careUtils'
 import { hhmm } from './careUtils'
 
 export function useRoutine() {
@@ -23,7 +24,10 @@ export type Tile = {
   time: string                 // planned time (guide); for an extra activity, the time it was done
   title: string
   important: boolean
-  item: RoutineItem | null     // null = an extra (unplanned) activity
+  item: RoutineItem | null     // null = an extra activity or a night check
+  kind: 'routine' | 'extra' | 'night'
+  slot?: string                // night checks: '22:00' | '01:00' | '04:00'
+  night?: string               // night checks: the evening the night began (YYYY-MM-DD)
   ev?: CareEvent               // the record, once tapped
   state: 'done' | 'notdone' | 'overdue' | 'due' | 'upcoming' | 'future'
 }
@@ -46,14 +50,29 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
       const state: Tile['state'] = offset > 0 ? 'future'
         : ev ? (ev.value === 'Not done' ? 'notdone' : 'done')
         : routineState(item, false, nowMin)
-      tiles.push({ key: `${item.id}-${child}`, child, time: item.time, title: item.title, important: item.important, item, ev, state })
+      tiles.push({ key: `${item.id}-${child}`, child, time: item.time, title: item.title, important: item.important, item, kind: 'routine', ev, state })
     }
   }
   if (offset === 0) {
     for (const e of routineEvents) {
       const x = e.extra as { adhoc?: boolean; title?: string } | null
       if (!x?.adhoc || !e.child || (childFilter && e.child !== childFilter)) continue
-      tiles.push({ key: `adhoc-${e.id}`, child: e.child, time: hhmm(e.recorded_at), title: x.title ?? 'Extra activity', important: false, item: null, ev: e, state: 'done' })
+      tiles.push({ key: `adhoc-${e.id}`, child: e.child, time: hhmm(e.recorded_at), title: x.title ?? 'Extra activity', important: false, item: null, kind: 'extra', ev: e, state: 'done' })
+    }
+  }
+  // Night checks (10pm, 1am, 4am) are tiles too. The 1am and 4am checks of a
+  // calendar day belong to the night that began the evening before.
+  const prev = new Date(date.getTime() - 86400000)
+  for (const slot of NIGHT_SLOTS) {
+    const night = slot === '22:00' ? dayKey(date) : dayKey(prev)
+    for (const child of CHILDREN) {
+      if (childFilter && child !== childFilter) continue
+      const ev = offset === 0
+        ? events.find(e => e.kind === 'night' && e.child === child && (e.extra as { night?: string; slot?: string } | null)?.night === night && (e.extra as { slot?: string } | null)?.slot === slot)
+        : undefined
+      const m = minutesOf(slot)
+      const state: Tile['state'] = offset > 0 ? 'future' : ev ? 'done' : nowMin >= m + ROUTINE_GRACE_MIN ? 'overdue' : nowMin >= m ? 'due' : 'upcoming'
+      tiles.push({ key: `night-${slot}-${child}`, child, time: slot, title: 'Night check', important: false, item: null, kind: 'night', slot, night, ev, state })
     }
   }
   return tiles.sort((a, b) => minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
@@ -87,7 +106,7 @@ function TileButton({ t, photo, live, onTap, onSkip }: { t: Tile; photo?: string
   const show = t.ev ? hhmm(t.ev.recorded_at) : t.time
   return (
     <button type="button" disabled={!live} title={`${t.child}: ${t.title}`}
-      onPointerDown={() => { held.current = false; if (live && (t.state === 'overdue' || t.state === 'due')) timer.current = setTimeout(() => { held.current = true; onSkip() }, 600) }}
+      onPointerDown={() => { held.current = false; if (live && t.kind === 'routine' && (t.state === 'overdue' || t.state === 'due')) timer.current = setTimeout(() => { held.current = true; onSkip() }, 600) }}
       onPointerUp={() => { if (timer.current) clearTimeout(timer.current); if (live && !held.current) onTap() }}
       onPointerLeave={() => { if (timer.current) clearTimeout(timer.current) }}
       onContextMenu={e => e.preventDefault()}
@@ -114,7 +133,7 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
   if (!tiles.length) return <p className="text-xs text-gray-400">Nothing planned.</p>
   const groups: { key: string; title: string; time: string; important: boolean; tiles: Tile[] }[] = []
   for (const t of tiles) {
-    const key = t.item ? `${t.time}|${t.title}` : `x|${t.title}|${t.time}`
+    const key = t.kind === 'routine' ? `${t.time}|${t.title}` : t.kind === 'night' ? `n|${t.slot}` : `x|${t.title}|${t.time}`
     let g = groups.find(x => x.key === key)
     if (!g) { g = { key, title: t.title, time: t.time, important: t.important, tiles: [] }; groups.push(g) }
     g.tiles.push(t)
@@ -126,7 +145,7 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
           <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
           <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
             {g.tiles.map(t => (
-              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 && !t.ev && !!t.item}
+              <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 && !t.ev && t.kind !== 'extra'}
                 onTap={() => onTap(t)} onSkip={() => onSkip(t)} />
             ))}
           </div>
@@ -179,6 +198,48 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Or type what was done" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button type="button" disabled={busy || !title.trim() || kids.length === 0} onClick={() => void save()}
+          className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save now'}</button>
+        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+// Night check for one child at one time: tap what you found or did, then save.
+export function NightSheet({ child, slot, night, photo, onClose, onSaved }: {
+  child: string; slot: string; night: string; photo?: string | null; onClose: () => void; onSaved: (msg: string) => void
+}) {
+  const [picked, setPicked] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  async function save() {
+    setBusy(true); setErr('')
+    try {
+      const s = await postCareEvent({ child, kind: 'night', value: slot, extra: { night, slot, checks: picked } })
+      onSaved(`Saved: ${child} ${slot} night check at ${hhmm(s.recorded_at)}`)
+      onClose()
+    } catch (e) { setErr((e as Error).message) }
+    setBusy(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+      <div className="max-h-[88vh] w-full space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <Avatar name={child} url={photo} />
+          <div>
+            <p className="text-base font-bold text-gray-900">{child} · {slot} night check</p>
+            <p className="text-xs text-gray-500">Look at {child}, then tap what you found or did.</p>
+          </div>
+        </div>
+        {child === 'Fiifi' && <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">Fiifi wets the bed: wake him gently and help him to the toilet.</p>}
+        <div className="flex flex-wrap gap-2">
+          {NIGHT_CHECKS.map(c => (
+            <button key={c.key} type="button" onClick={() => setPicked(p => p.includes(c.key) ? p.filter(k => k !== c.key) : [...p, c.key])}
+              className={`rounded-full px-3 py-2.5 text-sm font-semibold ${picked.includes(c.key) ? (c.good ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white') : 'bg-gray-100 text-gray-700'}`}>{c.label}</button>
+          ))}
+        </div>
+        {err && <p className="text-sm text-red-600">{err}</p>}
+        <button type="button" disabled={busy || picked.length === 0} onClick={() => void save()}
           className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save now'}</button>
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
       </div>
