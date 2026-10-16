@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
   const mins = Math.round(Number(b?.minutes))
   const minutes = mins >= 1 && mins <= 600 ? mins : null
   const support = b?.support === 'alone' || b?.support === 'support' ? b.support : null
+  // Optional "it was really done at HH:MM" (not later than now). The tap time stays on the record.
+  const nowD = new Date()
+  const doneAt = typeof b?.done_at === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(b.done_at) && Number(b.done_at.slice(0, 2)) * 60 + Number(b.done_at.slice(3)) <= nowD.getUTCHours() * 60 + nowD.getUTCMinutes() ? b.done_at : null
   const who = caretakerName(session)
   try {
     const inserted = []
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
       for (const child of children) {
         const [row] = await sql`
           INSERT INTO care_events (child, kind, value, note, extra, recorded_by)
-          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify({ ...(item.id ? { routine_id: item.id } : { adhoc: true }), title: item.title, ...(minutes ? { minutes } : {}), ...(support ? { support } : {}) })}::jsonb, ${who})
+          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify({ ...(item.id ? { routine_id: item.id } : { adhoc: true }), title: item.title, ...(minutes ? { minutes } : {}), ...(support ? { support } : {}), ...(doneAt ? { done_at: doneAt } : {}) })}::jsonb, ${who})
           RETURNING id, child, kind, value, note, photo_url, extra, recorded_by, recorded_at`
         inserted.push(row)
       }

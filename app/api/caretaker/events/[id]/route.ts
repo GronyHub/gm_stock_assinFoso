@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const id = Number((await params).id)
   const b = await req.json().catch(() => null)
   if (!id || !b) return badRequest('Bad request')
-  const [row] = await sql`SELECT child, kind, value, extra FROM care_events WHERE id = ${id}`
+  const [row] = await sql`SELECT child, kind, value, extra, recorded_at FROM care_events WHERE id = ${id}`
   if (!row || !TILE_KINDS.has(row.kind as string)) return badRequest('This record cannot be edited')
   const who = caretakerName(session)
   const extra = { ...((row.extra as Record<string, unknown> | null) ?? {}), edited_by: who, edited_at: new Date().toISOString() } as Record<string, unknown>
@@ -49,6 +49,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (b.support === 'alone' || b.support === 'support') extra.support = b.support
   else if ('support' in b) delete extra.support
+  if ('done_at' in b) {
+    if (!b.done_at) delete extra.done_at
+    else {
+      const rec = new Date(row.recorded_at as string)
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.done_at) || Number(b.done_at.slice(0, 2)) * 60 + Number(b.done_at.slice(3)) > rec.getUTCHours() * 60 + rec.getUTCMinutes()) return badRequest('The time done cannot be later than when it was logged')
+      extra.done_at = b.done_at
+    }
+  }
   let value = row.value as string | null
   if (row.kind === 'routine' && (b.value === 'Done' || b.value === 'Not done')) value = b.value
   const note = 'note' in b ? (b.note ? String(b.note).slice(0, 500) : null) : undefined

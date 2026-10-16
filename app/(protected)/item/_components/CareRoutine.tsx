@@ -32,6 +32,9 @@ export type Tile = {
   state: 'done' | 'notdone' | 'overdue' | 'due' | 'upcoming' | 'future'
 }
 
+// The time to show/sort a record by: when it was really done if that was entered, else when it was tapped.
+export const evTime = (e: CareEvent) => (e.extra as { done_at?: string } | null)?.done_at ?? hhmm(e.recorded_at)
+
 const childOrder = (c: string) => CHILDREN.indexOf(c as typeof CHILDREN[number])
 
 // One tile per child per planned activity ("all children" activities become a
@@ -78,7 +81,7 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
   // Chronological: a recorded tile sits at the minute it was really tapped, a
   // waiting one at its planned time. So a child who bathes before another has
   // brushed teeth has the earlier tile, whatever the routine order says.
-  const eff = (t: Tile) => minutesOf(t.ev && t.kind !== 'extra' ? hhmm(t.ev.recorded_at) : t.time)
+  const eff = (t: Tile) => minutesOf(t.ev && t.kind !== 'extra' ? evTime(t.ev) : t.time)
   return tiles.sort((a, b) => eff(a) - eff(b) || minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
 }
 
@@ -108,7 +111,7 @@ function Avatar({ name, url, ring }: { name: string; url?: string | null; ring?:
 function TileButton({ t, photo, live, onTap, onEdit }: { t: Tile; photo?: string | null; live: boolean; onTap: () => void; onEdit: () => void }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
-  const show = t.ev ? hhmm(t.ev.recorded_at) : t.time
+  const show = t.ev ? evTime(t.ev) : t.time
   return (
     <button type="button" disabled={!live} title={`${t.child}: ${t.title}`}
       onPointerDown={() => { held.current = false; if (live) timer.current = setTimeout(() => { held.current = true; onEdit() }, 600) }}
@@ -219,6 +222,7 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
               className={`rounded-full px-3 py-2 text-sm font-semibold ${behaviour && title === a ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800'}`}>{a}</button>
           ))}
         </div>
+        <input value={behaviour ? title : ''} onChange={e => pick(e.target.value, true)} placeholder="Or type the behaviour" className="w-full rounded-xl border border-red-200 p-3 text-sm" />
         <p className="text-xs font-bold uppercase text-gray-500">Other activities</p>
         <div className="flex flex-wrap gap-2">
           {ACTIVITIES.filter(a => a !== 'Other').map(a => (
@@ -226,7 +230,7 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
               className={`rounded-full px-3 py-2 text-sm font-semibold ${!behaviour && title === a ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'}`}>{a}</button>
           ))}
         </div>
-        <input value={title} onChange={e => pick(e.target.value, false)} placeholder="Or type what was done" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <input value={behaviour ? '' : title} onChange={e => pick(e.target.value, false)} placeholder="Or type the activity / chore" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button type="button" disabled={busy || !title.trim() || kids.length === 0} onClick={() => void save()}
@@ -243,6 +247,8 @@ const MINUTE_CHOICES = [5, 10, 15, 20, 30, 45, 60]
 // how long it took, add a note, flip the answer, or revert it entirely.
 export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: string | null; onClose: () => void; onSaved: (msg: string) => void }) {
   const ex = (t.ev?.extra ?? {}) as { minutes?: number; support?: 'alone' | 'support' }
+  const ex2 = (t.ev?.extra ?? {}) as { done_at?: string }
+  const [doneAt, setDoneAt] = useState(ex2.done_at ?? '')
   const [support, setSupport] = useState<'alone' | 'support' | null>(ex.support ?? null)
   const [minutes, setMinutes] = useState<number | null>(ex.minutes ?? null)
   const [note, setNote] = useState(t.ev?.note ?? '')
@@ -265,7 +271,7 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
   const json = { 'Content-Type': 'application/json' }
   const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/caretaker/routine/complete', {
     method: 'POST', headers: json,
-    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, support: support ?? undefined, note: note || undefined }),
+    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, support: support ?? undefined, done_at: doneAt || undefined, note: note || undefined }),
   }), `${value}: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)
   const patch = (body: Record<string, unknown>, msg: string) => run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify(body) }), msg)
   const revert = () => { if (confirm(`Remove this record and put "${t.title}" back to waiting for ${t.child}?`)) void run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'DELETE' }), `Reverted: ${t.child} · ${t.title}`) }
@@ -282,7 +288,7 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
           <Avatar name={t.child} url={photo} ring={RING[t.state]} />
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-gray-900">{t.child} · {t.title}</p>
-            <p className="text-xs text-gray-500">{t.ev ? `${t.ev.value === 'Not done' ? 'Not done' : 'Recorded'} at ${hhmm(t.ev.recorded_at)} by ${t.ev.recorded_by}` : `Planned ${t.time} · not recorded yet`}</p>
+            <p className="text-xs text-gray-500">{t.ev ? `${t.ev.value === 'Not done' ? 'Not done' : 'Done'} at ${evTime(t.ev)} (logged ${hhmm(t.ev.recorded_at)}) by ${t.ev.recorded_by}` : `Planned ${t.time} · not recorded yet`}</p>
           </div>
         </div>
 
@@ -292,6 +298,15 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
             <button key={k} type="button" onClick={() => setSupport(support === k ? null : k)}
               className={`flex-1 rounded-xl py-2.5 text-sm font-bold ${support === k ? (k === 'alone' ? 'bg-green-600 text-white' : 'bg-orange-500 text-white') : 'bg-gray-100 text-gray-700'}`}>{label}</button>
           ))}
+        </div>
+        <p className="text-xs font-bold uppercase text-gray-500">Time it was done {t.ev ? `(logged at ${hhmm(t.ev.recorded_at)})` : '(blank = now)'}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {[5, 10, 15, 30, 60].map(m => (
+            <button key={m} type="button" onClick={() => { const base = t.ev ? new Date(t.ev.recorded_at) : new Date(); const d = new Date(base.getTime() - m * 60000); setDoneAt(`${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`) }}
+              className="rounded-full bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-800">{m} min ago</button>
+          ))}
+          <input type="time" value={doneAt} onChange={e => setDoneAt(e.target.value)} className="rounded-xl border border-gray-300 p-2 text-sm" />
+          {doneAt && <button type="button" onClick={() => setDoneAt('')} className="text-xs font-semibold text-gray-500">Clear</button>}
         </div>
         <p className="text-xs font-bold uppercase text-gray-500">Time taken</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -313,10 +328,10 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
         )}
         {t.ev && (
           <>
-            <button type="button" disabled={busy} onClick={() => void patch({ minutes, support, note: note || null }, `Saved: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)}
+            <button type="button" disabled={busy} onClick={() => void patch({ minutes, support, done_at: doneAt || null, note: note || null }, `Saved: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)}
               className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save changes</button>
             {t.kind === 'routine' && (
-              <button type="button" disabled={busy} onClick={() => void patch({ value: t.ev!.value === 'Not done' ? 'Done' : 'Not done', minutes, support, note: note || null }, `Changed: ${t.child} · ${t.title}`)}
+              <button type="button" disabled={busy} onClick={() => void patch({ value: t.ev!.value === 'Not done' ? 'Done' : 'Not done', minutes, support, done_at: doneAt || null, note: note || null }, `Changed: ${t.child} · ${t.title}`)}
                 className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {t.ev.value === 'Not done' ? 'Done' : 'Not done'}</button>
             )}
             <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (revert to waiting)</button>
