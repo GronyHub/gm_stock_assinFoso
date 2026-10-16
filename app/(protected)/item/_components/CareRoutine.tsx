@@ -75,7 +75,11 @@ export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date
       tiles.push({ key: `night-${slot}-${child}`, child, time: slot, title: 'Night check', important: false, item: null, kind: 'night', slot, night, ev, state })
     }
   }
-  return tiles.sort((a, b) => minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
+  // Chronological: a recorded tile sits at the minute it was really tapped, a
+  // waiting one at its planned time. So a child who bathes before another has
+  // brushed teeth has the earlier tile, whatever the routine order says.
+  const eff = (t: Tile) => minutesOf(t.ev && t.kind !== 'extra' ? hhmm(t.ev.recorded_at) : t.time)
+  return tiles.sort((a, b) => eff(a) - eff(b) || minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
 }
 
 const RING: Record<Tile['state'], string> = {
@@ -132,17 +136,18 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
   const tiles = buildTiles(items, events, date, offset, childFilter, nowMin)
   if (!tiles.length) return <p className="text-xs text-gray-400">Nothing planned.</p>
-  const groups: { key: string; title: string; time: string; important: boolean; tiles: Tile[] }[] = []
+  // Runs of neighbouring tiles with the same activity share one label (max 4 a run).
+  const groups: { key: string; title: string; important: boolean; tiles: Tile[] }[] = []
   for (const t of tiles) {
-    const key = t.kind === 'routine' ? `${t.time}|${t.title}` : t.kind === 'night' ? `n|${t.slot}` : `x|${t.title}|${t.time}`
-    let g = groups.find(x => x.key === key)
-    if (!g) { g = { key, title: t.title, time: t.time, important: t.important, tiles: [] }; groups.push(g) }
-    g.tiles.push(t)
+    const key = t.kind === 'routine' ? `${t.item?.id}` : t.kind === 'night' ? `n|${t.slot}` : `x|${t.title}`
+    const g = groups[groups.length - 1]
+    if (g && g.key === key && g.tiles.length < 4 && !childFilter) g.tiles.push(t)
+    else groups.push({ key, title: t.title, important: t.important, tiles: [t] })
   }
   return (
     <div className="flex flex-wrap gap-x-2 gap-y-2.5">
       {groups.map(g => (
-        <div key={g.key} className={childFilter ? 'w-[calc(25%-6px)]' : 'w-[calc(50%-4px)]'}>
+        <div key={`${g.key}-${g.tiles[0].key}`} style={{ width: childFilter ? 'calc(25% - 6px)' : `calc(${g.tiles.length * 12.5}% - 4px)` }}>
           <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
           <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
             {g.tiles.map(t => (
