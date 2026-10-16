@@ -47,6 +47,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     else if (m >= 1 && m <= 600) extra.minutes = m
     else return badRequest('Time taken must be 1 to 600 minutes')
   }
+  if (b.support === 'alone' || b.support === 'support') extra.support = b.support
+  else if ('support' in b) delete extra.support
   let value = row.value as string | null
   if (row.kind === 'routine' && (b.value === 'Done' || b.value === 'Not done')) value = b.value
   const note = 'note' in b ? (b.note ? String(b.note).slice(0, 500) : null) : undefined

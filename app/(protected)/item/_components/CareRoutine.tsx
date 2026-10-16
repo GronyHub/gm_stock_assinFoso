@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ACTIVITIES, HOUSE_CHORES, CHILDREN, NIGHT_CHECKS, NIGHT_SLOTS, dayKey, dayType, minutesOf, routineState, ROUTINE_GRACE_MIN, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
+import { ACTIVITIES, BEHAVIOURS, HOUSE_CHORES, CHILDREN, NIGHT_CHECKS, NIGHT_SLOTS, dayKey, dayType, minutesOf, routineState, ROUTINE_GRACE_MIN, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { postCareEvent } from './careUtils'
 import { hhmm } from './careUtils'
 
@@ -166,15 +166,25 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
 export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<string, string | null>; onClose: () => void; onSaved: (msg: string) => void }) {
   const [kids, setKids] = useState<string[]>([])
   const [title, setTitle] = useState('')
+  const [behaviour, setBehaviour] = useState(false)
+  const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const pick = (v: string, isBehaviour: boolean) => { setTitle(v); setBehaviour(isBehaviour) }
 
   async function save() {
     setBusy(true); setErr('')
     try {
+      if (behaviour) {
+        for (const child of kids) await postCareEvent({ child, kind: 'behaviour', value: title, note: note || null })
+        onSaved(`Saved behaviour: ${title} for ${kids.join(', ')}`)
+        onClose()
+        setBusy(false)
+        return
+      }
       const res = await fetch('/api/caretaker/routine/complete', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adhoc_title: title, done: kids }),
+        body: JSON.stringify({ adhoc_title: title, done: kids, note: note || undefined }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error ?? 'Could not save')
@@ -198,18 +208,26 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
         <p className="text-xs font-bold uppercase text-gray-500">House chores</p>
         <div className="flex flex-wrap gap-2">
           {HOUSE_CHORES.map(a => (
-            <button key={a} type="button" onClick={() => setTitle(a)}
-              className={`rounded-full px-3 py-2 text-sm font-semibold ${title === a ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>{a}</button>
+            <button key={a} type="button" onClick={() => pick(a, false)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${!behaviour && title === a ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>{a}</button>
+          ))}
+        </div>
+        <p className="text-xs font-bold uppercase text-gray-500">Behaviour (logged against the child)</p>
+        <div className="flex flex-wrap gap-2">
+          {BEHAVIOURS.map(a => (
+            <button key={a} type="button" onClick={() => pick(a, true)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${behaviour && title === a ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800'}`}>{a}</button>
           ))}
         </div>
         <p className="text-xs font-bold uppercase text-gray-500">Other activities</p>
         <div className="flex flex-wrap gap-2">
           {ACTIVITIES.filter(a => a !== 'Other').map(a => (
-            <button key={a} type="button" onClick={() => setTitle(a)}
-              className={`rounded-full px-3 py-2 text-sm font-semibold ${title === a ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'}`}>{a}</button>
+            <button key={a} type="button" onClick={() => pick(a, false)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${!behaviour && title === a ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'}`}>{a}</button>
           ))}
         </div>
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Or type what was done" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <input value={title} onChange={e => pick(e.target.value, false)} placeholder="Or type what was done" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button type="button" disabled={busy || !title.trim() || kids.length === 0} onClick={() => void save()}
           className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save now'}</button>
@@ -224,7 +242,8 @@ const MINUTE_CHOICES = [5, 10, 15, 20, 30, 45, 60]
 // Long-press / tap-on-record sheet for one tile: record Done / Not done, say
 // how long it took, add a note, flip the answer, or revert it entirely.
 export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: string | null; onClose: () => void; onSaved: (msg: string) => void }) {
-  const ex = (t.ev?.extra ?? {}) as { minutes?: number }
+  const ex = (t.ev?.extra ?? {}) as { minutes?: number; support?: 'alone' | 'support' }
+  const [support, setSupport] = useState<'alone' | 'support' | null>(ex.support ?? null)
   const [minutes, setMinutes] = useState<number | null>(ex.minutes ?? null)
   const [note, setNote] = useState(t.ev?.note ?? '')
   const [title, setTitle] = useState(t.title)
@@ -246,7 +265,7 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
   const json = { 'Content-Type': 'application/json' }
   const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/caretaker/routine/complete', {
     method: 'POST', headers: json,
-    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, note: note || undefined }),
+    body: JSON.stringify({ routine_id: t.item?.id, done: value === 'Done' ? [t.child] : [], not_done: value === 'Done' ? [] : [t.child], minutes, support: support ?? undefined, note: note || undefined }),
   }), `${value}: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)
   const patch = (body: Record<string, unknown>, msg: string) => run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify(body) }), msg)
   const revert = () => { if (confirm(`Remove this record and put "${t.title}" back to waiting for ${t.child}?`)) void run(() => fetch(`/api/caretaker/events/${t.ev!.id}`, { method: 'DELETE' }), `Reverted: ${t.child} · ${t.title}`) }
@@ -267,6 +286,13 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
           </div>
         </div>
 
+        <p className="text-xs font-bold uppercase text-gray-500">Did they manage alone?</p>
+        <div className="flex gap-2">
+          {([['alone', 'Did it alone'], ['support', 'Had support']] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setSupport(support === k ? null : k)}
+              className={`flex-1 rounded-xl py-2.5 text-sm font-bold ${support === k ? (k === 'alone' ? 'bg-green-600 text-white' : 'bg-orange-500 text-white') : 'bg-gray-100 text-gray-700'}`}>{label}</button>
+          ))}
+        </div>
         <p className="text-xs font-bold uppercase text-gray-500">Time taken</p>
         <div className="flex flex-wrap items-center gap-2">
           {MINUTE_CHOICES.map(m => (
@@ -287,10 +313,10 @@ export function TileSheet({ t, photo, onClose, onSaved }: { t: Tile; photo?: str
         )}
         {t.ev && (
           <>
-            <button type="button" disabled={busy} onClick={() => void patch({ minutes, note: note || null }, `Saved: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)}
-              className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save time and note</button>
+            <button type="button" disabled={busy} onClick={() => void patch({ minutes, support, note: note || null }, `Saved: ${t.child} · ${t.title}${minutes ? ` (${minutes} min)` : ''}`)}
+              className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save changes</button>
             {t.kind === 'routine' && (
-              <button type="button" disabled={busy} onClick={() => void patch({ value: t.ev!.value === 'Not done' ? 'Done' : 'Not done', minutes, note: note || null }, `Changed: ${t.child} · ${t.title}`)}
+              <button type="button" disabled={busy} onClick={() => void patch({ value: t.ev!.value === 'Not done' ? 'Done' : 'Not done', minutes, support, note: note || null }, `Changed: ${t.child} · ${t.title}`)}
                 className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {t.ev.value === 'Not done' ? 'Done' : 'Not done'}</button>
             )}
             <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (revert to waiting)</button>

@@ -20,6 +20,10 @@ export default function CareToday() {
   const [nightPick, setNightPick] = useState<Tile | null>(null)
   const [undo, setUndo] = useState<number | null>(null)
   const [editTile, setEditTile] = useState<Tile | null>(null)
+  // Per-device choice: tapping a tile opens its options page instead of recording at once.
+  const [askOnTap, setAskOnTap] = useState(false)
+  useEffect(() => { try { setAskOnTap(localStorage.getItem('care-ask-on-tap') === '1') } catch { /* ignore */ } }, [])
+  function toggleAsk() { const v = !askOnTap; setAskOnTap(v); try { localStorage.setItem('care-ask-on-tap', v ? '1' : '0') } catch { /* ignore */ } }
   const photos: Record<string, string | null> = Object.fromEntries(children.map(c => [c.name, c.photo_url]))
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t) }, [])
@@ -101,11 +105,12 @@ export default function CareToday() {
             <div key={offset} className="space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-gray-800">{label} · {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}{offset === 0 ? ` · ${clock}` : ''}</h2>
+                {offset === 0 && <button type="button" onClick={toggleAsk} className={`mr-1 rounded-full px-2.5 py-1.5 text-[11px] font-bold ${askOnTap ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{askOnTap ? 'Options on tap: ON' : 'Options on tap: off'}</button>}
                 {offset === 0 && <button type="button" onClick={() => setAddExtra(true)} className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-bold text-white">+ Extra activity</button>}
               </div>
               {offset > 0 && <p className="text-[11px] text-gray-500">Look only. These can be recorded on the day.</p>}
               <DayTiles items={routine.items} events={events} photos={photos} date={d} offset={offset} now={now}
-                onTap={t => t.kind === 'night' ? setNightPick(t) : void tapTile(t)} onEdit={openTile} />
+                onTap={t => t.kind === 'night' ? setNightPick(t) : askOnTap ? openTile(t) : void tapTile(t)} onEdit={openTile} />
             </div>
           )
         })}

@@ -32,6 +32,7 @@ export const OPTIONS: Record<string, { label: string; values: string[]; note?: b
 }
 
 export const HOUSE_CHORES = ['Ironing', 'Mopping', 'Sweeping', 'Fetching water', 'Turning on water pump', 'Cooking', 'Scrubbing', 'Removing cobwebs', 'Weeding', 'Washing clothes', 'Washing dishes', 'Cleaning bathroom', 'Dusting', 'Rubbish disposal', 'Making bed', 'Tidying room', 'Washing own clothes', 'Polishing shoes', 'Setting table', 'Packing school bag']
+export const BEHAVIOURS = ['Crying', 'Insulting words', 'Disobedience', 'Sluggishness', 'Resisting care', 'Tantrum', 'Fighting', 'Rudeness', 'Lying']
 export const ACTIVITIES =['Walk', 'Cooking', 'Cleaning together', 'Games', 'Reading', 'Homework help', 'Watching TV together', 'Prayers', 'Singing', 'Other']
 
 export const HOUSE_AREAS = [
