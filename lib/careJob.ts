@@ -39,5 +39,26 @@ async function ensureImpl() {
     obs_date DATE NOT NULL DEFAULT CURRENT_DATE, logged_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM care_job_rules`
   if (n === 0) for (let i = 0; i < SEED.length; i++) await sql`INSERT INTO care_job_rules (section, text, position) VALUES (${SEED[i][0]}, ${SEED[i][1]}, ${i + 1})`.catch(() => {})
+  await seedObs().catch(e => console.error('careJob seedObs:', e instanceof Error ? e.message : String(e)))
 }
+// The owner's own observations, told to Claude on 15 Oct 2026 (made over her first three weeks in Ghana).
+// Inserted once, each under the rule it concerns; the flag stops them returning if removed later.
+const OBS_SEED: [string, string][] = [
+  ['Do not leave cobwebs', 'Cobwebs all over the house, especially at the bath. No cobwebs should be found in any part of the house.'],
+  ['Do not make or take phone calls', 'Makes too many calls and is always on the phone. She must make no calls in the presence of the children: giving them her time is the work she is there to do.'],
+  ['Sit with the children', 'Does not spend quality time with the children when there is nothing to be done, leaving them to their fate. When they play in the living room she should sit with them there, not go outside the building or into the small room to make calls.'],
+  ['Do not leave the children alone or unchecked at night', 'At night she never wakes to check on the children and sleeps fully. Fiifi bedwets and needs support to urinate at night. The fan is sometimes too strong, mosquitoes need covering with clothes, and the children sometimes take very bad sleeping postures.'],
+]
+
+async function seedObs() {
+  await sql`CREATE TABLE IF NOT EXISTS care_job_flags (key TEXT PRIMARY KEY)`.catch(() => {})
+  const [f] = await sql`SELECT 1 AS x FROM care_job_flags WHERE key = 'obs_seed_1'`
+  if (f) return
+  for (const [prefix, note] of OBS_SEED) {
+    const [r] = await sql`SELECT id FROM care_job_rules WHERE active AND text LIKE ${prefix + '%'} ORDER BY id LIMIT 1`
+    await sql`INSERT INTO care_job_obs (rule_id, kind, note, obs_date, logged_by) VALUES (${r?.id ?? null}, 'concern', ${note}, '2026-10-15', 'grony')`
+  }
+  await sql`INSERT INTO care_job_flags (key) VALUES ('obs_seed_1') ON CONFLICT DO NOTHING`
+}
+
 export const ensureCareJob = once(ensureImpl)
