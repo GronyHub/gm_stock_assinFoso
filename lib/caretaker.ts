@@ -23,6 +23,20 @@ export const ensureCaretakerTables = once(async () => {
       photo_url TEXT
     )
   `.catch(() => {})
+  // The daily routine: timed tiles, per child or for all children.
+  await sql`
+    CREATE TABLE IF NOT EXISTS care_routine (
+      id SERIAL PRIMARY KEY,
+      day_type TEXT NOT NULL,            -- 'school' | 'weekend'
+      time TEXT NOT NULL,                -- 'HH:MM' GMT
+      title TEXT NOT NULL,
+      scope TEXT NOT NULL DEFAULT 'all', -- 'all' or a child's name
+      important BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `.catch(() => {})
   // Which missed-item alerts have already been sent, so a server restart or a
   // second tick never sends the same alert twice.
   await sql`
@@ -52,6 +66,20 @@ export async function canCaretake(session: SessionLike): Promise<boolean> {
   if (!id) return false
   try {
     const rows = await sql`SELECT allowed FROM user_permissions WHERE user_id = ${id} AND feature_key = 'caretaker'`
+    return !!rows[0]?.allowed
+  } catch { return false }
+}
+
+// Who may edit the routine list: owners, plus anyone with the care_log
+// (supervisor) permission -- e.g. Marian.
+export async function canManageRoutine(session: SessionLike): Promise<boolean> {
+  const u = session?.user as { id?: string; role?: string | null; username?: string | null; name?: string | null } | undefined
+  if (!u) return false
+  if (isOwnerLevel(u)) return true
+  const id = Number(u.id)
+  if (!id) return false
+  try {
+    const rows = await sql`SELECT allowed FROM user_permissions WHERE user_id = ${id} AND feature_key = 'care_log'`
     return !!rows[0]?.allowed
   } catch { return false }
 }

@@ -6,7 +6,7 @@ export type Child = typeof CHILDREN[number]
 
 export type EventKind =
   | 'wake' | 'health' | 'meal' | 'behaviour' | 'school_need' | 'homework'
-  | 'skin' | 'hair' | 'activity' | 'night' | 'house'
+  | 'skin' | 'hair' | 'activity' | 'night' | 'house' | 'routine'
 
 export type CareEvent = {
   id: number
@@ -65,3 +65,30 @@ export function isSchoolDay(date: Date) {
 
 // Day boundaries are Ghana (UTC) calendar days.
 export function dayKey(d = new Date()) { return d.toISOString().slice(0, 10) }
+
+export type RoutineItem = {
+  id: number
+  day_type: 'school' | 'weekend'
+  time: string          // 'HH:MM' GMT
+  title: string
+  scope: string         // 'all' or a child's name
+  important: boolean
+  active: boolean
+}
+
+export const dayType = (d = new Date()): 'school' | 'weekend' => (isSchoolDay(d) ? 'school' : 'weekend')
+
+// A tile's state for the given time of day.
+//  done      -> every applicable child has a record
+//  overdue   -> due more than GRACE minutes ago and not done
+//  due       -> due within the last GRACE minutes
+//  upcoming  -> later today
+export const ROUTINE_GRACE_MIN = 30
+export function minutesOf(hhmm: string) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
+export function routineState(item: RoutineItem, doneAll: boolean, nowMin: number): 'done' | 'overdue' | 'due' | 'upcoming' {
+  if (doneAll) return 'done'
+  const t = minutesOf(item.time)
+  if (nowMin >= t + ROUTINE_GRACE_MIN) return 'overdue'
+  if (nowMin >= t) return 'due'
+  return 'upcoming'
+}

@@ -1,6 +1,7 @@
 import sql from './db'
 import { ensureCaretakerTables } from './caretaker'
-import { CHILDREN, HOUSE_AREAS, isSchoolDay } from './caretakerShared'
+import { CHILDREN, HOUSE_AREAS, dayType, isSchoolDay, ROUTINE_GRACE_MIN } from './caretakerShared'
+import { getRoutineForTick } from './careRoutine'
 
 // Scheduled caretaker reminders and missed-item alerts. Runs from
 // instrumentation.ts once a minute, but only touches the database at the
@@ -10,7 +11,7 @@ import { CHILDREN, HOUSE_AREAS, isSchoolDay } from './caretakerShared'
 
 type Day = 'school' | 'weekend' | 'all'
 type Ctx = { date: string; nightDate: string; events: Ev[] }
-type Ev = { child: string | null; kind: string; value: string | null; extra: { night?: string; slot?: string } | null; recorded_at?: string | Date }
+type Ev = { child: string | null; kind: string; value: string | null; extra: { night?: string; slot?: string; routine_id?: number } | null; recorded_at?: string | Date }
 type Item = { key: string; time: string; days: Day; to: 'owners' | 'caretaker'; title: string; build: (c: Ctx) => string | null }
 
 const names = (list: string[]) => list.join(', ')
@@ -45,9 +46,9 @@ const ITEMS: Item[] = [
   { key: 'remind-2200', time: '21:55', days: 'all', to: 'caretaker', title: 'Night check due', build: () => '10pm night check: go to each child, then record it.' },
   { key: 'remind-0100', time: '00:55', days: 'all', to: 'caretaker', title: 'Night check due', build: () => '1am night check: go to each child, then record it.' },
   { key: 'remind-0400', time: '03:55', days: 'all', to: 'caretaker', title: 'Night check due', build: () => '4am night check: go to each child, then record it.' },
+  // (Breakfast and supper are alerted from the editable routine, see routineItems below.)
   // School days
   { key: 'wake-school', time: '07:15', days: 'school', to: 'owners', title: 'Missed: woke up', build: childMissing('Wake-up time not recorded', e => e.kind === 'wake') },
-  { key: 'breakfast-school', time: '07:35', days: 'school', to: 'owners', title: 'Missed: breakfast', build: childMissing('Breakfast not recorded', e => e.kind === 'meal' && e.value === 'Breakfast') },
   { key: 'car-left', time: '07:55', days: 'school', to: 'owners', title: 'Missed: school car', build: houseMissing('School car departure not recorded', 'car_left') },
   { key: 'cleaning-school', time: '16:30', days: 'school', to: 'owners', title: 'Missed: cleaning', build: cleaningMissing },
   { key: 'school-out', time: '17:00', days: 'school', to: 'owners', title: 'Missed: school out', build: houseMissing('Time children left school not recorded', 'school_out') },
@@ -55,10 +56,8 @@ const ITEMS: Item[] = [
   { key: 'homework', time: '19:00', days: 'school', to: 'owners', title: 'Missed: homework', build: childMissing('Homework not recorded', e => e.kind === 'homework') },
   // Weekends
   { key: 'wake-weekend', time: '09:00', days: 'weekend', to: 'owners', title: 'Missed: woke up', build: childMissing('Wake-up time not recorded', e => e.kind === 'wake') },
-  { key: 'breakfast-weekend', time: '10:00', days: 'weekend', to: 'owners', title: 'Missed: breakfast', build: childMissing('Breakfast not recorded', e => e.kind === 'meal' && e.value === 'Breakfast') },
   { key: 'cleaning-weekend', time: '16:00', days: 'weekend', to: 'owners', title: 'Missed: cleaning', build: cleaningMissing },
   // Every day
-  { key: 'supper', time: '19:30', days: 'all', to: 'owners', title: 'Missed: supper', build: childMissing('Supper not recorded', e => e.kind === 'meal' && e.value === 'Supper') },
   { key: 'rules-evening', time: '20:00', days: 'all', to: 'owners', title: 'Missed: house rules', build: rulesMissing('Evening') },
   { key: 'sweep', time: '20:15', days: 'all', to: 'owners', title: 'Missed: sweeping', build: houseMissing('House sweeping (8pm) not recorded', 'sweep_done') },
   { key: 'bedtime', time: '21:00', days: 'all', to: 'owners', title: 'Missed: bedtime', build: houseMissing('Children in bed (8:30pm) not recorded', 'bedtime_done') },
@@ -99,6 +98,20 @@ export async function careAlertsTick(now = new Date()) {
   const due = new Set([hhmm(now), hhmm(new Date(now.getTime() - 60000)), hhmm(new Date(now.getTime() - 120000))])
   const school = isSchoolDay(now)
   const todays = ITEMS.filter(i => due.has(i.time) && (i.days === 'all' || (i.days === 'school' && school) || (i.days === 'weekend' && !school)))
+  // Important routine tiles: alert once if still unrecorded 30 minutes after their time.
+  const routineItems = await getRoutineForTick().catch(() => [])
+  const addMin = (hm: string) => { const t = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3)) + ROUTINE_GRACE_MIN; return `${String(Math.floor(t / 60) % 24).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}` }
+  for (const r of routineItems) {
+    if (!r.important || r.day_type !== dayType(now) || !due.has(addMin(r.time))) continue
+    const kids: string[] = r.scope === 'all' ? [...CHILDREN] : [r.scope]
+    todays.push({
+      key: `routine-${r.id}`, time: addMin(r.time), days: 'all', to: 'owners', title: 'Missed: routine',
+      build: c => {
+        const m = kids.filter(k => !c.events.some(e => e.kind === 'routine' && e.child === k && e.extra?.routine_id === r.id))
+        return m.length ? `${r.time} "${r.title}" not recorded for: ${m.join(', ')}` : null
+      },
+    })
+  }
   if (!todays.length) return
 
   await ensureCaretakerTables()

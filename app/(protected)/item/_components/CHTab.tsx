@@ -6,6 +6,7 @@ import SubmenuTable from './SubmenuTable'
 import PersonalTab from './PersonalTab'
 import CareToday from './CareToday'
 import CareLog from './CareLog'
+import CareRoutineEditor from './CareRoutineEditor'
 import { CareNight, CareRules } from './CareChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { CH_ITEMS, CH_CHILD_PERSON, type CHView } from './chViewData'
@@ -52,6 +53,11 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
   if (view === 'ch_care_today') return <CareToday />
   if (view === 'ch_care_night') return <CareNight />
   if (view === 'ch_care_rules') return <CareRules />
+  if (view === 'ch_care_routine') {
+    return (isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)) ? <CareRoutineEditor /> : (
+      <div className="py-20 text-center space-y-2"><p className="text-2xl">🔒</p><p className="text-gray-500 text-sm">Only the people supervising the caretaker can change the routine.</p></div>
+    )
+  }
   if (view === 'ch_care_log') {
     return (isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)) ? <CareLog /> : (
       <div className="py-20 text-center space-y-2"><p className="text-2xl">🔒</p><p className="text-gray-500 text-sm">Only the people supervising the caretaker can see the log.</p></div>

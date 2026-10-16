@@ -5,7 +5,7 @@ import { success, badRequest, unauthorized } from '@/lib/api'
 import { canCaretake, caretakerName, ensureCaretakerTables } from '@/lib/caretaker'
 import { CHILDREN } from '@/lib/caretakerShared'
 
-const KINDS = new Set(['wake', 'health', 'meal', 'behaviour', 'school_need', 'homework', 'skin', 'hair', 'activity', 'night', 'house'])
+const KINDS = new Set(['wake', 'health', 'meal', 'behaviour', 'school_need', 'homework', 'skin', 'hair', 'activity', 'night', 'house', 'routine'])
 
 // GET ?date=YYYY-MM-DD  -> that Ghana (UTC) day's events, oldest first.
 export async function GET(req: NextRequest) {

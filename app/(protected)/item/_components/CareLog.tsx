@@ -37,7 +37,7 @@ export default function CareLog() {
             <div key={e.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2">
               <p className="text-sm text-gray-900">
                 <span className="mr-2 font-mono text-xs text-gray-500">{hhmm(e.recorded_at)}</span>
-                <span className="font-semibold">{e.child ?? 'House'}</span> · {e.kind.replace('_', ' ')}{e.value ? ` · ${e.value.replace(/^rule:/, '')}` : ''}
+                <span className="font-semibold">{e.child ?? 'House'}</span> · {e.kind === 'routine' ? `${(e.extra as { title?: string } | null)?.title ?? 'Routine'} · ${e.value}` : `${e.kind.replace('_', ' ')}${e.value ? ` · ${e.value.replace(/^rule:/, '')}` : ''}`}
               </p>
               {checks && <p className="text-xs text-indigo-700">{checks.join(', ')}</p>}
               {e.note && <p className="text-xs text-gray-600">{e.note}</p>}

@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { ACTIVITIES, CHILDREN, OPTIONS, dayKey, isSchoolDay } from '@/lib/caretakerShared'
+import { ACTIVITIES, CHILDREN, OPTIONS, dayKey, isSchoolDay, type CareEvent } from '@/lib/caretakerShared'
 import { hhmm, postCareEvent, uploadCarePhoto, useCareEvents } from './careUtils'
+import { RoutineList, RoutineSheet, useRoutine } from './CareRoutine'
+import type { RoutineItem } from '@/lib/caretakerShared'
 
 type ChildInfo = { name: string; photo_url: string | null }
 
@@ -14,6 +16,8 @@ export default function CareToday() {
   const [openChild, setOpenChild] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [now, setNow] = useState(() => new Date())
+  const routine = useRoutine()
+  const [pickedItem, setPickedItem] = useState<RoutineItem | null>(null)
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t) }, [])
   useEffect(() => {
@@ -48,6 +52,12 @@ export default function CareToday() {
         <p className="text-sm text-gray-500 tabular-nums">{date} · {clock} GMT</p>
       </div>
       {error && <p className="text-xs text-red-600">Couldn&apos;t refresh the records. Your taps still save.</p>}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-bold text-gray-700">Today&apos;s routine</h2>
+        {routine.error && <p className="text-xs text-red-600">Couldn&apos;t load the routine.</p>}
+        <RoutineList items={routine.items} events={events} child={null} now={now} onPick={setPickedItem} />
+      </section>
 
       <div className="grid grid-cols-2 gap-3">
         {children.map(c => {
@@ -108,9 +118,14 @@ export default function CareToday() {
         ))}
       </section>
 
+      {pickedItem && (
+        <RoutineSheet item={pickedItem} events={events} child={null} onClose={() => setPickedItem(null)}
+          onSaved={msg => { flash(msg); void refresh() }} />
+      )}
       {toast && <div className="fixed bottom-4 left-1/2 z-50 w-[92%] max-w-sm -translate-x-1/2 rounded-xl bg-gray-900/95 px-4 py-3 text-sm text-white shadow-lg">{toast}</div>}
       {openChild && (
         <ChildSheet child={children.find(c => c.name === openChild)!} onClose={() => setOpenChild(null)}
+          events={events} routine={routine.items} now={now}
           onSaved={msg => { flash(msg); void refresh() }}
           onPhoto={url => setChildren(cs => cs.map(c => c.name === openChild ? { ...c, photo_url: url } : c))} />
       )}
@@ -118,7 +133,8 @@ export default function CareToday() {
   )
 }
 
-function ChildSheet({ child, onClose, onSaved, onPhoto }: { child: ChildInfo; onClose: () => void; onSaved: (m: string) => void; onPhoto: (u: string) => void }) {
+function ChildSheet({ child, events, routine, now, onClose, onSaved, onPhoto }: { child: ChildInfo; events: CareEvent[]; routine: RoutineItem[]; now: Date; onClose: () => void; onSaved: (m: string) => void; onPhoto: (u: string) => void }) {
+  const [routinePick, setRoutinePick] = useState<RoutineItem | null>(null)
   const [picker, setPicker] = useState<string | null>(null)
   const [hw, setHw] = useState<{ brought: string; done: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -168,6 +184,26 @@ function ChildSheet({ child, onClose, onSaved, onPhoto }: { child: ChildInfo; on
             ))}
           </div>
         )}
+        {!picker && !hw && (
+          <div className="mt-5 space-y-5">
+            <section className="space-y-2">
+              <h2 className="text-sm font-bold text-gray-700">{child.name}&apos;s routine today</h2>
+              <RoutineList items={routine} events={events} child={child.name} now={now} onPick={setRoutinePick} />
+            </section>
+            <section className="space-y-1">
+              <h2 className="text-sm font-bold text-gray-700">What has happened today</h2>
+              {events.filter(e => e.child === child.name).length === 0 && <p className="text-xs text-gray-400">Nothing recorded for {child.name} yet today.</p>}
+              {[...events].filter(e => e.child === child.name).reverse().map(e => (
+                <p key={e.id} className="text-xs text-gray-600">
+                  <span className="tabular-nums text-gray-400">{hhmm(e.recorded_at)}</span>{' '}
+                  {e.kind === 'routine' ? `${(e.extra as { title?: string } | null)?.title ?? 'Routine'} · ${e.value}` : `${e.kind.replace('_', ' ')}${e.value ? ` · ${e.value}` : ''}`}
+                  {e.note ? ` — ${e.note}` : ''}
+                </p>
+              ))}
+            </section>
+          </div>
+        )}
+        {routinePick && <RoutineSheet item={routinePick} events={events} child={child.name} onClose={() => setRoutinePick(null)} onSaved={onSaved} />}
         {picker && <OptionPicker kind={picker} busy={busy} onSave={(value, note, photo) => save({ child: child.name, kind: picker, value, note, photo_url: photo }, OPTIONS[picker].label.toLowerCase())} />}
         {hw && (
           <div className="space-y-4">
