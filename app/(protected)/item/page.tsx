@@ -2083,15 +2083,13 @@ function ItemHubPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
-  // The caretaker (role children_manager) works only in C&H -- land her there
-  // once permissions are known, instead of on a Cash page she can't use.
-  const caretakerLandedRef = useRef(false)
+  // The caretaker (role children_manager) works only in C&H: always bring her
+  // back to it, including after a typed ?tab= link, and hide the other areas.
+  const isCaretakerOnly = role === 'children_manager'
   useEffect(() => {
-    if (!permsLoaded || caretakerLandedRef.current || role !== 'children_manager') return
-    caretakerLandedRef.current = true
-    if (outerTab !== 'ch') changeTab('ch')
+    if (isCaretakerOnly && outerTab !== 'ch') changeTab('ch')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permsLoaded, role])
+  }, [isCaretakerOnly, outerTab])
   const canSeePL = perm('pl')
   const canSeeTeam = perm('team')
   const canSeeUsers = perm('users')
@@ -6566,7 +6564,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {CH_ITEMS.filter(item => canSeeCH || item.key.startsWith('ch_care_')).map((item, i) => (
+              {CH_ITEMS.filter(item => (canSeeCH || item.key.startsWith('ch_care_'))
+                && (item.key !== 'ch_personal' || isOwnerOrJoe)
+                && (!CH_CHILD_PERSON[item.key] || canSeeUK)).map((item, i) => (
                 <div key={item.key}>
                   <SidePaneButton icon={item.icon} label={item.label} mode={cashDisplayMode} divider={i > 0}
                     active={paneActive(lossView === item.key)} onClick={() => pickCHView(item.key)} />
@@ -6644,7 +6644,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
             <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
-              {(canSeeUK || canSeeCHTab) && (
+              {!isCaretakerOnly && (canSeeUK || canSeeCHTab) && (
                 <button onClick={() => changeTab('loss')} title="Biz"
                   style={{ color: PANE_ACCENT.loss }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition

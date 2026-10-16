@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import PushSubscriber from '@/components/PushSubscriber'
+import CaretakerGuard from '@/components/CaretakerGuard'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 
@@ -41,6 +42,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       </div>
       <MainContainer>{children}</MainContainer>
       <PushSubscriber />
+      <CaretakerGuard />
     </div>
   )
 }

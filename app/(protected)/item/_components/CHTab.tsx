@@ -7,6 +7,7 @@ import PersonalTab from './PersonalTab'
 import CareToday from './CareToday'
 import CareLog from './CareLog'
 import CareRoutineEditor from './CareRoutineEditor'
+import HousePlan from './HousePlan'
 import { CareNight, CareRules } from './CareChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { CH_ITEMS, CH_CHILD_PERSON, type CHView } from './chViewData'
@@ -60,6 +61,7 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
     return <CareRoutineEditor canEdit={isOwnerLevel({ role, username }) || hasFeature({ role, username }, 'care_log', rolePermissions)} />
   }
   if (view === 'ch_care_log') return <CareLog />
+  if (view === 'ch_care_plan') return <HousePlan />
 
   const childPerson = CH_CHILD_PERSON[view]
   if (childPerson) {
