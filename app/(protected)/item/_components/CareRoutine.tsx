@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { CHILDREN, dayType, minutesOf, routineState, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
+import { ACTIVITIES, CHILDREN, dayType, minutesOf, routineState, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { hhmm } from './careUtils'
 
 export function useRoutine() {
@@ -17,152 +17,153 @@ export function useRoutine() {
   return { items, error, refresh }
 }
 
-const applicable = (item: RoutineItem): string[] => item.scope === 'all' ? [...CHILDREN] : [item.scope]
-
-// Which children already have a routine record for this item today.
-export function recordsFor(item: RoutineItem, events: CareEvent[]) {
-  const map = new Map<string, CareEvent>()
-  for (const e of events) {
-    if (e.kind === 'routine' && (e.extra as { routine_id?: number } | null)?.routine_id === item.id && e.child) map.set(e.child, e)
-  }
-  return map
+export type Tile = {
+  key: string
+  child: string
+  time: string                 // planned time (guide); for an extra activity, the time it was done
+  title: string
+  important: boolean
+  item: RoutineItem | null     // null = an extra (unplanned) activity
+  ev?: CareEvent               // the record, once tapped
+  state: 'done' | 'notdone' | 'overdue' | 'due' | 'upcoming' | 'future'
 }
 
-const STATE_STYLE = {
-  done: 'border-green-300 bg-green-50 text-green-900',
-  overdue: 'border-red-300 bg-red-50 text-red-900',
-  due: 'border-amber-300 bg-amber-50 text-amber-900',
-  upcoming: 'border-gray-200 bg-white text-gray-800',
-} as const
+const childOrder = (c: string) => CHILDREN.indexOf(c as typeof CHILDREN[number])
 
-// A day's tiles. `child` set -> that child's own timeline (their tiles plus the
-// all-children tiles); unset -> the whole day for everyone.
-export function RoutineList({ items, events, child, now, onPick }: {
-  items: RoutineItem[]; events: CareEvent[]; child: string | null; now: Date; onPick: (item: RoutineItem) => void
-}) {
-  const today = dayType(now)
-  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
-  const [showDone, setShowDone] = useState(false)
-  const mine = items
-    .filter(i => i.day_type === today && (!child || i.scope === 'all' || i.scope === child))
-    .sort((a, b) => minutesOf(a.time) - minutesOf(b.time) || a.id - b.id)
-  const rows = mine.map(i => {
-    const recs = recordsFor(i, events)
-    const who = child ? [child] : applicable(i)
-    const doneAll = who.every(c => recs.has(c))
-    return { item: i, recs, who, doneAll, state: routineState(i, doneAll, nowMin) }
-  })
-  const pending = rows.filter(r => !r.doneAll)
-  const done = rows.filter(r => r.doneAll)
-  const nextId = pending.find(r => r.state === 'upcoming')?.item.id
-
-  const tile = (r: typeof rows[number]) => {
-    const missed = r.who.filter(c => !r.recs.has(c))
-    const notDone = r.who.filter(c => r.recs.get(c)?.value === 'Not done')
-    const last = [...r.recs.values()].sort((a, b) => a.recorded_at.localeCompare(b.recorded_at)).at(-1)
-    return (
-      <button key={r.item.id} type="button" onClick={() => onPick(r.item)}
-        className={`w-full rounded-xl border px-3 py-2.5 text-left active:opacity-70 ${STATE_STYLE[r.state]} ${r.item.id === nextId ? 'ring-2 ring-blue-400' : ''}`}>
-        <div className="flex items-start gap-3">
-          <span className="w-12 shrink-0 text-sm font-bold tabular-nums">{r.item.time}</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug">{r.item.title}</p>
-            <p className="mt-0.5 text-[11px] opacity-80">
-              {r.item.scope === 'all' ? 'All children' : r.item.scope}
-              {r.item.important ? ' · Important' : ''}
-              {r.doneAll && last ? ` · recorded ${hhmm(last.recorded_at)}` : ''}
-              {!r.doneAll && r.recs.size > 0 ? ` · still to record: ${missed.join(', ')}` : ''}
-              {notDone.length ? ` · NOT done: ${notDone.join(', ')}` : ''}
-              {!r.doneAll && r.state === 'overdue' ? ' · OVERDUE' : ''}
-              {!r.doneAll && r.state === 'due' ? ' · due now' : ''}
-              {r.item.id === nextId ? ' · NEXT' : ''}
-            </p>
-          </div>
-          <span className="text-lg">{r.doneAll ? '✓' : ''}</span>
-        </div>
-      </button>
-    )
+// One tile per child per planned activity ("all children" activities become a
+// tile for each child, tapped separately), plus any extra activities recorded.
+export function buildTiles(items: RoutineItem[], events: CareEvent[], date: Date, offset: number, childFilter: string | null, nowMin: number): Tile[] {
+  const dt = dayType(date)
+  const tiles: Tile[] = []
+  const routineEvents = events.filter(e => e.kind === 'routine' && e.child)
+  for (const item of items.filter(i => i.day_type === dt)) {
+    const kids = item.scope === 'all' ? [...CHILDREN] : [item.scope]
+    for (const child of kids) {
+      if (childFilter && child !== childFilter) continue
+      const ev = offset === 0
+        ? routineEvents.find(e => e.child === child && (e.extra as { routine_id?: number } | null)?.routine_id === item.id)
+        : undefined
+      const state: Tile['state'] = offset > 0 ? 'future'
+        : ev ? (ev.value === 'Not done' ? 'notdone' : 'done')
+        : routineState(item, false, nowMin)
+      tiles.push({ key: `${item.id}-${child}`, child, time: item.time, title: item.title, important: item.important, item, ev, state })
+    }
   }
+  if (offset === 0) {
+    for (const e of routineEvents) {
+      const x = e.extra as { adhoc?: boolean; title?: string } | null
+      if (!x?.adhoc || !e.child || (childFilter && e.child !== childFilter)) continue
+      tiles.push({ key: `adhoc-${e.id}`, child: e.child, time: hhmm(e.recorded_at), title: x.title ?? 'Extra activity', important: false, item: null, ev: e, state: 'done' })
+    }
+  }
+  return tiles.sort((a, b) => minutesOf(a.time) - minutesOf(b.time) || childOrder(a.child) - childOrder(b.child))
+}
 
-  if (!rows.length) return <p className="text-xs text-gray-400">No routine set for today yet.</p>
+const STYLE: Record<Tile['state'], string> = {
+  done: 'border-green-300 bg-green-50',
+  notdone: 'border-gray-300 bg-gray-100 opacity-80',
+  overdue: 'border-red-300 bg-red-50',
+  due: 'border-amber-300 bg-amber-50',
+  upcoming: 'border-gray-200 bg-white',
+  future: 'border-gray-200 bg-gray-50',
+}
+
+function Avatar({ name, url }: { name: string; url?: string | null }) {
+  return url
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={url} alt={name} className="h-9 w-9 shrink-0 rounded-full object-cover" />
+    : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{name[0]}</span>
+}
+
+// A day's tiles wrapped into rows (scroll down, no sideways swiping).
+export function DayTiles({ items, events, photos, date, offset, now, childFilter = null, onTap, onSkip }: {
+  items: RoutineItem[]; events: CareEvent[]; photos: Record<string, string | null>; date: Date; offset: number; now: Date
+  childFilter?: string | null; onTap: (t: Tile) => void; onSkip: (t: Tile) => void
+}) {
+  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
+  const tiles = buildTiles(items, events, date, offset, childFilter, nowMin)
+  if (!tiles.length) return <p className="text-xs text-gray-400">Nothing planned.</p>
   return (
-    <div className="space-y-2">
-      {pending.length === 0 && <p className="rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">Everything on today&apos;s routine is recorded.</p>}
-      {pending.map(tile)}
-      {done.length > 0 && (
-        <>
-          <button type="button" onClick={() => setShowDone(s => !s)} className="text-xs font-semibold text-gray-500">
-            {showDone ? 'Hide' : 'Show'} done ({done.length})
-          </button>
-          {showDone && done.map(tile)}
-        </>
-      )}
+    <div className="grid grid-cols-2 gap-2">
+      {tiles.map(t => {
+        const live = offset === 0 && !t.ev && t.item
+        return (
+          <div key={t.key} className={`flex flex-col rounded-xl border p-2 ${STYLE[t.state]}`}>
+            <button type="button" disabled={!live} onClick={() => onTap(t)} className="flex-1 text-left disabled:cursor-default active:opacity-70">
+              <div className="flex items-center gap-2">
+                <Avatar name={t.child} url={photos[t.child]} />
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-gray-900">{t.child}</p>
+                  <p className="text-[11px] tabular-nums text-gray-500">
+                    {t.item ? `Plan ${t.time}` : 'Extra'}{t.important ? ' · Important' : ''}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-1.5 text-sm font-semibold leading-snug text-gray-900">{t.title}</p>
+              <p className={`mt-1 text-[11px] font-bold ${t.state === 'done' ? 'text-green-700' : t.state === 'overdue' ? 'text-red-700' : t.state === 'due' ? 'text-amber-700' : 'text-gray-500'}`}>
+                {t.state === 'done' && t.ev ? `✓ Done ${hhmm(t.ev.recorded_at)}`
+                  : t.state === 'notdone' && t.ev ? `Not done ${hhmm(t.ev.recorded_at)}`
+                  : t.state === 'overdue' ? 'OVERDUE · tap when done'
+                  : t.state === 'due' ? 'Due now · tap when done'
+                  : t.state === 'upcoming' ? 'Tap when done'
+                  : 'Planned'}
+              </p>
+            </button>
+            {live && (t.state === 'overdue' || t.state === 'due') && (
+              <button type="button" onClick={() => onSkip(t)} className="mt-1 self-end text-[10px] font-semibold text-gray-500 underline">Not done</button>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-// Opens when a tile is tapped: choose which children it applies to, then save.
-export function RoutineSheet({ item, events, child, onClose, onSaved }: {
-  item: RoutineItem; events: CareEvent[]; child: string | null; onClose: () => void; onSaved: (msg: string) => void
-}) {
-  const recs = recordsFor(item, events)
-  const who = child ? [child] : applicable(item)
-  const open = who.filter(c => !recs.has(c))
-  const [picked, setPicked] = useState<string[]>(open)
-  const [note, setNote] = useState('')
+// "+ Extra activity": an unplanned activity, recorded for the chosen children
+// at the moment it is saved.
+export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<string, string | null>; onClose: () => void; onSaved: (msg: string) => void }) {
+  const [kids, setKids] = useState<string[]>([])
+  const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  async function save(markNotDone: boolean) {
+  async function save() {
     setBusy(true); setErr('')
-    const done = markNotDone ? [] : picked
-    const not_done = markNotDone ? picked : open.filter(c => !picked.includes(c))
     try {
       const res = await fetch('/api/caretaker/routine/complete', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ routine_id: item.id, done, not_done: markNotDone ? picked : not_done, note }),
+        body: JSON.stringify({ adhoc_title: title, done: kids }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error ?? 'Could not save')
-      const t = Array.isArray(d) && d[0] ? hhmm(d[0].recorded_at) : ''
-      onSaved(`Saved: ${item.title}${t ? ` at ${t}` : ''}`)
+      onSaved(`Saved: ${title} for ${kids.join(', ')}`)
       onClose()
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <div className="max-h-[85vh] w-full overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
-        <p className="text-xs font-bold tabular-nums text-gray-500">{item.time}{item.important ? ' · Important' : ''}</p>
-        <p className="mb-3 text-base font-bold text-gray-900">{item.title}</p>
-        {open.length === 0 ? (
-          <p className="text-sm text-green-700">Already recorded for everyone this applies to.</p>
-        ) : (
-          <>
-            {who.length > 1 && (
-              <>
-                <p className="mb-1 text-xs text-gray-500">Done for these children (untick any who did not):</p>
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {open.map(c => (
-                    <button key={c} type="button" onClick={() => setPicked(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])}
-                      className={`rounded-xl px-4 py-3 text-sm font-bold ${picked.includes(c) ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-500 line-through'}`}>{c}</button>
-                  ))}
-                </div>
-              </>
-            )}
-            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Short note (optional)"
-              className="mb-3 w-full rounded-xl border border-gray-300 p-3 text-sm" />
-            {err && <p className="mb-2 text-sm text-red-600">{err}</p>}
-            <button type="button" disabled={busy || (who.length > 1 && picked.length === 0 && open.length === 0)} onClick={() => void save(false)}
-              className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">
-              {busy ? 'Saving…' : who.length > 1 && picked.length < open.length ? `Save (${picked.length} done, ${open.length - picked.length} not done)` : 'Done'}
+      <div className="max-h-[88vh] w-full space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <p className="text-base font-bold text-gray-900">Extra activity (not planned)</p>
+        <div className="flex flex-wrap gap-2">
+          {CHILDREN.map(c => (
+            <button key={c} type="button" onClick={() => setKids(k => k.includes(c) ? k.filter(x => x !== c) : [...k, c])}
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold ${kids.includes(c) ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <Avatar name={c} url={photos[c]} />{c}
             </button>
-            <button type="button" disabled={busy} onClick={() => void save(true)}
-              className="mt-2 w-full rounded-xl bg-red-50 py-3 text-sm font-bold text-red-700">Not done{who.length > 1 ? ' (for the ticked children)' : ''}</button>
-          </>
-        )}
-        <button type="button" onClick={onClose} className="mt-3 w-full py-2 text-sm font-semibold text-gray-500">Close</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {ACTIVITIES.filter(a => a !== 'Other').map(a => (
+            <button key={a} type="button" onClick={() => setTitle(a)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${title === a ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800'}`}>{a}</button>
+          ))}
+        </div>
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Or type what was done" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        {err && <p className="text-sm text-red-600">{err}</p>}
+        <button type="button" disabled={busy || !title.trim() || kids.length === 0} onClick={() => void save()}
+          className="w-full rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save now'}</button>
+        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
       </div>
     </div>
   )

@@ -15,12 +15,18 @@ export async function POST(req: NextRequest) {
   await ensureCaretakerTables()
   const b = await req.json().catch(() => null)
   const routineId = Number(b?.routine_id)
+  const adhocTitle = typeof b?.adhoc_title === 'string' ? b.adhoc_title.trim().slice(0, 150) : ''
   const valid = (a: unknown) => Array.isArray(a) ? a.filter((n): n is string => typeof n === 'string' && (CHILDREN as readonly string[]).includes(n)) : []
   const done = valid(b?.done), notDone = valid(b?.not_done).filter(n => !done.includes(n))
-  if (!routineId || done.length + notDone.length === 0) return badRequest('Choose at least one child')
+  if ((!routineId && !adhocTitle) || done.length + notDone.length === 0) return badRequest('Choose at least one child' + (routineId || adhocTitle ? '' : ' and an activity'))
   const note = b?.note ? String(b.note).slice(0, 500) : null
-  const [item] = await sql`SELECT id, title FROM care_routine WHERE id = ${routineId}`
-  if (!item) return badRequest('Unknown routine item')
+  // Either a planned tile (routine_id) or an extra, unplanned activity (adhoc_title).
+  let item: { id: number | null; title: string } = { id: null, title: adhocTitle }
+  if (routineId) {
+    const [r] = await sql`SELECT id, title FROM care_routine WHERE id = ${routineId}`
+    if (!r) return badRequest('Unknown routine item')
+    item = { id: r.id as number, title: r.title as string }
+  }
   const who = caretakerName(session)
   try {
     const inserted = []
@@ -28,7 +34,7 @@ export async function POST(req: NextRequest) {
       for (const child of children) {
         const [row] = await sql`
           INSERT INTO care_events (child, kind, value, note, extra, recorded_by)
-          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify({ routine_id: routineId, title: item.title })}::jsonb, ${who})
+          VALUES (${child}, 'routine', ${value}, ${note}, ${JSON.stringify(item.id ? { routine_id: item.id, title: item.title } : { adhoc: true, title: item.title })}::jsonb, ${who})
           RETURNING id, child, kind, value, note, photo_url, extra, recorded_by, recorded_at`
         inserted.push(row)
       }

@@ -57,7 +57,7 @@ export default function CareRoutineEditor({ canEdit = false }: { canEdit?: boole
             <span className="w-12 shrink-0 text-sm font-bold tabular-nums">{i.time}</span>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-900">{i.title}</p>
-              <p className="text-[11px] text-gray-500">{i.scope === 'all' ? 'All children' : i.scope}{i.important ? ' · Important' : ''}</p>
+              <p className="text-[11px] text-gray-500">{i.scope === 'all' ? 'Every child (a tile for each)' : i.scope}{i.important ? ' · Important' : ''}</p>
             </div>
             {canEdit && <button type="button" onClick={() => setEditing(i)} className="text-xs font-bold text-blue-600">Edit</button>}
             {canEdit && <button type="button" onClick={() => void remove(i.id)} className="text-xs font-bold text-red-600">Remove</button>}
@@ -73,7 +73,7 @@ export default function CareRoutineEditor({ canEdit = false }: { canEdit?: boole
             <div className="flex gap-2">
               <input type="time" value={editing.time ?? ''} onChange={e => setEditing({ ...editing, time: e.target.value })} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm" />
               <select value={editing.scope ?? 'all'} onChange={e => setEditing({ ...editing, scope: e.target.value })} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">
-                <option value="all">All children</option>
+                <option value="all">Every child (a separate tile for each)</option>
                 {CHILDREN.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
