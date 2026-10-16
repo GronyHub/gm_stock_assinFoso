@@ -12,7 +12,9 @@ export async function GET() {
   if (!session) return unauthorized()
   if (!(await canCaretake(session))) return success([], 403)
   try {
-    return success(await loadRoutine())
+    // Always read fresh: the list is small, and rows can be loaded straight into
+    // the database, which an in-memory copy would not notice for hours.
+    return success(await loadRoutine(true))
   } catch (e) {
     console.error('routine GET error:', e instanceof Error ? e.message : String(e))
     return success([], 500)

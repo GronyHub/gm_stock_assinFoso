@@ -47,15 +47,14 @@ const ITEMS: Item[] = [
   { key: 'remind-0100', time: '00:55', days: 'all', to: 'caretaker', title: 'Night check due', build: () => '1am night check: go to each child, then record it.' },
   { key: 'remind-0400', time: '03:55', days: 'all', to: 'caretaker', title: 'Night check due', build: () => '4am night check: go to each child, then record it.' },
   // (Breakfast and supper are alerted from the editable routine, see routineItems below.)
+  // (Waking up is now a tile in the editable routine, so the old fixed wake-up alerts are gone.)
   // School days
-  { key: 'wake-school', time: '07:15', days: 'school', to: 'owners', title: 'Missed: woke up', build: childMissing('Wake-up time not recorded', e => e.kind === 'wake') },
   { key: 'car-left', time: '07:55', days: 'school', to: 'owners', title: 'Missed: school car', build: houseMissing('School car departure not recorded', 'car_left') },
   { key: 'cleaning-school', time: '16:30', days: 'school', to: 'owners', title: 'Missed: cleaning', build: cleaningMissing },
   { key: 'school-out', time: '17:00', days: 'school', to: 'owners', title: 'Missed: school out', build: houseMissing('Time children left school not recorded', 'school_out') },
   { key: 'home-back', time: '17:30', days: 'school', to: 'owners', title: 'Missed: back home', build: houseMissing('Time children got home not recorded', 'home_back') },
   { key: 'homework', time: '19:00', days: 'school', to: 'owners', title: 'Missed: homework', build: childMissing('Homework not recorded', e => e.kind === 'homework') },
   // Weekends
-  { key: 'wake-weekend', time: '09:00', days: 'weekend', to: 'owners', title: 'Missed: woke up', build: childMissing('Wake-up time not recorded', e => e.kind === 'wake') },
   { key: 'cleaning-weekend', time: '16:00', days: 'weekend', to: 'owners', title: 'Missed: cleaning', build: cleaningMissing },
   // Every day
   { key: 'rules-evening', time: '20:00', days: 'all', to: 'owners', title: 'Missed: house rules', build: rulesMissing('Evening') },
