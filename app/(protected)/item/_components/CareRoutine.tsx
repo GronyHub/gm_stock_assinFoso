@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ACTIVITIES, CHILDREN, NIGHT_CHECKS, NIGHT_SLOTS, dayKey, dayType, minutesOf, routineState, ROUTINE_GRACE_MIN, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
+import { ACTIVITIES, HOUSE_CHORES, CHILDREN, NIGHT_CHECKS, NIGHT_SLOTS, dayKey, dayType, minutesOf, routineState, ROUTINE_GRACE_MIN, type CareEvent, type RoutineItem } from '@/lib/caretakerShared'
 import { postCareEvent } from './careUtils'
 import { hhmm } from './careUtils'
 
@@ -189,6 +189,14 @@ export function AddExtraSheet({ photos, onClose, onSaved }: { photos: Record<str
             </button>
           ))}
         </div>
+        <p className="text-xs font-bold uppercase text-gray-500">House chores</p>
+        <div className="flex flex-wrap gap-2">
+          {HOUSE_CHORES.map(a => (
+            <button key={a} type="button" onClick={() => setTitle(a)}
+              className={`rounded-full px-3 py-2 text-sm font-semibold ${title === a ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>{a}</button>
+          ))}
+        </div>
+        <p className="text-xs font-bold uppercase text-gray-500">Other activities</p>
         <div className="flex flex-wrap gap-2">
           {ACTIVITIES.filter(a => a !== 'Other').map(a => (
             <button key={a} type="button" onClick={() => setTitle(a)}
