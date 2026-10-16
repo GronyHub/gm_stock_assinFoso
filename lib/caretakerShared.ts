@@ -94,3 +94,5 @@ export function routineState(item: RoutineItem, doneAll: boolean, nowMin: number
   if (nowMin >= t) return 'due'
   return 'upcoming'
 }
+
+export const JOB_SECTIONS = ['Job', 'Responsibility', 'Do', "Don't"] as const
