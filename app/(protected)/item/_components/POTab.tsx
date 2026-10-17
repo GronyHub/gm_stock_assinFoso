@@ -372,6 +372,18 @@ export default function POTab({ search }: Props) {
               Not Billed ({notBilledCount})
             </label>
           )}
+          <button type="button" title="Compares every purchase order with the bills. Any order marked received whose bill is missing goes back to not received."
+            onClick={async () => {
+              try {
+                const r = await fetch('/api/purchase-orders/reconcile', { method: 'POST' })
+                const d = await r.json()
+                if (!r.ok) throw new Error()
+                const fixed = (d.fixed ?? []) as { po_number: string }[]
+                alert(fixed.length ? `Put back to "not received" (no bill found): ${fixed.map(f => f.po_number).join(', ')}` : 'Every received purchase order has its bill. Nothing to fix.')
+                void loadList()
+              } catch { alert('Could not check. Try again.') }
+            }}
+            className="text-[9px] font-bold text-blue-700 whitespace-nowrap">Check vs Bills</button>
           <ColumnsPickerButton prefs={colPrefs} />
           <Link href="/purchase-orders/new"
             className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
@@ -598,8 +610,14 @@ export default function POTab({ search }: Props) {
                 <div className="p-2 bg-green-50 border-b border-green-100 space-y-2">
                   <p className="text-[10px] font-bold text-green-800">Receive Items</p>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Date received</p>
-                    <input type="date" value={receiveDate} onChange={e => setReceiveDate(e.target.value)} className={inputCls} />
+                    <p className="text-[9px] text-gray-500 mb-0.5">Date received (pick any past day)</p>
+                    <input type="date" value={receiveDate} max={new Date().toISOString().slice(0, 10)} onChange={e => setReceiveDate(e.target.value)} className={inputCls} />
+                    <div className="mt-1 flex gap-1">
+                      {[['Today', 0], ['Yesterday', 1], ['2 days ago', 2]].map(([label, n]) => (
+                        <button key={label as string} type="button" onClick={() => setReceiveDate(new Date(Date.now() - (n as number) * 86400000).toISOString().slice(0, 10))}
+                          className="rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-green-800 border border-green-200">{label}</button>
+                      ))}
+                    </div>
                   </div>
                   {detail.lines.map(l => {
                     const remaining = parseFloat(l.qty_ordered) - parseFloat(l.qty_received)
