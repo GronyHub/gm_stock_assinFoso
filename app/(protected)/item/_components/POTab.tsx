@@ -661,6 +661,7 @@ export default function POTab({ search }: Props) {
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ord</th>
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">recv</th>
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">price</th>
+                        <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">receipt</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -678,6 +679,13 @@ export default function POTab({ search }: Props) {
                             {fmt(l.qty_received)}
                           </td>
                           <td className="px-1.5 py-0 text-right text-gray-700">{fmt(l.unit_price)}</td>
+                          <td className="px-1.5 py-0 text-right whitespace-nowrap text-[9px] font-bold">
+                            {parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) - 0.001
+                              ? <span className="text-green-600">Received</span>
+                              : parseFloat(l.qty_received) > 0.001
+                                ? <span className="text-amber-600">Part {fmt(l.qty_received)}/{fmt(l.qty_ordered)}</span>
+                                : <span className="text-red-600">Not received</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
