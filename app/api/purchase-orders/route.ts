@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensurePurchaseOrderTables } from '@/lib/purchaseOrders'
+import { repairOrphanPoReceipts } from '@/lib/poReceipts'
 import { NextRequest } from 'next/server'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 
@@ -9,6 +10,7 @@ export async function GET() {
   try {
     await ensureDbInitialized()
     await ensurePurchaseOrderTables()
+    await repairOrphanPoReceipts()
     const [pos, lines] = await Promise.all([
       sql`
         SELECT po.id, po.po_number, po.vendor_id,

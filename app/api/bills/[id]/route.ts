@@ -5,6 +5,7 @@ import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureBillAttachmentsColumn, ensureBillEnteredByColumn, normalizeAttachments } from '@/lib/billAttachments'
 import { syncVcpForItems } from '@/lib/vcpSync'
+import { recomputePoReceived } from '@/lib/poReceipts'
 import { NextRequest } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -85,8 +86,13 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const affectedLines = await sql`SELECT item_id FROM bill_lines WHERE bill_id = ${billId}` as { item_id: number | null }[]
 
+  // If this bill came from receiving a Purchase Order, put that order back to
+  // "not received" for these goods so it can be received again.
+  const poLinks = await sql`SELECT DISTINCT po_id FROM purchase_order_receipts WHERE bill_id = ${billId}` as { po_id: number }[]
+  await sql`DELETE FROM purchase_order_receipts WHERE bill_id = ${billId}`
   await sql`DELETE FROM bill_lines WHERE bill_id = ${billId}`
   await sql`DELETE FROM bills WHERE id = ${billId}`
+  for (const l of poLinks) await recomputePoReceived(l.po_id)
 
   const actor = getActorName(session)
   await logActivity(actor, 'deleted bill', `Bill #${billId}${bill.vendor_name ? ` — ${bill.vendor_name}` : ''}`)
