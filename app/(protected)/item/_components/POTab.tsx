@@ -116,12 +116,13 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 te
 
 // Date stays sticky/always-visible (first column); these two are the only
 // ones the picker can hide/reorder/rename.
-type ColKey = 'vendor' | 'status'
+type ColKey = 'vendor' | 'status' | 'receipt'
 const PO_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'vendor', label: 'VENDOR' },
   { key: 'status', label: 'STATUS' },
+  { key: 'receipt', label: 'RECEIPT' },
 ]
-const PO_COL_DEFAULTS: Record<string, number> = { date: 64, vendor: 90, status: 90 }
+const PO_COL_DEFAULTS: Record<string, number> = { date: 64, vendor: 90, status: 56, receipt: 70 }
 
 type Props = { search: string }
 
@@ -405,7 +406,7 @@ export default function POTab({ search }: Props) {
               <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
                 className="text-gray-500">PO</ResizableTh>
               {colPrefs.shownColumns.map((c, i) => (
-                <ResizableTh key={c.key} align={c.key === 'status' ? 'right' : 'left'} noDivider={i === colPrefs.shownColumns.length - 1}
+                <ResizableTh key={c.key} align="left" noDivider={i === colPrefs.shownColumns.length - 1}
                   className="text-gray-500"
                   onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
                   {c.label}
@@ -421,12 +422,11 @@ export default function POTab({ search }: Props) {
                   <td className="px-0.5 py-0 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
                   {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
                     <td key={c.key} className="px-0.5 py-0 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
+                  ) : c.key === 'status' ? (
+                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap"><StatusBadge status={p.status} /></td>
                   ) : (
-                    <td key={c.key} className="px-0.5 py-0 overflow-hidden">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <StatusBadge status={p.status} />
-                        {p.status !== 'draft' && p.status !== 'cancelled' && <ProgressBadge lines={p.lines} />}
-                      </div>
+                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap">
+                      {p.status !== 'draft' && p.status !== 'cancelled' ? <ProgressBadge lines={p.lines} /> : null}
                     </td>
                   ))}
                 </tr>
