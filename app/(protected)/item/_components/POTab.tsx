@@ -684,7 +684,19 @@ export default function POTab({ search }: Props) {
                               ? <span className="text-green-600">Received</span>
                               : parseFloat(l.qty_received) > 0.001
                                 ? <span className="text-amber-600">Part {fmt(l.qty_received)}/{fmt(l.qty_ordered)}</span>
-                                : <span className="text-red-600">Not received</span>}
+                                : <span className="text-red-600">Not received
+                                    {detail.status !== 'cancelled' && detail.lines.length > 1 && (
+                                      <button type="button" title="Delete this line from the order" className="ml-1.5 rounded bg-red-50 px-1 text-red-600"
+                                        onClick={async e => {
+                                          e.stopPropagation()
+                                          if (!confirm(`Delete "${l.item_name}" from this order? It was not received.`)) return
+                                          const r = await fetch(`/api/purchase-orders/${detail.id}/lines/${l.id}`, { method: 'DELETE' })
+                                          const d = await r.json().catch(() => ({}))
+                                          if (!r.ok) { alert(d.error ?? 'Could not delete the line.'); return }
+                                          loadDetail(detail.id); void loadList()
+                                        }}>Delete</button>
+                                    )}
+                                  </span>}
                           </td>
                         </tr>
                       ))}
