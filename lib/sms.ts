@@ -58,7 +58,8 @@ async function log(to: string, message: string, kind: string, status: string, er
 export async function sendSms(rawPhone: unknown, message: string, kind: string): Promise<'sent' | 'failed' | 'skipped'> {
   const to = toE164(rawPhone)
   if (!to) return 'skipped'
-  if (process.env.SMS_ENABLED === 'off') return 'skipped'
+  // Automatic SMS stays off until SMS_AUTO=on is set on the server (for now customers are messaged on WhatsApp instead).
+  if (process.env.SMS_AUTO !== 'on' || process.env.SMS_ENABLED === 'off') return 'skipped'
   const provider = process.env.SMS_PROVIDER ?? (process.env.ARKESEL_API_KEY ? 'arkesel' : 'africastalking')
   const sender = process.env.SMS_SENDER_ID ?? process.env.AT_SENDER_ID
   try {

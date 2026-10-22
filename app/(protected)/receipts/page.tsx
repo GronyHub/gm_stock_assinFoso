@@ -378,6 +378,7 @@ export default function ReceiptsPage() {
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState<Receipt | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
   const colPrefs = useColumnPrefs<ColKey>('receiptsTable', RECEIPT_COLUMNS)
 
   const [loadError, setLoadError] = useState(false)
@@ -432,8 +433,17 @@ export default function ReceiptsPage() {
       {showForm && (
         <NewReceiptForm
           onCancel={() => setShowForm(false)}
-          onCreated={r => { setReceipts(prev => [r, ...prev]); setShowForm(false) }}
+          onCreated={r => { setReceipts(prev => [r, ...prev]); setShowForm(false); const u = (r as Receipt & { whatsapp_url?: string | null }).whatsapp_url; if (u) setWaPrompt({ url: u, label: `receipt ${r.invoice_number}` }) }}
         />
+      )}
+
+      {waPrompt && (
+        <div className="fixed bottom-4 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-green-300">
+          <p className="flex-1 text-xs font-semibold text-gray-800">Send the {waPrompt.label} to the customer on WhatsApp?</p>
+          <a href={waPrompt.url} target="_blank" rel="noopener noreferrer" onClick={() => setWaPrompt(null)}
+            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Send</a>
+          <button type="button" onClick={() => setWaPrompt(null)} className="px-1 text-lg leading-none text-gray-400">&times;</button>
+        </div>
       )}
 
       {/* Summary cards -- every receipt here is fully paid once issued, so there's

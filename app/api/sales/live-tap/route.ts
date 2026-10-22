@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendTransactionEmail } from '@/lib/mailer'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
+import { purchaseWhatsAppUrl } from '@/lib/customerProfile'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -338,7 +339,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return success({ tap, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
+    const whatsappUrl = smsTo ? purchaseWhatsAppUrl('0' + smsTo.slice(-9), [{ name: item.canonical_name, qty, price }], customerIdCode) : null
+    return success({ tap, whatsappUrl, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)

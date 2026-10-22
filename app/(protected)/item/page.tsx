@@ -2302,6 +2302,8 @@ function ItemHubPageInner() {
   const [liveCID, setLiveCID] = useState('')
   // The inline GM box value for the tap being recorded (state set just before recordTap would still be stale).
   const inlineCidRef = useRef<string | null>(null)
+  // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
+  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
   const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
@@ -4082,6 +4084,7 @@ function ItemHubPageInner() {
       setLiveCID('')
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
+      if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message' })
 
       // Offer to mark this specific draw as a property -- only makes sense
       // for a real GMC stock draw of a physical good, not a service tap.
@@ -10249,6 +10252,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               })()}
             </div>
           </div>
+        </div>
+      )}
+
+      {waPrompt && (
+        <div className="fixed bottom-4 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-green-300">
+          <p className="flex-1 text-xs font-semibold text-gray-800">Send the {waPrompt.label} to the customer on WhatsApp?</p>
+          <a href={waPrompt.url} target="_blank" rel="noopener noreferrer" onClick={() => setWaPrompt(null)}
+            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Send</a>
+          <button type="button" onClick={() => setWaPrompt(null)} className="px-1 text-lg leading-none text-gray-400">&times;</button>
         </div>
       )}
 
