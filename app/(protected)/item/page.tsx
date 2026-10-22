@@ -4027,9 +4027,10 @@ function ItemHubPageInner() {
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
           tapTime: liveTapTimeTouched ? liveTapTime : undefined,
-          // 9+ digits in the GM box is a phone number (customer IDs are short): text them the sale.
-          customerIdCode: cidValue && cidValue.length < 9 ? `GM${cidValue}` : undefined,
-          customerPhone: cidValue && cidValue.length >= 9 ? cidValue : undefined,
+          // The GM box takes either a customer ID (e.g. 123) or a phone number: exactly 10 digits
+          // starting with 0. A phone number texts the customer what they bought.
+          customerIdCode: cidValue && !/^0\d{9}$/.test(cidValue) ? `GM${cidValue}` : undefined,
+          customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
         }),
         signal: controller.signal,
       })
