@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
+import { sendSms, receiptMessage } from '@/lib/sms'
 import { NextRequest } from 'next/server'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
@@ -142,6 +143,7 @@ export async function POST(req: NextRequest) {
     `, [invoice.id])
 
     await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
+    if (customer_phone) void sendSms(customer_phone, receiptMessage(String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price }))), 'receipt')
     return success(created)
   } catch (e) {
     return handleError('receipt POST', e)

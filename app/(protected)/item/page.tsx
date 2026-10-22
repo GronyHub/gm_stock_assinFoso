@@ -2300,6 +2300,8 @@ function ItemHubPageInner() {
   const [liveQty, setLiveQty] = useState('')
   const [livePrice, setLivePrice] = useState('')
   const [liveCID, setLiveCID] = useState('')
+  // The inline GM box value for the tap being recorded (state set just before recordTap would still be stale).
+  const inlineCidRef = useRef<string | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
   const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
@@ -4010,6 +4012,7 @@ function ItemHubPageInner() {
       return
     }
 
+    const cidValue = inlineCidRef.current ?? liveCID
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
@@ -4024,7 +4027,9 @@ function ItemHubPageInner() {
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
           tapTime: liveTapTimeTouched ? liveTapTime : undefined,
-          customerIdCode: liveCID ? `GM${liveCID}` : undefined,
+          // 9+ digits in the GM box is a phone number (customer IDs are short): text them the sale.
+          customerIdCode: cidValue && cidValue.length < 9 ? `GM${cidValue}` : undefined,
+          customerPhone: cidValue && cidValue.length >= 9 ? cidValue : undefined,
         }),
         signal: controller.signal,
       })
@@ -4129,7 +4134,8 @@ function ItemHubPageInner() {
     // Set the global CID (without prefix) temporarily for this tap
     // recordTap will add GM prefix when sending to API
     setLiveCID(cidNum)
-    await recordTap(item, false, qty, price)
+    inlineCidRef.current = cidNum
+    try { await recordTap(item, false, qty, price) } finally { inlineCidRef.current = null }
 
     // Clear inline state for this item
     setLiveInlineQtyByItemId(prev => {
@@ -8887,7 +8893,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9]/g, '') }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            placeholder="GM"
+                                            placeholder="GM / phone"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
@@ -9092,7 +9098,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   inputMode="numeric"
                                   value={liveCID}
                                   onChange={e => setLiveCID(e.target.value.replace(/[^0-9]/g, ''))}
-                                  placeholder="e.g., 123"
+                                  placeholder="ID e.g. 123, or phone number"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
                                 />

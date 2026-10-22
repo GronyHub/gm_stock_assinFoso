@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendTransactionEmail } from '@/lib/mailer'
+import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -32,7 +33,15 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone } = await req.json()
+    let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
+    // The GM box also accepts the customer's phone number: it texts them what they bought
+    // and, if that number belongs to a registered customer, files the sale under their ID.
+    const smsTo = toE164(customerPhone)
+    if (smsTo && !customerIdCode) {
+      const [known] = await sql`SELECT customer_id_code FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${smsTo.slice(-9)} LIMIT 1`.catch(() => [])
+      if (known?.customer_id_code) customerIdCode = known.customer_id_code as string
+    }
     if (!itemId) return badRequest('Missing itemId')
     const qtyNum = Number(quantity)
     if (!Number.isFinite(qtyNum) || qtyNum < 1) {
@@ -308,6 +317,8 @@ export async function POST(req: NextRequest) {
     console.log('[live-tap] Duration calc:', { itemId: item.id, itemName: item.canonical_name, productType: item.product_type, qty, unitTimeSeconds, estimatedDurationSeconds })
     await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
+
+    if (smsTo) void sendSms(smsTo, purchaseMessage([{ name: item.canonical_name, qty, price }], customerIdCode), 'purchase')
 
     // Send transaction email if customer ID provided
     if (customerIdCode) {

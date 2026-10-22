@@ -6,6 +6,7 @@ import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
 import { ensureCustomerProfileColumns, normalizeGhPhone, welcomeWhatsAppUrl } from '@/lib/customerProfile'
 import { sendRegistrationEmail } from '@/lib/mailer'
+import { sendSms, welcomeSms } from '@/lib/sms'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest) {
 
     // Welcome email goes out straight away when an email was given. A failed
     // send never blocks registration; the result is returned so staff can see it.
+    if (customer.phone && customer.customer_id_code) void sendSms(customer.phone, welcomeSms(first_name || customer.display_name, customer.customer_id_code), 'welcome')
     let welcomeEmail: 'sent' | 'failed' | 'skipped' = 'skipped'
     if (customer.email) {
       try {
