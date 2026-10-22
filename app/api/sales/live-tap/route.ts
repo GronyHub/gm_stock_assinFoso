@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendTransactionEmail } from '@/lib/mailer'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
-import { purchaseWhatsAppUrl } from '@/lib/customerProfile'
+import { purchaseWhatsAppUrl, normalizeGhPhone } from '@/lib/customerProfile'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -34,15 +34,25 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName } = await req.json()
     let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
     // The GM box also accepts the customer's phone number: it texts them what they bought
     // and, if that number belongs to a registered customer, files the sale under their ID.
     const smsTo = toE164(customerPhone)
+    // Who to offer the WhatsApp message to, and what to call them: the typed number
+    // (name from the saved customer with that number, or the name typed for a new number),
+    // or the saved phone of the customer picked by ID / name.
+    let waLocal: string | null = smsTo ? '0' + smsTo.slice(-9) : null
+    let waName: string | null = typeof typedName === 'string' && typedName.trim() ? typedName.trim().slice(0, 60) : null
     if (smsTo && !customerIdCode) {
-      const [known] = await sql`SELECT customer_id_code FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${smsTo.slice(-9)} LIMIT 1`.catch(() => [])
-      if (known?.customer_id_code) customerIdCode = known.customer_id_code as string
+      const [known] = await sql`SELECT customer_id_code, display_name, first_name FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${smsTo.slice(-9)} LIMIT 1`.catch(() => [])
+      if (known?.customer_id_code) { customerIdCode = known.customer_id_code as string; waName = ((known.first_name || known.display_name) as string) ?? waName }
+    } else if (customerIdCode && !smsTo) {
+      const [c] = await sql`SELECT phone, display_name, first_name FROM customers WHERE customer_id_code = ${customerIdCode}`.catch(() => [])
+      const local = normalizeGhPhone(c?.phone)
+      if (local) { waLocal = local; waName = ((c?.first_name || c?.display_name) as string) ?? waName }
     }
+
     if (!itemId) return badRequest('Missing itemId')
     const qtyNum = Number(quantity)
     if (!Number.isFinite(qtyNum) || qtyNum < 1) {
@@ -339,7 +349,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const whatsappUrl = smsTo ? purchaseWhatsAppUrl('0' + smsTo.slice(-9), [{ name: item.canonical_name, qty, price }], customerIdCode) : null
+    const whatsappUrl = waLocal ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName) : null
     return success({ tap, whatsappUrl, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))

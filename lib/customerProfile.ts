@@ -47,10 +47,10 @@ const cedi = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDig
 
 // WhatsApp click-to-chat links, opened by staff on their own phone (no SMS cost):
 // the message is pre-filled, they just press send.
-export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?: string | null): string {
+export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?: string | null, name?: string | null): string {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
   const lines = items.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)}`).join('\n')
-  const text = `Thank you for shopping at *Grony Multimedia*!\n\nYou bought:\n${lines}\n*Total: ${cedi(total)}*` +
+  const text = `${name?.trim() ? `Hello ${name.trim()}! ` : ''}Thank you for shopping at *Grony Multimedia*!\n\nYou bought:\n${lines}\n*Total: ${cedi(total)}*` +
     `${customerId ? `\nYour customer number: *${customerId}*` : ''}\n\nCall/WhatsApp/MoMo: 053 432 8977`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
 }

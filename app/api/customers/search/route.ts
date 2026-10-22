@@ -7,8 +7,16 @@ export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
   if (error) return error
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 40)
-  if (q.length < 2) return success([])
+  const phone = (req.nextUrl.searchParams.get('phone') ?? '').replace(/\D/g, '')
   try {
+    // Exact phone check (last 9 digits), used to tell a saved number from a new one.
+    if (phone.length >= 9) {
+      const rows = await sql`
+        SELECT id, customer_id_code, display_name, company_name, phone FROM customers
+        WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${phone.slice(-9)} LIMIT 3`
+      return success(rows)
+    }
+    if (q.length < 2) return success([])
     const like = `%${q}%`
     const rows = await sql`
       SELECT id, customer_id_code, display_name, company_name, phone

@@ -2303,6 +2303,8 @@ function ItemHubPageInner() {
   const [liveCID, setLiveCID] = useState('')
   // The inline GM box value for the tap being recorded (state set just before recordTap would still be stale).
   const inlineCidRef = useRef<string | null>(null)
+  // Name typed for a phone number that is not a saved customer (used in the WhatsApp greeting).
+  const custNameRef = useRef('')
   // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
   const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
@@ -4034,6 +4036,7 @@ function ItemHubPageInner() {
           // starting with 0. A phone number texts the customer what they bought.
           customerIdCode: cidValue && !/^0\d{9}$/.test(cidValue) ? `GM${cidValue}` : undefined,
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
+          customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
         }),
         signal: controller.signal,
       })
@@ -8895,6 +8898,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
                                             onChange={v => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: v }))}
+                                            onName={n => { custNameRef.current = n }}
                                             onEnter={() => recordInlineTap(item)}
                                             placeholder="GM / phone / name"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
@@ -9099,6 +9103,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 <CustomerBox
                                   value={liveCID}
                                   onChange={setLiveCID}
+                                  onName={n => { custNameRef.current = n }}
                                   placeholder="ID, phone number, or type a name"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
