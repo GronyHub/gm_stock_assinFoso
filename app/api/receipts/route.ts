@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendSms, receiptMessage, toE164 } from '@/lib/sms'
 import { resolveSaleLines, addCustomerReceiptToSales } from '@/lib/salesLog'
-import { receiptWhatsAppUrl } from '@/lib/customerProfile'
+import { receiptWhatsAppUrl, customerLifetimeTotal } from '@/lib/customerProfile'
 import { NextRequest } from 'next/server'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import { once } from '@/lib/once'
@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
     if (customer_phone) void sendSms(customer_phone, receiptMessage(String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price }))), 'receipt')
     const waTo = toE164(customer_phone)
-    return success({ ...created, whatsapp_url: waTo ? receiptWhatsAppUrl('0' + waTo.slice(-9), String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price })), custCodeForWa, resolvedCustomerName) : null })
+    return success({ ...created, whatsapp_url: waTo ? receiptWhatsAppUrl('0' + waTo.slice(-9), String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price })), custCodeForWa, resolvedCustomerName, await customerLifetimeTotal(custCodeForWa)) : null })
   } catch (e) {
     return handleError('receipt POST', e)
   }

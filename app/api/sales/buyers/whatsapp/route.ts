@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureSaleBuyers } from '@/lib/saleBuyers'
-import { purchaseWhatsAppUrl, normalizeGhPhone } from '@/lib/customerProfile'
+import { purchaseWhatsAppUrl, normalizeGhPhone, customerLifetimeTotal } from '@/lib/customerProfile'
 import { NextRequest } from 'next/server'
 
 // GET ?ids=1,2,3 -> one WhatsApp link with all those purchases in a single message
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     if (!phone) return badRequest('No phone number for this customer yet. Add it first.')
     const first = rows[0]
     const name = (first.first_name || first.display_name || first.customer_name) as string | null
-    const url = purchaseWhatsAppUrl(phone, rows.map(r => ({ name: r.item_name as string, qty: Number(r.qty), price: Number(r.price) })), (first.customer_id_code as string | null), name)
+    const url = purchaseWhatsAppUrl(phone, rows.map(r => ({ name: r.item_name as string, qty: Number(r.qty), price: Number(r.price) })), (first.customer_id_code as string | null), name, await customerLifetimeTotal(first.customer_id_code as string | null))
     return success({ url })
   } catch (e) { return handleError('sales/buyers/whatsapp', e) }
 }
