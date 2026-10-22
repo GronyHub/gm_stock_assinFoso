@@ -6,8 +6,8 @@ type Hit = { id: number; customer_id_code: string; display_name: string; company
 // The GM box. Digits = a customer ID (e.g. 123) or a 10-digit phone number starting
 // with 0, passed up as `value` exactly as before. Letters search saved customers by
 // name: pick one and the box holds that customer's ID.
-export default function CustomerBox({ value, onChange, onName, disabled, placeholder, className, onEnter }: {
-  value: string; onChange: (digits: string) => void; onName?: (name: string) => void; disabled?: boolean; placeholder?: string; className?: string; onEnter?: () => void
+export default function CustomerBox({ value, onChange, onName, onRegister, disabled, placeholder, className, onEnter }: {
+  value: string; onChange: (digits: string) => void; onName?: (name: string) => void; onRegister?: (phone: string, done: (customerCode: string) => void) => void; disabled?: boolean; placeholder?: string; className?: string; onEnter?: () => void
 }) {
   const [text, setText] = useState(value)
   const [hits, setHits] = useState<Hit[]>([])
@@ -97,7 +97,15 @@ export default function CustomerBox({ value, onChange, onName, disabled, placeho
           <input value={newName} onChange={e => { setNewName(e.target.value); onName?.(e.target.value) }} placeholder="Customer name" autoFocus
             onKeyDown={e => { if (e.key === 'Enter') { setUnknownPhone(false); onEnter?.() } }}
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 outline-none" />
-          <button type="button" onClick={() => setUnknownPhone(false)} className="text-[10px] font-semibold text-blue-700">Done</button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setUnknownPhone(false)} className="text-[10px] font-semibold text-blue-700">Done</button>
+            {onRegister && (
+              <button type="button" onClick={() => {
+                setUnknownPhone(false)
+                onRegister(text, code => { const digits = code.replace(/\D/g, ''); emitted.current = digits; setText(digits); onChange(digits); setNewName(''); onName?.('') })
+              }} className="text-[10px] font-bold text-green-700">Full registration (location, email, services…)</button>
+            )}
+          </div>
         </div>
       )}
       {hits.length > 0 && pos && (

@@ -57,6 +57,7 @@ import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type St
 import CareChildTiles from './_components/CareChildTiles'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
+import NewCustomerForm from './_components/NewCustomerForm'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -2316,6 +2317,8 @@ function ItemHubPageInner() {
   const custNameRef = useRef('')
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
   const skipWaRef = useRef(false)
+  // Full registration form opened from the GM box for a phone number that is not a saved customer.
+  const [registerFor, setRegisterFor] = useState<{ phone: string; done: (code: string) => void } | null>(null)
   const lastBuyerIdRef = useRef<number | null>(null)
   // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
   const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
@@ -8918,6 +8921,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
                                             onChange={v => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: v }))}
                                             onName={n => { custNameRef.current = n }}
+                                            onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
                                             placeholder="GM / phone / name"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
@@ -9123,6 +9127,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   value={liveCID}
                                   onChange={setLiveCID}
                                   onName={n => { custNameRef.current = n }}
+                                  onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                   placeholder="ID, phone number, or type a name"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
@@ -10276,6 +10281,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </div>
       )}
 
+      {registerFor && (
+        <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto bg-black/40 p-3">
+          <div className="my-4 w-full max-w-lg">
+            <NewCustomerForm initialPhone={registerFor.phone}
+              onCancel={() => setRegisterFor(null)}
+              onCreated={c => { if (c.customer_id_code) registerFor.done(c.customer_id_code); setRegisterFor(null) }} />
+          </div>
+        </div>
+      )}
       {waPrompt && (
         <div className="fixed bottom-4 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-green-300">
           <p className="flex-1 text-xs font-semibold text-gray-800">Send the {waPrompt.label} to the customer on WhatsApp?</p>

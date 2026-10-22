@@ -31,10 +31,10 @@ const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wid
 // left-pane item/page (see item/page.tsx's 'newCustomer' LossView), not a
 // toggle-open panel embedded in the Customers list page itself, so this
 // needed a home outside that file.
-export default function NewCustomerForm({ onCreated, onCancel, initialDisplayName }: { onCreated: (c: Customer) => void; onCancel: () => void; initialDisplayName?: string }) {
+export default function NewCustomerForm({ onCreated, onCancel, initialDisplayName, initialPhone }: { onCreated: (c: Customer) => void; onCancel: () => void; initialDisplayName?: string; initialPhone?: string }) {
   const [displayName, setDisplayName] = useState(initialDisplayName ?? '')
   const [companyName, setCompanyName] = useState('')
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState(initialPhone ?? '')
   const [email, setEmail] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
