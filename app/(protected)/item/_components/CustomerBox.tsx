@@ -77,7 +77,7 @@ export default function CustomerBox({ value, onChange, onName, disabled, placeho
       {unknownPhone && pos && (
         <div style={{ position: 'fixed', left: pos.left, top: pos.top, width: pos.width }}
           className="z-[200] space-y-1 rounded-lg border border-amber-300 bg-white p-2 shadow-lg" onClick={e => e.stopPropagation()}>
-          <p className="text-[10px] font-semibold text-amber-800">New number, not a saved customer. Type their name (optional):</p>
+          <p className="text-[10px] font-semibold text-amber-800">New number. Type their name and they are saved as a new customer (leave empty to just send):</p>
           <input value={newName} onChange={e => { setNewName(e.target.value); onName?.(e.target.value) }} placeholder="Customer name" autoFocus
             onKeyDown={e => { if (e.key === 'Enter') { setUnknownPhone(false); onEnter?.() } }}
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 outline-none" />

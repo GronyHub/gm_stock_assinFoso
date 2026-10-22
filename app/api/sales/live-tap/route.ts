@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendTransactionEmail } from '@/lib/mailer'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
-import { purchaseWhatsAppUrl, normalizeGhPhone } from '@/lib/customerProfile'
+import { purchaseWhatsAppUrl, normalizeGhPhone, ensureCustomerProfileColumns } from '@/lib/customerProfile'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -47,6 +47,21 @@ export async function POST(req: NextRequest) {
     if (smsTo && !customerIdCode) {
       const [known] = await sql`SELECT customer_id_code, display_name, first_name FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${smsTo.slice(-9)} LIMIT 1`.catch(() => [])
       if (known?.customer_id_code) { customerIdCode = known.customer_id_code as string; waName = ((known.first_name || known.display_name) as string) ?? waName }
+      else if (waName && waLocal) {
+        // An unknown number with a name typed: save them as a new customer (owner's decision),
+        // so their purchases and customer number follow them from now on.
+        try {
+          await ensureCustomerProfileColumns()
+          const first = waName.split(/\s+/)[0]
+          const last = waName.split(/\s+/).slice(1).join(' ') || null
+          const [row] = await sql`
+            INSERT INTO customers (display_name, first_name, last_name, phone, status, is_internal, source, opening_balance, added_by)
+            VALUES (${waName}, ${first}, ${last}, ${waLocal}, 'Active', false, 'live_sale', 0, ${session.user?.name || (session.user as { username?: string })?.username || null})
+            RETURNING id`
+          customerIdCode = `GM${row.id}`
+          await sql`UPDATE customers SET customer_id_code = ${customerIdCode} WHERE id = ${row.id}`
+        } catch (e) { console.error('[live-tap] could not save new customer:', e instanceof Error ? e.message : String(e)) }
+      }
     } else if (customerIdCode && !smsTo) {
       const [c] = await sql`SELECT phone, display_name, first_name FROM customers WHERE customer_id_code = ${customerIdCode}`.catch(() => [])
       const local = normalizeGhPhone(c?.phone)
