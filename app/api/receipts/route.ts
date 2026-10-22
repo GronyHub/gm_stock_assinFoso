@@ -145,9 +145,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Into the Sales Log (that day's receipt), with the customer attached.
+    let custCodeForWa: string | null = null
     try {
       let custCode: string | null = null
-      if (customerIdVal) { const [cc] = await sql`SELECT customer_id_code FROM customers WHERE id = ${customerIdVal}`; custCode = (cc?.customer_id_code as string | null) ?? null }
+      if (customerIdVal) { const [cc] = await sql`SELECT customer_id_code FROM customers WHERE id = ${customerIdVal}`; custCode = (cc?.customer_id_code as string | null) ?? null; custCodeForWa = custCode }
       const salesReceiptId = await addCustomerReceiptToSales({ date: String(invoice_date).slice(0, 10), lines: resolved.lines, enteredBy: enteredBy ?? null, invoiceId: invoice.id as number,
         customerCode: custCode, customerName: resolvedCustomerName, customerPhone: customer_phone || null })
       await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sales_receipt_id INTEGER`.catch(() => {})
@@ -165,7 +166,7 @@ export async function POST(req: NextRequest) {
     await logActivity(enteredBy ?? 'Unknown', 'added receipt', `${invoice_number} · ₵${subtotal.toFixed(2)} for ${resolvedCustomerName}`)
     if (customer_phone) void sendSms(customer_phone, receiptMessage(String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price }))), 'receipt')
     const waTo = toE164(customer_phone)
-    return success({ ...created, whatsapp_url: waTo ? receiptWhatsAppUrl('0' + waTo.slice(-9), String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price }))) : null })
+    return success({ ...created, whatsapp_url: waTo ? receiptWhatsAppUrl('0' + waTo.slice(-9), String(invoice_number), cleanLines.map((l: any) => ({ name: l.item, qty: l.qty, price: l.price })), custCodeForWa, resolvedCustomerName) : null })
   } catch (e) {
     return handleError('receipt POST', e)
   }
