@@ -2314,6 +2314,9 @@ function ItemHubPageInner() {
   const inlineCidRef = useRef<string | null>(null)
   // Name typed for a phone number that is not a saved customer (used in the WhatsApp greeting).
   const custNameRef = useRef('')
+  // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
+  const skipWaRef = useRef(false)
+  const lastBuyerIdRef = useRef<number | null>(null)
   // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
   const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
@@ -4046,6 +4049,7 @@ function ItemHubPageInner() {
           customerIdCode: cidValue && !/^0\d{9}$/.test(cidValue) ? `GM${cidValue}` : undefined,
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
           customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
+          skipWhatsapp: skipWaRef.current || undefined,
         }),
         signal: controller.signal,
       })
@@ -4097,6 +4101,7 @@ function ItemHubPageInner() {
       setLiveCID('')
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
+      lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
       if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message' })
 
       // Offer to mark this specific draw as a property -- only makes sense
@@ -4143,44 +4148,49 @@ function ItemHubPageInner() {
       showToast('You must be logged in to record a sale', 'error')
       return
     }
-    const qty = liveInlineQtyByItemId[item.id] ?? '1'
-    if (!qty) return
-    const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
-    const cidNum = liveInlineCIDByItemId[item.id] ?? ''
-
-    // Set the global CID (without prefix) temporarily for this tap
-    // recordTap will add GM prefix when sending to API
-    setLiveCID(cidNum)
-    inlineCidRef.current = cidNum
-    try { await recordTap(item, false, qty, price) } finally { inlineCidRef.current = null }
-
-    // Clear inline state for this item
-    setLiveInlineQtyByItemId(prev => {
-      if (!(item.id in prev)) return prev
-      const next = { ...prev }
-      delete next[item.id]
-      return next
-    })
-    setLiveInlinePriceByItemId(prev => {
-      if (!(item.id in prev)) return prev
-      const next = { ...prev }
-      delete next[item.id]
-      return next
-    })
-    setLiveInlineCIDByItemId(prev => {
-      if (!(item.id in prev)) return prev
-      const next = { ...prev }
-      delete next[item.id]
-      return next
-    })
+    // A customer buying several items: when the clicked card has a GM entry, every item card that has
+    // a GM entry is recorded together (each with its own quantity and price), and the customer gets
+    // ONE WhatsApp message for all of them. Without a GM entry it records just this card, as before.
+    const clickedCid = liveInlineCIDByItemId[item.id] ?? ''
+    const targets: LiveItem[] = clickedCid
+      ? Object.entries(liveInlineCIDByItemId).filter(([, v]) => v).map(([id]) => (id === String(item.id) ? item : liveAllItems.find(i => i.id === Number(id)))).filter((i): i is LiveItem => !!i)
+      : [item]
+    if (!targets.some(t => t.id === item.id)) targets.unshift(item)
+    const batch = targets.length > 1
+    const buyerIds: number[] = []
+    const doneIds: number[] = []
+    for (const t of targets) {
+      const qty = liveInlineQtyByItemId[t.id] ?? '1'
+      if (!qty) continue
+      const price = liveInlinePriceByItemId[t.id] ?? formatPrice(t.selling_price)
+      const cidNum = liveInlineCIDByItemId[t.id] ?? ''
+      setLiveCID(cidNum)
+      inlineCidRef.current = cidNum
+      skipWaRef.current = batch
+      lastBuyerIdRef.current = null
+      try { await recordTap(t, false, qty, price) } finally { inlineCidRef.current = null; skipWaRef.current = false }
+      if (lastBuyerIdRef.current != null) buyerIds.push(lastBuyerIdRef.current)
+      doneIds.push(t.id)
+      // Clear inline state for this item
+      setLiveInlineQtyByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
+      setLiveInlinePriceByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
+      setLiveInlineCIDByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
+    }
     setLiveCID('')
+    if (batch && buyerIds.length) {
+      try {
+        const r = await fetch(`/api/sales/buyers/whatsapp?ids=${buyerIds.join(',')}`)
+        const d = await r.json()
+        if (r.ok && d.url) setWaPrompt({ url: d.url, label: `purchase message (${buyerIds.length} items)` })
+      } catch { /* the Sales Log can send it later */ }
+    }
 
     // Show green checkmark briefly after successful tap
-    setJustTappedItemIds(prev => new Set(prev).add(item.id))
+    setJustTappedItemIds(prev => { const next = new Set(prev); doneIds.forEach(id => next.add(id)); return next })
     setTimeout(() => {
       setJustTappedItemIds(prev => {
         const next = new Set(prev)
-        next.delete(item.id)
+        doneIds.forEach(id => next.delete(id))
         return next
       })
     }, 1500)

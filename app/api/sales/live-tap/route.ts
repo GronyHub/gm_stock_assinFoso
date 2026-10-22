@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { sendTransactionEmail } from '@/lib/mailer'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
 import { purchaseWhatsAppUrl, normalizeGhPhone, ensureCustomerProfileColumns } from '@/lib/customerProfile'
+import { recordBuyer } from '@/lib/saleBuyers'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, skipWhatsapp } = await req.json()
     let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
     // The GM box also accepts the customer's phone number: it texts them what they bought
     // and, if that number belongs to a registered customer, files the sale under their ID.
@@ -264,6 +265,13 @@ export async function POST(req: NextRequest) {
       RETURNING id, item_id, item_name, price, staff_name, tapped_at, undone, quantity, soh, customer_id_code
     `
 
+    // Remember who bought it so the Sales Log can show the buyer, save a customer and send WhatsApp later.
+    let buyerId: number | null = null
+    if (customerIdCode || waLocal) {
+      buyerId = await recordBuyer({ receiptId: receipt.id, tapId: tap.id, itemId: item.id, itemName: item.canonical_name, qty, price,
+        customerIdCode: customerIdCode ?? null, customerName: waName, customerPhone: waLocal, source: 'live_sale', createdBy: staffName })
+    }
+
     // Buying a new pack_to_gmc item is itself evidence the previous pack's
     // credited stock is gone -- rather than adding this pack's yield on top
     // of whatever the target's tracked stock already drifted to (there is
@@ -364,8 +372,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const whatsappUrl = waLocal ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName) : null
-    return success({ tap, whatsappUrl, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
+    const whatsappUrl = waLocal && !skipWhatsapp ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName) : null
+    return success({ tap, whatsappUrl, buyerId, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)

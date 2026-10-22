@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { sendSms, receiptMessage, toE164 } from '@/lib/sms'
+import { resolveSaleLines, addCustomerReceiptToSales } from '@/lib/salesLog'
 import { receiptWhatsAppUrl } from '@/lib/customerProfile'
 import { NextRequest } from 'next/server'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
@@ -94,6 +95,7 @@ export async function POST(req: NextRequest) {
 
   const cleanLines = (Array.isArray(lines) ? lines : [])
     .map((l: any) => ({
+      itemId: l.itemId ? Number(l.itemId) : null,
       item: String(l.item ?? '').trim(),
       qty: Number(l.qty) || 0,
       price: Number(l.price) || 0,
@@ -104,6 +106,11 @@ export async function POST(req: NextRequest) {
   if (cleanLines.length === 0) {
     return badRequest('At least one valid item is required')
   }
+
+  // The same work must not be typed again in the Sales Log: lines go there automatically, under the
+  // same rules as a sale (no negative stock, price above cost). Checked first so nothing is half-saved.
+  const resolved = await resolveSaleLines(cleanLines)
+  if (resolved.error) return badRequest(resolved.error)
 
   const subtotal = cleanLines.reduce((s: number, l: any) => s + l.qty * l.price, 0)
   const enteredBy = session.user?.name || (session.user as any)?.username || null
@@ -135,6 +142,18 @@ export async function POST(req: NextRequest) {
         INSERT INTO invoice_lines (invoice_id, raw_item_name, quantity, item_price, item_total, usage_unit, dimensions)
         VALUES (${invoice.id}, ${l.item}, ${l.qty}, ${l.price}, ${l.qty * l.price}, ${l.unit}, ${l.dimensions})
       `
+    }
+
+    // Into the Sales Log (that day's receipt), with the customer attached.
+    try {
+      let custCode: string | null = null
+      if (customerIdVal) { const [cc] = await sql`SELECT customer_id_code FROM customers WHERE id = ${customerIdVal}`; custCode = (cc?.customer_id_code as string | null) ?? null }
+      const salesReceiptId = await addCustomerReceiptToSales({ date: String(invoice_date).slice(0, 10), lines: resolved.lines, enteredBy: enteredBy ?? null, invoiceId: invoice.id as number,
+        customerCode: custCode, customerName: resolvedCustomerName, customerPhone: customer_phone || null })
+      await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sales_receipt_id INTEGER`.catch(() => {})
+      await sql`UPDATE invoices SET sales_receipt_id = ${salesReceiptId} WHERE id = ${invoice.id}`.catch(() => {})
+    } catch (e) {
+      console.error('receipt -> sales log failed:', e instanceof Error ? e.message : String(e))
     }
 
     const [created] = await sql.query(`

@@ -1,4 +1,5 @@
 'use client'
+import ItemSuggest from './ItemSuggest'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { takeReceiptsPrefetch } from '@/lib/receiptsPrefetch'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
@@ -72,7 +73,7 @@ const RECEIPTS_COL_DEFAULTS: Record<string, number> = {
   number: 130, type: 80, customerId: 100, customer: 150, phone: 120, location: 130, date: 110, items: 70, total: 100,
 }
 
-type DraftLine = { item: string; qty: string; price: string; unit: string; dimensions: string }
+type DraftLine = { itemId?: number | null; item: string; qty: string; price: string; unit: string; dimensions: string }
 const emptyLine = (): DraftLine => ({ item: '', qty: '1', price: '', unit: '', dimensions: '' })
 type CustomerOption = { id: number; display_name: string }
 
@@ -196,6 +197,7 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         customer_region: customerRegion.trim() || null,
         notes: notes.trim() || null,
         lines: validLines.map(l => ({
+          itemId: l.itemId ?? null,
           item: l.item.trim(),
           qty: Number(l.qty),
           price: Number(l.price) || 0,
@@ -314,8 +316,9 @@ function NewReceiptForm({ onCreated, onCancel }: { onCreated: (r: Receipt) => vo
         {lines.map((l, i) => (
           <div key={i} className="bg-gray-50 rounded-lg p-2 space-y-1.5">
             <div className="flex gap-1.5">
-              <input value={l.item} onChange={e => updateLine(i, { item: e.target.value })}
-                placeholder="Item / service" className={inputCls + ' flex-1'} />
+              <ItemSuggest value={l.item} placeholder="Item / service (tap to see the list)" className={inputCls + ' flex-1'}
+                onType={t => updateLine(i, { item: t, itemId: null })}
+                onPick={h => updateLine(i, { item: h.name, itemId: h.id, price: Number(h.selling_price) ? String(Number(h.selling_price)) : lines[i].price })} />
               {lines.length > 1 && (
                 <button onClick={() => removeLine(i)}
                   className="shrink-0 px-2 text-red-500 hover:text-red-700 font-bold text-lg leading-none">×</button>

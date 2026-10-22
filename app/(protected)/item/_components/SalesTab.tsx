@@ -9,6 +9,7 @@ import { useAttachments, AttachmentPicker, type Attachment } from './attachments
 import BulkAttachForms from './BulkAttachForms'
 import ItemDetailModal from './ItemDetailModal'
 import { type ColKey } from './salesTabColumns'
+import SalesBuyers, { type Buyer } from './SalesBuyers'
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -242,6 +243,7 @@ function SalesTab({
   // the pencil icon still opens the full edit form.
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
   const [linesMap, setLinesMap] = useState<Record<number, Line[]>>({})
+  const [buyersMap, setBuyersMap] = useState<Record<number, Buyer[]>>({})
   // 'new-gmc' is a not-yet-created receipt -- the same edit panel below
   // (date/customer/cash fields + line items) doubles as its create form,
   // keyed by addingGmcDate instead of an existing receipt's id. Nothing is
@@ -294,6 +296,14 @@ function SalesTab({
               map[l.receipt_id].push(l)
             }
             setLinesMap(map)
+            // Who bought what (optional: a failure here never hides the receipts).
+            try {
+              const rb = await fetch('/api/sales/buyers')
+              const bd = rb.ok ? await rb.json() : []
+              const bmap: Record<number, Buyer[]> = {}
+              for (const b of (Array.isArray(bd) ? bd : []) as Buyer[]) (bmap[b.receipt_id] ??= []).push(b)
+              setBuyersMap(bmap)
+            } catch { /* ignore */ }
             setLoadError(false)
             setLoading(false)
             return
@@ -993,6 +1003,9 @@ function SalesTab({
                 })}
               </tr>
             ))}
+            {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && buyersMap[r.id]?.length > 0 && (
+              <tr><td colSpan={30} className="p-0"><SalesBuyers buyers={buyersMap[r.id]} onChanged={() => void loadReceipts()} /></td></tr>
+            )}
             </Fragment>
           )
         })}
