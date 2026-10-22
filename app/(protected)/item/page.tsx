@@ -56,6 +56,7 @@ import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECK
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import CareChildTiles from './_components/CareChildTiles'
 import { requestOpenChild } from './_components/careUtils'
+import CustomerBox from './_components/CustomerBox'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -8890,14 +8891,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                           />
                                         </label>
                                         <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
-                                          <input
-                                            type="text" inputMode="numeric"
+                                          <CustomerBox
                                             disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
-                                            onChange={e => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: e.target.value.replace(/[^0-9]/g, '') }))}
-                                            onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
-                                            onClick={e => e.stopPropagation()}
-                                            placeholder="GM / phone"
+                                            onChange={v => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: v }))}
+                                            onEnter={() => recordInlineTap(item)}
+                                            placeholder="GM / phone / name"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
@@ -9097,12 +9096,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <label className="block text-xs font-semibold text-gray-700">Customer ID (optional)</label>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg px-3 py-2">GM</span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
+                                <CustomerBox
                                   value={liveCID}
-                                  onChange={e => setLiveCID(e.target.value.replace(/[^0-9]/g, ''))}
-                                  placeholder="ID e.g. 123, or phone number"
+                                  onChange={setLiveCID}
+                                  placeholder="ID, phone number, or type a name"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
                                 />
