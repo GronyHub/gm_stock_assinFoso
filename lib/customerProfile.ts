@@ -49,11 +49,14 @@ const cedi = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDig
 // the message is pre-filled, they just press send. Same style as the shop's WhatsApp
 // greeting: what was done and the amount first, then who we are and where to find us.
 const REGISTER = 'https://app.gronymultimedia.com/register'
+// "Hello Kofi (GM45)": the customer ID rides in the greeting, never as a sentence of its own.
+const hello = (name?: string | null, customerId?: string | null) =>
+  `Hello${name?.trim() ? ` ${name.trim()}` : ''}${customerId ? ` (${customerId})` : ''}`
 const CONTACT_BLOCK = (customerId?: string | null) =>
   (customerId
-    ? `Your customer number is *${customerId}*. Quote it whenever you send us work and we find it faster.`
-    : `*New here? Register in 1 minute and get your own customer number:*\n${REGISTER}\nWe keep your files only if you register and agree. Quote your number to get copies without resending.`) +
-  `\n\nSend all work and payments in this chat only.\n` +
+    ? ''
+    : `*New here? Register in 1 minute and get your own customer number:*\n${REGISTER}\nWe keep your files only if you register and agree. Quote your number to get copies without resending.\n\n`) +
+  `Send all work and payments in this chat only.\n` +
   `Call / WhatsApp / Mobile Money: 053 432 8977\n\n` +
   `Join our community group for offers, new products and tips:\nhttps://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p\n\n` +
   `Website: https://www.gronymultimedia.com\n` +
@@ -64,7 +67,7 @@ const CONTACT_BLOCK = (customerId?: string | null) =>
 export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?: string | null, name?: string | null): string {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
   const lines = items.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)} = ${cedi(i.qty * i.price)}`).join('\n')
-  const text = `Hello${name?.trim() ? ` ${name.trim()}` : ''} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
+  const text = `${hello(name, customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
     `Here is what we did for you today:\n${lines}\n*Total: ${cedi(total)}*\n\n${CONTACT_BLOCK(customerId)}`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
 }
@@ -72,7 +75,7 @@ export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?:
 export function receiptWhatsAppUrl(phone: string, receiptNo: string, items: WaItem[], customerId?: string | null, name?: string | null): string {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
   const lines = items.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)} = ${cedi(i.qty * i.price)}`).join('\n')
-  const text = `Hello${name?.trim() ? ` ${name.trim()}` : ''} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
+  const text = `${hello(name, customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
     `Receipt ${receiptNo}:\n${lines}\n*Total: ${cedi(total)}* (paid)\n\n${CONTACT_BLOCK(customerId)}`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
 }
