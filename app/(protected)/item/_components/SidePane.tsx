@@ -1,5 +1,5 @@
 'use client'
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
 // width right pane" navigation pattern used throughout this app (Grony
@@ -159,11 +159,38 @@ export function SidePaneToggle({ mode, onChange, label, onHide }: { mode: Displa
 // feature as the ones you did"). Renders identically to chipLabel now --
 // same full-width fill, no visual distinction -- since both mean the same
 // thing to whoever's looking at the pane: "this row is its own section."
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean
+// Right-click (or long-press on a phone), middle-click, or Ctrl/Cmd-click opens a button's page in a
+// new tab. Most buttons just change state, which the item page mirrors into the URL, so the page
+// watches for window.__gmNewTab: when it is set, the URL that this click produces is opened in a
+// new tab and the current tab goes back to where it was. A button with `href` opens that address
+// instead; `noNewTab` (toggles, sign out) gets no menu at all.
+declare global { interface Window { __gmNewTab?: { prev: string } | null } }
+
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder, href, noNewTab }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean; href?: string; noNewTab?: boolean
 }) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!menu) return
+    const close = () => setMenu(null)
+    window.addEventListener('click', close); window.addEventListener('scroll', close, true); window.addEventListener('keydown', close)
+    return () => { window.removeEventListener('click', close); window.removeEventListener('scroll', close, true); window.removeEventListener('keydown', close) }
+  }, [menu])
+
+  function openNewTab() {
+    if (href) { window.open(href, '_blank'); return }
+    window.__gmNewTab = { prev: window.location.pathname + window.location.search }
+    onClick()
+    // If the click changed nothing in the address (e.g. the page is already open), open it as it is.
+    setTimeout(() => { if (window.__gmNewTab) { window.__gmNewTab = null; window.open(window.location.href, '_blank') } }, 500)
+  }
+
   return (
-    <button onClick={onClick} title={label} aria-label={label}
+    <>
+    <button onClick={e => { if (!noNewTab && (e.ctrlKey || e.metaKey)) openNewTab(); else onClick() }} title={label} aria-label={label}
+      onContextMenu={noNewTab ? undefined : e => { e.preventDefault(); setMenu({ x: Math.min(e.clientX, window.innerWidth - 170), y: Math.min(e.clientY, window.innerHeight - 90) }) }}
+      onMouseDown={noNewTab ? undefined : e => { if (e.button === 1) e.preventDefault() }}
+      onAuxClick={noNewTab ? undefined : e => { if (e.button === 1) { e.preventDefault(); openNewTab() } }}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
       className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-left transition
         ${divider ? 'border-t border-white/35' : ''}
@@ -190,6 +217,13 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           : <span className="w-full truncate">{label}</span>
       )}
     </button>
+    {menu && (
+      <div style={{ position: 'fixed', left: menu.x, top: menu.y }} className="z-[300] w-40 overflow-hidden rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 shadow-xl">
+        <button type="button" onClick={() => { setMenu(null); openNewTab() }} className="block w-full px-3 py-2.5 text-left hover:bg-blue-50">Open in new tab</button>
+        <button type="button" onClick={() => { setMenu(null); onClick() }} className="block w-full border-t border-gray-100 px-3 py-2.5 text-left hover:bg-blue-50">Open here</button>
+      </div>
+    )}
+    </>
   )
 }
 

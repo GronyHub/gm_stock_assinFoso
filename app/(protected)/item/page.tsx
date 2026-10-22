@@ -1745,6 +1745,15 @@ function ItemHubPageInner() {
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
+    // A side-pane button was right-clicked > "Open in new tab": open what this click led to in a
+    // new tab, then put this tab back where it was.
+    const nt = window.__gmNewTab
+    if (nt) {
+      window.__gmNewTab = null
+      window.open(target, '_blank')
+      router.replace(nt.prev, { scroll: false })
+      return
+    }
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveSaleView, liveCountView, liveEmbeddedSearch, sidePaneHidden])
@@ -6464,7 +6473,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={lossByDateFlagsCount}
-                onClick={() => setLossesOpen(o => !o)} />
+                noNewTab onClick={() => setLossesOpen(o => !o)} />
               {lossesOpen && (<>
                 <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_date')} onClick={() => goLossSubView('loss_by_date')} />
@@ -6485,7 +6494,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </>)}
               <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider
                 active={paneActive(itemsPageMode === 'sale' && ['leastSalesServices', 'leastSalesGoods', 'leastSalesGroups', 'leastPurchased'].includes(liveSaleViolationFilter))}
-                onClick={() => setAnalyticsOpen(o => !o)} />
+                noNewTab onClick={() => setAnalyticsOpen(o => !o)} />
               {analyticsOpen && (<>
                 <SidePaneButton icon="•" label="Services: Least Sales" mode={cashDisplayMode} divider
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices')}
@@ -6513,7 +6522,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
               <SidePaneButton icon="📖" label="Handbook" mode={cashDisplayMode} divider
-                active={false} onClick={() => setLiveHelpModalOpen(true)} />
+                active={false} noNewTab onClick={() => setLiveHelpModalOpen(true)} />
             </div>
             )}
 
@@ -6645,14 +6654,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <div className="mt-1 pt-1 border-t border-white/30">
               {canOpenUkSettings && (
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
-                  onClick={() => setSettingsOpen(v => !v)} />
+                  noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
               <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
-                onClick={() => { window.location.href = '/routine' }} />
+                href="/routine" onClick={() => { window.location.href = '/routine' }} />
               <SidePaneButton icon="✅" label="Standards" mode={cashDisplayMode} active={false} divider
-                onClick={() => { window.location.href = '/standards' }} />
+                href="/standards" onClick={() => { window.location.href = '/standards' }} />
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
-                onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
+                noNewTab onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
             {outerTab !== 'uk' && canOpenSettings && (
               <SettingsPane mode={cashDisplayMode} activeView={lossView}
