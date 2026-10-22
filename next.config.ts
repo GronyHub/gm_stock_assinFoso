@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The deploy builds into a separate folder (NEXT_DIST_DIR=.next-build) while the live site keeps
+  // serving from .next, then swaps the folders, so a build never takes the site down.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: ['web-push'],
   // Without this, /sw.js is just a normal static file and can sit in a
   // browser's HTTP cache for a while -- a shipped service-worker fix (like

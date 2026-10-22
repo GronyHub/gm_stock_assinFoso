@@ -54,10 +54,28 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             npm install
-            rm -rf .next
+            # Build into a separate folder while the live site keeps serving from .next, then swap
+            # the folders (seconds, not minutes). If the swapped-in site does not answer, the old
+            # build is put back, so a bad build never leaves the site down.
+            rm -rf .next-build .next-old
             export NODE_OPTIONS=--max-old-space-size=768
-            npm run build
+            NEXT_DIST_DIR=.next-build npm run build
+            if [ -d .next ]; then mv .next .next-old; fi
+            mv .next-build .next
             pm2 restart grony-app
+            ok=0
+            for i in $(seq 1 25); do
+              if curl -fsS -m 5 -o /dev/null http://localhost:3000/login; then ok=1; break; fi
+              sleep 3
+            done
+            if [ "$ok" != 1 ]; then
+              echo "New build did not answer -- putting the previous build back"
+              rm -rf .next
+              if [ -d .next-old ]; then mv .next-old .next; fi
+              pm2 restart grony-app
+              exit 1
+            fi
+            rm -rf .next-old
             mkdir -p /var/www/gronymultimedia
             cp -r /root/app/public-site/. /var/www/gronymultimedia/
             chmod -R a+rX /var/www/gronymultimedia
