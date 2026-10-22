@@ -41,6 +41,22 @@ export default function CustomerBox({ value, onChange, onName, disabled, placeho
           } catch { /* ignore */ }
         })()
       }
+      // Part of an ID or phone number: list saved customers it could be.
+      if (v && !/^0\d{9}$/.test(v)) {
+        const my = ++seq.current
+        setTimeout(async () => {
+          if (my !== seq.current) return
+          try {
+            const r = await fetch(`/api/customers/search?num=${v}`)
+            const d = await r.json()
+            if (my === seq.current && Array.isArray(d)) {
+              const b = inputRef.current?.getBoundingClientRect()
+              if (b) setPos({ left: Math.max(8, Math.min(b.left, window.innerWidth - 248)), top: b.bottom + 2, width: Math.max(b.width, 240) })
+              setHits(d)
+            }
+          } catch { /* ignore */ }
+        }, 200)
+      }
       return
     }
     emitted.current = ''; onChange(''); setUnknownPhone(false)

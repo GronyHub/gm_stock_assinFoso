@@ -8,7 +8,20 @@ export async function GET(req: NextRequest) {
   if (error) return error
   const q = (req.nextUrl.searchParams.get('q') ?? '').trim().slice(0, 40)
   const phone = (req.nextUrl.searchParams.get('phone') ?? '').replace(/\D/g, '')
+  const num = (req.nextUrl.searchParams.get('num') ?? '').replace(/\D/g, '').slice(0, 10)
   try {
+    // Digits typed so far: a customer ID starting with them (e.g. 12 -> GM12, GM120), or,
+    // if they start with 0, a saved phone number starting with them.
+    if (num) {
+      const rows = num.startsWith('0')
+        ? await sql`SELECT id, customer_id_code, display_name, company_name, phone FROM customers
+            WHERE customer_id_code IS NOT NULL AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') LIKE ${num + '%'}
+            ORDER BY display_name LIMIT 8`
+        : await sql`SELECT id, customer_id_code, display_name, company_name, phone FROM customers
+            WHERE customer_id_code LIKE ${'GM' + num + '%'}
+            ORDER BY (customer_id_code = ${'GM' + num}) DESC, length(customer_id_code), id LIMIT 8`
+      return success(rows)
+    }
     // Exact phone check (last 9 digits), used to tell a saved number from a new one.
     if (phone.length >= 9) {
       const rows = await sql`
