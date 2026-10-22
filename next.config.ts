@@ -16,9 +16,12 @@ const nextConfig: NextConfig = {
   },
   // Enable output file tracing to reduce deployment bundle size and speed up builds
   outputFileTracingRoot: undefined,
-  // Skip validation that can slow down builds
+  // The Droplet's build ran out of memory in the TypeScript step on 2026-10-22 (the heap limit is
+  // about 480 MB and the item page alone is 600 KB). Types are checked with `npx tsc --noEmit`
+  // before every push instead, so the production build does not repeat that check.
   typescript: {
     tsconfigPath: './tsconfig.json',
+    ignoreBuildErrors: true,
   },
 };
 

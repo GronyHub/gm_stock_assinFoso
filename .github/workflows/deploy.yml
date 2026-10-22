@@ -55,6 +55,7 @@ jobs:
             git reset --hard origin/main
             npm install
             rm -rf .next
+            export NODE_OPTIONS=--max-old-space-size=768
             npm run build
             pm2 restart grony-app
             mkdir -p /var/www/gronymultimedia
