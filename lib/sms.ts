@@ -3,9 +3,10 @@ import { once } from '@/lib/once'
 import { COMPANY } from '@/lib/companyInfo'
 import { normalizeGhPhone } from '@/lib/customerProfile'
 
-// Customer SMS through Africa's Talking (https://developers.africastalking.com).
-// Needs AT_USERNAME and AT_API_KEY in the server's .env.local; AT_SENDER_ID is
-// optional (a registered sender name such as GRONY). With no keys set, every
+// Customer SMS through Arkesel (Ghana) or Africa's Talking. Arkesel is used when
+// ARKESEL_API_KEY is set (or SMS_PROVIDER=arkesel); otherwise Africa's Talking
+// with AT_USERNAME + AT_API_KEY. SMS_SENDER_ID is the registered sender name
+// (e.g. GRONY). All of these live in the server's .env.local. With no keys set, every
 // send is skipped quietly and logged as 'not_configured', so the rest of the app
 // never fails because of SMS. SMS_ENABLED=off switches it off entirely.
 //
@@ -58,12 +59,29 @@ export async function sendSms(rawPhone: unknown, message: string, kind: string):
   const to = toE164(rawPhone)
   if (!to) return 'skipped'
   if (process.env.SMS_ENABLED === 'off') return 'skipped'
-  const user = process.env.AT_USERNAME, key = process.env.AT_API_KEY
-  if (!user || !key) { await log(to, message, kind, 'not_configured'); return 'skipped' }
+  const provider = process.env.SMS_PROVIDER ?? (process.env.ARKESEL_API_KEY ? 'arkesel' : 'africastalking')
+  const sender = process.env.SMS_SENDER_ID ?? process.env.AT_SENDER_ID
   try {
+    if (provider === 'arkesel') {
+      const key = process.env.ARKESEL_API_KEY
+      if (!key) { await log(to, message, kind, 'not_configured'); return 'skipped' }
+      // Arkesel SMS API v2: numbers as 233XXXXXXXXX, key in the api-key header.
+      const res = await fetch('https://sms.arkesel.com/api/v2/sms/send', {
+        method: 'POST',
+        headers: { 'api-key': key, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ sender: sender || 'GRONY', message, recipients: [to.replace('+', '')] }),
+        signal: AbortSignal.timeout(15000),
+      })
+      const d = await res.json().catch(() => null) as { status?: string; message?: string } | null
+      if (!res.ok || (d?.status && d.status !== 'success')) { await log(to, message, kind, 'failed', `${res.status} ${d?.message ?? d?.status ?? ''}`.trim()); return 'failed' }
+      await log(to, message, kind, 'sent')
+      return 'sent'
+    }
+    const user = process.env.AT_USERNAME, key = process.env.AT_API_KEY
+    if (!user || !key) { await log(to, message, kind, 'not_configured'); return 'skipped' }
     const host = user === 'sandbox' ? 'api.sandbox.africastalking.com' : 'api.africastalking.com'
     const body = new URLSearchParams({ username: user, to, message })
-    if (process.env.AT_SENDER_ID) body.set('from', process.env.AT_SENDER_ID)
+    if (sender) body.set('from', sender)
     const res = await fetch(`https://${host}/version1/messaging`, {
       method: 'POST',
       headers: { apiKey: key, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
