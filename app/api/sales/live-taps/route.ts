@@ -31,11 +31,13 @@ export async function GET(req: NextRequest) {
     SELECT t.id, t.item_id, t.item_name, t.price, t.staff_name, t.tapped_at, t.undone, t.receipt_id, t.quantity, t.soh,
            (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc,
            t.customer_id_code, cu.display_name AS customer_name, cu.phone AS customer_phone,
-           b.id AS buyer_id, b.customer_name AS buyer_name, b.customer_phone AS buyer_phone
+           b.id AS buyer_id, b.customer_name AS buyer_name, b.customer_phone AS buyer_phone,
+           t.invoice_id, inv.invoice_number
     FROM live_sale_taps t
     LEFT JOIN sales_receipts r ON r.id = t.receipt_id
     LEFT JOIN customers cu ON cu.customer_id_code = t.customer_id_code
     LEFT JOIN sale_buyers b ON b.tap_id = t.id
+    LEFT JOIN invoices inv ON inv.id = t.invoice_id
     WHERE t.tapped_at >= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => ${daysInt})
     ORDER BY t.tapped_at DESC
   `

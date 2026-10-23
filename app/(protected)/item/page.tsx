@@ -59,7 +59,8 @@ import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
 import MIBasket, { type BasketLine, type ItemHit } from './_components/MIBasket'
-import TapCustomerSheet, { type TapCustomerInfo } from './_components/TapCustomerSheet'
+import TapCustomerSheet from './_components/TapCustomerSheet'
+import { useFitWidth } from '@/lib/useFitWidth'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -563,7 +564,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
 type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null; needs_review?: boolean }
-type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; invoice_id?: number | null; invoice_number?: string | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
@@ -2320,6 +2321,7 @@ function ItemHubPageInner() {
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
   const skipWaRef = useRef(false)
   const [tapCustomerSheet, setTapCustomerSheet] = useState<Tap | null>(null)
+  const { wrapRef: logWrapRef, zoomFor: logZoomFor } = useFitWidth()
   // MI (multiple items): a basket of items for one customer, issued together as one receipt.
   const [miOn, setMiOn] = useState(false)
   const [miLines, setMiLines] = useState<BasketLine[]>([])
@@ -7310,7 +7312,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {liveLogShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
               ) : (
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto" ref={logWrapRef}>
                 {liveTaps.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
                 ) : (
@@ -7323,7 +7325,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   // header row stays sticky top-0, and each date header
                   // spans the full row via a real colSpan -- all standard
                   // table equivalents of what the grid version did by hand.
-                  <table className="border-collapse">
+                  <table className="border-collapse" style={{ zoom: logZoomFor(520) }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
@@ -7415,7 +7417,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
                             >
-                              <td className={`sticky left-0 z-[1] leading-none px-0.5 py-0 group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                              <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 max-w-[118px] min-w-[96px] align-top group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {/* WIC/GMC badge -- same blue/purple pair as the
                                     WIC/GMC toggle button above (renderModeToggleRow),
                                     so a mixed list of taps (this table doesn't filter
@@ -7426,12 +7428,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => openEditGridItem(tapItem.id) : undefined}
-                                    className={`text-[9px] leading-none font-semibold whitespace-nowrap line-through text-gray-400 ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
+                                    className={`text-[9px] leading-tight font-semibold line-through text-gray-400 break-words ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
                                   >
                                     {tap.item_name}
                                   </span>
                                 ) : (
-                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
+                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-tight font-semibold break-words text-gray-900')
                                 )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-left">
@@ -10404,7 +10406,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       )}
 
       {tapCustomerSheet && (
-        <TapCustomerSheet tap={tapCustomerSheet as TapCustomerInfo}
+        <TapCustomerSheet tapId={tapCustomerSheet.id} allTaps={liveTaps}
           onClose={() => setTapCustomerSheet(null)} onChanged={reloadLiveTaps}
           onRegister={(phone, done) => setRegisterFor({ phone, done })} />
       )}

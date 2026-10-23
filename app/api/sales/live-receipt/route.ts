@@ -61,3 +61,23 @@ export async function POST(req: NextRequest) {
     return success({ invoiceId: inv.id, invoiceNumber: number, total, whatsappUrl, printUrl: `/receipts/${inv.id}/print` }, 201)
   } catch (e) { return handleError('sales/live-receipt', e) }
 }
+
+// GET ?invoiceId=123 -> the WhatsApp link and print page of a receipt already issued from Live Sale.
+export async function GET(req: NextRequest) {
+  const { error } = await requireAuth()
+  if (error) return error
+  try {
+    const id = Number(req.nextUrl.searchParams.get('invoiceId'))
+    if (!id) return badRequest('No receipt chosen.')
+    const [inv] = await sql`SELECT i.id, i.invoice_number, i.customer_phone, c.customer_id_code, c.display_name, c.phone
+      FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id WHERE i.id = ${id}`
+    if (!inv) return badRequest('Receipt not found.')
+    const lines = await sql`SELECT raw_item_name, quantity, item_price FROM invoice_lines WHERE invoice_id = ${id} ORDER BY id`
+    const phone = normalizeGhPhone(inv.customer_phone) ?? normalizeGhPhone(inv.phone)
+    const code = (inv.customer_id_code as string | null) ?? null
+    const whatsappUrl = phone
+      ? receiptWhatsAppUrl(phone, inv.invoice_number as string, lines.map(l => ({ name: l.raw_item_name as string, qty: Number(l.quantity), price: Number(l.item_price) })), code, inv.display_name as string, await customerLifetimeTotal(code))
+      : null
+    return success({ invoiceNumber: inv.invoice_number, whatsappUrl, printUrl: `/receipts/${id}/print` })
+  } catch (e) { return handleError('sales/live-receipt GET', e) }
+}
