@@ -58,6 +58,7 @@ import CareChildTiles from './_components/CareChildTiles'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
+import MIBasket, { type BasketLine } from './_components/MIBasket'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -2317,11 +2318,20 @@ function ItemHubPageInner() {
   const custNameRef = useRef('')
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
   const skipWaRef = useRef(false)
+  // MI (multiple items): a basket of items for one customer, issued together as one receipt.
+  const [miOn, setMiOn] = useState(false)
+  const [miLines, setMiLines] = useState<BasketLine[]>([])
+  const [miCustomer, setMiCustomer] = useState('')
+  const [miDate, setMiDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [miBusy, setMiBusy] = useState(false)
+  const [miError, setMiError] = useState('')
+  const lastTapIdRef = useRef<number | null>(null)
+  const tapTimeOverrideRef = useRef<string | null>(null)
   // Full registration form opened from the GM box for a phone number that is not a saved customer.
   const [registerFor, setRegisterFor] = useState<{ phone: string; done: (code: string) => void } | null>(null)
   const lastBuyerIdRef = useRef<number | null>(null)
   // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
-  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string } | null>(null)
+  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string; printUrl?: string } | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
   const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
@@ -4046,7 +4056,7 @@ function ItemHubPageInner() {
           quantity: qtyNum,
           customPrice: priceStr ? priceNum : undefined,
           isGMC: liveSaleType === 'GMC',
-          tapTime: liveTapTimeTouched ? liveTapTime : undefined,
+          tapTime: tapTimeOverrideRef.current ?? (liveTapTimeTouched ? liveTapTime : undefined),
           // The GM box takes either a customer ID (e.g. 123) or a phone number: exactly 10 digits
           // starting with 0. A phone number texts the customer what they bought.
           customerIdCode: cidValue && !/^0\d{9}$/.test(cidValue) ? `GM${cidValue}` : undefined,
@@ -4105,6 +4115,7 @@ function ItemHubPageInner() {
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
       lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
+      lastTapIdRef.current = typeof data.tap?.id === 'number' ? data.tap.id : null
       if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message' })
 
       // Offer to mark this specific draw as a property -- only makes sense
@@ -4146,11 +4157,78 @@ function ItemHubPageInner() {
   // checkmark to record straight from the grid, no sheet needed. Reuses
   // recordTap's existing guards (clock-in gate, qty/price validation, count-
   // overdue block from the API) so this isn't a second, divergent code path.
+  // MI: put the card's item (with its quantity and price) in the basket instead of recording it at once.
+  function addToBasket(item: LiveItem) {
+    const qty = liveInlineQtyByItemId[item.id] ?? '1'
+    const price = liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)
+    setMiLines(prev => {
+      const at = prev.findIndex(l => l.itemId === item.id)
+      if (at >= 0) return prev.map((l, i) => i === at ? { ...l, qty: String((Number(l.qty) || 0) + (Number(qty) || 1)), price } : l)
+      return [...prev, { itemId: item.id, name: item.name, qty: qty || '1', price }]
+    })
+    setLiveInlineQtyByItemId(prev => { if (!(item.id in prev)) return prev; const next = { ...prev }; delete next[item.id]; return next })
+    setLiveInlinePriceByItemId(prev => { if (!(item.id in prev)) return prev; const next = { ...prev }; delete next[item.id]; return next })
+    setJustTappedItemIds(prev => new Set(prev).add(item.id))
+    setTimeout(() => setJustTappedItemIds(prev => { const next = new Set(prev); next.delete(item.id); return next }), 900)
+  }
+
+  // MI: record every basket item for the customer, then issue ONE receipt for them.
+  async function miComplete() {
+    if (!miLines.length || miBusy) return
+    setMiBusy(true); setMiError('')
+    // A new phone number needs a name (or the full registration) first, otherwise there is no customer to issue the receipt to.
+    if (/^0\d{9}$/.test(miCustomer) && !custNameRef.current.trim()) {
+      try {
+        const r = await fetch(`/api/customers/search?phone=${miCustomer}`)
+        const d = await r.json()
+        if (r.ok && Array.isArray(d) && d.length === 0) {
+          setMiError('This number is not a saved customer. Type their name in the box that drops down (or use Full registration), or clear the number to record without a receipt.')
+          setMiBusy(false)
+          return
+        }
+      } catch { /* let the sale go ahead; the receipt step will say if something is missing */ }
+    }
+    const today = new Date().toISOString().slice(0, 10)
+    tapTimeOverrideRef.current = miDate !== today ? `${miDate}T${new Date().toISOString().slice(11, 16)}` : null
+    const tapIds: number[] = []
+    const doneItemIds: number[] = []
+    let failedName = ''
+    for (const l of miLines) {
+      const item = liveAllItems.find(i => i.id === l.itemId)
+      if (!item) { failedName = l.name; break }
+      inlineCidRef.current = miCustomer
+      skipWaRef.current = true
+      lastTapIdRef.current = null
+      try { await recordTap(item, false, l.qty, l.price) } finally { inlineCidRef.current = null; skipWaRef.current = false }
+      if (lastTapIdRef.current == null) { failedName = l.name; break }
+      tapIds.push(lastTapIdRef.current)
+      doneItemIds.push(l.itemId)
+    }
+    tapTimeOverrideRef.current = null
+    // Items already recorded leave the basket; any that failed stay so it can be tried again.
+    if (doneItemIds.length) setMiLines(prev => prev.filter(l => !doneItemIds.includes(l.itemId)))
+    if (failedName) setMiError(`"${failedName}" was not recorded (see the message above). The items before it were saved; fix it and press the button again.`)
+    if (tapIds.length && miCustomer && !failedName) {
+      try {
+        const r = await fetch('/api/sales/live-receipt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tapIds }) })
+        const d = await r.json()
+        if (!r.ok) throw new Error(d.error ?? 'Could not issue the receipt')
+        showToast(`Receipt ${d.invoiceNumber} issued · ₵${Number(d.total).toFixed(2)}`, 'success')
+        setWaPrompt({ url: d.whatsappUrl ?? '', label: `receipt ${d.invoiceNumber}`, printUrl: d.printUrl })
+        setMiCustomer(''); custNameRef.current = ''
+      } catch (e) { setMiError(`The items were recorded, but the receipt was not issued: ${(e as Error).message}`) }
+    } else if (tapIds.length && !failedName) {
+      showToast(`${tapIds.length} item${tapIds.length === 1 ? '' : 's'} recorded (no customer, so no receipt)`, 'success')
+    }
+    setMiBusy(false)
+  }
+
   async function recordInlineTap(item: LiveItem) {
     if (!session) {
       showToast('You must be logged in to record a sale', 'error')
       return
     }
+    if (miOn && liveSaleType !== 'GMC') { addToBasket(item); return }
     // A customer buying several items: when the clicked card has a GM entry, every item card that has
     // a GM entry is recorded together (each with its own quantity and price), and the customer gets
     // ONE WhatsApp message for all of them. Without a GM entry it records just this card, as before.
@@ -6291,6 +6369,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </button>
         <button
           type="button"
+          disabled={liveSaleType === 'GMC'}
+          onClick={() => setMiOn(v => !v)}
+          title="MI: record several items for one customer and issue one receipt"
+          className={`font-bold transition shrink-0 disabled:opacity-40 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-3 py-1.5 text-sm rounded'} ${miOn ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        >
+          MI{miOn && miLines.length ? ` ${miLines.length}` : ''}
+        </button>
+        <button
+          type="button"
           onClick={() => setSaleModeShowAnalytics(a => !a)}
           title="Analytics"
           className={`shrink-0 font-bold transition ${compact ? 'px-2 py-1 text-sm rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
@@ -7870,6 +7957,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     className="cursor-pointer w-2.5 h-2.5" />
                   Analytics
                 </label>
+                <button type="button" title="Record a sale for a past day (with its customer) in the MI basket"
+                  onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true); jumpToLiveSaleTab('sale') }}
+                  className="text-[10px] font-bold text-blue-700 whitespace-nowrap">+ Past sale</button>
                 <label title="Bulk-attach a folder of form photos/scans, matched by date"
                   className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveSalesShowBulkAttach} onClick={() => setLiveSalesShowBulkAttach(true)} onChange={() => {}}
@@ -8915,7 +9005,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>
-                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        {!miOn && (<label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <CustomerBox
                                             disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
@@ -8926,7 +9016,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             placeholder="GM / phone / name"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
-                                        </label>
+                                        </label>)}
                                         <button
                                           type="button"
                                           disabled={liveSaving || !session}
@@ -10290,11 +10380,26 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </div>
         </div>
       )}
+      {miOn && liveSaleType !== 'GMC' && (
+        <MIBasket lines={miLines} busy={miBusy} error={miError}
+          onQty={(id, v) => setMiLines(prev => prev.map(l => l.itemId === id ? { ...l, qty: v } : l))}
+          onPrice={(id, v) => setMiLines(prev => prev.map(l => l.itemId === id ? { ...l, price: v } : l))}
+          onRemove={id => setMiLines(prev => prev.filter(l => l.itemId !== id))}
+          customer={miCustomer} onCustomer={setMiCustomer} onName={n => { custNameRef.current = n }}
+          onRegister={(phone, done) => setRegisterFor({ phone, done })}
+          date={miDate} onDate={setMiDate} onComplete={() => void miComplete()}
+          onClear={() => { if (confirm('Remove all items from the basket?')) setMiLines([]) }} />
+      )}
       {waPrompt && (
         <div className="fixed bottom-4 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-green-300">
-          <p className="flex-1 text-xs font-semibold text-gray-800">Send the {waPrompt.label} to the customer on WhatsApp?</p>
-          <a href={waPrompt.url} target="_blank" rel="noopener noreferrer" onClick={() => setWaPrompt(null)}
-            className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Send</a>
+          <p className="flex-1 text-xs font-semibold text-gray-800">{waPrompt.url ? `Send the ${waPrompt.label} to the customer on WhatsApp?` : `${waPrompt.label} saved.`}</p>
+          {waPrompt.printUrl && (
+            <a href={waPrompt.printUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-gray-700 px-3 py-2 text-xs font-bold text-white">Print</a>
+          )}
+          {waPrompt.url && (
+            <a href={waPrompt.url} target="_blank" rel="noopener noreferrer" onClick={() => setWaPrompt(null)}
+              className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Send</a>
+          )}
           <button type="button" onClick={() => setWaPrompt(null)} className="px-1 text-lg leading-none text-gray-400">&times;</button>
         </div>
       )}

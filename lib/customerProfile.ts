@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
+import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 
 export const FILES_CONSENT_VERSION = 'v1-2026-10'
 
@@ -50,13 +51,14 @@ export const PRIZE_TARGET = 1000
 export async function customerLifetimeTotal(code: string | null | undefined): Promise<number | null> {
   if (!code) return null
   try {
+    await ensureLiveSaleTapsTable()
     const [c] = await sql`SELECT id FROM customers WHERE customer_id_code = ${code}`
     if (!c) return null
     const [r] = await sql`
       SELECT
         COALESCE((SELECT SUM(total) FROM invoices WHERE customer_id = ${c.id}), 0)
       + COALESCE((SELECT SUM(total) FROM sales_receipts WHERE customer_id = ${c.id}), 0)
-      + COALESCE((SELECT SUM(price * quantity) FROM live_sale_taps WHERE customer_id_code = ${code} AND undone IS NOT TRUE), 0) AS total`
+      + COALESCE((SELECT SUM(price * quantity) FROM live_sale_taps WHERE customer_id_code = ${code} AND undone IS NOT TRUE AND invoice_id IS NULL), 0) AS total`
     return Number(r.total) || 0
   } catch (e) { console.error('customerLifetimeTotal:', e instanceof Error ? e.message : String(e)); return null }
 }

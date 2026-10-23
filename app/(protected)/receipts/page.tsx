@@ -425,11 +425,10 @@ export default function ReceiptsPage() {
         <h1 className="text-lg font-bold text-gray-900">Receipts</h1>
         <div className="flex items-center gap-2">
           <ColumnsPickerButton prefs={colPrefs} />
-          <button onClick={() => setShowForm(f => !f)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
-              ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-            {showForm ? '×' : '+ New Receipt'}
-          </button>
+          <a href="/item" className="text-[11px] font-semibold text-blue-700"
+            title="Receipts are now issued from Live Sale: turn on MI, add the customer's items, enter their GM number or phone, then press the green button.">
+            New receipts: Live Sale → MI
+          </a>
         </div>
       </div>
 

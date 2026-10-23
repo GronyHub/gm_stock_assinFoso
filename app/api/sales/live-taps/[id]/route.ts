@@ -3,6 +3,16 @@ import sql from '@/lib/db'
 import { ensureLiveSaleTapsTable, reverseTapReceiptEffect } from '@/lib/liveSales'
 import { NextRequest } from 'next/server'
 
+// Keeps a customer receipt in step when one of its sales is undone: that line is removed and the
+// total recalculated; a receipt with no lines left is deleted.
+async function syncReceiptAfterTapChange(invoiceId: number, tapId: number) {
+  await sql`DELETE FROM invoice_lines WHERE tap_id = ${tapId}`
+  const [left] = await sql`SELECT COUNT(*)::int AS n FROM invoice_lines WHERE invoice_id = ${invoiceId}`
+  if (!left.n) { await sql`DELETE FROM invoices WHERE id = ${invoiceId}`; return }
+  await sql`UPDATE invoices SET total = (SELECT COALESCE(SUM(item_total), 0) FROM invoice_lines WHERE invoice_id = ${invoiceId}),
+    subtotal = (SELECT COALESCE(SUM(item_total), 0) FROM invoice_lines WHERE invoice_id = ${invoiceId}) WHERE id = ${invoiceId}`
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireAuth()
   if (error) return error
@@ -18,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (action === 'undo') {
       const [tap] = await sql`
-        SELECT item_id, quantity, price, receipt_id, receipt_line_id, undone, receipt_reversed
+        SELECT item_id, quantity, price, receipt_id, receipt_line_id, undone, receipt_reversed, invoice_id
         FROM live_sale_taps WHERE id = ${id}
       `
       if (!tap) return badRequest('Tap not found')
@@ -30,6 +40,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       await reverseTapReceiptEffect(tap as any)
       await sql`UPDATE live_sale_taps SET undone = true, receipt_reversed = true WHERE id = ${id}`
+      // Sold through MI: take this item off the customer's receipt too (the receipt goes if it was the last item).
+      if (tap.invoice_id) await syncReceiptAfterTapChange(Number(tap.invoice_id), id)
       return success({ success: true })
     }
 
@@ -94,8 +106,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       const [updatedTap] = await sql`
-        SELECT id, quantity, price, tapped_at FROM live_sale_taps WHERE id = ${id}
+        SELECT id, quantity, price, tapped_at, invoice_id FROM live_sale_taps WHERE id = ${id}
       `
+      if (updatedTap?.invoice_id) {
+        await sql`UPDATE invoice_lines SET quantity = ${actualNewQty}, item_price = ${actualNewPrice}, item_total = ${newTotal} WHERE tap_id = ${id}`
+        await sql`UPDATE invoices SET total = (SELECT COALESCE(SUM(item_total), 0) FROM invoice_lines WHERE invoice_id = ${updatedTap.invoice_id}),
+          subtotal = (SELECT COALESCE(SUM(item_total), 0) FROM invoice_lines WHERE invoice_id = ${updatedTap.invoice_id}) WHERE id = ${updatedTap.invoice_id}`
+      }
 
       return success({
         tap: updatedTap,
