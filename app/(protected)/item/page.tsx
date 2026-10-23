@@ -58,7 +58,8 @@ import CareChildTiles from './_components/CareChildTiles'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
-import MIBasket, { type BasketLine } from './_components/MIBasket'
+import MIBasket, { type BasketLine, type ItemHit } from './_components/MIBasket'
+import TapCustomerSheet, { type TapCustomerInfo } from './_components/TapCustomerSheet'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton, useSidePaneDisplayMode } from './_components/SidePane'
@@ -562,7 +563,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
 type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null; needs_review?: boolean }
-type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
@@ -2318,6 +2319,7 @@ function ItemHubPageInner() {
   const custNameRef = useRef('')
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
   const skipWaRef = useRef(false)
+  const [tapCustomerSheet, setTapCustomerSheet] = useState<Tap | null>(null)
   // MI (multiple items): a basket of items for one customer, issued together as one receipt.
   const [miOn, setMiOn] = useState(false)
   const [miLines, setMiLines] = useState<BasketLine[]>([])
@@ -3308,6 +3310,15 @@ function ItemHubPageInner() {
   const liveGmcOverageCount = liveGmcOverageIds.size
 
   // Fetch taps
+  function reloadLiveTaps() {
+    fetch('/api/sales/live-taps')
+      .then(r => r.json())
+      .then(d => {
+        const taps = Array.isArray(d) ? d.filter((t): t is Tap => t != null) : []
+        setLiveTaps(taps)
+      })
+      .catch(() => { /* keep what is on screen */ })
+  }
   useEffect(() => {
     fetch('/api/sales/live-taps')
       .then(r => r.json())
@@ -7270,6 +7281,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   )}
                   <button
                     type="button"
+                    onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}
+                    title="Record a sale for a past day, with its customer and receipt (MI basket)"
+                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition"
+                  >
+                    + Past sale
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setLiveNewEntryOpen(true)}
                     title="Add a new log entry"
                     className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-blue-100 text-blue-600 hover:bg-blue-200 transition"
@@ -7308,6 +7327,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Customer</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
@@ -7347,7 +7367,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               ₵{formatPrice(dateTotal)}
                             </td>
-                            <td colSpan={7} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
+                            <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">
                               <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
@@ -7413,6 +7433,18 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 ) : (
                                   renderClickableItemName(tap.item_name, 'text-[9px] leading-none font-semibold whitespace-nowrap text-gray-900')
                                 )}
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-left">
+                                {(() => {
+                                  const cname = tap.customer_name ?? tap.buyer_name ?? tap.customer_id_code ?? tap.buyer_phone
+                                  return (
+                                    <button type="button" disabled={tap.undone} onClick={() => setTapCustomerSheet(tap)}
+                                      title={cname ? `${cname} - tap for WhatsApp / change` : 'Add the customer for this sale'}
+                                      className={`max-w-[64px] truncate text-[9px] leading-none font-semibold whitespace-nowrap ${cname ? 'text-green-700' : 'text-gray-300'}`}>
+                                      {cname ?? '＋'}
+                                    </button>
+                                  )
+                                })()}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
@@ -10371,6 +10403,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </div>
       )}
 
+      {tapCustomerSheet && (
+        <TapCustomerSheet tap={tapCustomerSheet as TapCustomerInfo}
+          onClose={() => setTapCustomerSheet(null)} onChanged={reloadLiveTaps}
+          onRegister={(phone, done) => setRegisterFor({ phone, done })} />
+      )}
       {registerFor && (
         <div className="fixed inset-0 z-[250] flex items-start justify-center overflow-y-auto bg-black/40 p-3">
           <div className="my-4 w-full max-w-lg">
@@ -10381,7 +10418,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </div>
       )}
       {miOn && liveSaleType !== 'GMC' && (
-        <MIBasket lines={miLines} busy={miBusy} error={miError}
+        <MIBasket onClose={() => setMiOn(false)} lines={miLines} busy={miBusy} error={miError}
+          onAddItem={h => setMiLines(prev => {
+            const at = prev.findIndex(l => l.itemId === h.id)
+            if (at >= 0) return prev.map((l, i) => i === at ? { ...l, qty: String((Number(l.qty) || 0) + 1) } : l)
+            return [...prev, { itemId: h.id, name: h.name, qty: '1', price: String(Number(h.selling_price) || '') }]
+          })}
           onQty={(id, v) => setMiLines(prev => prev.map(l => l.itemId === id ? { ...l, qty: v } : l))}
           onPrice={(id, v) => setMiLines(prev => prev.map(l => l.itemId === id ? { ...l, price: v } : l))}
           onRemove={id => setMiLines(prev => prev.filter(l => l.itemId !== id))}

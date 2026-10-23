@@ -13,7 +13,18 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
   const [hits, setHits] = useState<Hit[]>([])
   const [newName, setNewName] = useState('')
   const [unknownPhone, setUnknownPhone] = useState(false)
-  const [pos, setPos] = useState<{ left: number; top: number; width: number } | null>(null)
+  const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null)
+  // Place the drop-down under the box, or above it when there is not enough room below (e.g. in the MI basket
+  // at the bottom of the screen, or with the phone keyboard open).
+  function place(estimatedHeight: number) {
+    const b = inputRef.current?.getBoundingClientRect()
+    if (!b) return
+    const vh = window.visualViewport?.height ?? window.innerHeight
+    const left = Math.max(8, Math.min(b.left, window.innerWidth - 248))
+    const width = Math.max(b.width, 240)
+    if (b.bottom + estimatedHeight + 8 > vh && b.top > estimatedHeight) setPos({ left, bottom: window.innerHeight - b.top + 4, width })
+    else setPos({ left, top: b.bottom + 2, width })
+  }
   const emitted = useRef(value)
   const inputRef = useRef<HTMLInputElement>(null)
   const seq = useRef(0)
@@ -35,8 +46,7 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
             const r = await fetch(`/api/customers/search?phone=${v}`)
             const d = await r.json()
             if (my !== seq.current || !Array.isArray(d)) return
-            const b = inputRef.current?.getBoundingClientRect()
-            if (b) setPos({ left: Math.max(8, Math.min(b.left, window.innerWidth - 248)), top: b.bottom + 2, width: Math.max(b.width, 240) })
+            place(d.length ? 230 : 200)
             if (d.length) setHits(d); else setUnknownPhone(true)
           } catch { /* ignore */ }
         })()
@@ -50,8 +60,7 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
             const r = await fetch(`/api/customers/search?num=${v}`)
             const d = await r.json()
             if (my === seq.current && Array.isArray(d)) {
-              const b = inputRef.current?.getBoundingClientRect()
-              if (b) setPos({ left: Math.max(8, Math.min(b.left, window.innerWidth - 248)), top: b.bottom + 2, width: Math.max(b.width, 240) })
+              place(230)
               setHits(d)
             }
           } catch { /* ignore */ }
@@ -69,9 +78,8 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
         const r = await fetch(`/api/customers/search?q=${encodeURIComponent(q)}`)
         const d = await r.json()
         if (my === seq.current && Array.isArray(d)) {
+          place(230)
           setHits(d)
-          const b = inputRef.current?.getBoundingClientRect()
-          if (b) setPos({ left: Math.max(8, Math.min(b.left, window.innerWidth - 248)), top: b.bottom + 2, width: Math.max(b.width, 240) })
         }
       } catch { /* ignore */ }
     }, 250)
@@ -91,7 +99,7 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
         onBlur={() => setTimeout(() => setHits([]), 150)}
         onClick={e => e.stopPropagation()} />
       {unknownPhone && pos && (
-        <div style={{ position: 'fixed', left: pos.left, top: pos.top, width: pos.width }}
+        <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
           className="z-[200] space-y-1 rounded-lg border border-amber-300 bg-white p-2 shadow-lg" onClick={e => e.stopPropagation()}>
           <p className="text-[10px] font-semibold text-amber-800">New number. Type their name and they are saved as a new customer (leave empty to just send):</p>
           <input value={newName} onChange={e => { setNewName(e.target.value); onName?.(e.target.value) }} placeholder="Customer name" autoFocus
@@ -109,7 +117,7 @@ export default function CustomerBox({ value, onChange, onName, onRegister, disab
         </div>
       )}
       {hits.length > 0 && pos && (
-        <div style={{ position: 'fixed', left: pos.left, top: pos.top, width: pos.width }}
+        <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
           className="z-[200] max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg" onClick={e => e.stopPropagation()}>
           {hits.map(h => (
             <button key={h.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => pick(h)}

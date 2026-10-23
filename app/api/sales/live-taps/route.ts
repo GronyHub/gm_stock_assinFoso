@@ -1,6 +1,7 @@
 import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
+import { ensureSaleBuyers } from '@/lib/saleBuyers'
 import { NextRequest } from 'next/server'
 
 // All taps from all days (not cleared), undone ones included (shown struck-through client
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
   const days = req.nextUrl.searchParams.get('days') || '90'
 
   await ensureLiveSaleTapsTable()
+  await ensureSaleBuyers()
   const daysInt = parseInt(days)
   // soh is a per-tap snapshot recorded at insert time (see /api/sales/
   // live-tap's POST), not a live join -- it needs to read as "what the
@@ -27,9 +29,13 @@ export async function GET(req: NextRequest) {
   // future, with no backfill needed.
   const rows = await sql`
     SELECT t.id, t.item_id, t.item_name, t.price, t.staff_name, t.tapped_at, t.undone, t.receipt_id, t.quantity, t.soh,
-           (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc
+           (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc,
+           t.customer_id_code, cu.display_name AS customer_name, cu.phone AS customer_phone,
+           b.id AS buyer_id, b.customer_name AS buyer_name, b.customer_phone AS buyer_phone
     FROM live_sale_taps t
     LEFT JOIN sales_receipts r ON r.id = t.receipt_id
+    LEFT JOIN customers cu ON cu.customer_id_code = t.customer_id_code
+    LEFT JOIN sale_buyers b ON b.tap_id = t.id
     WHERE t.tapped_at >= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => ${daysInt})
     ORDER BY t.tapped_at DESC
   `
