@@ -13,7 +13,7 @@ import type { ColumnDef } from './columnPrefs'
 // when fewer columns are shown, so every column stays visible at once with
 // no horizontal scrolling, instead of drag-resizable pixel widths like
 // every other table in the app.
-export type ColKey = 'cc' | 'wnw' | 'qty' | 'sp' | 'total'
+export type ColKey = 'cc' | 'wnw' | 'qty' | 'sp' | 'total' | 'customer'
 
 export const SALES_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'cc',    label: 'CC',    width: 13 },
@@ -21,4 +21,6 @@ export const SALES_COLUMNS: ColumnDef<ColKey>[] = [
   { key: 'qty',   label: 'QTY',   width: 10 },
   { key: 'sp',    label: 'SP',    width: 10 },
   { key: 'total', label: 'TOTAL', width: 14 },
+  // The customer(s) the item was sold to: filled on item lines when a GM number / phone was used.
+  { key: 'customer', label: 'CUSTOMER', width: 16 },
 ]

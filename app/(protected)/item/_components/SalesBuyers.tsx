@@ -2,7 +2,7 @@
 import { useState } from 'react'
 
 export type Buyer = {
-  id: number; receipt_id: number; item_name: string; qty: string; price: string
+  id: number; receipt_id: number; item_id: number | null; item_name: string; qty: string; price: string
   customer_id_code: string | null; customer_name: string | null; customer_phone: string | null
   saved_phone: string | null; saved_name: string | null; source: string; created_by: string | null
 }

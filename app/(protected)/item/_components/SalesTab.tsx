@@ -727,7 +727,7 @@ function SalesTab({
                 bar row ever fills them in -- line rows below leave them blank. */}
             {colPrefs.shownColumns.map(c => (
               <th key={c.key}
-                className={c.key === 'cc' || c.key === 'wnw'
+                className={c.key === 'cc' || c.key === 'wnw' || c.key === 'customer'
                   ? 'text-left px-1 py-0.5 pl-3 text-[10px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
                   : 'text-right px-1 py-0.5 text-[10px] font-bold text-gray-500 border-b border-gray-200'}>
                 {c.label}
@@ -999,12 +999,19 @@ function SalesTab({
                   if (c.key === 'total') return (
                     <td key={c.key} className="px-1 py-0 text-right font-semibold text-gray-900 align-top">{line ? fmt(line.item_total) : ''}</td>
                   )
+                  if (c.key === 'customer') {
+                    const names = line ? [...new Set((buyersMap[r.id] ?? [])
+                      .filter(b => line.item_id ? b.item_id === line.item_id : b.item_name === line.item_name)
+                      .map(b => b.saved_name ?? b.customer_name ?? b.customer_id_code ?? b.customer_phone ?? '')
+                      .filter(Boolean))] : []
+                    return <td key={c.key} title={names.join(', ')} className="px-1 py-0 pl-3 text-left align-top text-green-800 break-words">{names.join(', ')}</td>
+                  }
                   return <td key={c.key} className="px-1 py-0 align-top" />
                 })}
               </tr>
             ))}
-            {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && buyersMap[r.id]?.length > 0 && (
-              <tr><td colSpan={30} className="p-0"><SalesBuyers buyers={buyersMap[r.id]} onChanged={() => void loadReceipts()} /></td></tr>
+            {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && buyersMap[r.id]?.some(b => b.id > 0) && (
+              <tr><td colSpan={30} className="p-0"><SalesBuyers buyers={buyersMap[r.id].filter(b => b.id > 0)} onChanged={() => void loadReceipts()} /></td></tr>
             )}
             </Fragment>
           )
