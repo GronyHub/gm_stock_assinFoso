@@ -36,7 +36,7 @@ def split_item(raw):
     return clean(body), clean(how), tag
 
 SHOP = [
- ('A.', 'daily'), ('B2.', 'daily'), ('B.', 'daily'), ('C.', 'daily'), ('D.', 'daily'), ('E.', 'daily'),
+ ('A.', 'daily'), ('B2.', 'daily'), ('B3.', 'daily'), ('B.', 'daily'), ('C.', 'daily'), ('D.', 'daily'), ('E.', 'daily'),
  ('F.', 'weekly'), ('G.', 'monthly'), ('H.', 'once'), ('RED', 'once'), ('I.', 'once'), ('J.', 'weekly'),
  ('K.', 'weekly'), ('L.', 'daily'), ('M.', 'once'), ('N.', 'weekly'), ('O.', 'once'), ('P.', 'weekly'),
  ('Q.', 'once'), ('R.', 'weekly'), ('S.', 'weekly')]

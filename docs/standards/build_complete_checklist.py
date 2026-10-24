@@ -6,7 +6,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.graphics.shapes import Drawing, Rect, String, Circle
 import sys
-FS=float(sys.argv[1]) if len(sys.argv)>1 else 4.8
+FS=float(sys.argv[1]) if len(sys.argv)>1 else 4.7
 S3=float(sys.argv[2]) if len(sys.argv)>2 else 0.54
 OUT=sys.argv[3] if len(sys.argv)>3 else "Grony_Multimedia_Complete_Checklist.pdf"
 W,H=A4; M=5*mm; G=2.4*mm; TOP=10.5*mm; BOT=6*mm

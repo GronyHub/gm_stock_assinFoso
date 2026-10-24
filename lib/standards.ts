@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
+import { STANDARDS_ADDITIONS } from '@/lib/standardsAdditions'
 
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly', 'once'] as const
 export type Frequency = (typeof FREQUENCIES)[number]
@@ -31,6 +32,18 @@ async function ensureStandardsTablesImpl() {
       UNIQUE (item_id, period_key)
     )
   `.catch(() => {})
+  // New lines shipped with the app (e.g. section B3) are added once, when their section is missing.
+  try {
+    const sections = [...new Set(STANDARDS_ADDITIONS.map(a => a.section))]
+    for (const section of sections) {
+      const [have] = await sql`SELECT 1 AS x FROM standards_items WHERE section = ${section} LIMIT 1`
+      if (have) continue
+      for (const a of STANDARDS_ADDITIONS.filter(x => x.section === section)) {
+        await sql`INSERT INTO standards_items (station, section, section_note, position, text, how, tag, frequency, kind)
+          VALUES (${a.station}, ${a.section}, ${a.note || null}, ${a.position}, ${a.text}, ${a.how || null}, NULL, ${a.frequency}, ${a.kind})`
+      }
+    }
+  } catch (e) { console.error('standards additions:', e instanceof Error ? e.message : String(e)) }
 }
 export const ensureStandardsTables = once(ensureStandardsTablesImpl)
 

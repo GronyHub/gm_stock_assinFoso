@@ -6,7 +6,7 @@
 
 **Station sections:** Grony 1, 2, 3, 4, 5, 6, 7 & 8, each with its own checks and red markers (tags like G2-1 routed to Grony 2 section, G5-3 to Grony 5, etc.). All- tags apply to every station.
 
-**Build:** `cd docs/standards && pip install reportlab pypdf && python build_complete_checklist.py [bodyFont] [diagramScale] [out.pdf]` — defaults: `bodyFont=4.8`, `diagramScale=0.54`. If page count exceeds 3, lower the font size.
+**Build:** `cd docs/standards && pip install reportlab pypdf && python build_complete_checklist.py [bodyFont] [diagramScale] [out.pdf]` — defaults: `bodyFont=4.7`, `diagramScale=0.54`. If page count exceeds 3, lower the font size.
 
 **Format rules:**
 - Every line is a tick-box check; procedures go inline as short grey "How:" notes.

@@ -117,6 +117,16 @@ check("B2. CUSTOMER TRUST – COMPANY CHANNELS ONLY","The company number is also
  "<b>No personal phone number</b> – mine or any staff member's – is given to any customer.",
  "<b>No personal Mobile Money number</b> is given to customers; they pay to the company MoMo number.",
 ],bg=NAVY)
+check("B3. SALES, CUSTOMERS &amp; RECEIPTS – LIVE SALE","Every sale tied to its customer. Full steps: one-page staff guide (Grony_Staff_Guide_Sales_and_Customers).",[
+ "Every sale to a known customer carries their <b>GM number or 10-digit phone</b> in the GM box."+HOW("GM box on the item card: type the number (e.g. 45), a phone starting with 0, or the first letters of the name and pick from the list → green tick. No customer? Leave it empty."),
+ "A phone number not on our list is <b>saved as a new customer</b>."+HOW("Type the name in the box that drops down. For email, location and services use Full registration. Tell the customer their GM number."),
+ "After each sale with a customer the <b>WhatsApp purchase message</b> is sent."+HOW("Tap Send on the card that appears, then press send in WhatsApp. It shows what they bought, the total and their total work with us."),
+ "A customer buying <b>several items</b> is sold through <b>MI</b>: one basket, one receipt."+HOW("Press MI → add each item (green tick, or type its name in the basket) → type the customer → press the big green button → Print or Send."),
+ "<b>Past days</b> are entered only with <b>+ Past sale</b> and the right Sale date; the same work is never typed twice."+HOW("Sales Log → + Past sale → pick the date → items → customer → green button."),
+ "Sales Log checked: every row shows its customer; missing ones added."+HOW("A faint plus sign in the Customer column = none recorded: tap it and add the GM number, phone or name. Tap a customer's name to issue the day's receipt or see all their jobs."),
+ "Receipts are issued from MI or the Sales Log, never typed into Customer Receipts."+HOW("Cust. Receipts is for history, search and printing only."),
+ "A sale the app refuses (price below cost, not enough stock) is <b>not forced</b>: tell Joe.",
+])
 check("C. STATION CHECK – left box Grony 1, right box Grony 2","Each station must run standalone.",[
  "Laptop, printers and scanner working and clean.",
  "<b>BIN</b>: rubbish and unusable paper only; official documents torn into pieces first.",
