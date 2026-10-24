@@ -1,5 +1,6 @@
 import { requireAuth, success } from '@/lib/api'
 import sql from '@/lib/db'
+import { ensureCustomerPhones } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
 
 // Light type-ahead for the GM box: customers whose name, company, ID or phone matches.
@@ -15,7 +16,8 @@ export async function GET(req: NextRequest) {
     if (num) {
       const rows = num.startsWith('0')
         ? await sql`SELECT id, customer_id_code, display_name, company_name, phone FROM customers
-            WHERE customer_id_code IS NOT NULL AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g') LIKE ${num + '%'}
+            WHERE customer_id_code IS NOT NULL AND (regexp_replace(COALESCE(phone, ''), '\D', '', 'g') LIKE ${num + '%'}
+              OR EXISTS (SELECT 1 FROM customer_phones p WHERE p.customer_id = customers.id AND p.phone LIKE ${num + '%'}))
             ORDER BY display_name LIMIT 8`
         : await sql`SELECT id, customer_id_code, display_name, company_name, phone FROM customers
             WHERE customer_id_code LIKE ${'GM' + num + '%'}
@@ -26,7 +28,8 @@ export async function GET(req: NextRequest) {
     if (phone.length >= 9) {
       const rows = await sql`
         SELECT id, customer_id_code, display_name, company_name, phone FROM customers
-        WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${phone.slice(-9)} LIMIT 3`
+        WHERE customer_id_code IS NOT NULL AND (RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${phone.slice(-9)}
+          OR EXISTS (SELECT 1 FROM customer_phones p WHERE p.customer_id = customers.id AND RIGHT(regexp_replace(p.phone, '\D', '', 'g'), 9) = ${phone.slice(-9)})) LIMIT 3`
       return success(rows)
     }
     if (q.length < 2) return success([])

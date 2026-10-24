@@ -7,6 +7,7 @@ import { once } from '@/lib/once'
 import { ensureCustomerProfileColumns, normalizeGhPhone, welcomeWhatsAppUrl } from '@/lib/customerProfile'
 import { sendRegistrationEmail } from '@/lib/mailer'
 import { sendSms, welcomeSms } from '@/lib/sms'
+import { ensureCustomerPhones } from '@/lib/customerPhones'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
 // once it's there, so just ensure it on every request rather than a
@@ -44,6 +45,7 @@ export async function GET() {
   await initializeDatabase()
   await ensureColumns()
   await ensureCustomerProfileColumns()
+  await ensureCustomerPhones()
   const customers = await sql`
     SELECT
       c.id, c.customer_id_code, c.display_name, c.company_name, c.first_name, c.last_name,
@@ -51,6 +53,7 @@ export async function GET() {
       c.opening_balance, c.credit_limit, c.notes, c.is_internal,
       c.whatsapp_group_added, c.last_visited::text AS last_visited, c.service_goods,
       c.created_at::text AS created_at, c.source, c.added_by,
+      COALESCE((SELECT json_agg(json_build_object('id', p.id, 'phone', p.phone, 'label', p.label) ORDER BY p.id) FROM customer_phones p WHERE p.customer_id = c.id), '[]'::json) AS extra_phones,
       COUNT(DISTINCT sr.id)::int              AS receipt_count,
       COALESCE(SUM(sr.total), 0)::numeric     AS receipt_total,
       COALESCE(SUM(sr.balance), 0)::numeric   AS receipt_balance,

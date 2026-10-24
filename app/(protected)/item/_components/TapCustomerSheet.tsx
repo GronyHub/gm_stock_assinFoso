@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import CustomerBox from './CustomerBox'
 
 export type SaleTap = {
@@ -29,6 +29,18 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
   const typedName = useRef('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  // The customer's numbers (main + extras): lets the message go to the right one.
+  const [numbers, setNumbers] = useState<{ phone: string; label: string }[]>([])
+  const [sendTo, setSendTo] = useState('')
+  useEffect(() => {
+    if (!code) { setNumbers([]); return }
+    fetch(`/api/customers/phones?code=${code}`).then(r => r.json()).then(d => {
+      const list: { phone: string; label: string }[] = []
+      if (d?.main) list.push({ phone: d.main, label: 'Main' })
+      for (const e of d?.extras ?? []) list.push({ phone: e.phone, label: e.label || 'Other' })
+      setNumbers(list); setSendTo('')
+    }).catch(() => setNumbers([]))
+  }, [code])
 
   const same = (t: SaleTap) => !t.undone && (code ? t.customer_id_code === code : !!phone && (t.buyer_phone ?? t.customer_phone) === phone)
   const mine = useMemo(() => allTaps.filter(same).sort((a, b) => a.tapped_at.localeCompare(b.tapped_at)), [allTaps, code, phone]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -55,7 +67,7 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
   async function receiptLinks(invoiceId: number, what: 'print' | 'whatsapp') {
     const w = window.open('', '_blank')
     try {
-      const r = await fetch(`/api/sales/live-receipt?invoiceId=${invoiceId}`)
+      const r = await fetch(`/api/sales/live-receipt?invoiceId=${invoiceId}${sendTo ? `&to=${sendTo}` : ''}`)
       const d = await r.json()
       const url = what === 'print' ? d.printUrl : d.whatsappUrl
       if (!r.ok || !url) throw new Error(d.error ?? 'No phone number for this customer yet.')
@@ -107,6 +119,15 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
               </button>
             )}
             {!code && <p className="text-xs text-amber-700">Save this customer first (below) so a receipt can be issued.</p>}
+            {numbers.length > 1 && (
+              <label className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                Send WhatsApp to
+                <select value={sendTo} onChange={e => setSendTo(e.target.value)} className="flex-1 rounded-lg border border-gray-300 px-2 py-1.5 text-xs">
+                  <option value="">Main number</option>
+                  {numbers.slice(1).map(n => <option key={n.phone} value={n.phone}>{n.label} · {n.phone}</option>)}
+                </select>
+              </label>
+            )}
             {receipts.map(([invoiceId, number]) => (
               <div key={invoiceId} className="flex items-center gap-2 rounded-xl border border-gray-200 p-2">
                 <p className="flex-1 text-sm font-bold text-gray-900">{number || 'Receipt'}</p>

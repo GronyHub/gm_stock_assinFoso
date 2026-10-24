@@ -35,6 +35,9 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
   const [displayName, setDisplayName] = useState(initialDisplayName ?? '')
   const [companyName, setCompanyName] = useState('')
   const [phone, setPhone] = useState(initialPhone ?? '')
+  // More numbers for the same customer (saved after the customer is created).
+  const [extraPhones, setExtraPhones] = useState<{ phone: string; label: string }[]>([])
+  const [extraNote, setExtraNote] = useState('')
   const [email, setEmail] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
@@ -120,6 +123,12 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
     setSaving(false)
     if (res.ok) {
       const customer = await res.json()
+      const failed: string[] = []
+      for (const x of extraPhones.filter(e => e.phone.replace(/\D/g, '').length >= 9)) {
+        const r = await fetch(`/api/customers/${customer.id}/phones`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(x) })
+        if (!r.ok) failed.push(`${x.phone}: ${(await r.json().catch(() => ({}))).error ?? 'not saved'}`)
+      }
+      setExtraNote(failed.length ? `These extra numbers were not saved: ${failed.join('; ')}` : '')
       setCreatedCustomer(customer)
     } else {
       const d = await res.json().catch(() => null)
@@ -135,6 +144,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
           <p className="text-2xl font-bold text-gray-900">Thank you!</p>
           <p className="text-gray-600">Your registration has been completed successfully.</p>
         </div>
+        {extraNote && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{extraNote}</p>}
         <div className="bg-blue-50 border-2 border-blue-600 rounded-lg p-6 space-y-2">
           <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Your Customer ID</p>
           <p className="text-4xl font-bold text-blue-600 font-mono">{createdCustomer.customer_id_code || createdCustomer.id}</p>
@@ -197,6 +207,16 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
           <label className={labelCls}>Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        {extraPhones.map((x, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <input value={x.phone} onChange={e => setExtraPhones(prev => prev.map((p, j) => j === i ? { ...p, phone: e.target.value } : p))} inputMode="tel" placeholder="Another number" className={inputCls} />
+            <input value={x.label} onChange={e => setExtraPhones(prev => prev.map((p, j) => j === i ? { ...p, label: e.target.value } : p))} placeholder="Label (e.g. Office)" className={inputCls} />
+            <button type="button" onClick={() => setExtraPhones(prev => prev.filter((_, j) => j !== i))} className="px-1 text-lg font-bold leading-none text-red-500" aria-label="Remove number">&times;</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setExtraPhones(prev => [...prev, { phone: '', label: '' }])} className="text-xs font-semibold text-blue-600">+ Add another number</button>
       </div>
       <div className="border border-gray-200 rounded-lg p-3 bg-blue-50 space-y-2">
         <div className="flex items-center justify-between">

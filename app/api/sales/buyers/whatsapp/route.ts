@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureSaleBuyers } from '@/lib/saleBuyers'
 import { purchaseWhatsAppUrl, normalizeGhPhone, customerLifetimeTotal } from '@/lib/customerProfile'
+import { findCustomerByPhone } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
 
 // GET ?ids=1,2,3 -> one WhatsApp link with all those purchases in a single message
@@ -19,7 +20,13 @@ export async function GET(req: NextRequest) {
       FROM sale_buyers b LEFT JOIN customers c ON c.customer_id_code = b.customer_id_code
       WHERE b.id = ANY(${ids}) ORDER BY b.id`
     if (!rows.length) return badRequest('Purchases not found.')
-    const phone = rows.map(r => normalizeGhPhone(r.customer_phone) ?? normalizeGhPhone(r.saved_phone)).find(Boolean)
+    let phone = rows.map(r => normalizeGhPhone(r.customer_phone) ?? normalizeGhPhone(r.saved_phone)).find(Boolean)
+    // ?to= : send to another of this customer's own numbers (main or extra), never to a stranger's.
+    const to = normalizeGhPhone(req.nextUrl.searchParams.get('to'))
+    if (to) {
+      const owner = await findCustomerByPhone(to)
+      if (owner && owner.customer_id_code === rows[0].customer_id_code) phone = to
+    }
     if (!phone) return badRequest('No phone number for this customer yet. Add it first.')
     const first = rows[0]
     const name = (first.first_name || first.display_name || first.customer_name) as string | null

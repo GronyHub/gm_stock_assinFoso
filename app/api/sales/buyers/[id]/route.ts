@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureSaleBuyers, createCustomerFromPhone } from '@/lib/saleBuyers'
+import { findCustomerByPhone } from '@/lib/customerPhones'
 import { normalizeGhPhone } from '@/lib/customerProfile'
 import { NextRequest } from 'next/server'
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const phone = normalizeGhPhone(b.phone ?? row.customer_phone)
     const name = String(b.name ?? '').trim()
     if (!phone) return badRequest('Enter the customer\'s phone number (10 digits starting with 0).')
-    let [known] = await sql`SELECT customer_id_code, display_name FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${phone.slice(-9)} LIMIT 1`
+    let known: { customer_id_code: string; display_name: string } | null = await findCustomerByPhone(phone)
     if (!known) {
       if (!name) return badRequest('Type the customer\'s name to save them as a new customer.')
       const created = await createCustomerFromPhone(name, phone, getActorName(session))

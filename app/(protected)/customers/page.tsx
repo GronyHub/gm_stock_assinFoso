@@ -1,4 +1,5 @@
 'use client'
+import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
 import { prefetchReceipts } from '@/lib/receiptsPrefetch'
@@ -21,6 +22,7 @@ type Customer = {
   last_name: string | null
   email: string | null
   phone: string | null
+  extra_phones?: ExtraPhone[]
   location: string | null
   status: string | null
   payment_terms_label: string | null
@@ -71,7 +73,7 @@ type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'statu
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
-  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => v.phone ?? '—' },
+  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => <>{v.phone ?? '—'}{v.extra_phones?.length ? <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] font-bold text-gray-500">+{v.extra_phones.length}</span> : null}</> },
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
   { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
   { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
@@ -367,6 +369,7 @@ export default function CustomersPage({
         (x.company_name ?? '').toLowerCase().includes(q) ||
         (x.email ?? '').toLowerCase().includes(q) ||
         (x.phone ?? '').toLowerCase().includes(q) ||
+        (x.extra_phones ?? []).some(p => p.phone.includes(q.replace(/\s/g, ''))) ||
         (x.location ?? '').toLowerCase().includes(q) ||
         (x.first_name ?? '').toLowerCase().includes(q) ||
         (x.last_name ?? '').toLowerCase().includes(q) ||
@@ -540,7 +543,7 @@ export default function CustomersPage({
           ) : (
             <>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs border-t border-gray-100 pt-3">
-                <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}</span></div>
+                <div><span className="text-gray-400">Phone: </span><span className="font-medium">{selected.phone ?? '—'}{selected.extra_phones?.length ? ` (+${selected.extra_phones.length} more)` : ''}</span></div>
                 <div><span className="text-gray-400">Email: </span><span className="font-medium">{selected.email ?? '—'}</span></div>
                 <div><span className="text-gray-400">Location: </span><span className="font-medium">{selected.location ?? '—'}</span></div>
                 <div><span className="text-gray-400">Terms: </span><span className="font-medium">{selected.payment_terms_label ?? '—'}</span></div>
@@ -549,6 +552,13 @@ export default function CustomersPage({
                 <div><span className="text-gray-400">Service/Goods: </span><span className="font-medium">{selected.service_goods ?? '—'}</span></div>
                 <div><span className="text-gray-400">WhatsApp Grp: </span><span className={`font-medium ${selected.whatsapp_group_added ? 'text-green-700' : 'text-red-600'}`}>{selected.whatsapp_group_added ? '✓ Added' : '✗ Not Added'}</span></div>
               </div>
+
+              <CustomerPhones customerId={selected.id} main={selected.phone} extras={selected.extra_phones ?? []}
+                onChange={(main, extras) => {
+                  const merged = { ...selected, phone: main, extra_phones: extras }
+                  setSelected(merged)
+                  setCustomers(prev => prev.map(x => x.id === merged.id ? merged : x))
+                }} />
 
               <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-3">
                 {[

@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { ensureSaleBuyers, recordBuyer, createCustomerFromPhone } from '@/lib/saleBuyers'
 import { normalizeGhPhone } from '@/lib/customerProfile'
+import { findCustomerByPhone } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
 
 // POST { code?: 'GM12', phone?: '0244…', name?: string }
@@ -24,10 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     type Cust = { customer_id_code: string; display_name: string; phone: string | null }
     let cust: Cust | undefined
     if (code) { const rows = await sql`SELECT customer_id_code, display_name, phone FROM customers WHERE customer_id_code = ${code}`; cust = rows[0] as Cust | undefined }
-    if (!cust && phone) {
-      const rows = await sql`SELECT customer_id_code, display_name, phone FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${phone.slice(-9)} LIMIT 1`
-      cust = rows[0] as Cust | undefined
-    }
+    if (!cust && phone) cust = (await findCustomerByPhone(phone)) ?? undefined
     if (!cust) {
       const name = String(b.name ?? '').trim()
       if (!phone) return badRequest('Enter the customer\'s phone number (10 digits starting with 0) or their GM ID.')

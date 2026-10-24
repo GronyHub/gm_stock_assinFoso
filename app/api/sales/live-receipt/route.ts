@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { receiptWhatsAppUrl, customerLifetimeTotal, normalizeGhPhone } from '@/lib/customerProfile'
+import { findCustomerByPhone } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
 
 // POST { tapIds: number[] } -- MI (multiple items) in Live Sale: the taps just recorded for one
@@ -73,8 +74,11 @@ export async function GET(req: NextRequest) {
       FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id WHERE i.id = ${id}`
     if (!inv) return badRequest('Receipt not found.')
     const lines = await sql`SELECT raw_item_name, quantity, item_price FROM invoice_lines WHERE invoice_id = ${id} ORDER BY id`
-    const phone = normalizeGhPhone(inv.customer_phone) ?? normalizeGhPhone(inv.phone)
+    let phone = normalizeGhPhone(inv.customer_phone) ?? normalizeGhPhone(inv.phone)
     const code = (inv.customer_id_code as string | null) ?? null
+    // ?to= : another of this customer's own numbers.
+    const to = normalizeGhPhone(req.nextUrl.searchParams.get('to'))
+    if (to && code) { const owner = await findCustomerByPhone(to); if (owner && owner.customer_id_code === code) phone = to }
     const whatsappUrl = phone
       ? receiptWhatsAppUrl(phone, inv.invoice_number as string, lines.map(l => ({ name: l.raw_item_name as string, qty: Number(l.quantity), price: Number(l.item_price) })), code, inv.display_name as string, await customerLifetimeTotal(code))
       : null

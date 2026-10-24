@@ -5,6 +5,7 @@ import { sendTransactionEmail } from '@/lib/mailer'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
 import { purchaseWhatsAppUrl, normalizeGhPhone, ensureCustomerProfileColumns, customerLifetimeTotal } from '@/lib/customerProfile'
 import { recordBuyer } from '@/lib/saleBuyers'
+import { findCustomerByPhone } from '@/lib/customerPhones'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { expectedStockAt } from '@/lib/stockGuard'
 import { recordCountRevision } from '@/lib/countRevisions'
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     let waLocal: string | null = smsTo ? '0' + smsTo.slice(-9) : null
     let waName: string | null = typeof typedName === 'string' && typedName.trim() ? typedName.trim().slice(0, 60) : null
     if (smsTo && !customerIdCode) {
-      const [known] = await sql`SELECT customer_id_code, display_name, first_name FROM customers WHERE customer_id_code IS NOT NULL AND RIGHT(regexp_replace(COALESCE(phone, ''), '\D', '', 'g'), 9) = ${smsTo.slice(-9)} LIMIT 1`.catch(() => [])
+      const known = await findCustomerByPhone(smsTo)
       if (known?.customer_id_code) { customerIdCode = known.customer_id_code as string; waName = ((known.first_name || known.display_name) as string) ?? waName }
       else if (waName && waLocal) {
         // An unknown number with a name typed: save them as a new customer (owner's decision),
