@@ -9016,7 +9016,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         always keep the boxes regardless of soh. */}
                                     {(item.product_type === 'service' || Number(item.soh) > 0) && (
                                       <div className="flex items-center gap-1 mt-1">
-                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        <label className="flex-[0.8] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <input
                                             type="number" inputMode="decimal" placeholder="Qty"
                                             disabled={!session}
@@ -9024,10 +9024,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
                                         </label>
-                                        <label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        <label className="flex-[1.8] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <span className="text-[9px] text-gray-400">₵</span>
                                           <input
                                             type="number" inputMode="decimal"
@@ -9036,10 +9036,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
                                         </label>
-                                        {!miOn && (<label className="flex-1 min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        {!miOn && (<label className="flex-[1.2] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <CustomerBox
                                             disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
