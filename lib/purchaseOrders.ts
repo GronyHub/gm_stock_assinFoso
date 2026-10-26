@@ -46,6 +46,27 @@ async function ensurePurchaseOrderTablesImpl() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `.catch(() => {})
+  // Delivery check: each line is ticked "same as ordered" or "different" (with the number that really
+  // arrived) while the goods are counted, before the receipt is confirmed.
+  await sql`ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS check_status TEXT`.catch(() => {})
+  await sql`ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS check_qty NUMERIC`.catch(() => {})
+  await sql`ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS checked_by TEXT`.catch(() => {})
+  await sql`ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS checked_at TIMESTAMPTZ`.catch(() => {})
+  // Differences found at confirmation (short or extra), kept so they can be reported back to the supplier.
+  await sql`
+    CREATE TABLE IF NOT EXISTS purchase_order_discrepancies (
+      id SERIAL PRIMARY KEY,
+      po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+      line_id INTEGER,
+      item_name TEXT NOT NULL,
+      expected NUMERIC NOT NULL,
+      received NUMERIC NOT NULL,
+      diff NUMERIC NOT NULL,
+      reported BOOLEAN NOT NULL DEFAULT FALSE,
+      created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `.catch(() => {})
 }
 
 // Receiving progress is derived from the lines rather than stored, so it

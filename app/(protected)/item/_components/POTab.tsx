@@ -12,7 +12,11 @@ type POLine = {
   qty_ordered: string
   qty_received: string
   unit_price: string
+  check_status?: 'same' | 'different' | null
+  check_qty?: string | null
 }
+
+type Disc = { id: number; item_name: string; expected: string; received: string; diff: string; reported: boolean; created_by: string | null; created_at: string }
 
 type ReceiptLine = {
   bill_id: number
@@ -126,11 +130,45 @@ const PO_COL_DEFAULTS: Record<string, number> = { date: 64, vendor: 90, status: 
 
 type Props = { search: string }
 
+// One line's delivery tick: "Same" (all that is still due arrived), or "Different" with the number that did.
+function CheckCell({ line, onSet }: { line: POLine; onSet: (status: 'same' | 'different' | null, qty?: number) => void }) {
+  const remaining = Math.max(0, parseFloat(line.qty_ordered) - parseFloat(line.qty_received))
+  const [val, setVal] = useState(line.check_qty != null ? String(parseFloat(line.check_qty)) : String(remaining))
+  if (!line.check_status) {
+    return (
+      <div className="flex gap-1">
+        <button type="button" onClick={() => onSet('same')} className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">Same</button>
+        <button type="button" onClick={() => onSet('different', remaining)} className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Different</button>
+      </div>
+    )
+  }
+  const got = line.check_status === 'same' ? remaining : Number(line.check_qty ?? 0)
+  const diff = got - remaining
+  return (
+    <div className="space-y-0.5">
+      {line.check_status === 'same'
+        ? <p className="whitespace-nowrap text-[9px] font-bold text-green-700">✓ Same ({fmt(String(remaining))})</p>
+        : (
+          <div className="flex items-center gap-1">
+            <input type="number" min={0} inputMode="decimal" value={val} onChange={e => setVal(e.target.value)}
+              onBlur={() => { if (Number(val) !== got && val !== '') onSet('different', Number(val)) }}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              className="w-14 rounded border border-amber-300 bg-white px-1 py-0.5 text-[10px]" aria-label="Number received" />
+            <span className={`whitespace-nowrap text-[9px] font-bold ${diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>
+              {diff === 0 ? 'same' : diff < 0 ? `short ${fmt(String(-diff))}` : `extra ${fmt(String(diff))}`}
+            </span>
+          </div>
+        )}
+      <button type="button" onClick={() => onSet(null)} className="text-[9px] font-semibold text-gray-400 underline">undo</button>
+    </div>
+  )
+}
+
 export default function POTab({ search }: Props) {
   const [pos, setPos] = useState<PO[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [detail, setDetail] = useState<(PO & { receipts: Receipt[] }) | null>(null)
+  const [detail, setDetail] = useState<(PO & { receipts: Receipt[]; discrepancies?: Disc[] }) | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [receiveOpen, setReceiveOpen] = useState(false)
@@ -289,6 +327,54 @@ export default function POTab({ search }: Props) {
       p.lines.some(l => l.item_name.toLowerCase().includes(q))
     )
   }, [pos, search, notBilledOnly, draftOnly])
+
+  // Delivery check: tick a line "same as ordered" or "different" (with the number that really arrived),
+  // line by line while counting. Nothing is received until Confirm receipt.
+  const [confirmDate, setConfirmDate] = useState(new Date().toISOString().slice(0, 10))
+  async function setCheck(lineId: number, status: 'same' | 'different' | null, qty?: number) {
+    if (!detail) return
+    const res = await fetch(`/api/purchase-orders/${detail.id}/lines/${lineId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, qty }),
+    })
+    if (res.ok) loadDetail(detail.id)
+    else alert((await res.json().catch(() => ({}))).error ?? 'Could not save the check.')
+  }
+  async function confirmChecked() {
+    if (!detail) return
+    const open = detail.lines.filter(l => parseFloat(l.qty_received) < parseFloat(l.qty_ordered) - 0.001)
+    const checked = open.filter(l => l.check_status)
+    if (!checked.length) { alert('Tick at least one line first.'); return }
+    const unchecked = open.length - checked.length
+    if (unchecked > 0 && !confirm(`${unchecked} line${unchecked === 1 ? ' is' : 's are'} not checked yet and will stay "not received". Continue?`)) return
+    setBusy(true)
+    if (detail.status === 'draft') {
+      const r0 = await fetch(`/api/purchase-orders/${detail.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'sent' }) })
+      if (!r0.ok) { setBusy(false); alert('Could not mark the order as sent.'); return }
+    }
+    const lines = checked.map(l => {
+      const remaining = parseFloat(l.qty_ordered) - parseFloat(l.qty_received)
+      return { poLineId: l.id, qty: Math.min(Number(l.check_qty ?? remaining), remaining), price: Number(l.unit_price) }
+    }).filter(l => l.qty > 0)
+    const res = await fetch(`/api/purchase-orders/${detail.id}/receive`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: confirmDate, lines, fromCheck: true }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok) { alert(d.error ?? 'Could not confirm the receipt.'); return }
+    loadDetail(detail.id); loadList()
+  }
+  function reportText(d: Disc[]) {
+    const lines = d.map(x => {
+      const diff = parseFloat(x.diff)
+      return `- ${x.item_name}: ordered ${fmt(x.expected)}, received ${fmt(x.received)} (${diff < 0 ? 'short by ' + fmt(-diff) : 'extra ' + fmt(diff)})`
+    })
+    return `Delivery check for ${detail?.po_number ?? 'purchase order'}${detail?.vendor_name ? ` (${detail.vendor_name})` : ''}:\n${lines.join('\n')}\nPlease advise. Thank you - Grony Multimedia`
+  }
+  async function markReported(ids: number[], reported: boolean) {
+    if (!detail) return
+    await fetch(`/api/purchase-orders/${detail.id}/discrepancies`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, reported }) })
+    loadDetail(detail.id)
+  }
 
   async function setStatus(status: 'sent' | 'cancelled') {
     if (!detail) return
@@ -662,6 +748,7 @@ export default function POTab({ search }: Props) {
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">recv</th>
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">price</th>
                         <th className="text-right px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">receipt</th>
+                        <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">check</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -698,10 +785,53 @@ export default function POTab({ search }: Props) {
                                     )}
                                   </span>}
                           </td>
+                          <td className="px-1.5 py-0.5 align-top">
+                            {detail.status !== 'cancelled' && parseFloat(l.qty_received) < parseFloat(l.qty_ordered) - 0.001
+                              ? <CheckCell key={`${l.id}-${l.check_status}-${l.check_qty}`} line={l} onSet={(st, q) => void setCheck(l.id, st, q)} />
+                              : null}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+
+                  {detail.status !== 'cancelled' && detail.lines.some(l => parseFloat(l.qty_received) < parseFloat(l.qty_ordered) - 0.001) && (() => {
+                    const open = detail.lines.filter(l => parseFloat(l.qty_received) < parseFloat(l.qty_ordered) - 0.001)
+                    const checked = open.filter(l => l.check_status)
+                    const diffs = checked.filter(l => l.check_status === 'different' && Math.abs(Number(l.check_qty ?? 0) - (parseFloat(l.qty_ordered) - parseFloat(l.qty_received))) > 0.0001)
+                    return (
+                      <div className="space-y-1 border-t border-gray-200 bg-green-50 p-2">
+                        <p className="text-[10px] font-bold text-green-800">Delivery check: {checked.length} of {open.length} lines ticked{diffs.length ? ` · ${diffs.length} difference${diffs.length === 1 ? '' : 's'}` : ''}</p>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[9px] text-gray-500">Date received</span>
+                          <input type="date" value={confirmDate} max={new Date().toISOString().slice(0, 10)} onChange={e => setConfirmDate(e.target.value)} className={inputCls + ' !w-auto'} />
+                          <button onClick={() => void confirmChecked()} disabled={busy || checked.length === 0}
+                            className="text-[10px] font-bold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40">
+                            Confirm receipt{detail.status === 'draft' ? ' (marks the order as sent)' : ''}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {(detail.discrepancies ?? []).some(x => !x.reported) && (() => {
+                    const open = (detail.discrepancies ?? []).filter(x => !x.reported)
+                    const text = reportText(open)
+                    return (
+                      <div className="space-y-1 border-t border-gray-200 bg-red-50 p-2">
+                        <p className="text-[10px] font-bold text-red-700">Differences to report to the supplier</p>
+                        {open.map(x => {
+                          const diff = parseFloat(x.diff)
+                          return <p key={x.id} className="text-[10px] text-gray-800"><b>{x.item_name}</b>: ordered {fmt(x.expected)}, received {fmt(x.received)} <span className={`font-bold ${diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>({diff < 0 ? `short by ${fmt(-diff)}` : `extra ${fmt(diff)}`})</span></p>
+                        })}
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          <button onClick={() => { void navigator.clipboard?.writeText(text); alert('Report copied.') }} className="text-[9px] font-bold text-gray-700 bg-white border border-gray-300 px-2 py-0.5 rounded">Copy report</button>
+                          <a href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-white bg-green-600 px-2 py-0.5 rounded">Send on WhatsApp</a>
+                          <button onClick={() => void markReported(open.map(x => x.id), true)} className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded">Mark as reported</button>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {detail.receipts.length > 0 && (
                     <div className="border-t border-gray-200">

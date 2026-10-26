@@ -3,7 +3,26 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { syncVcpForItems } from '@/lib/vcpSync'
 import { ensureBillEnteredByColumn } from '@/lib/billAttachments'
+import { ensurePurchaseOrderTables } from '@/lib/purchaseOrders'
 import { NextRequest } from 'next/server'
+
+type CheckedLine = { id: number; item_name: string; qty_ordered: number; qty_received: number; check_status: string | null; check_qty: number | null }
+// Delivery check: every line ticked "different" becomes a difference to report to the supplier (short =
+// negative, extra = positive); the ticks are then cleared for the next delivery.
+async function flushChecks(poLines: CheckedLine[], poId: number, actor: string) {
+  for (const l of poLines) {
+    if (!l.check_status) continue
+    if (l.check_status === 'different') {
+      const expected = Math.max(0, Number(l.qty_ordered) - Number(l.qty_received))
+      const got = Number(l.check_qty ?? 0)
+      if (Math.abs(got - expected) > 0.0001) {
+        await sql`INSERT INTO purchase_order_discrepancies (po_id, line_id, item_name, expected, received, diff, created_by)
+          VALUES (${poId}, ${l.id}, ${l.item_name}, ${expected}, ${got}, ${got - expected}, ${actor})`
+      }
+    }
+    await sql`UPDATE purchase_order_lines SET check_status = NULL, check_qty = NULL, checked_by = NULL, checked_at = NULL WHERE id = ${l.id}`
+  }
+}
 
 type ReceiveLine = { poLineId: number; qty: number; price: number }
 
@@ -17,16 +36,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { session, error } = await requireAuth()
   if (error) return error
   await ensureBillEnteredByColumn()
+  await ensurePurchaseOrderTables()
 
   try {
     const { id } = await params
     const poId = Number(id)
 
-    const { date, lines } = await req.json() as { date?: string; lines?: ReceiveLine[] }
-    if (!date || !lines?.length) return badRequest('Missing fields')
+    const { date, lines, fromCheck } = await req.json() as { date?: string; lines?: ReceiveLine[]; fromCheck?: boolean }
+    if (!date || (!lines?.length && !fromCheck)) return badRequest('Missing fields')
 
-    const received = lines.filter(l => Number(l.qty) > 0)
-    if (received.length === 0) return badRequest('Enter a quantity for at least one item.')
+    const received = (lines ?? []).filter(l => Number(l.qty) > 0)
+    if (received.length === 0 && !fromCheck) return badRequest('Enter a quantity for at least one item.')
 
     // A PO's vendor is recorded either way -- picked from the dropdown
     // (vendor_id only, purchase_orders.vendor_name stays NULL) or typed as
@@ -46,9 +66,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return badRequest('Only a sent purchase order can receive items -- send it first.')
     }
 
-    const poLines = await sql`SELECT id, item_id, item_name, qty_ordered, qty_received FROM purchase_order_lines WHERE po_id = ${poId}` as
-      { id: number; item_id: number | null; item_name: string; qty_ordered: number; qty_received: number }[]
+    const poLines = await sql`SELECT id, item_id, item_name, qty_ordered, qty_received, check_status, check_qty FROM purchase_order_lines WHERE po_id = ${poId}` as
+      { id: number; item_id: number | null; item_name: string; qty_ordered: number; qty_received: number; check_status: string | null; check_qty: number | null }[]
     const poLineById = new Map(poLines.map(l => [l.id, l]))
+
+    // Nothing arrived on any ticked line: no bill, but the differences are still recorded for the supplier.
+    if (received.length === 0) {
+      await flushChecks(poLines, poId, (session.user as any)?.username || session.user?.name || 'Unknown')
+      return success({ ok: true, noBill: true })
+    }
 
     for (const l of received) {
       const line = poLineById.get(l.poLineId)
@@ -80,6 +106,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         UPDATE purchase_order_lines SET qty_received = qty_received + ${l.qty} WHERE id = ${l.poLineId}
       `
     }
+
+    await flushChecks(poLines, poId, actor)
 
     await sql`
       INSERT INTO purchase_order_receipts (po_id, bill_id, received_date, received_by)

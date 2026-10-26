@@ -8,7 +8,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params
   try {
     await ensurePurchaseOrderTables()
-    const [[po], lines, receipts] = await Promise.all([
+    const [[po], lines, receipts, discrepancies] = await Promise.all([
       sql`
         SELECT po.id, po.po_number, po.vendor_id,
           COALESCE(v.display_name, po.vendor_name) AS vendor_name,
@@ -19,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         WHERE po.id = ${Number(id)}
       `,
       sql`
-        SELECT id, item_id, item_name, qty_ordered, qty_received, unit_price
+        SELECT id, item_id, item_name, qty_ordered, qty_received, unit_price, check_status, check_qty
         FROM purchase_order_lines WHERE po_id = ${Number(id)} ORDER BY sort_order
       `,
       sql`
@@ -30,6 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         WHERE r.po_id = ${Number(id)}
         ORDER BY r.received_date DESC, r.id DESC
       `,
+      sql`SELECT id, item_name, expected, received, diff, reported, created_by, created_at::text FROM purchase_order_discrepancies WHERE po_id = ${Number(id)} ORDER BY id DESC LIMIT 100`,
     ])
     if (!po) return notFound()
 
@@ -47,7 +48,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
     const receiptsWithLines = (receipts as any[]).map(r => ({ ...r, lines: linesByBill.get(r.bill_id) ?? [] }))
 
-    return success({ ...po, lines, receipts: receiptsWithLines })
+    return success({ ...po, lines, receipts: receiptsWithLines, discrepancies })
   } catch (e) {
     return handleError('purchase-order GET', e)
   }
