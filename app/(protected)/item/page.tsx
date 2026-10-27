@@ -60,6 +60,7 @@ import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
 import MIBasket, { type BasketLine, type ItemHit } from './_components/MIBasket'
 import TapCustomerSheet from './_components/TapCustomerSheet'
+import SelectedReceiptSheet from './_components/SelectedReceiptSheet'
 import { useFitWidth } from '@/lib/useFitWidth'
 import { CH_ITEMS, CH_CHILD_PERSON, CH_PERSON_VIEW, type CHView } from './_components/chViewData'
 import { useUKData, UK_PEOPLE } from './_components/ukViewData'
@@ -2321,6 +2322,10 @@ function ItemHubPageInner() {
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
   const skipWaRef = useRef(false)
   const [tapCustomerSheet, setTapCustomerSheet] = useState<Tap | null>(null)
+  // Sales Log: tick already-recorded sales to put them on one receipt.
+  const [rcptSelect, setRcptSelect] = useState(false)
+  const [rcptSel, setRcptSel] = useState<Set<number>>(new Set())
+  const [rcptSheet, setRcptSheet] = useState(false)
   const { wrapRef: logWrapRef, zoomFor: logZoomFor } = useFitWidth()
   // MI (multiple items): a basket of items for one customer, issued together as one receipt.
   const [miOn, setMiOn] = useState(false)
@@ -7283,6 +7288,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   )}
                   <button
                     type="button"
+                    onClick={() => { setRcptSelect(v => !v); setRcptSel(new Set()) }}
+                    title="Tick recorded sales and create a receipt for them"
+                    className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] transition ${rcptSelect ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}
+                  >
+                    {rcptSelect ? 'Cancel receipt' : 'Receipt…'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}
                     title="Record a sale for a past day, with its customer and receipt (MI basket)"
                     className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition"
@@ -7352,6 +7365,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           {/* Date header */}
                           <tr className="bg-green-50 border-b border-green-200">
                             <td className="sticky left-0 top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                              {rcptSelect && (() => {
+                                const ok = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone && !t.invoice_id)
+                                return ok.length > 0 ? (
+                                  <input type="checkbox" className="mr-0.5 h-3 w-3 align-middle accent-orange-500" title="Select this day's sales without a receipt"
+                                    checked={ok.every(t => rcptSel.has(t.id))}
+                                    onChange={e => setRcptSel(prev => { const n = new Set(prev); ok.forEach(t => e.target.checked ? n.add(t.id) : n.delete(t.id)); return n })} />
+                                ) : null
+                              })()}
                               {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 leading-none flex gap-0.5 items-center justify-center">
@@ -7422,6 +7443,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     WIC/GMC toggle button above (renderModeToggleRow),
                                     so a mixed list of taps (this table doesn't filter
                                     by that toggle) still says which each one was. */}
+                                {rcptSelect && (
+                                  <input type="checkbox" className="mr-0.5 h-3 w-3 align-middle accent-orange-500"
+                                    disabled={tap.undone || !!tap.invoice_id}
+                                    title={tap.invoice_id ? `Already on receipt ${tap.invoice_number ?? ''}` : tap.undone ? 'Undone sale' : 'Add to receipt'}
+                                    checked={rcptSel.has(tap.id)}
+                                    onChange={e => setRcptSel(prev => { const n = new Set(prev); if (e.target.checked) n.add(tap.id); else n.delete(tap.id); return n })} />
+                                )}
                                 <span className={`inline-block rounded px-0.5 mr-0.5 text-[7px] font-bold leading-tight align-middle ${tap.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                                   {tap.is_gmc ? 'GMC' : 'WIC'}
                                 </span>
@@ -10405,6 +10433,26 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </div>
       )}
 
+      {rcptSelect && rcptSel.size > 0 && !rcptSheet && (() => {
+        const chosen = liveTaps.filter(t => rcptSel.has(t.id))
+        const tot = chosen.reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+        return (
+          <div className="fixed bottom-4 left-1/2 z-[90] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-center gap-2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-orange-300">
+            <p className="flex-1 text-xs font-semibold text-gray-800">{chosen.length} selected · ₵{formatPrice(tot)}</p>
+            <button type="button" onClick={() => setRcptSel(new Set())} className="px-2 text-xs font-semibold text-gray-500">Clear</button>
+            <button type="button" onClick={() => setRcptSheet(true)} className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-white">Create receipt</button>
+          </div>
+        )
+      })()}
+      {rcptSheet && (
+        <SelectedReceiptSheet taps={liveTaps.filter(t => rcptSel.has(t.id))}
+          onClose={() => setRcptSheet(false)}
+          onRegister={(phone, done) => setRegisterFor({ phone, done })}
+          onDone={r => {
+            setRcptSheet(false); setRcptSelect(false); setRcptSel(new Set()); reloadLiveTaps()
+            setWaPrompt({ url: r.whatsappUrl ?? '', label: `receipt ${r.invoiceNumber}`, printUrl: r.printUrl })
+          }} />
+      )}
       {tapCustomerSheet && (
         <TapCustomerSheet tapId={tapCustomerSheet.id} allTaps={liveTaps}
           onClose={() => setTapCustomerSheet(null)} onChanged={reloadLiveTaps}
