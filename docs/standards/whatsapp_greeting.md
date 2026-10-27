@@ -1,7 +1,6 @@
 # WhatsApp greeting message (draft)
 
 Save in WhatsApp Business -> Business tools -> Greeting message -> paste -> Recipients: Everyone -> Save.
-Only save it after app.gronymultimedia.com/register is live and tested.
 No gaps remain. Confirm info@ forwarding works before publishing.
 
 ---
@@ -19,11 +18,6 @@ We do:
 - Photo, Video & Audio
 - Hiring Services
 - Online Admission Applications
-
-*New here? Register in 1 minute and get your own customer number (e.g. GM24):*
-https://app.gronymultimedia.com/register
-
-We keep your files only if you register and agree to it. Once registered, quote your customer number and we will find your work or send earlier versions without you sending it again. This gets your work done faster and costs you less. If you do not register, we do not keep your files.
 
 Send all work and payments in this chat only.
 
@@ -43,10 +37,6 @@ Email: info@gronymultimedia.com
 ## Short version (for the WhatsApp Business greeting box, about 600 character limit)
 
 Welcome to *Grony Multimedia*, Assin Foso (near GCB): printing, large format, software, photo/video & more!
-
-*Register for your customer number:*
-https://app.gronymultimedia.com/register
-We keep your files only if you register and agree. Quote your number to get copies without resending: faster work, lower cost.
 
 Call/WhatsApp/MoMo: 053 432 8977
 Group: https://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p

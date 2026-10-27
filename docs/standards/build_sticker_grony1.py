@@ -75,7 +75,6 @@ def momo_icon(c,cx,cy,color):
     c.setLineWidth(1.0); c.line(cx+4.4,cy+2.2-3.8,cx+4.4,cy+2.2+3.8)
 
 
-REG_URL="https://app.gronymultimedia.com/register"
 BLUE=colors.HexColor("#1F5FBF"); PALEBLUE=colors.HexColor("#EEF4FD"); GOLD=colors.HexColor("#F2A900")
 def X(v): return v*mm
 def bt_icon(c,cx,cy,r,col):
@@ -136,14 +135,14 @@ c.setFillColor(NAVY); c.setFont("Helvetica-Bold",15)
 for i,l in enumerate(["1.  Turn on Bluetooth","2.  Choose “Grony 1”","3.  Send your file"]): c.drawString(X(20),X(52-i*8.6),l)
 # row 2 right: register
 panel(c,146,26,137,84,5,ORANGE,LIGHT,ORANGE,12)
-t="REGISTER - GET YOUR CUSTOMER NUMBER"; tf=fit(t,"Helvetica-Bold",X(125),19)
+t="GET YOUR CUSTOMER NUMBER"; tf=fit(t,"Helvetica-Bold",X(125),19)
 c.setFillColor(colors.white); c.setFont("Helvetica-Bold",tf); c.drawCentredString(X(146+137/2),X(104)-tf*0.35,t)
-qr(c,X(151),X(41),X(52),REG_URL)
-c.setFillColor(NAVY); c.setFont("Helvetica-Bold",9); c.drawCentredString(X(177),X(36),"SCAN TO REGISTER")
-c.setFont("Helvetica",7.4); c.setFillColor(GREY); c.drawCentredString(X(177),X(31.5),"app.gronymultimedia.com/register")
+c.setFillColor(ORANGE); c.setFont("Helvetica-Bold",20); c.drawCentredString(X(177),X(78),"ASK US")
+c.setFillColor(NAVY); c.setFont("Helvetica-Bold",11); c.drawCentredString(X(177),X(68),"TO REGISTER YOU")
+c.setFont("Helvetica",9); c.setFillColor(GREY); c.drawCentredString(X(177),X(58),"Takes one minute")
 st=ParagraphStyle("bl",fontName="Helvetica",fontSize=12.8,leading=15.6,leftIndent=10,bulletIndent=0,spaceAfter=5,textColor=NAVY)
 y=X(95)
-for txt in ["<b>Fill the form</b> at the link we send you on WhatsApp – or scan this code.",
+for txt in ["<b>Give us your name and phone number</b> and we register you.",
             "You get your own <b>unique customer number</b>.",
             "It helps you <font color='#B34700'><b>win raffles</b></font> after a certain amount of work with us.",
             "We can <b>find your work quickly</b>."]:

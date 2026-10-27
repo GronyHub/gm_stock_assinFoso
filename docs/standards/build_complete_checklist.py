@@ -143,7 +143,7 @@ banner("GRONY 1","Standalone printing press • window counter, right side • S
 snote("<b>Seen in photos / GM app:</b> HP Elitebook 840 G8 (1); Samsung S22B350H monitor; HP black-and-white MFP (“HP BLACK AND WHITE 1”); an Epson printer (letter to confirm); grey photocopier; stapler; paper reams; wall “Staff note” sticker.")
 check("GRONY 1 – DAILY STATION CHECKS","The station must run standalone.",C7+[
  "Laptop name is <b>Grony-1</b> and Bluetooth is on; for a customer sending a file by Bluetooth: Win+R → <b>fsquirt</b> → Receive files."+HOW("Settings → System → About → Rename this PC → Grony-1 (no spaces) → restart."),
- "<b>Company-number sticker</b> (A4 landscape) on the back of the Samsung monitor is flat, clean, facing customers; <b>weekly:</b> scan both QR codes (WhatsApp, registration) with a phone."+HOW("Grony_1_Monitor_Sticker_A4.pdf. The registration QR works only once the form is live."),
+ "<b>Company-number sticker</b> (A4 landscape) on the back of the Samsung monitor is flat, clean, facing customers; <b>weekly:</b> scan the WhatsApp QR code with a phone."+HOW("Grony_1_Monitor_Sticker_A4.pdf."),
  "Wall <b>“Staff note”</b> sticker (keep WASTE PAPERS, CUSTOMER DOCUMENTS, TEMPLATES neat) is still in place.",
  "Every printer here has its letter sticker, driver, Claude chat and information sticker (printers table, page 3).",
  "No cable across the walkway; desk and printer tops clear of loose papers."+TAG("G1-1"),

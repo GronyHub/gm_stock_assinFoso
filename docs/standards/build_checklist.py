@@ -86,7 +86,7 @@ check("B. DURING THE DAY – all day, not once","",[
  "No eating or drinking at the front panel; no food, water or bags on front tables.",
  "Customers kept out of the inner shop (staff only) – politely asked to step outside.",
  "Seated, standing only for passport photos or large format; assistant routes customers and passes items.",
- "Every new customer registered with a <b>GM number</b>."+HOW("Greeting message sends app.gronymultimedia.com/register automatically. If missed, send the link or add them in the app → New Customer."),
+ "Every new customer registered with a <b>GM number</b>."+HOW("Staff register them in the app (New Customer, or the GM box). Their number goes out with their first receipt message."),
  "Each customer's files <b>only</b> in a folder named with their GM number; WhatsApp contact saved as “GM24 – Full Name”.",
  "Customer details and logins kept private – never shared or reused.",
  "<b>Every customer is taken seriously</b> – greeted, listened to, order written down, a time given – above all anyone who has <b>walked in to request work</b>.",
@@ -185,7 +185,7 @@ check("G. MONTHLY &amp; YEARLY SYNC","Write the date beside each tick.",[
  "Location chart and Printer Register (p5) correct; printer stickers updated and snapshots sent.",
  "Checklist posted at vantage points; sticker labels intact.",
  "Price list current and with all staff.",
- "Greeting message and registration link work (test from another phone).",
+ "Greeting message works (test from another phone).",
  "Facebook Page roles and Chrome profiles match current staff; leavers removed the same day.",
  "AnyDesk works; signboard and banner in good condition; M880 log reviewed.",
  "Every repair needed is listed as a task in the GM app with a deadline.",
@@ -261,8 +261,8 @@ check("L. DISPLAY &amp; ARRANGEMENT","",[
  "New <b>company-number sticker with WhatsApp QR</b> printed, laminated and fixed on the back of the Grony 2 monitor (below the vents), with copies at Grony 1 and the counter."+HOW("File: Grony_Company_Number_Sticker.pdf. Print at 100%, cut on the dashed lines, laminate, tape all four edges. Scan the QR to test."),
 ],bg=PURPLE)
 check("M. SYSTEMS &amp; CUSTOMER REGISTRATION","",[
- "<b>Registration form live</b> at app.gronymultimedia.com/register (Claude Code: CLAUDE_CODE_PROMPT.md) and tested.",
- "Greeting message saved – only after the form is live."+HOW("Message = intro + services + registration link + website, Facebook, TikTok, professional email, phone &amp; hours. WhatsApp Business → Business tools → Greeting message → paste → Recipients: Everyone → Save."),
+ "<b>Staff register customers in the app</b> (New Customer or the GM box) and send receipts by WhatsApp and email; tested.",
+ "Greeting message saved."+HOW("Message = intro + services + website, Facebook, TikTok, professional email, phone &amp; hours. WhatsApp Business → Business tools → Greeting message → paste → Recipients: Everyone → Save."),
  "Quick reply <b>/jingle</b> saved with the jingle audio."+HOW("Business tools → Quick replies → + → shortcut /jingle → attach audio → Save."),
  "Existing customer folders <b>and WhatsApp contacts</b> renamed to the new GM format (GM24, not GM0024)."+HOW("One-time: rename each “GM0024 – Name” contact and folder to “GM24 – Name”. Numbers have no leading zeros."),
  "Each staff member has their own Chrome profile.",
