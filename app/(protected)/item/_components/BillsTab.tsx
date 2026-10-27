@@ -183,8 +183,24 @@ function AddBillExpenseButton({ billId, onAdded }: { billId: number; onAdded: (e
   const [amount, setAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // The accounts an extra cost can be filed under (Delivery, Mobile Money Charges, ...), plus "add new".
+  const [accounts, setAccounts] = useState<string[]>([])
+  const [addingAccount, setAddingAccount] = useState(false)
+  const [newAccount, setNewAccount] = useState('')
+  useEffect(() => {
+    if (!open || accounts.length) return
+    fetch('/api/bills/expense-accounts').then(r => r.json()).then(d => { if (Array.isArray(d)) setAccounts(d.map((a: { name: string }) => a.name)) }).catch(() => {})
+  }, [open, accounts.length])
+  async function saveAccount() {
+    const r = await fetch('/api/bills/expense-accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newAccount }) })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { setError(d.error ?? 'Could not add the account.'); return }
+    setAccounts(prev => prev.some(a => a.toLowerCase() === d.name.toLowerCase()) ? prev : [...prev, d.name])
+    setDescription(d.name); setAddingAccount(false); setNewAccount(''); setError('')
+  }
 
   async function save() {
+    if (!description.trim()) { setError('Choose an account.'); return }
     const amt = Number(amount)
     if (!amt || amt <= 0) { setError('Enter a positive amount.'); return }
     setSaving(true)
@@ -217,8 +233,22 @@ function AddBillExpenseButton({ billId, onAdded }: { billId: number; onAdded: (e
   }
   return (
     <span onClick={e => e.stopPropagation()} className="flex items-center gap-1 bg-white/90 rounded px-1 py-0.5">
-      <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Transport, bank charges…"
-        className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-24 outline-none" />
+      {addingAccount ? (
+        <>
+          <input value={newAccount} onChange={e => setNewAccount(e.target.value)} placeholder="New account name" autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') void saveAccount() }}
+            className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-28 outline-none" />
+          <button onClick={() => void saveAccount()} disabled={newAccount.trim().length < 2} className="text-[9px] font-bold px-1.5 py-0.5 bg-green-600 text-white rounded disabled:opacity-40">Save</button>
+          <button onClick={() => { setAddingAccount(false); setNewAccount('') }} className="text-[9px] font-semibold px-1 py-0.5 bg-gray-100 text-gray-600 rounded">×</button>
+        </>
+      ) : (
+        <select value={description} onChange={e => { if (e.target.value === '__new') setAddingAccount(true); else setDescription(e.target.value) }}
+          className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-32 outline-none">
+          <option value="">Choose account…</option>
+          {accounts.map(a => <option key={a} value={a}>{a}</option>)}
+          <option value="__new">+ Add new account…</option>
+        </select>
+      )}
       <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="₵"
         className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-14 outline-none" />
       <button onClick={save} disabled={saving}
