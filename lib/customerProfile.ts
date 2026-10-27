@@ -29,20 +29,6 @@ export function waNumber(local: string): string {
   return '233' + local.slice(1)
 }
 
-export function welcomeMessage(name: string, code: string): string {
-  const who = name.trim() ? `, ${name.trim()}` : ''
-  return (
-    `Welcome to *Grony Multimedia*${who}! Your customer number is *${code}*. ` +
-    `Quote it whenever you send us work and we find it faster. ` +
-    `We keep your files only if you register and agree. Quote your number to get copies without resending.\n\n` +
-    `Call/WhatsApp/MoMo: 053 432 8977`
-  )
-}
-
-export function welcomeWhatsAppUrl(phone: string, name: string, code: string): string {
-  return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(welcomeMessage(name, code))}`
-}
-
 // The total a customer must reach in total work with us to stand a chance of winning the prize.
 export const PRIZE_TARGET = 1000
 

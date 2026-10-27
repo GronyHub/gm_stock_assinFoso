@@ -4,9 +4,8 @@ import { logActivity } from '@/lib/logger'
 import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
-import { ensureCustomerProfileColumns, normalizeGhPhone, welcomeWhatsAppUrl } from '@/lib/customerProfile'
+import { ensureCustomerProfileColumns, normalizeGhPhone } from '@/lib/customerProfile'
 import { sendRegistrationEmail } from '@/lib/mailer'
-import { sendSms, welcomeSms } from '@/lib/sms'
 import { ensureCustomerPhones } from '@/lib/customerPhones'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
@@ -121,7 +120,6 @@ export async function POST(req: NextRequest) {
 
     // Welcome email goes out straight away when an email was given. A failed
     // send never blocks registration; the result is returned so staff can see it.
-    if (customer.phone && customer.customer_id_code) void sendSms(customer.phone, welcomeSms(first_name || customer.display_name, customer.customer_id_code), 'welcome')
     let welcomeEmail: 'sent' | 'failed' | 'skipped' = 'skipped'
     if (customer.email) {
       try {
@@ -135,7 +133,6 @@ export async function POST(req: NextRequest) {
     return success({
       ...customer,
       welcome_email: welcomeEmail,
-      welcome_whatsapp_url: welcomeWhatsAppUrl(cleanPhone, String(first_name || customer.display_name), customer.customer_id_code),
       receipt_count: 0, receipt_total: '0', receipt_balance: '0',
       invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
     })

@@ -16,7 +16,6 @@ type Customer = {
   service_goods: string | null
   whatsapp_group_added: boolean
   welcome_email?: 'sent' | 'failed' | 'skipped'
-  welcome_whatsapp_url?: string
 }
 
 type ExistingCustomer = {
@@ -151,18 +150,13 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
           <p className="text-4xl font-bold text-blue-600 font-mono">{createdCustomer.customer_id_code || createdCustomer.id}</p>
         </div>
         <div className="space-y-2 text-left bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
-          <p className="font-semibold text-gray-900">Welcome message</p>
+          <p className="font-semibold text-gray-900">Messages</p>
           <p className={createdCustomer.welcome_email === 'sent' ? 'text-green-700' : createdCustomer.welcome_email === 'failed' ? 'text-red-600' : 'text-gray-500'}>
             {createdCustomer.welcome_email === 'sent' && `Email sent to ${createdCustomer.email}.`}
             {createdCustomer.welcome_email === 'failed' && 'The welcome email could not be sent. Use WhatsApp below.'}
             {(!createdCustomer.welcome_email || createdCustomer.welcome_email === 'skipped') && 'No email given, so no email was sent.'}
           </p>
-          {createdCustomer.welcome_whatsapp_url && (
-            <a href={createdCustomer.welcome_whatsapp_url} target="_blank" rel="noopener noreferrer"
-              className="block w-full text-center bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl py-2.5 transition">
-              Send welcome on WhatsApp
-            </a>
-          )}
+          <p className="text-gray-500">No separate registration message is sent. The customer&apos;s number goes out with their receipt or purchase message for the work they do.</p>
         </div>
         <div className="space-y-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
           <p className="text-sm font-semibold text-amber-900">⚠️ Important</p>
