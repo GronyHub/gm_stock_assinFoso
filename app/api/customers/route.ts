@@ -5,7 +5,6 @@ import { NextRequest } from 'next/server'
 import { initializeDatabase } from '@/lib/dbInitialize'
 import { once } from '@/lib/once'
 import { ensureCustomerProfileColumns, normalizeGhPhone } from '@/lib/customerProfile'
-import { sendRegistrationEmail } from '@/lib/mailer'
 import { ensureCustomerPhones } from '@/lib/customerPhones'
 
 // customers predates a location field -- ADD COLUMN IF NOT EXISTS is cheap
@@ -118,21 +117,8 @@ export async function POST(req: NextRequest) {
     // manual-entry forms (bills, expenses, purchase orders, vendors).
     await logActivity(enteredBy, 'added customer', customer.display_name, 600)
 
-    // Welcome email goes out straight away when an email was given. A failed
-    // send never blocks registration; the result is returned so staff can see it.
-    let welcomeEmail: 'sent' | 'failed' | 'skipped' = 'skipped'
-    if (customer.email) {
-      try {
-        await sendRegistrationEmail(customer.email, first_name || customer.display_name, customer.customer_id_code)
-        welcomeEmail = 'sent'
-      } catch (err) {
-        welcomeEmail = 'failed'
-        console.error('welcome email failed', err)
-      }
-    }
     return success({
       ...customer,
-      welcome_email: welcomeEmail,
       receipt_count: 0, receipt_total: '0', receipt_balance: '0',
       invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
     })

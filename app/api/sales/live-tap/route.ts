@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { sendTransactionEmail } from '@/lib/mailer'
+import { emailWorkDone } from '@/lib/customerEmail'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
 import { purchaseWhatsAppUrl, normalizeGhPhone, ensureCustomerProfileColumns, customerLifetimeTotal } from '@/lib/customerProfile'
 import { recordBuyer } from '@/lib/saleBuyers'
@@ -355,23 +355,8 @@ export async function POST(req: NextRequest) {
 
     if (smsTo) void sendSms(smsTo, purchaseMessage([{ name: item.canonical_name, qty, price }], customerIdCode), 'purchase')
 
-    // Send transaction email if customer ID provided
-    if (customerIdCode) {
-      try {
-        const [customer] = await sql`
-          SELECT first_name, email FROM customers WHERE customer_id_code = ${customerIdCode}
-        `
-        if (customer?.email) {
-          await sendTransactionEmail(customer.email, customer.first_name, customerIdCode, [
-            { name: item.canonical_name, qty, price }
-          ]).catch(err => {
-            console.error('[live-tap] Failed to send transaction email:', err)
-          })
-        }
-      } catch (err) {
-        console.error('[live-tap] Error looking up customer for email:', err)
-      }
-    }
+    // Email the work done too, when the customer has an email on file.
+    void emailWorkDone(customerIdCode, [{ name: item.canonical_name, qty, price }])
 
     const whatsappUrl = waLocal && !skipWhatsapp ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName, await customerLifetimeTotal(customerIdCode)) : null
     return success({ tap, whatsappUrl, buyerId, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })

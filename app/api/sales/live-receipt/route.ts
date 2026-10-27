@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError, getActorName } from '@/l
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
+import { emailWorkDone } from '@/lib/customerEmail'
 import { receiptWhatsAppUrl, customerLifetimeTotal, normalizeGhPhone } from '@/lib/customerProfile'
 import { findCustomerByPhone } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
     await sql`UPDATE live_sale_taps SET invoice_id = ${inv.id} WHERE id = ANY(${ids})`
     await logActivity(getActorName(session), 'issued receipt', `${number} · ₵${total.toFixed(2)} for ${cust.display_name}`)
 
+    void emailWorkDone(code, taps.map(t => ({ name: t.item_name as string, qty: Number(t.quantity), price: Number(t.price) })), number)
     const whatsappUrl = phone
       ? receiptWhatsAppUrl(phone, number, taps.map(t => ({ name: t.item_name, qty: Number(t.quantity), price: Number(t.price) })), code, cust.display_name as string, await customerLifetimeTotal(code))
       : null
