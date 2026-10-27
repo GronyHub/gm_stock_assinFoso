@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { GREETING_FULL, GREETING_SHORT, GROUP_URL, REGISTER_URL } from './shareText'
+import { GREETING_FULL, GREETING_SHORT, GROUP_URL } from './shareText'
 
 type Item = {
   id: number
@@ -121,7 +121,6 @@ export default function StandardsClient({ canEdit }: { canEdit: boolean }) {
           <p className="text-sm font-semibold text-[#14213D]">Share with customers</p>
           <div className="flex flex-wrap gap-2">
             {[
-              ['Registration link', REGISTER_URL],
               ['WhatsApp group link', GROUP_URL],
               ['Greeting (short)', GREETING_SHORT],
               ['Greeting (full)', GREETING_FULL],
