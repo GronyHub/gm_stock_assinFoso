@@ -97,7 +97,7 @@ export default function RegisterPage() {
               </div>
               <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-left space-y-2">
                 <p className="text-sm font-semibold text-blue-900">📝 Important:</p>
-                <p className="text-sm text-blue-800"><b>Save this number.</b> When you send us work on WhatsApp, type this customer ID on the page where you upload your document or in the message.</p>
+                <p className="text-sm text-blue-800"><b>Save this number or take a screenshot of this page.</b> We do not send it by message or email. When you send us work on WhatsApp, type this customer ID on the page where you upload your document or in the message.</p>
               </div>
               <p className="text-xs text-gray-500">This helps us track your jobs faster and serve you better.</p>
               <a href="https://wa.me/233534328977" className="inline-block mt-5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg px-6 py-3">Go Back to WhatsApp</a>

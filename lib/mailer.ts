@@ -50,23 +50,6 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
   `)
 }
 
-export async function sendRegistrationEmail(to: string, name: string, customerId: string) {
-  await sendEmail(to, 'Welcome to Grony Multimedia!', `
-    <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px">
-      <h2 style="color:#1e293b">Welcome!</h2>
-      <p>Hi ${esc(name)},</p>
-      <p>Thank you for registering with <strong>Grony Multimedia</strong>. Your customer account is now active!</p>
-      <div style="background:#f8fafc;border-left:4px solid #2563eb;padding:16px;margin:16px 0;border-radius:4px">
-        <p style="margin:0;color:#1e293b;font-weight:600">Your Customer ID:</p>
-        <p style="margin:8px 0;font-size:28px;font-weight:bold;color:#2563eb;font-family:monospace">${esc(customerId)}</p>
-      </div>
-      <p>Quote this number whenever you send us work and we find it faster. You can also contact us on WhatsApp at <strong>053 432 8977</strong>.</p>
-      <p>We keep your files only if you register and agree. Quote your number to get copies without resending.</p>
-      <p style="color:#64748b;font-size:13px">Keep this email safe for your records.</p>
-    </div>
-  `)
-}
-
 export async function sendTransactionEmail(to: string, name: string, customerId: string, items: Array<{ name: string; qty: number; price: number }>, opts: { receiptNo?: string; lifetime?: number | null; prizeTarget?: number } = {}) {
   const itemsHtml = items.map(item => `
     <tr style="border-bottom:1px solid #e2e8f0">

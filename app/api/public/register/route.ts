@@ -1,6 +1,5 @@
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
-import { sendRegistrationEmail } from '@/lib/mailer'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { ensureCustomerProfileColumns, FILES_CONSENT_VERSION } from '@/lib/customerProfile'
@@ -95,13 +94,6 @@ export async function POST(req: NextRequest) {
 
     await logActivity('Online form', 'self-registered customer', `${code} – ${displayName}`, 0).catch(() => {})
 
-
-    // Send registration confirmation email if email provided
-    if (email) {
-      await sendRegistrationEmail(email, firstName, code).catch(err => {
-        console.error('Failed to send registration email:', err)
-      })
-    }
 
     return NextResponse.json({ ok: true, code })
   } catch (e) {
