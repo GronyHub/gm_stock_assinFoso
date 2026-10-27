@@ -1,4 +1,5 @@
 'use client'
+import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
 import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
@@ -197,12 +198,8 @@ function EditCustomerForm({ customer, onSaved, onCancel, onDeleted }: { customer
           <label className={labelCls}>Last Visited</label>
           <input type="date" value={lastVisited} onChange={e => setLastVisited(e.target.value)} className={inputCls} />
         </div>
-        <div>
-          <label className={labelCls}>Service/Goods</label>
-          <input value={serviceGoods} onChange={e => setServiceGoods(e.target.value)}
-            placeholder="e.g. Printing, Photocopies" className={inputCls} />
-        </div>
       </div>
+      <ServiceGoodsPicker value={serviceGoods} onChange={setServiceGoods} labelCls={labelCls} />
       <label className="flex items-center gap-1.5 cursor-pointer select-none">
         <input type="checkbox" checked={whatsappAdded} onChange={() => setWhatsappAdded(v => !v)}
           className="w-3.5 h-3.5 accent-blue-600" />
