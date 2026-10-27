@@ -418,6 +418,8 @@ function BillsTab({
   // Editing is bill-level now, triggered from the ✏️ on a group's bar
   // rather than by clicking any line -- keyed by bill id directly.
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
+  // While a bill is being edited: each item line's figures as typed (quantity, unit price, line total).
+  const [lineDrafts, setLineDrafts] = useState<Record<number, { qty: string; price: string; total: string }>>({})
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
   const editAttachments = useAttachments([], '/api/bills/upload')
   const [saving, setSaving] = useState(false)
@@ -734,6 +736,10 @@ function BillsTab({
     setEditForm({ bill_date: b?.bill_date?.slice(0, 10) ?? '', vendor_name: b?.vendor_name ?? '' })
     editAttachments.reset(b?.attachments ?? [])
     setEditError('')
+    const grp = groupedList.find(x => x.editBillId === billId)
+    const drafts: Record<number, { qty: string; price: string; total: string }> = {}
+    for (const r of grp?.rows ?? []) drafts[r.lineId] = { qty: String(parseFloat(r.quantity)), price: String(parseFloat(r.unitPrice)), total: String(parseFloat(r.itemTotal)) }
+    setLineDrafts(drafts)
     setEditingBillId(billId)
   }
 
@@ -770,6 +776,24 @@ function BillsTab({
   async function saveEdit(billId: number) {
     setSaving(true)
     setEditError('')
+    // Item figures changed in the edit panel are saved first (quantity, unit price or line total).
+    const grp = groupedList.find(x => x.editBillId === billId)
+    for (const r of grp?.rows ?? []) {
+      const d = lineDrafts[r.lineId]
+      if (!d) continue
+      const qty = parseFloat(d.qty), price = parseFloat(d.price), total = parseFloat(d.total)
+      if (!(qty > 0) || !(price >= 0) || !(total >= 0)) { setSaving(false); setEditError(`Check the figures for "${r.itemName}".`); return }
+      const sameQty = Math.abs(qty - parseFloat(r.quantity)) < 1e-9
+      const samePrice = Math.abs(price - parseFloat(r.unitPrice)) < 1e-9
+      const sameTotal = Math.abs(total - parseFloat(r.itemTotal)) < 1e-6
+      if (sameQty && samePrice && sameTotal) continue
+      // The total typed by hand wins when it no longer equals qty x price; otherwise qty and price do.
+      const totalWasTyped = !sameTotal && Math.abs(total - qty * price) > 0.005
+      const body = totalWasTyped ? { quantity: qty, item_total: total } : { quantity: qty, unit_price: price }
+      const lr = await fetch(`/api/bill-lines/${r.lineId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (!lr.ok) { setSaving(false); setEditError(`"${r.itemName}": ${(await lr.json().catch(() => ({}))).error ?? 'could not save'}`); return }
+      handleLineSaved(await lr.json())
+    }
     const res = await fetch(`/api/bills/${billId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1064,6 +1088,30 @@ function BillsTab({
                         <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
                         <input value={editForm.vendor_name} autoComplete="off"
                           onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-gray-400 mb-0.5">Items on this bill: change any figure (quantity, unit price or line total), then Save</p>
+                        <div className="rounded-lg border border-gray-200">
+                          <div className="grid grid-cols-[1fr_52px_62px_70px] gap-1 border-b border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[8px] font-bold uppercase text-gray-500">
+                            <span>Item</span><span className="text-right">Qty</span><span className="text-right">Unit price</span><span className="text-right">Total</span>
+                          </div>
+                          {g.rows.map(r => {
+                            const d = lineDrafts[r.lineId] ?? { qty: '', price: '', total: '' }
+                            const set = (patch: Partial<typeof d>) => setLineDrafts(prev => ({ ...prev, [r.lineId]: { ...d, ...patch } }))
+                            const num = (v: string) => { const n = parseFloat(v); return isFinite(n) ? n : 0 }
+                            const f4 = (n: number) => String(Math.round(n * 10000) / 10000)
+                            const cell = 'w-full rounded border border-gray-300 bg-white px-1 py-0.5 text-right text-[10px] text-gray-900 outline-none focus:border-blue-400'
+                            return (
+                              <div key={r.lineId} className="grid grid-cols-[1fr_52px_62px_70px] items-center gap-1 border-b border-gray-100 px-1.5 py-0.5 last:border-0">
+                                <span className="break-words text-[10px] font-semibold leading-tight text-gray-900">{r.itemName}</span>
+                                <input type="number" min="0" step="any" value={d.qty} onChange={e => set({ qty: e.target.value, total: f4(num(e.target.value) * num(d.price)) })} className={cell} aria-label="Quantity" />
+                                <input type="number" min="0" step="any" value={d.price} onChange={e => set({ price: e.target.value, total: f4(num(d.qty) * num(e.target.value)) })} className={cell} aria-label="Unit price" />
+                                <input type="number" min="0" step="any" value={d.total} onChange={e => set({ total: e.target.value, price: num(d.qty) > 0 ? f4(num(e.target.value) / num(d.qty)) : d.price })} className={cell} aria-label="Line total" />
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <p className="mt-0.5 text-[8px] text-gray-400">Changing the quantity or unit price updates the total; changing the total works out the unit price. This also updates the item&apos;s cost price.</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-gray-400 mb-0.5">Receipt</p>

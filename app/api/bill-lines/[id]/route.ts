@@ -14,8 +14,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (error) return error
 
   const lineId = await getIdParam(params)
-  const { quantity, unit_price } = await req.json() as { quantity?: number; unit_price?: number }
-  if (quantity === undefined && unit_price === undefined) {
+  const { quantity, unit_price, item_total } = await req.json() as { quantity?: number; unit_price?: number; item_total?: number }
+  if (quantity === undefined && unit_price === undefined && item_total === undefined) {
     return badRequest('Nothing to update.')
   }
 
@@ -23,12 +23,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!line) return notFound()
 
   const qty = quantity !== undefined ? Number(quantity) : Number(line.quantity)
-  const price = unit_price !== undefined ? Number(unit_price) : Number(line.unit_price)
+  // Editing the line TOTAL (the figure on the vendor's bill) works the price out from it; the typed total is kept exactly.
+  const exactTotal = item_total !== undefined ? Number(item_total) : null
+  if (exactTotal !== null && (!Number.isFinite(exactTotal) || exactTotal < 0)) return badRequest('Total must be 0 or more.')
+  const price = unit_price !== undefined ? Number(unit_price)
+    : exactTotal !== null ? (qty > 0 ? Math.round((exactTotal / qty) * 10000) / 10000 : 0)
+    : Number(line.unit_price)
   if (!Number.isFinite(qty) || qty <= 0) return badRequest('Quantity must be greater than 0.')
   if (!Number.isFinite(price) || price < 0) return badRequest('Unit price must be 0 or more.')
 
   try {
-    const total = qty * price
+    const total = exactTotal !== null ? exactTotal : qty * price
     const [updated] = await sql`
       UPDATE bill_lines SET quantity = ${qty}, unit_price = ${price}, item_total = ${total}
       WHERE id = ${lineId}
