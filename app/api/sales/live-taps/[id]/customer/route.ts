@@ -20,6 +20,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const [tap] = await sql`SELECT id, item_id, item_name, price, quantity, receipt_id, customer_id_code, staff_name FROM live_sale_taps WHERE id = ${id}`
     if (!tap) return badRequest('Sale not found.')
 
+    // { label } : only describe who did the work ("Asco teacher"): no customer, no message, no receipt.
+    const label = typeof b.label === 'string' ? b.label.trim().replace(/\s+/g, ' ').slice(0, 60) : ''
+    if (label && !b.code && !b.phone) {
+      const [lb] = await sql`SELECT id FROM sale_buyers WHERE tap_id = ${id} LIMIT 1`
+      if (lb) await sql`UPDATE sale_buyers SET customer_name = ${label}, customer_id_code = NULL, customer_phone = NULL WHERE id = ${lb.id}`
+      else await recordBuyer({ receiptId: tap.receipt_id as number | null, tapId: id, itemId: tap.item_id as number, itemName: tap.item_name as string,
+        qty: Number(tap.quantity), price: Number(tap.price), customerName: label, source: 'live_sale', createdBy: getActorName(session) })
+      await sql`UPDATE live_sale_taps SET customer_id_code = NULL WHERE id = ${id}`
+      return success({ label, customer_name: label, customer_id_code: null })
+    }
+
     const phone = normalizeGhPhone(b.phone)
     let code: string | null = typeof b.code === 'string' && /^GM\d+$/i.test(b.code) ? b.code.toUpperCase() : (tap.customer_id_code as string | null)
     type Cust = { customer_id_code: string; display_name: string; phone: string | null }

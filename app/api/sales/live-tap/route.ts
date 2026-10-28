@@ -36,8 +36,10 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, skipWhatsapp } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, customerLabel, skipWhatsapp } = await req.json()
     let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
+    // A description only (e.g. "Girl in yellow shirt"): names who did the work, nothing else.
+    const label: string | null = !bodyCustomerIdCode && !customerPhone && typeof customerLabel === 'string' && customerLabel.trim() ? customerLabel.trim().replace(/\s+/g, ' ').slice(0, 60) : null
     // The GM box also accepts the customer's phone number: it texts them what they bought
     // and, if that number belongs to a registered customer, files the sale under their ID.
     const smsTo = toE164(customerPhone)
@@ -268,9 +270,9 @@ export async function POST(req: NextRequest) {
 
     // Remember who bought it so the Sales Log can show the buyer, save a customer and send WhatsApp later.
     let buyerId: number | null = null
-    if (customerIdCode || waLocal) {
+    if (customerIdCode || waLocal || label) {
       buyerId = await recordBuyer({ receiptId: receipt.id, tapId: tap.id, itemId: item.id, itemName: item.canonical_name, qty, price,
-        customerIdCode: customerIdCode ?? null, customerName: waName, customerPhone: waLocal, source: 'live_sale', createdBy: staffName })
+        customerIdCode: customerIdCode ?? null, customerName: waName ?? label, customerPhone: waLocal, source: 'live_sale', createdBy: staffName })
     }
 
     // Buying a new pack_to_gmc item is itself evidence the previous pack's

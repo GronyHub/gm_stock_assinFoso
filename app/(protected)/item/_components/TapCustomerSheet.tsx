@@ -29,6 +29,7 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
   const typedName = useRef('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [labelVal, setLabelVal] = useState('')
   // The customer's numbers (main + extras): lets the message go to the right one.
   const [numbers, setNumbers] = useState<{ phone: string; label: string }[]>([])
   const [sendTo, setSendTo] = useState('')
@@ -46,6 +47,8 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
   const mine = useMemo(() => allTaps.filter(same).sort((a, b) => a.tapped_at.localeCompare(b.tapped_at)), [allTaps, code, phone]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!tap) return null
   const curTap: SaleTap = tap
+  // A description only (no GM number, no phone): the sale names who did the work.
+  const isLabel = !code && !phone && !!name
   const day = dayOf(curTap.tapped_at)
   const dayTaps = mine.filter(t => dayOf(t.tapped_at) === day)
   const dayTotal = dayTaps.reduce((s, t) => s + Number(t.price) * t.quantity, 0)
@@ -77,9 +80,18 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
   async function attach() {
     setBusy(true); setMsg('')
     try {
+      if (labelVal) {
+        const r = await fetch(`/api/sales/live-taps/${curTap.id}/customer`, { method: 'POST', headers: json, body: JSON.stringify({ label: labelVal }) })
+        const d = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(d.error ?? 'Could not save')
+        setMsg(`Labelled: ${labelVal}`); setChange(false); setLabelVal(''); onChanged()
+        setBusy(false); return
+      }
       const isPhone = /^0\d{9}$/.test(val)
       // Every sale of this customer on this day takes the customer, so one receipt can cover them all.
-      const ids = (dayTaps.length ? dayTaps : [curTap]).map(t => t.id)
+      // A label becoming a real customer moves every sale that carries the same label.
+      const ids = (isLabel ? allTaps.filter(t => !t.undone && !t.customer_id_code && !(t.buyer_phone ?? t.customer_phone) && (t.buyer_name ?? t.customer_name) === name).map(t => t.id)
+        : (dayTaps.length ? dayTaps : [curTap]).map(t => t.id))
       let last: { customer_name: string; customer_id_code: string } | null = null
       for (const id of ids) {
         const r = await fetch(`/api/sales/live-taps/${id}/customer`, { method: 'POST', headers: json, body: JSON.stringify(isPhone ? { phone: val, name: typedName.current } : { code: `GM${val}` }) })
@@ -102,6 +114,7 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
           <p className="text-xs text-gray-500">{[code, phone].filter(Boolean).join(' · ')}</p>
         </div>
 
+        {isLabel && <p className="rounded-lg bg-gray-50 p-2 text-xs text-gray-600">This is only a label to show who did the work. It is not a customer, so no message or receipt goes with it.</p>}
         {mine.length > 0 && (
           <>
             <div className="rounded-xl bg-green-50 p-2.5">
@@ -153,15 +166,16 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
 
         <div className="space-y-1.5 border-t border-gray-100 pt-3">
           <button type="button" onClick={() => setChange(v => !v)} className="text-sm font-semibold text-blue-700">
-            {change ? 'Hide' : code || phone ? 'Change customer' : 'Add the customer'}
+            {change ? 'Hide' : isLabel ? 'Save as a customer (moves every sale labelled this)' : code || phone ? 'Change customer' : 'Add the customer'}
           </button>
           {change && (
             <>
               <div className="rounded-lg border border-gray-300 px-2 py-2">
                 <CustomerBox value={val} onChange={setVal} onName={n => { typedName.current = n }} onRegister={onRegister}
+                  label={labelVal} onLabel={l => setLabelVal(l ?? '')}
                   placeholder="GM / phone / name" className="w-full text-sm font-semibold text-gray-900 outline-none" />
               </div>
-              <button type="button" disabled={busy || !val} onClick={() => void attach()} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white disabled:opacity-40">Save customer on this day&apos;s sales</button>
+              <button type="button" disabled={busy || (!val && !labelVal)} onClick={() => void attach()} className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white disabled:opacity-40">{labelVal ? 'Save label on this sale' : "Save customer on this day's sales"}</button>
             </>
           )}
         </div>

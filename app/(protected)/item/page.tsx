@@ -1501,6 +1501,9 @@ function ItemHubPageInner() {
   const [liveInlineQtyByItemId, setLiveInlineQtyByItemId] = useState<Record<number, string>>({})
   const [liveInlinePriceByItemId, setLiveInlinePriceByItemId] = useState<Record<number, string>>({})
   const [liveInlineCIDByItemId, setLiveInlineCIDByItemId] = useState<Record<number, string>>({})
+  // A typed description ("Girl in yellow shirt") that only names who did the work: no customer, no message, no receipt.
+  // Keyed by item card id, or 'main' for the main Live Sale form.
+  const [liveLabelByKey, setLiveLabelByKey] = useState<Record<string, string>>({})
   const [justTappedItemIds, setJustTappedItemIds] = useState<Set<number>>(new Set())
   // Same idea, own map -- the Count Due chart's per-row qty box (see
   // renderCountDueChart/recordInlineCount below). Kept separate from
@@ -2317,6 +2320,7 @@ function ItemHubPageInner() {
   const [liveCID, setLiveCID] = useState('')
   // The inline GM box value for the tap being recorded (state set just before recordTap would still be stale).
   const inlineCidRef = useRef<string | null>(null)
+  const curLabelRef = useRef('')
   // Name typed for a phone number that is not a saved customer (used in the WhatsApp greeting).
   const custNameRef = useRef('')
   // Batch sale (one customer, several item cards): hold back the per-item WhatsApp offer and collect buyer ids.
@@ -4061,6 +4065,7 @@ function ItemHubPageInner() {
     }
 
     const cidValue = inlineCidRef.current ?? liveCID
+    const labelText = (inlineCidRef.current !== null ? curLabelRef.current : (liveLabelByKey.main ?? '')).trim()
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
@@ -4080,6 +4085,7 @@ function ItemHubPageInner() {
           customerIdCode: cidValue && !/^0\d{9}$/.test(cidValue) ? `GM${cidValue}` : undefined,
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
           customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
+          customerLabel: !cidValue && labelText ? labelText : undefined,
           skipWhatsapp: skipWaRef.current || undefined,
         }),
         signal: controller.signal,
@@ -4130,6 +4136,7 @@ function ItemHubPageInner() {
       setLiveQty('')
       setLivePrice('')
       setLiveCID('')
+      setLiveLabelByKey(prev => (prev.main ? { ...prev, main: '' } : prev))
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
       lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
@@ -4265,15 +4272,17 @@ function ItemHubPageInner() {
       const cidNum = liveInlineCIDByItemId[t.id] ?? ''
       setLiveCID(cidNum)
       inlineCidRef.current = cidNum
+      curLabelRef.current = cidNum ? '' : (liveLabelByKey[String(t.id)] ?? '')
       skipWaRef.current = batch
       lastBuyerIdRef.current = null
-      try { await recordTap(t, false, qty, price) } finally { inlineCidRef.current = null; skipWaRef.current = false }
+      try { await recordTap(t, false, qty, price) } finally { inlineCidRef.current = null; curLabelRef.current = ''; skipWaRef.current = false }
       if (lastBuyerIdRef.current != null) buyerIds.push(lastBuyerIdRef.current)
       doneIds.push(t.id)
       // Clear inline state for this item
       setLiveInlineQtyByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
       setLiveInlinePriceByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
       setLiveInlineCIDByItemId(prev => { if (!(t.id in prev)) return prev; const next = { ...prev }; delete next[t.id]; return next })
+      setLiveLabelByKey(prev => (prev[String(t.id)] ? { ...prev, [String(t.id)]: '' } : prev))
     }
     setLiveCID('')
     if (batch && buyerIds.length) {
@@ -7467,10 +7476,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               <td className="leading-none px-0.5 py-0 text-left">
                                 {(() => {
                                   const cname = tap.customer_name ?? tap.buyer_name ?? tap.customer_id_code ?? tap.buyer_phone
+                                  const labelOnly = !tap.customer_id_code && !tap.buyer_phone && !tap.customer_phone && !!tap.buyer_name
                                   return (
                                     <button type="button" disabled={tap.undone} onClick={() => setTapCustomerSheet(tap)}
-                                      title={cname ? `${cname} - tap for WhatsApp / change` : 'Add the customer for this sale'}
-                                      className={`max-w-[64px] truncate text-[9px] leading-none font-semibold whitespace-nowrap ${cname ? 'text-green-700' : 'text-gray-300'}`}>
+                                      title={labelOnly ? `${cname} - label only (not a customer). Tap to save as a customer` : cname ? `${cname} - tap for WhatsApp / change` : 'Add the customer for this sale'}
+                                      className={`max-w-[64px] truncate text-[9px] leading-none font-semibold whitespace-nowrap ${labelOnly ? 'italic text-gray-500' : cname ? 'text-green-700' : 'text-gray-300'}`}>
                                       {cname ?? '＋'}
                                     </button>
                                   )
@@ -9073,6 +9083,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             value={liveInlineCIDByItemId[item.id] ?? ''}
                                             onChange={v => setLiveInlineCIDByItemId(prev => ({ ...prev, [item.id]: v }))}
                                             onName={n => { custNameRef.current = n }}
+                                            label={liveLabelByKey[String(item.id)] ?? ''}
+                                            onLabel={l => setLiveLabelByKey(prev => ({ ...prev, [String(item.id)]: l ?? '' }))}
                                             onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
                                             placeholder="GM / phone / name"
@@ -9279,6 +9291,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   value={liveCID}
                                   onChange={setLiveCID}
                                   onName={n => { custNameRef.current = n }}
+                                  label={liveLabelByKey.main ?? ''}
+                                  onLabel={l => setLiveLabelByKey(prev => ({ ...prev, main: l ?? '' }))}
                                   onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                   placeholder="ID, phone number, or type a name"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
