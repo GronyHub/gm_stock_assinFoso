@@ -4,7 +4,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { recordCountRevision } from '@/lib/countRevisions'
-import { gainViolation, expectedStockAt } from '@/lib/stockGuard'
+import { expectedStockAt } from '@/lib/stockGuard'
 import { invalidateCache } from '@/lib/cacheStore'
 import { NextRequest } from 'next/server'
 
@@ -41,16 +41,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   `
 
   let lossNote: string | null = null
+  let gainNote: string | null = null
   if (before?.item_id && before.count_date) {
-    const gainErr = await gainViolation(before.item_id, Number(quantity_counted), before.count_date)
-    if (gainErr) return badRequest(gainErr)
-
     // Deepening a loss (or creating one) on edit needs the same acknowledgement
     // as a fresh count: a reason, plus the manager's response for non-managers.
     const isManager = isOwnerLevel(session.user as any)
     const expected = await expectedStockAt(before.item_id, before.count_date)
     const lossQty = expected !== null ? parseFloat((expected - Number(quantity_counted)).toFixed(4)) : 0
     const worsens = Number(quantity_counted) < Number(before.quantity_counted)
+    // More than the system expects is allowed: saved as counted and recorded as a gain.
+    const gainQty = expected !== null ? parseFloat((Number(quantity_counted) - expected).toFixed(4)) : 0
+    if (gainQty > 0.001) gainNote = `[GAIN +${gainQty}]` + (isManager ? ' (manager counted)' : '')
     if (expected !== null && lossQty > 0.001 && worsens) {
       if (!loss_reason || !String(loss_reason).trim()) {
         return success({
@@ -82,7 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     })
   }
 
-  const finalNotes = [lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
+  const finalNotes = [gainNote || lossNote, (notes && String(notes).trim()) || null].filter(Boolean).join(' · ') || null
   const rows = await sql`
     UPDATE stock_counts
     SET quantity_counted = ${quantity_counted}, notes = ${finalNotes}

@@ -113,25 +113,6 @@ export async function expectedStockAt(itemId: number, date: string): Promise<num
   return parseFloat(expected.toFixed(4))
 }
 
-// Hard guard on GAINS: counting more than the records can explain is not
-// allowed -- a gain always means a missing record (bill or GMC not entered).
-// Returns an error message, or null when the count is acceptable.
-export async function gainViolation(itemId: number, qty: number, date: string): Promise<string | null> {
-  try {
-    const expected = await expectedStockAt(itemId, date)
-    if (expected === null) return null // no earlier count -- nothing to judge against
-    const gain = parseFloat((qty - expected).toFixed(4))
-    if (gain > 0.001) {
-      return `Not allowed — counting ${qty} would create a gain of +${gain}: the records only support ${Math.max(0, expected)} `
-        + `(last count + purchases + GMC conversions − sales). Extra stock on the shelf means a bill or GMC record is missing: enter that first, then count.`
-    }
-    return null
-  } catch (e) {
-    console.error('gainViolation check failed (allowing entry):', e)
-    return null
-  }
-}
-
 // Hard guard: no entry may drive an item's stock on hand below zero. You
 // cannot sell or take what the records say the shop doesn't have -- if the
 // shelf really has it, a bill or GMC record is missing and must be entered

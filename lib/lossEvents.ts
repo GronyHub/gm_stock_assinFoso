@@ -31,8 +31,8 @@ export type LossEvent = {
   kind: 'loss' | 'gain'
   // The counter's plain-text explanation, pulled back out of that day's
   // stock_counts.notes (see parseLossReason below). null for a gain (never
-  // prompted for a reason -- gains are blocked outright by gainViolation,
-  // so one showing up here at all is from data that predates that guard)
+  // prompted for a reason -- a gain is allowed and saved as counted, tagged
+  // [GAIN +n] in the count's notes, with no reason needed)
   // or a loss whose count predates the reason requirement.
   reason: string | null
 }

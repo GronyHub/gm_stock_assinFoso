@@ -2,7 +2,7 @@ import { requireAuth, badRequest, success, handleError, serverError } from '@/li
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { recordCountRevision } from '@/lib/countRevisions'
-import { gainViolation, expectedStockAt, packPairingCheck } from '@/lib/stockGuard'
+import { expectedStockAt, packPairingCheck } from '@/lib/stockGuard'
 import { isOwnerLevel } from '@/lib/roles'
 import { once } from '@/lib/once'
 import { invalidateCache } from '@/lib/cacheStore'
@@ -66,16 +66,10 @@ export async function POST(req: NextRequest) {
     let lossNote: string | null = null
     let gainNote: string | null = null
 
-    // Handle gain (more stock than expected)
+    // A gain (more stock than the system expects) is always allowed: it is saved as it was counted and
+    // recorded as a gain. A reason is optional here; the Gains flag lists it so the missing bill/GMC record can be found.
     if (expected !== null && gainQty > 0.001) {
-      if (!loss_reason || !String(loss_reason).trim()) {
-        return success({
-          requires_gain_confirmation: true,
-          expected, counted: Number(qty), gain: gainQty, is_manager: isManager,
-          error: `Gain detected: expected ${expected}, counted ${qty} (+${gainQty}). A confirmation is required before this count can be saved.`,
-        }, 409)
-      }
-      gainNote = `[GAIN +${gainQty}] Reason: ${String(loss_reason).trim()}` + (isManager ? ' (manager counted)' : '')
+      gainNote = `[GAIN +${gainQty}]` + (loss_reason && String(loss_reason).trim() ? ` Reason: ${String(loss_reason).trim()}` : '') + (isManager ? ' (manager counted)' : '')
     }
     // Handle loss (less stock than expected)
     else if (expected !== null && lossQty > 0.001) {
