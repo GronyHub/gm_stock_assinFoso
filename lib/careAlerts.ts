@@ -1,3 +1,4 @@
+import { recordPushResults } from '@/lib/pushHealth'
 import sql from './db'
 import { ensureCaretakerTables } from './caretaker'
 import { CHILDREN, HOUSE_AREAS, isSchoolDay } from './caretakerShared'
@@ -80,13 +81,15 @@ async function pushTo(who: 'owners' | 'caretaker', title: string, body: string, 
   const subs = all.filter(s => !exceptUser || String(s.username ?? '').toLowerCase() !== exceptUser)
   const payload = JSON.stringify({ title, body })
   const results = await Promise.allSettled(subs.map(s => webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)))
+  const okEps: string[] = [], goneEps: string[] = []
   for (let i = 0; i < results.length; i++) {
     const r = results[i]
-    if (r.status === 'fulfilled') continue
+    if (r.status === 'fulfilled') { okEps.push(subs[i].endpoint as string); continue }
     const code = (r.reason as { statusCode?: number })?.statusCode
-    if (code === 404 || code === 410) await sql`DELETE FROM push_subscriptions WHERE endpoint = ${subs[i].endpoint}`.catch(() => {})
+    if (code === 404 || code === 410) { goneEps.push(subs[i].endpoint as string); await sql`DELETE FROM push_subscriptions WHERE endpoint = ${subs[i].endpoint}`.catch(() => {}) }
     else console.error('careAlerts: push failed', code ?? '', (r.reason as Error)?.message)
   }
+  await recordPushResults(okEps, goneEps)
 }
 
 export async function careAlertsTick(now = new Date()) {

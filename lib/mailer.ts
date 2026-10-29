@@ -34,6 +34,11 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
+// To the shop owner (alerts such as phones whose notifications are off).
+export async function sendOwnerAlertEmail(subject: string, html: string) {
+  await sendEmail(process.env.OWNER_ALERT_EMAIL || 'gronymultimedia@gmail.com', subject, html)
+}
+
 export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string) {
   await sendEmail(to, 'Reset your Grony password', `
     <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:24px">

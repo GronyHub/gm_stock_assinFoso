@@ -17,6 +17,21 @@ self.addEventListener('push', event => {
   )
 })
 
+// The browser replaced or dropped this phone's notification subscription: make a new one straight away and tell the server,
+// without waiting for the app to be opened.
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil((async () => {
+    try {
+      const old = event.oldSubscription
+      const key = (old && old.options && old.options.applicationServerKey) || (event.newSubscription && event.newSubscription.options.applicationServerKey)
+      const sub = event.newSubscription || (key ? await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) : null)
+      if (!sub) return
+      const json = sub.toJSON()
+      await fetch('/api/push/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }) })
+    } catch (e) { /* the app renews it on next open */ }
+  })())
+})
+
 self.addEventListener('notificationclick', event => {
   event.notification.close()
   event.waitUntil(clients.openWindow('/logs'))

@@ -1,3 +1,4 @@
+import { recordPushResults } from '@/lib/pushHealth'
 import sql from '@/lib/db'
 import { once } from './once'
 
@@ -103,17 +104,20 @@ async function sendPush(staffName: string, action: string, details: string | und
     // A phone that uninstalled/blocked notifications answers 404/410 forever;
     // drop those so they stop being retried, and log everything else.
     let failed = 0
+    const okEps: string[] = [], goneEps: string[] = []
     for (let i = 0; i < results.length; i++) {
       const r = results[i]
-      if (r.status === 'fulfilled') continue
+      if (r.status === 'fulfilled') { okEps.push(subs[i].endpoint as string); continue }
       const code = (r.reason as { statusCode?: number })?.statusCode
       if (code === 404 || code === 410) {
+        goneEps.push(subs[i].endpoint as string)
         await sql`DELETE FROM push_subscriptions WHERE endpoint = ${subs[i].endpoint}`.catch(() => {})
       } else {
         failed++
         console.error('push send failed:', code ?? '', (r.reason as Error)?.message ?? r.reason)
       }
     }
+    await recordPushResults(okEps, goneEps)
     if (failed) console.error(`push: ${failed} of ${subs.length} sends failed`)
   } catch (e) {
     console.error('push error:', e instanceof Error ? e.message : String(e))

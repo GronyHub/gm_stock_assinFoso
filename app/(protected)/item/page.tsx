@@ -6787,6 +6787,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 href="/routine" onClick={() => { window.location.href = '/routine' }} />
               <SidePaneButton icon="✅" label="Standards" mode={cashDisplayMode} active={false} divider
                 href="/standards" onClick={() => { window.location.href = '/standards' }} />
+              {isOwnerLevel(session?.user as any) && (
+                <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={false} divider
+                  href="/notifications" onClick={() => { window.location.href = '/notifications' }} />
+              )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
                 noNewTab onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
