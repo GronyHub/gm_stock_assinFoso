@@ -3,12 +3,9 @@ import sql from '@/lib/db'
 import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn, ensureDerivedFromColumn } from '@/lib/countRules'
 import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
 import { getGmcTargetSohMap } from '@/lib/gmcStock'
+import { getItemsCache, setItemsCache } from '@/lib/itemsCache'
 import { NextResponse, NextRequest } from 'next/server'
 
-// Cache for default items request (no limit/offset)
-let cachedItems: any = null
-let cachedItemsTime: number = 0
-const CACHE_TTL = 2 * 60 * 60 * 1000 // 2 hours
 
 // The bulk catalogue above is cached for 2 hours to control Neon compute
 // cost, but a GMC conversion target's SOH must never lag that long -- it's
@@ -31,10 +28,8 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(Number(url.searchParams.get('offset')) || 0, 0)
 
   // Return cached data if using defaults and cache is fresh
-  const now = Date.now()
-  if (limit === 50000 && offset === 0 && cachedItems && now - cachedItemsTime < CACHE_TTL) {
-    return NextResponse.json(await withFreshGmcSoh(cachedItems))
-  }
+  const cached = limit === 50000 && offset === 0 ? getItemsCache() : null
+  if (cached) return NextResponse.json(await withFreshGmcSoh(cached as any[]))
 
   try {
     await Promise.all([ensureUnitTimeColumn(), ensureAdjustedCostPriceColumn(), ensureDerivedFromColumn()])
@@ -68,8 +63,7 @@ export async function GET(req: NextRequest) {
 
     // Cache default request (WITHOUT count_interval to avoid blocking on expensive computation)
     if (limit === 50000 && offset === 0) {
-      cachedItems = withoutIntervals
-      cachedItemsTime = now
+      setItemsCache(withoutIntervals)
     }
 
     return NextResponse.json(await withFreshGmcSoh(withoutIntervals))
@@ -102,11 +96,8 @@ export async function GET(req: NextRequest) {
         console.warn(`items/all fallback: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
       }
 
-      // Cache default request
-      if (limit === 50000 && offset === 0) {
-        cachedItems = rows
-        cachedItemsTime = now
-      }
+      // Deliberately NOT cached: this fallback has no stock figures (soh is a placeholder 0), so keeping it
+      // would show every item as 0 pc until the cache expired.
 
       return NextResponse.json(await withFreshGmcSoh(rows))
     } catch (e) {

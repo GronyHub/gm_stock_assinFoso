@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -33,6 +34,7 @@ type ReceiveLine = { poLineId: number; qty: number; price: number }
 // order is simply received more than once, each time with only the lines
 // (and quantities) that actually showed up.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   await ensureBillEnteredByColumn()

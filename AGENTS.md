@@ -31,7 +31,7 @@ for the full record of what changed, when, and why):**
 - 2-hour server-side response caching on 8 read-heavy endpoints
   (`/api/personal`, `/api/stock/counts`, `/api/losses/summary`,
   `/api/stock/overdue`, `/api/stock/gmc-weekly`, `/api/stock/daily`,
-  `/api/items/groups`, `/api/items/all`)
+  `/api/items/groups`; `/api/items/all` is 10 minutes and is cleared by every stock-changing write, see `lib/itemsCache.ts`)
 - Background polling (`usePolling(...)`) across ~30 components slowed from
   15s-2min intervals to 60s-10min, since a single open browser tab was
   generating continuous database traffic all day regardless of activity

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, getActorName, notFound, success, unauthorized } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
@@ -25,6 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 
@@ -73,6 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session.user as any)) {

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, notFound, getActorName, success, handleError } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
@@ -10,6 +11,7 @@ import { NextRequest } from 'next/server'
 // mistyped unit price (the usual cause of a VCP JUMP flag) can actually be
 // fixed, instead of deleting and re-entering the whole bill.
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

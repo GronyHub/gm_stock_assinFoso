@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, notFound, ok, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 
@@ -7,6 +8,7 @@ import sql from '@/lib/db'
 // is a Good, or Goods if this item is a Service) -- direction is inferred
 // from the item's own product_type.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { error } = await requireAuth()
   if (error) return error
 

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { createItemFromTypedName } from '@/lib/createItem'
@@ -5,6 +6,7 @@ import { impossibleUsageWarnings } from '@/lib/usageCheck'
 import { negativeStockViolations } from '@/lib/stockGuard'
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

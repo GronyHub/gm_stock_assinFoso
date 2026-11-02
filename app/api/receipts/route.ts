@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -71,6 +72,7 @@ export async function GET() {
 // Every receipt here is paid in full once issued -- no draft/overdue/balance
 // tracking, so new receipts are always created as fully settled.
 export async function POST(req: NextRequest) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

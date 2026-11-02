@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { auth } from '@/lib/auth'
 import { unmergeItems } from '@/lib/unmergeItems'
 import { logActivity } from '@/lib/logger'
@@ -6,6 +7,7 @@ import { NextResponse } from 'next/server'
 // POST { loser_id, winner_id }
 // Reverses a merge operation, restoring the loser item as a canonical item
 export async function POST(req: Request) {
+  clearItemsCache()
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

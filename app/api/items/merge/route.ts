@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { auth } from '@/lib/auth'
 import { mergeItems } from '@/lib/mergeItems'
 import { logActivity } from '@/lib/logger'
@@ -6,6 +7,7 @@ import { NextResponse } from 'next/server'
 // POST { loser_id, winner_id, final_name? }
 // See lib/mergeItems.ts for exactly what a merge moves.
 export async function POST(req: Request) {
+  clearItemsCache()
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

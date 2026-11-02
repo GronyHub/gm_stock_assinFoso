@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, getActorName, notFound, success, handleError } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
@@ -24,6 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const receiptId = await getIdParam(params)
   const { receipt_date, customer_name, invoice_amount, cash_counted, attachments } = await req.json()
   const attachmentsJson = attachments !== undefined ? JSON.stringify(normalizeAttachments(attachments)) : null
@@ -50,6 +52,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   await ensureBillEnteredByColumn()

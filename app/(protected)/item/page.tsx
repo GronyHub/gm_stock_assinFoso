@@ -4537,6 +4537,7 @@ function ItemHubPageInner() {
         setLiveGmcWeeklyItems(prev => prev.filter(i => i.item_id !== item.id))
         setLiveOverdueItems(prev => prev.filter(i => i.item_id !== item.id))
         loadCountProgress()
+        void loadLiveItems(1) // cards show the new stock on hand straight away
         setLiveCountQty('')
         showToast(`✓ ${item.name} counted`, 'success')
         return
@@ -4765,6 +4766,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         return
       }
       setLiveGridEditCountQty('')
+      void loadLiveItems(1)
     } catch (e) {
       setLiveGridEditCountError('Network error')
     } finally {

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
@@ -11,6 +12,7 @@ import { ensureLiveSaleTapsTable, reverseTapReceiptEffect } from '@/lib/liveSale
 // touches rows where undone = true AND receipt_reversed = false, and marks
 // each one reversed as it goes, so a second run finds nothing left to do.
 export async function POST() {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session!.user as any)) return badRequest('Only Grony or Joe can run this')

@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -60,6 +61,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 // include -- fixes that while keeping the "clear this field" behavior the
 // full edit forms (ItemsTab/LossTab) rely on when a field is left blank.
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 
@@ -190,6 +192,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 // Everything else (a used-once item, a slightly-wrong duplicate) should be
 // merged into another item instead, which preserves the history.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session?.user as any)) {

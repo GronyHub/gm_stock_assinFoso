@@ -1,9 +1,11 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, getActorName, notFound, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest } from 'next/server'
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

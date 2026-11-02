@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError, serverError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -17,6 +18,7 @@ const ensureCountedAtColumn = once(async () => {
 })
 
 export async function POST(req: NextRequest) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

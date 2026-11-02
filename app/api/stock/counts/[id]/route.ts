@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, getActorName, badRequest, notFound, success, handleError } from '@/lib/api'
 import { getIdParam } from '@/lib/api/params'
 import sql from '@/lib/db'
@@ -9,6 +10,7 @@ import { invalidateCache } from '@/lib/cacheStore'
 import { NextRequest } from 'next/server'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 
@@ -97,6 +99,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session.user as any)) {

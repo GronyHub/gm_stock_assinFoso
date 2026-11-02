@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -32,6 +33,7 @@ function todayStr() {
 // line/receipt to merge by hand, exactly like the existing dup_receipt
 // flag already catches for manually-entered receipts.
 export async function POST(req: NextRequest) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

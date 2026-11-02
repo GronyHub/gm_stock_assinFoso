@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -8,6 +9,7 @@ import { ensureSalesAttachmentsColumn, normalizeAttachments } from '@/lib/salesA
 import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest) {
+  clearItemsCache()
   const { session, error } = await requireAuth()
   if (error) return error
 

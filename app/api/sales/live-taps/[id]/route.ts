@@ -1,3 +1,4 @@
+import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureLiveSaleTapsTable, reverseTapReceiptEffect } from '@/lib/liveSales'
@@ -14,6 +15,7 @@ async function syncReceiptAfterTapChange(invoiceId: number, tapId: number) {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  clearItemsCache()
   const { error } = await requireAuth()
   if (error) return error
 
