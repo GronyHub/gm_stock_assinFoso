@@ -51,11 +51,13 @@ export async function POST(req: NextRequest) {
   try {
     await initializeDatabase()
     await ensureColumns()
+    // zoho_vendor_id is NOT NULL (the column was built for Zoho-imported vendors), so a vendor added in the app gets a
+    // unique placeholder, the same way internal items and receipts do.
     const [vendor] = await sql`
       INSERT INTO vendors
-        (display_name, company_name, email, phone, location, status, is_internal, notes)
+        (zoho_vendor_id, display_name, company_name, email, phone, location, status, is_internal, notes)
       VALUES
-        (${String(display_name).trim()}, ${company_name || null}, ${email || null}, ${phone || null}, ${location || null}, 'Active', false, ${notes || null})
+        (${`INTERNAL_VENDOR_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`}, ${String(display_name).trim()}, ${company_name || null}, ${email || null}, ${phone || null}, ${location || null}, 'Active', false, ${notes || null})
       RETURNING
         id, display_name, company_name, email, phone, location, status, payment_terms_label, is_internal, notes
     `
