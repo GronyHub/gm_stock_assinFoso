@@ -7499,7 +7499,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 tap.undone ? 'bg-gray-50 opacity-60' : ''
                               }`}
                             >
-                              <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 max-w-[118px] min-w-[96px] align-top group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
+                              <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 ${isDesktop ? 'whitespace-nowrap' : 'max-w-[118px] min-w-[96px]'} align-top group-hover:bg-gray-50 ${tap.undone ? 'bg-gray-50' : 'bg-white'}`}>
                                 {/* WIC/GMC badge -- same blue/purple pair as the
                                     WIC/GMC toggle button above (renderModeToggleRow),
                                     so a mixed list of taps (this table doesn't filter
@@ -7517,12 +7517,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => openEditGridItem(tapItem.id) : undefined}
-                                    className={`text-[9px] leading-tight font-semibold line-through text-gray-400 break-words ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
+                                    className={`text-[9px] leading-tight font-semibold line-through text-gray-400 ${isDesktop ? '' : 'break-words'} ${tapItem ? 'cursor-pointer hover:text-gray-600' : ''}`}
                                   >
                                     {tap.item_name}
                                   </span>
                                 ) : (
-                                  renderClickableItemName(tap.item_name, 'text-[9px] leading-tight font-semibold break-words text-gray-900')
+                                  renderClickableItemName(tap.item_name, `text-[9px] leading-tight font-semibold ${isDesktop ? '' : 'break-words'} text-gray-900`)
                                 )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-left">
