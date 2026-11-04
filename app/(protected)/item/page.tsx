@@ -9943,22 +9943,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {liveHelpModalOpen && <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />}
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
           {lawsTasksViewerOpen && <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />}
-            <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
-              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
-              📖 Handbook
-            </button>
+            {/* Handbook is a row in the left sidebar: the floating copy only shows where that row is not available. */}
+            {!(outerTab === 'loss' && canSeeCash && !sidePaneHidden) && (
+              <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
+                className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
+                📖 Handbook
+              </button>
+            )}
             
           </div>
           {/* Global Search's own permanent floating trigger -- mirrors Laws &
               Tasks/Help's bottom-right pair, but bottom-left so it's never
               squeezed out of view by however many buttons the tab switcher
-              above happens to have (it used to live inline in that row,
+              above happens to have (now bottom-right, clear of the left sidebar) (it used to live inline in that row,
               gated to lossView === 'sales' only, which also meant it never
               showed at all while browsing via Items). Offset above the
               sidebar-restore ▶ button's own bottom-left spot (only shown
               while the sidebar is hidden) so the two never overlap. */}
           <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search" aria-label="Global Search"
-            className="fixed bottom-16 left-4 z-40 w-11 h-11 rounded-full bg-gray-700 hover:bg-gray-800 text-white text-lg shadow-lg flex items-center justify-center transition">
+            className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} z-40 w-11 h-11 rounded-full bg-gray-700 hover:bg-gray-800 text-white text-lg shadow-lg flex items-center justify-center transition`}>
             🔍
           </button>
           {clockGateOpen && (
