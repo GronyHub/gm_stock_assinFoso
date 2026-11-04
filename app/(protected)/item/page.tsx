@@ -6984,44 +6984,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it drops out entirely (via the outer condition below) when
                   there's nothing to show, which is the common case (Sales
                   view, or Items view before customizing columns). */}
-              {lossView === 'items' && isDesktop && liveMode === 'sale' && renderModeProgressSummary(true, true) && (
+              {lossView === 'items' && liveMode === 'sale' && renderModeProgressSummary(true, true) && (
                 <div className="px-6 py-1 border-b border-gray-200">{renderModeProgressSummary(true, true)}</div>
               )}
-              {/* Desktop: the old (invisible) columns-picker strip is gone -- it only left a blank band above the
-                  filters. Alias Wide / Service Matches are still in the Filter drop-down. */}
-              {lossView === 'items' && !isDesktop && (
-              <div className="px-6 py-1.5 border-b border-gray-200">
-                {liveMode === 'sale' && renderModeProgressSummary(true, true)}
-                {isDesktop ? (
-                  <div className="flex items-center justify-end gap-3">
-                    {lossView === 'items' && (
-                        <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
-                          { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
-                            onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
-                          { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
-                            onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
-                        ]} />
-                    )}
-                  </div>
-                ) : (
-                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 min-w-0">
-                  <div />
-                  <div />
-                  <div className="flex items-center gap-3 shrink-0 justify-self-end">
-                    {/* Control buttons next to tab switcher */}
-                    {lossView === 'items' && (
-                        <ColumnsPickerButton prefs={itemsColPrefs} dark extraToggles={[
-                          { key: 'aliasWide', label: 'Alias Wide Table', active: itemsExtraView === 'aliasWide',
-                            onToggle: () => setItemsExtraView(v => v === 'aliasWide' ? 'none' : 'aliasWide') },
-                          { key: 'serviceMatches', label: 'Service Matches', active: itemsExtraView === 'serviceMatches',
-                            onToggle: () => setItemsExtraView(v => v === 'serviceMatches' ? 'none' : 'serviceMatches') },
-                        ]} />
-                    )}
-                  </div>
-                </div>
-                )}
-              </div>
-              )}
+              {/* The old columns-picker strip (drawn white on white) is gone on every screen size -- it only left a blank
+                  band above the filters. Alias Wide / Service Matches are still in the Filter drop-down. */}
               {/* Row 2: filter bar — hidden on report-style submenus. Type/
                   Groups/Filter all share one row now -- Filter used to spill
                   onto its own row by itself since it lived in a separate
