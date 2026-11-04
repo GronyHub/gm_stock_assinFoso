@@ -6984,7 +6984,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   it drops out entirely (via the outer condition below) when
                   there's nothing to show, which is the common case (Sales
                   view, or Items view before customizing columns). */}
-              {lossView === 'items' && (
+              {lossView === 'items' && isDesktop && liveMode === 'sale' && renderModeProgressSummary(true, true) && (
+                <div className="px-6 py-1 border-b border-gray-200">{renderModeProgressSummary(true, true)}</div>
+              )}
+              {/* Desktop: the old (invisible) columns-picker strip is gone -- it only left a blank band above the
+                  filters. Alias Wide / Service Matches are still in the Filter drop-down. */}
+              {lossView === 'items' && !isDesktop && (
               <div className="px-6 py-1.5 border-b border-gray-200">
                 {liveMode === 'sale' && renderModeProgressSummary(true, true)}
                 {isDesktop ? (
