@@ -958,6 +958,23 @@ function ItemHubPageInner() {
   // liveMode === 'advert'/'gronyChecks' below), so both are excluded from
   // this list -- see MANAGE_LIST_ITEMS.filter below.
   const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
+  // The Manage options (Opener, Closer, ... and the Team ones), listed on the left sidebar under a "Manage" heading.
+  function manageSideOptions() {
+    return [
+      ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert' && item.key !== 'grony_checks').map(item => ({
+        key: item.key as LossView,
+        label: item.label,
+        badge: item.key === 'opener' ? openerBadgeCount
+          : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
+          : 0,
+      })) : []),
+      ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => ({
+        key: t.key as LossView,
+        label: t.label,
+        badge: t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0,
+      })) : []),
+    ]
+  }
   const rawLiveSalesViolation = searchParams.get('liveSalesViolation')
   const rawLiveBillsViolation = searchParams.get('liveBillsViolation')
   const [liveSalesViolationFilter, setLiveSalesViolationFilter] = useState<string | null>(rawLiveSalesViolation ?? null)
@@ -6638,10 +6655,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              {(canSeeManage || canSeeTeam) && (
-                <SidePaneButton icon="🛠" label="Manage" mode={cashDisplayMode} divider
-                  active={paneActive(modeActive('manage'))} onClick={() => goItemsMode('manage')} />
-              )}
+              {(canSeeManage || canSeeTeam) && (<>
+                <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 border-t border-white/30 mt-1">🛠 Manage</div>
+                {manageSideOptions().map(o => (
+                  <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
+                    badge={o.badge > 0 ? o.badge : undefined}
+                    active={paneActive(modeActive('manage') && liveManageSection === o.key)}
+                    noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
+                ))}
+              </>)}
               {canSeeManage && (
                 <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
@@ -8325,39 +8347,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              {/* Plain-text radios, packed tightly with a "·" separator --
-                  same treatment as Expenses' own filter row (see
-                  liveExpensesMainRadios/renderLiveExpensesRadio above) --
-                  rather than the bordered button-pill look the outer tab
-                  switcher uses, so 19 options wrap into a few dense rows
-                  instead of a tall grid of buttons. */}
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
-                {(() => {
-                  const options = [
-                    ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert' && item.key !== 'grony_checks').map(item => ({
-                      key: item.key as LossView,
-                      label: item.label,
-                      badge: item.key === 'opener' ? openerBadgeCount
-                        : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
-                        : 0,
-                    })) : []),
-                    ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => ({
-                      key: t.key as LossView,
-                      label: t.label,
-                      badge: t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0,
-                    })) : []),
-                  ]
-                  return options.map((v, i) => (
-                    <Fragment key={v.key}>
-                      {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-                      <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
-                        <input type="radio" name="liveManageRadio" checked={liveManageSection === v.key} onChange={() => setLiveManageSection(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
-                        <span>{v.label}{v.badge > 0 ? ` (${v.badge})` : ''}</span>
-                      </label>
-                    </Fragment>
-                  ))
-                })()}
-              </div>
               <div className="flex-1 min-h-0 overflow-y-auto p-2">
                 {canSeeManage && MANAGE_VIEW_KEYS.has(liveManageSection) && (
                   <TabErrorBoundary>
