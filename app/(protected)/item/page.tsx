@@ -6655,7 +6655,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              {(canSeeManage || canSeeTeam) && (<>
+              {!isDesktop && (canSeeManage || canSeeTeam) && (<>
                 <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 border-t border-white/30 mt-1">🛠 Manage</div>
                 {manageSideOptions().map(o => (
                   <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
@@ -6664,11 +6664,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
                 ))}
               </>)}
-              {canSeeManage && (
+              {!isDesktop && canSeeManage && (
                 <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
               )}
-              {canSeeManage && (
+              {!isDesktop && canSeeManage && (
                 <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
@@ -6855,6 +6855,30 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
             </div>
         </SidePaneContainer>
+        )}
+        {/* Desktop only: a right sidebar holding the Grony Manage options (they stay in the left pane on phones,
+            where there is no room for a second pane). `order-last` puts it at the right end of this row. */}
+        {isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) && (
+          <div style={{ '--pane-accent': paneAccent } as React.CSSProperties}
+            className={`order-last shrink-0 border-l border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 ${cashDisplayMode === 'icon' ? 'w-14' : 'w-36'}`}>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-300 border-b border-white/30">🛠 Grony Manage</div>
+              {manageSideOptions().map(o => (
+                <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
+                  badge={o.badge > 0 ? o.badge : undefined}
+                  active={paneActive(modeActive('manage') && liveManageSection === o.key)}
+                  noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
+              ))}
+              {canSeeManage && (
+                <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
+                  active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
+              )}
+              {canSeeManage && (
+                <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
+                  active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
+              )}
+            </div>
+          </div>
         )}
         {/* Restore button while the pane is hidden -- floats over the
             content area's own bottom-left corner rather than taking a
