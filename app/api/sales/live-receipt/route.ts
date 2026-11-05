@@ -84,6 +84,6 @@ export async function GET(req: NextRequest) {
     const whatsappUrl = phone
       ? receiptWhatsAppUrl(phone, inv.invoice_number as string, lines.map(l => ({ name: l.raw_item_name as string, qty: Number(l.quantity), price: Number(l.item_price) })), code, inv.display_name as string, await customerLifetimeTotal(code))
       : null
-    return success({ invoiceNumber: inv.invoice_number, whatsappUrl, printUrl: `/receipts/${id}/print` })
+    return success({ invoiceId: id, invoiceNumber: inv.invoice_number, whatsappUrl, printUrl: `/receipts/${id}/print` })
   } catch (e) { return handleError('sales/live-receipt GET', e) }
 }

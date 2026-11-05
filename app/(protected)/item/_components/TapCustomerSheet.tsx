@@ -5,7 +5,7 @@ import CustomerBox from './CustomerBox'
 export type SaleTap = {
   id: number; item_name: string; price: number | string; quantity: number; tapped_at: string; undone: boolean
   customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null
-  buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null
+  buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; wa_sent_at?: string | null
   invoice_id?: number | null; invoice_number?: string | null
 }
 const json = { 'Content-Type': 'application/json' }
@@ -75,6 +75,7 @@ export default function TapCustomerSheet({ tapId, allTaps, onClose, onChanged, o
       const url = what === 'print' ? d.printUrl : d.whatsappUrl
       if (!r.ok || !url) throw new Error(d.error ?? 'No phone number for this customer yet.')
       if (w) w.location.href = url; else window.location.href = url
+      if (what === 'whatsapp') { void fetch('/api/sales/wa-sent', { method: 'POST', headers: json, body: JSON.stringify({ invoiceId }) }).then(() => onChanged()).catch(() => {}) }
     } catch (e) { w?.close(); setMsg((e as Error).message) }
   }
   async function attach() {

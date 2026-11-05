@@ -13,6 +13,11 @@ export const ensureSaleBuyers = once(async () => {
     customer_id_code TEXT, customer_name TEXT, customer_phone TEXT,
     source TEXT NOT NULL DEFAULT 'live_sale', created_by TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS sale_buyers_receipt ON sale_buyers (receipt_id)`.catch(() => {})
+  // When staff pressed "Send" on the WhatsApp message / receipt for this sale (the Sales Log's WA column).
+  await sql`ALTER TABLE sale_buyers ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ`.catch(() => {})
+  await sql`ALTER TABLE sale_buyers ADD COLUMN IF NOT EXISTS wa_sent_by TEXT`.catch(() => {})
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wa_sent_at TIMESTAMPTZ`.catch(() => {})
+  await sql`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS wa_sent_by TEXT`.catch(() => {})
 })
 
 export async function recordBuyer(b: {

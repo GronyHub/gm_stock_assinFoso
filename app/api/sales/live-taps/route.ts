@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
            (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc,
            t.customer_id_code, cu.display_name AS customer_name, cu.phone AS customer_phone,
            b.id AS buyer_id, b.customer_name AS buyer_name, b.customer_phone AS buyer_phone,
-           t.invoice_id, inv.invoice_number
+           t.invoice_id, inv.invoice_number,
+           COALESCE(inv.wa_sent_at, b.wa_sent_at) AS wa_sent_at
     FROM live_sale_taps t
     LEFT JOIN sales_receipts r ON r.id = t.receipt_id
     LEFT JOIN customers cu ON cu.customer_id_code = t.customer_id_code

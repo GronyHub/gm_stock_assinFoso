@@ -12,7 +12,7 @@ const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { da
 export default function SelectedReceiptSheet({ taps, onClose, onDone, onRegister }: {
   taps: SaleTap[]
   onClose: () => void
-  onDone: (r: { invoiceNumber: string; whatsappUrl: string | null; printUrl: string }) => void
+  onDone: (r: { invoiceId: number; invoiceNumber: string; whatsappUrl: string | null; printUrl: string }) => void
   onRegister: (phone: string, done: (code: string) => void) => void
 }) {
   const codes = [...new Set(taps.map(t => t.customer_id_code).filter((c): c is string => !!c))]
@@ -45,7 +45,7 @@ export default function SelectedReceiptSheet({ taps, onClose, onDone, onRegister
       const r = await fetch('/api/sales/live-receipt', { method: 'POST', headers: json, body: JSON.stringify({ tapIds: taps.map(t => t.id) }) })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error ?? 'Could not issue the receipt')
-      onDone({ invoiceNumber: d.invoiceNumber, whatsappUrl: d.whatsappUrl ?? null, printUrl: d.printUrl })
+      onDone({ invoiceId: d.invoiceId, invoiceNumber: d.invoiceNumber, whatsappUrl: d.whatsappUrl ?? null, printUrl: d.printUrl })
     } catch (e) { setMsg((e as Error).message) }
     setBusy(false)
   }

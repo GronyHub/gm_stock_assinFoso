@@ -565,7 +565,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
 type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null; needs_review?: boolean }
-type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; invoice_id?: number | null; invoice_number?: string | null }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; invoice_id?: number | null; invoice_number?: string | null; wa_sent_at?: string | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
@@ -2361,7 +2361,7 @@ function ItemHubPageInner() {
   const [registerFor, setRegisterFor] = useState<{ phone: string; done: (code: string) => void } | null>(null)
   const lastBuyerIdRef = useRef<number | null>(null)
   // After a sale tapped with a customer phone number: offer to send the purchase message on WhatsApp.
-  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string; printUrl?: string } | null>(null)
+  const [waPrompt, setWaPrompt] = useState<{ url: string; label: string; printUrl?: string; buyerIds?: number[]; invoiceId?: number } | null>(null)
   const [liveSaving, setLiveSaving] = useState(false)
   const [liveGmcTargetItem, setLiveGmcTargetItem] = useState<{ id: number; name: string; soh: number } | null>(null)
   const [liveGmcCountSaving, setLiveGmcCountSaving] = useState(false)
@@ -4158,7 +4158,7 @@ function ItemHubPageInner() {
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
       lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
       lastTapIdRef.current = typeof data.tap?.id === 'number' ? data.tap.id : null
-      if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message' })
+      if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message', buyerIds: typeof data.buyerId === 'number' ? [data.buyerId] : undefined })
 
       // Offer to mark this specific draw as a property -- only makes sense
       // for a real GMC stock draw of a physical good, not a service tap.
@@ -4256,7 +4256,7 @@ function ItemHubPageInner() {
         const d = await r.json()
         if (!r.ok) throw new Error(d.error ?? 'Could not issue the receipt')
         showToast(`Receipt ${d.invoiceNumber} issued · ₵${Number(d.total).toFixed(2)}`, 'success')
-        setWaPrompt({ url: d.whatsappUrl ?? '', label: `receipt ${d.invoiceNumber}`, printUrl: d.printUrl })
+        setWaPrompt({ url: d.whatsappUrl ?? '', label: `receipt ${d.invoiceNumber}`, printUrl: d.printUrl, invoiceId: d.invoiceId })
         setMiCustomer(''); custNameRef.current = ''
       } catch (e) { setMiError(`The items were recorded, but the receipt was not issued: ${(e as Error).message}`) }
     } else if (tapIds.length && !failedName) {
@@ -4306,7 +4306,7 @@ function ItemHubPageInner() {
       try {
         const r = await fetch(`/api/sales/buyers/whatsapp?ids=${buyerIds.join(',')}`)
         const d = await r.json()
-        if (r.ok && d.url) setWaPrompt({ url: d.url, label: `purchase message (${buyerIds.length} items)` })
+        if (r.ok && d.url) setWaPrompt({ url: d.url, label: `purchase message (${buyerIds.length} items)`, buyerIds })
       } catch { /* the Sales Log can send it later */ }
     }
 
@@ -7376,6 +7376,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Customer</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-center whitespace-nowrap" title="Message / receipt sent on WhatsApp">WA</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
@@ -7420,6 +7421,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 ✏️
                               </button>
                             </td>
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               ₵{formatPrice(dateTotal)}
                             </td>
@@ -7509,6 +7511,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     </button>
                                   )
                                 })()}
+                              </td>
+                              <td className="leading-none px-0.5 py-0 text-center">
+                                {tap.wa_sent_at && !tap.undone && (
+                                  <span className="text-[9px] leading-none font-bold text-green-600"
+                                    title={`Sent on WhatsApp ${new Date(tap.wa_sent_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}>✓</span>
+                                )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-gray-400' : 'text-blue-600'}`}>
@@ -10458,7 +10466,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           onRegister={(phone, done) => setRegisterFor({ phone, done })}
           onDone={r => {
             setRcptSheet(false); setRcptSelect(false); setRcptSel(new Set()); reloadLiveTaps()
-            setWaPrompt({ url: r.whatsappUrl ?? '', label: `receipt ${r.invoiceNumber}`, printUrl: r.printUrl })
+            setWaPrompt({ url: r.whatsappUrl ?? '', label: `receipt ${r.invoiceNumber}`, printUrl: r.printUrl, invoiceId: r.invoiceId })
           }} />
       )}
       {tapCustomerSheet && (
@@ -10497,7 +10505,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <a href={waPrompt.printUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-gray-700 px-3 py-2 text-xs font-bold text-white">Print</a>
           )}
           {waPrompt.url && (
-            <a href={waPrompt.url} target="_blank" rel="noopener noreferrer" onClick={() => setWaPrompt(null)}
+            <a href={waPrompt.url} target="_blank" rel="noopener noreferrer"
+              onClick={() => {
+                // Remember that this message was sent: the Sales Log's WA column shows it.
+                if (waPrompt.buyerIds?.length || waPrompt.invoiceId) {
+                  void fetch('/api/sales/wa-sent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ buyerIds: waPrompt.buyerIds, invoiceId: waPrompt.invoiceId }) })
+                    .then(() => reloadLiveTaps()).catch(() => {})
+                }
+                setWaPrompt(null)
+              }}
               className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Send</a>
           )}
           <button type="button" onClick={() => setWaPrompt(null)} className="px-1 text-lg leading-none text-gray-400">&times;</button>

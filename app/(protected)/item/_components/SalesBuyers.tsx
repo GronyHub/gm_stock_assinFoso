@@ -45,6 +45,7 @@ function BuyerGroup({ list, onChanged }: { list: Buyer[]; onChanged: () => void 
       const d = await r.json()
       if (!r.ok || !d.url) throw new Error(d.error ?? 'No phone number yet')
       if (w) w.location.href = d.url; else window.location.href = d.url
+      void fetch('/api/sales/wa-sent', { method: 'POST', headers: json, body: JSON.stringify({ buyerIds: list.map(b => b.id) }) }).then(() => onChanged()).catch(() => {})
     } catch (e) { w?.close(); setMsg((e as Error).message) }
   }
   async function saveCustomer() {
