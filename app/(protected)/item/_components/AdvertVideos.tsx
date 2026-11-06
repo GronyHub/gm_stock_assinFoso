@@ -55,7 +55,7 @@ export default function AdvertVideos() {
 
   return (
     <div className="space-y-3 pb-6">
-      <p className="text-[11px] text-gray-500">Tap a service to watch its advert. Videos only load when you open them.</p>
+      <p className="text-[11px] text-gray-500">Tap a service to watch its advert. Every advert has a voice and lists what we sell, so turn the sound on. Videos only load when you open them.</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {ADS.map(a => (
           <button key={a.key} type="button" onClick={() => { setOpen(open === a.key ? null : a.key); setMsg('') }}
