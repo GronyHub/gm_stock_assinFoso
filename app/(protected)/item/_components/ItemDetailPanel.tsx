@@ -1,4 +1,5 @@
 'use client'
+import ItemPicture from './ItemPicture'
 import { useState, useEffect, useMemo } from 'react'
 import { ItemDetailErrorBoundary } from './ItemDetailErrorBoundary'
 import { useSession } from 'next-auth/react'
@@ -217,6 +218,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
+      <ItemPicture itemId={item.item_id} />
       {showRelationsEditor && isOwnerLevelUser && (
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
           {!editMode ? (

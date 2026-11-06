@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { itemCountIntervalLabels, formatCountInterval, ensureUnitTimeColumn, ensureDerivedFromColumn } from '@/lib/countRules'
 import { ensureAdjustedCostPriceColumn } from '@/lib/vcpSync'
 import { getGmcTargetSohMap } from '@/lib/gmcStock'
+import { ensureItemPictureColumn } from '@/lib/itemPictures'
 import { getItemsCache, setItemsCache } from '@/lib/itemsCache'
 import { NextResponse, NextRequest } from 'next/server'
 
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   if (cached) return NextResponse.json(await withFreshGmcSoh(cached as any[]))
 
   try {
-    await Promise.all([ensureUnitTimeColumn(), ensureAdjustedCostPriceColumn(), ensureDerivedFromColumn()])
+    await Promise.all([ensureUnitTimeColumn(), ensureAdjustedCostPriceColumn(), ensureDerivedFromColumn(), ensureItemPictureColumn()])
     const rows = await sql`
       SELECT i.id, i.canonical_name AS name, i.cf_group AS "group",
              COALESCE(s.calculated_soh, 0) AS soh,
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
              target.canonical_name AS converts_to_name,
              i.derived_from_item_id,
              COALESCE(i.units_per_pack, 1) AS units_per_pack,
-             i.unit_time_seconds,
+             i.unit_time_seconds, i.image_url,
              COALESCE(i.needs_review, false) AS needs_review,
              NOW() AS updated_at
       FROM active_items i
