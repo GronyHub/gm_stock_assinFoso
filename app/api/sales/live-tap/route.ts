@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     // (name from the saved customer with that number, or the name typed for a new number),
     // or the saved phone of the customer picked by ID / name.
     let waLocal: string | null = smsTo ? '0' + smsTo.slice(-9) : null
+    let pickedName: string | null = null // a saved customer picked by GM number / name, even one with no phone
     let waName: string | null = typeof typedName === 'string' && typedName.trim() ? typedName.trim().slice(0, 60) : null
     if (smsTo && !customerIdCode) {
       const known = await findCustomerByPhone(smsTo)
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
       }
     } else if (customerIdCode && !smsTo) {
       const [c] = await sql`SELECT phone, display_name, first_name FROM customers WHERE customer_id_code = ${customerIdCode}`.catch(() => [])
+      pickedName = ((c?.display_name || c?.first_name) as string | undefined) ?? null
       const local = normalizeGhPhone(c?.phone)
       if (local) { waLocal = local; waName = ((c?.first_name || c?.display_name) as string) ?? waName }
     }
@@ -356,7 +358,11 @@ export async function POST(req: NextRequest) {
       ? 60 * qty
       : (unitTimeSeconds != null ? unitTimeSeconds * qty : undefined)
     console.log('[live-tap] Duration calc:', { itemId: item.id, itemName: item.canonical_name, productType: item.product_type, qty, unitTimeSeconds, estimatedDurationSeconds })
-    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}`, estimatedDurationSeconds, tap.id)
+    // Who the sale was for (customer name and GM number, a phone number, or the label typed), so the notification
+    // and the Home feed say it too.
+    const who = waName ?? pickedName ?? label ?? waLocal
+    const forWho = who ? ` · for ${who}${customerIdCode ? ` (${customerIdCode})` : ''}` : customerIdCode ? ` · for ${customerIdCode}` : ''
+    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}${forWho}`, estimatedDurationSeconds, tap.id)
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
     if (smsTo) void sendSms(smsTo, purchaseMessage([{ name: item.canonical_name, qty, price }], customerIdCode), 'purchase')

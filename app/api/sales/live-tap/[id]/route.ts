@@ -40,7 +40,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     }
 
     const actor = getActorName(session)
-    await logActivity(actor, 'undid live sale tap', `${tap.item_name} × ${qty} · ₵${lineAmount.toFixed(2)} (tapped by ${tap.staff_name})`)
+    // Name who the sale was for (customer or label, kept in sale_buyers), same as the original sale's notification.
+    const [buyer] = await sql`SELECT customer_name, customer_phone, customer_id_code FROM sale_buyers WHERE tap_id = ${tap.id} ORDER BY id DESC LIMIT 1`.catch(() => [])
+    const code = (buyer?.customer_id_code ?? tap.customer_id_code ?? null) as string | null
+    const who = (buyer?.customer_name ?? buyer?.customer_phone ?? null) as string | null
+    const forWho = who ? ` · for ${who}${code ? ` (${code})` : ''}` : code ? ` · for ${code}` : ''
+    await logActivity(actor, 'undid live sale tap', `${tap.item_name} × ${qty} · ₵${lineAmount.toFixed(2)}${forWho} (tapped by ${tap.staff_name})`)
 
     return success({ ok: true })
   } catch (e) {
