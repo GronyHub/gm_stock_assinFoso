@@ -4083,6 +4083,12 @@ function ItemHubPageInner() {
 
     const cidValue = inlineCidRef.current ?? liveCID
     const labelText = (inlineCidRef.current !== null ? curLabelRef.current : (liveLabelByKey.main ?? '')).trim()
+    // Every Live Sale must say who it is for: a customer (GM number, phone or name) or a label.
+    if (liveSaleType !== 'GMC' && !cidValue && !labelText) {
+      const msg = 'Say who this sale is for: a customer (GM number, phone or name) or a label such as "Man on motor" or "Policeman".'
+      setLiveTapError(msg); showToast(msg, 'error'); setLiveSaving(false)
+      return
+    }
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
@@ -4103,6 +4109,7 @@ function ItemHubPageInner() {
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
           customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
           customerLabel: !cidValue && labelText ? labelText : undefined,
+          requireWho: liveSaleType !== 'GMC' ? true : undefined,
           skipWhatsapp: skipWaRef.current || undefined,
         }),
         signal: controller.signal,
@@ -4217,6 +4224,7 @@ function ItemHubPageInner() {
   // MI: record every basket item for the customer, then issue ONE receipt for them.
   async function miComplete() {
     if (!miLines.length || miBusy) return
+    if (!miCustomer) { setMiError('Enter the customer first (GM number, phone number or name).'); return }
     setMiBusy(true); setMiError('')
     // A new phone number needs a name (or the full registration) first, otherwise there is no customer to issue the receipt to.
     if (/^0\d{9}$/.test(miCustomer) && !custNameRef.current.trim()) {
@@ -9086,7 +9094,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                             onLabel={l => setLiveLabelByKey(prev => ({ ...prev, [String(item.id)]: l ?? '' }))}
                                             onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
-                                            placeholder="GM / phone / name"
+                                            placeholder="Who? (required)"
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>)}
@@ -9293,7 +9301,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   label={liveLabelByKey.main ?? ''}
                                   onLabel={l => setLiveLabelByKey(prev => ({ ...prev, main: l ?? '' }))}
                                   onRegister={(phone, done) => setRegisterFor({ phone, done })}
-                                  placeholder="ID, phone number, or type a name"
+                                  placeholder="Who? GM / phone / name / label (required)"
                                   className="flex-1 text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400"
                                   disabled={liveSaving}
                                 />

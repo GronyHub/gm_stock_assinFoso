@@ -38,9 +38,11 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
-    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, customerLabel, skipWhatsapp } = await req.json()
+    const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, customerLabel, requireWho, skipWhatsapp } = await req.json()
     let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
     // A description only (e.g. "Girl in yellow shirt"): names who did the work, nothing else.
+    const hasWho = !!bodyCustomerIdCode || !!customerPhone || (typeof customerLabel === 'string' && customerLabel.trim() !== '')
+    if (requireWho && !hasWho) return badRequest('Say who this sale is for: a customer (GM number, phone or name) or a label such as "Man on motor".')
     const label: string | null = !bodyCustomerIdCode && !customerPhone && typeof customerLabel === 'string' && customerLabel.trim() ? customerLabel.trim().replace(/\s+/g, ' ').slice(0, 60) : null
     // The GM box also accepts the customer's phone number: it texts them what they bought
     // and, if that number belongs to a registered customer, files the sale under their ID.

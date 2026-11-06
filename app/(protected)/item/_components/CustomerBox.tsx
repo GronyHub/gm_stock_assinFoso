@@ -18,6 +18,7 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
   const [recent, setRecent] = useState<string[]>([])
   const [typed, setTyped] = useState('')
   const labelShown = useRef(false)
+  const [focused, setFocused] = useState(false)
   const [unknownPhone, setUnknownPhone] = useState(false)
   const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null)
   // Place the drop-down under the box, or above it when there is not enough room below (e.g. in the MI basket
@@ -115,8 +116,18 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
       <input ref={inputRef} type="text" value={text} disabled={disabled} placeholder={placeholder} className={className}
         autoComplete="off" onChange={e => type(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { setHits([]); onEnter?.() } }}
-        onBlur={() => setTimeout(() => { setHits([]); setTyped('') }, 150)}
+        onFocus={() => { if (onLabel) { setFocused(true); place(175) } }}
+        onBlur={() => setTimeout(() => { setHits([]); setTyped(''); setFocused(false) }, 150)}
         onClick={e => e.stopPropagation()} />
+      {focused && !!onLabel && !text && pos && (
+        <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: Math.max(pos.width, 270) }}
+          className="z-[200] space-y-1 rounded-lg border border-blue-200 bg-white p-2 text-[10px] leading-snug text-gray-700 shadow-lg" onClick={e => e.stopPropagation()}>
+          <p className="font-bold text-blue-800">Who is this sale for? (required)</p>
+          <p>Type a customer&apos;s GM number, phone number or name. If it is a one-off person you will not register, type a short <b>label</b> that tells who it was, then tap &ldquo;Use … as a label&rdquo;.</p>
+          <p className="text-gray-500">A label is only a description. It is not a customer: no message, no receipt, no total work.</p>
+          <p><b>Examples:</b> Man on motor · Policeman · Oyess teacher · Barber at Newtown · Girl in yellow shirt</p>
+        </div>
+      )}
       {unknownPhone && pos && (
         <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
           className="z-[200] space-y-1 rounded-lg border border-amber-300 bg-white p-2 shadow-lg" onClick={e => e.stopPropagation()}>
@@ -153,7 +164,7 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
               ))}
               <button type="button" onMouseDown={e => e.preventDefault()} onClick={() => pickLabel(typed)}
                 className="block w-full px-3 py-2 text-left text-xs font-semibold text-gray-800 hover:bg-blue-50">
-                Use &ldquo;{typed}&rdquo; as a label <span className="font-normal text-gray-500">(not a customer)</span>
+                Use &ldquo;{typed}&rdquo; as a label <span className="font-normal text-gray-500">(a description of who it was, not a customer. e.g. Man on motor, Policeman)</span>
               </button>
             </div>
           )}
