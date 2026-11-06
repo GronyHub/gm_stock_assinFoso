@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
   // fed into. That receipt's own customer_name already says which it was
   // ('Grony Multimedia as Customer' for GMC, NULL for WIC -- see
   // /api/sales/live-tap), so a join derives it for every tap, past or
-  // future, with no backfill needed.
+  // future, with no backfill needed. receipt_cash_counted is that day receipt's cash counted, shown (and edited)
+  // on the Sales Log's day row with the WNW it gives (cash counted minus receipt_total, the same sum Sales Rec,
+  // P&L and the high-WNW flag use).
   const rows = await sql`
     SELECT t.id, t.item_id, t.item_name, t.price, t.staff_name, t.tapped_at, t.undone, t.receipt_id, t.quantity, t.soh,
-           (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc,
+           (r.customer_name = 'Grony Multimedia as Customer') AS is_gmc, r.cash_counted AS receipt_cash_counted, r.total AS receipt_total,
            t.customer_id_code, cu.display_name AS customer_name, cu.phone AS customer_phone,
            b.id AS buyer_id, b.customer_name AS buyer_name, b.customer_phone AS buyer_phone,
            t.invoice_id, inv.invoice_number,
