@@ -61,7 +61,11 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
             const d = await r.json()
             if (my !== seq.current || !Array.isArray(d)) return
             place(d.length ? 230 : 200)
-            if (d.length) setHits(d); else setUnknownPhone(true)
+            if (d.length) setHits(d)
+            else if (onRegister) {
+              // A new number: open the full registration form straight away (no mini name box first).
+              onRegister(v, code => { const digits = code.replace(/\D/g, ''); emitted.current = digits; setText(digits); onChange(digits); setNewName(''); onName?.('') })
+            } else setUnknownPhone(true)
           } catch { /* ignore */ }
         })()
       }
