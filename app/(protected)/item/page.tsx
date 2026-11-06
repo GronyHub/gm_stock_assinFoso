@@ -7484,7 +7484,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <tr
                               key={tap.id}
                               className={`group hover:bg-gray-50 transition ${
-                                tap.undone ? 'bg-red-50' : ''
+                                tap.undone ? 'bg-red-50 undone-row' : ''
                               }`}
                             >
                               <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 ${isDesktop ? 'whitespace-nowrap' : 'max-w-[118px] min-w-[96px]'} align-top group-hover:bg-gray-50 ${tap.undone ? 'bg-red-50' : 'bg-white'}`}>
