@@ -8,6 +8,7 @@ import OpenerView from './OpenerView'
 import CloserView from './CloserView'
 import GronyChecksGrid from './GronyChecksGrid'
 import type { Violation } from './useViolations'
+import AdvertVideos from './AdvertVideos'
 import { LOG_CATEGORIES, FIXED_CATEGORY_LABELS, GRONY_CHECKS_ITEMS, ADVERT_ITEMS, type ManageView } from './manageViewData'
 
 export type { ManageView }
@@ -89,7 +90,10 @@ export default function GronyManageContent({
       {selectedAdvertItem === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" />}
       {selectedAdvertItem === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" />}
       {selectedAdvertItem === 'cuttings' && <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" />}
-      {selectedAdvertItem === 'video' && <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />}
+      {selectedAdvertItem === 'video' && (<>
+        <AdvertVideos />
+        <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />
+      </>)}
     </>)}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
