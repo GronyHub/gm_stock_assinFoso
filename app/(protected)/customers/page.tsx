@@ -1,7 +1,7 @@
 'use client'
 import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
 import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
-import { useState, useEffect, useMemo, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
 import { prefetchReceipts } from '@/lib/receiptsPrefetch'
 import dynamic from 'next/dynamic'
@@ -260,15 +260,15 @@ export default function CustomersPage({
   // Customer" and the global search's page-jump list both land here now
   // that neither is its own LossView any more. Seq is a plain incrementing
   // counter so the same tab can be jumped to twice in a row and still fire.
-  jumpToTabSeq = 0, jumpToTab = null, lockedMode,
+  jumpToTabSeq = 0, jumpToTab = null, initialMode,
 }: {
   initialSearch?: string; onFlagCountChange?: (n: number) => void
   jumpToTabSeq?: number; jumpToTab?: 'customers' | 'receipts' | 'new' | null
-  // When set (the Items hub sidebar gives Cust. Receipts and New Customer
-  // their own rows), the page opens on that view and hides its own switcher.
-  lockedMode?: 'customers' | 'receipts' | 'new'
+  // Which tab to open on (the "+" menu and global search jump straight to Cust. Receipts or New Customer).
+  // The tab row always stays visible: Cust. Receipts and New Customer live only here now, not in the sidebar.
+  initialMode?: 'customers' | 'receipts' | 'new'
 } = {}) {
-  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>(lockedMode ?? 'customers')
+  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>(initialMode ?? 'customers')
   useEffect(() => {
     if (!jumpToTabSeq || !jumpToTab) return
     setMode(jumpToTab)
@@ -305,16 +305,15 @@ export default function CustomersPage({
   // The customer list (receipt/invoice totals for every customer) is only needed
   // on the Customers view itself -- Cust. Receipts and New Customer used to
   // download it too, for nothing, before showing anything.
+  // Loaded the first time the Customers tab is shown (on opening, or on switching to it from another tab).
+  const customersLoaded = useRef(false)
   useEffect(() => {
-    if (lockedMode === 'receipts') {
-      prefetchReceipts()
-      void import('../receipts/page')
-      return
-    }
-    if (lockedMode === 'new') return
+    if (mode === 'receipts') { prefetchReceipts(); void import('../receipts/page') }
+    if (mode !== 'customers' || customersLoaded.current) return
+    customersLoaded.current = true
     loadCustomers()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mode])
 
   const flagCounts = useMemo(() => ({
     location: customers.filter(x => !x.location).length,
@@ -386,7 +385,6 @@ export default function CustomersPage({
   // Pinned above everything else, identical on all three tabs -- same
   // "always one line, own top row" treatment Live Sale's own switcher got.
   function renderModeSwitcher() {
-    if (lockedMode) return null
     const btnCls = (active: boolean) =>
       `px-2.5 py-1 text-xs font-bold rounded-md transition whitespace-nowrap shrink-0 ${
         active ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
