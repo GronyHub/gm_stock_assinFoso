@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
+import PageToolbar from '@/lib/pageToolbar'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Vendor = {
@@ -258,36 +259,33 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
     return v
   }, [vendors, showFlagged, search])
 
-  const totals = useMemo(() => ({
-    bills:       vendors.reduce((s, v) => s + v.bill_count, 0),
-    billed:      vendors.reduce((s, v) => s + parseFloat(v.bill_total), 0),
-    paid:        vendors.reduce((s, v) => s + parseFloat(v.amount_paid), 0),
-    outstanding: vendors.reduce((s, v) => s + parseFloat(v.outstanding), 0),
-  }), [vendors])
 
   if (loading) return <div className="py-16 text-center text-gray-400">Loading…</div>
 
   return (
-    <div className="space-y-4 pb-10">
-      {noContactCount > 0 && (
-        <button onClick={() => setShowFlagged(v => !v)}
-          className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
-          🚩 No Contact Number or Location ({noContactCount})
-        </button>
-      )}
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Vendors</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{vendors.length} vendors</span>
-          <ColumnsPickerButton prefs={colPrefs} />
-          <button onClick={() => setShowForm(f => !f)}
-            className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition
-              ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
-            {showForm ? '×' : '+ New Vendor'}
+    <div className="space-y-2 pb-10">
+      {/* One compact row: flag, search, columns, + New Vendor. On a computer it sits on the top bar beside the staff
+          names (PageToolbar), so the table starts at the very top. Totals live in the table's own Billed / Paid /
+          Outstanding / Bills columns. */}
+      <PageToolbar>
+        {noContactCount > 0 && (
+          <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
+            className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
+            🚩 No contact ({noContactCount})
           </button>
-        </div>
-      </div>
+        )}
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${vendors.length} vendors…`}
+          className="min-w-[120px] flex-1 bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <ColumnsPickerButton prefs={colPrefs} />
+        <button onClick={() => setShowForm(f => !f)}
+          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg transition
+            ${showForm ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+          {showForm ? '×' : '+ New Vendor'}
+        </button>
+      </PageToolbar>
 
       {showForm && (
         <NewVendorForm
@@ -295,31 +293,6 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
           onCreated={created => { setVendors(prev => [created, ...prev]); setShowForm(false) }}
         />
       )}
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: 'Total Billed',  value: c(String(totals.billed)),      color: 'text-gray-900' },
-          { label: 'Amount Paid',   value: c(String(totals.paid)),         color: 'text-green-700' },
-          { label: 'Outstanding',   value: c(String(totals.outstanding)),  color: totals.outstanding > 0 ? 'text-red-600' : 'text-gray-400' },
-          { label: 'Total Bills',   value: String(totals.bills),           color: 'text-blue-700' },
-        ].map(s => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-            <p className="text-[10px] text-gray-400 font-medium">{s.label}</p>
-            <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Search -- the old external/internal/outstanding tabs are gone,
-          "all" (i.e. no filter) already showed every vendor, so the full
-          list is just always shown here now. Flag pill moved up into the
-          PageToolIcons row above. */}
-      <input
-        value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Search vendors…"
-        className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-      />
 
       {/* Selected vendor detail */}
       {selected && (
