@@ -3,16 +3,13 @@ import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
 import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
-import { prefetchReceipts } from '@/lib/receiptsPrefetch'
 import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
-import NewCustomerForm from '../item/_components/NewCustomerForm'
 
 // Cust. Receipts and New Customer folded in here as tabs (same treatment
 // Live Sale's own switcher got) since neither had anything left that
 // justified its own left-sidebar destination.
-const ReceiptsPage = dynamic(() => import('../receipts/page'), { ssr: false })
 
 type Customer = {
   id: number
@@ -256,24 +253,9 @@ const NEW_CUSTOMERS_PER_WEEK_TARGET = 10
 
 export default function CustomersPage({
   initialSearch, onFlagCountChange,
-  // Deep links into a specific tab -- the "+" shortcut menu's "New
-  // Customer" and the global search's page-jump list both land here now
-  // that neither is its own LossView any more. Seq is a plain incrementing
-  // counter so the same tab can be jumped to twice in a row and still fire.
-  jumpToTabSeq = 0, jumpToTab = null, initialMode,
 }: {
   initialSearch?: string; onFlagCountChange?: (n: number) => void
-  jumpToTabSeq?: number; jumpToTab?: 'customers' | 'receipts' | 'new' | null
-  // Which tab to open on (the "+" menu and global search jump straight to Cust. Receipts or New Customer).
-  // The tab row always stays visible: Cust. Receipts and New Customer live only here now, not in the sidebar.
-  initialMode?: 'customers' | 'receipts' | 'new'
 } = {}) {
-  const [mode, setMode] = useState<'customers' | 'receipts' | 'new'>(initialMode ?? 'customers')
-  useEffect(() => {
-    if (!jumpToTabSeq || !jumpToTab) return
-    setMode(jumpToTab)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jumpToTabSeq])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
@@ -305,15 +287,7 @@ export default function CustomersPage({
   // The customer list (receipt/invoice totals for every customer) is only needed
   // on the Customers view itself -- Cust. Receipts and New Customer used to
   // download it too, for nothing, before showing anything.
-  // Loaded the first time the Customers tab is shown (on opening, or on switching to it from another tab).
-  const customersLoaded = useRef(false)
-  useEffect(() => {
-    if (mode === 'receipts') { prefetchReceipts(); void import('../receipts/page') }
-    if (mode !== 'customers' || customersLoaded.current) return
-    customersLoaded.current = true
-    loadCustomers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  useEffect(() => { loadCustomers() }, [])
 
   const flagCounts = useMemo(() => ({
     location: customers.filter(x => !x.location).length,
@@ -382,58 +356,14 @@ export default function CustomersPage({
     outstanding: customers.reduce((s, x) => s + parseFloat(x.invoice_outstanding), 0),
   }), [customers])
 
-  // Pinned above everything else, identical on all three tabs -- same
-  // "always one line, own top row" treatment Live Sale's own switcher got.
-  function renderModeSwitcher() {
-    const btnCls = (active: boolean) =>
-      `px-2.5 py-1 text-xs font-bold rounded-md transition whitespace-nowrap shrink-0 ${
-        active ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
-      }`
-    return (
-      <div className="flex bg-gray-100 rounded-lg p-0.5 overflow-x-auto mb-3">
-        <button type="button" onClick={() => setMode('customers')} className={btnCls(mode === 'customers')}>Customers</button>
-        <button type="button" onClick={() => setMode('receipts')} className={btnCls(mode === 'receipts')}>Cust. Receipts</button>
-        <button type="button" onClick={() => setMode('new')} className={btnCls(mode === 'new')}>+ New Customer</button>
-      </div>
-    )
-  }
-
-  if (mode === 'receipts') {
-    return (
-      <div>
-        {renderModeSwitcher()}
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-lg font-bold text-gray-900">Cust. Receipts</h1>
-        </div>
-        <ReceiptsPage />
-      </div>
-    )
-  }
-
-  if (mode === 'new') {
-    return (
-      <div>
-        {renderModeSwitcher()}
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-lg font-bold text-gray-900">New Customer</h1>
-        </div>
-        <NewCustomerForm
-          onCreated={() => { loadCustomers(); setMode('customers') }}
-          onCancel={() => setMode('customers')} />
-      </div>
-    )
-  }
-
   if (loading) return (
     <div>
-      {renderModeSwitcher()}
       <div className="py-16 text-center text-gray-400">Loading…</div>
     </div>
   )
 
   return (
     <div className="space-y-4 pb-10">
-      {renderModeSwitcher()}
       {/* This page's own flag pills, one small button per category
           (🚩/🏳️ + letter + count), clicking narrows the table below to
           just that category's flagged customers. "New customers this week"
@@ -570,6 +500,8 @@ export default function CustomersPage({
                 ))}
               </div>
 
+              <CustomerReceipts customerId={selected.id} />
+
               {selected.notes && (
                 <div className="border-t border-gray-100 pt-2">
                   <p className="text-xs text-gray-400">Notes</p>
@@ -649,6 +581,49 @@ export default function CustomersPage({
           </table>
         )}
       </div>
+    </div>
+  )
+}
+
+type CustReceipt = { id: number; invoice_number: string; invoice_date: string; total: string; lines: { item: string; qty: number | string }[] }
+
+// This customer's receipts (newest first), each with a link to view / reprint it. Receipts are made from
+// Live Sale (the Receipt button); this is where old ones are found again.
+function CustomerReceipts({ customerId }: { customerId: number }) {
+  const [rows, setRows] = useState<CustReceipt[] | null>(null)
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => {
+    let live = true
+    fetch(`/api/receipts?customerId=${customerId}`).then(r => r.json())
+      .then(d => { if (live) setRows(Array.isArray(d) ? d : []) }).catch(() => { if (live) setRows([]) })
+    return () => { live = false }
+  }, [customerId])
+  if (rows === null) return <p className="border-t border-gray-100 pt-2 text-xs text-gray-400">Loading receipts…</p>
+  const shown = showAll ? rows : rows.slice(0, 5)
+  return (
+    <div className="border-t border-gray-100 pt-2">
+      <p className="text-xs font-semibold text-gray-700">Receipts ({rows.length})</p>
+      {rows.length === 0 ? <p className="text-xs text-gray-400 mt-0.5">No receipts yet.</p> : (
+        <div className="mt-1 divide-y divide-gray-100">
+          {shown.map(r => (
+            <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
+              <span className="w-[58px] shrink-0 text-gray-500">{new Date(r.invoice_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+              <span className="min-w-0 flex-1 truncate" title={r.lines.map(l => `${l.item} × ${Number(l.qty)}`).join(', ')}>
+                <span className="font-semibold text-gray-900">{r.invoice_number}</span>
+                <span className="text-gray-500"> · {r.lines.map(l => l.item).join(', ')}</span>
+              </span>
+              <span className="shrink-0 font-semibold text-gray-900">{c(r.total)}</span>
+              <a href={`/receipts/${r.id}/print`} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">View / print</a>
+            </div>
+          ))}
+        </div>
+      )}
+      {rows.length > 5 && (
+        <button type="button" onClick={() => setShowAll(v => !v)} className="mt-1 text-[11px] font-semibold text-blue-600">
+          {showAll ? 'Show fewer' : `Show all ${rows.length}`}
+        </button>
+      )}
     </div>
   )
 }

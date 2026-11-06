@@ -48,14 +48,23 @@ const SELECT_FIELDS = `
     LEFT JOIN invoice_lines il ON il.invoice_id = i.id
 `
 
-export async function GET() {
+// GET ?customerId=N -> only that customer's receipts (the customer's details panel on Customers).
+export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
 
   await ensureDbInitialized()
   await ensureColumns()
   try {
-    const receipts = await sql.query(`
+    const customerId = Number(req.nextUrl.searchParams.get('customerId')) || null
+    const receipts = customerId
+      ? await sql.query(`
+      SELECT ${SELECT_FIELDS}
+      WHERE i.customer_id = $1
+      GROUP BY i.id, c.id
+      ORDER BY i.invoice_date DESC, i.invoice_number DESC
+    `, [customerId])
+      : await sql.query(`
       SELECT ${SELECT_FIELDS}
       GROUP BY i.id, c.id
       ORDER BY i.invoice_date DESC, i.invoice_number DESC

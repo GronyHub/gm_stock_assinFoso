@@ -12,7 +12,6 @@ const SHORTCUTS: { key: ShortcutKey; label: string; icon: string }[] = [
   { key: 'cabConfirm', label: 'CAB Confirm', icon: '🏦' },
   { key: 'staffTime',  label: 'Staff Time',  icon: '🕒' },
   { key: 'expense',    label: 'Expenses',    icon: '💸' },
-  { key: 'customer',   label: 'Customer',    icon: '🧑' },
   { key: 'vendor',     label: 'Vendor',      icon: '🏭' },
 ]
 

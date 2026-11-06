@@ -79,7 +79,7 @@ export default function NewReceiptPage({ onSuccess, groupFilter }: { onSuccess?:
     setError('')
     try {
       // No customer picker for a walk-in sale -- that requirement was meant
-      // for the formal Receipts flow (see receipts/page.tsx), not this one.
+      // for the formal Receipts flow (Live Sale's Receipt button), not this one.
       const customerName = saleType === 'GMC' ? 'Grony Multimedia as Customer' : 'Walk In Customer'
       const res = await fetch('/api/sales/receipt', {
         method: 'POST',
