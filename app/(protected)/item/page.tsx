@@ -2289,6 +2289,9 @@ function ItemHubPageInner() {
   const liveAllItemsRef = useRef<LiveItem[]>([])
   const [liveItemsLoading, setLiveItemsLoading] = useState(true)
   const [liveTaps, setLiveTaps] = useState<Tap[]>([])
+  // Whether the Sales Log's sales have arrived yet: until they do, the Log says "Loading sales…" and the total
+  // shows ₵… (both used to read "No sales recorded" / ₵0 while the data was still on its way, after every refresh).
+  const [liveTapsStatus, setLiveTapsStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   // Shop opening/last-sign-out clock times per date -- backs the Log tab's
   // Gap column for the first/last tap of each day (see liveDayBounds effect
   // below and /api/staff-times/day-bounds).
@@ -3333,24 +3336,36 @@ function ItemHubPageInner() {
   const liveUnknownQtyCount = liveUnknownQtyIds.size
   const liveGmcOverageCount = liveGmcOverageIds.size
 
-  // Fetch taps
+  // Fetch taps. The last 7 days come first (small and quick, so today's sales show straight away), then the
+  // full 90 days. A failed request is retried a few times and never replaces sales already on screen with an
+  // empty list -- that used to show "No sales recorded" whenever the server or the connection hiccuped.
+  async function fetchTaps(days: number): Promise<Tap[]> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const r = await fetch(`/api/sales/live-taps?days=${days}`)
+        const d = await r.json()
+        if (r.ok && Array.isArray(d)) return d.filter((t): t is Tap => t != null)
+        throw new Error(`status ${r.status}`)
+      } catch (e) {
+        if (attempt >= 3) throw e
+        await new Promise(res => setTimeout(res, 1000 * (attempt + 1) * (attempt + 1)))
+      }
+    }
+  }
   function reloadLiveTaps() {
-    fetch('/api/sales/live-taps')
-      .then(r => r.json())
-      .then(d => {
-        const taps = Array.isArray(d) ? d.filter((t): t is Tap => t != null) : []
-        setLiveTaps(taps)
-      })
-      .catch(() => { /* keep what is on screen */ })
+    fetchTaps(90).then(taps => { setLiveTaps(taps); setLiveTapsStatus('ok') }).catch(() => { /* keep what is on screen */ })
+  }
+  function loadLiveTapsFresh() {
+    setLiveTapsStatus(prev => (prev === 'ok' ? 'ok' : 'loading'))
+    let gotFull = false
+    fetchTaps(7).then(taps => { if (!gotFull) { setLiveTaps(taps); setLiveTapsStatus('ok') } }).catch(() => {})
+    fetchTaps(90)
+      .then(taps => { gotFull = true; setLiveTaps(taps); setLiveTapsStatus('ok') })
+      .catch(() => setLiveTapsStatus(prev => (prev === 'ok' ? 'ok' : 'error')))
   }
   useEffect(() => {
-    fetch('/api/sales/live-taps')
-      .then(r => r.json())
-      .then(d => {
-        const taps = Array.isArray(d) ? d.filter((t): t is Tap => t != null) : []
-        setLiveTaps(taps)
-      })
-      .catch(() => setLiveTaps([]))
+    loadLiveTapsFresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Sale mode's 3 due-count queues (COUNT NOW block + inline count field) --
@@ -6918,7 +6933,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <PresentStaffBar roster={activeStaff} salesTotal={`₵${formatPrice(liveTodaySalesTotal)}`}
+              <PresentStaffBar roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
             </>
           )}
@@ -6931,7 +6946,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   and bold since this is meant to be glanceable while
                   staff are actively working, not tucked into a report. */}
               <span className="shrink-0 font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
-                ₵{formatPrice(liveTodaySalesTotal)}
+                {liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
               </span>
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
@@ -7365,7 +7380,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               ) : (
               <div className="flex-1 overflow-auto" ref={logWrapRef}>
                 {liveTaps.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
+                  liveTapsStatus === 'loading' ? (
+                    <p className="text-sm text-gray-400 text-center py-8">Loading sales…</p>
+                  ) : liveTapsStatus === 'error' ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm text-red-600">Couldn&apos;t load sales. Check the connection.</p>
+                      <button type="button" onClick={loadLiveTapsFresh}
+                        className="mt-2 rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white hover:bg-blue-700">Retry</button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-8">No sales recorded</p>
+                  )
                 ) : (
                   // A real <table> instead of independent per-row grid divs --
                   // table-layout:auto sizes each column to exactly the widest
