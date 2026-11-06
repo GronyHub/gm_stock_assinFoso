@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 // etc.) just to render the list of buttons.
 export type ManageView =
   | 'opener' | 'closer'
-  | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'advert_log'
+  | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'item_photos' | 'advert_log'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
@@ -89,6 +89,7 @@ export const ADVERT_ITEMS: { key: ManageView; label: string; icon: string }[] = 
   { key: 'whatsapp',        label: 'WhatsApp',          icon: '💬' },
   { key: 'cuttings',        label: 'Cuttings',          icon: '✂️' },
   { key: 'video',           label: 'Video',             icon: '🎬' },
+  { key: 'item_photos',     label: 'Item Photos',       icon: '📷' },
 ]
 
 // Which LOG_CATEGORIES are NOT nested under grony_checks (the rest are
@@ -101,7 +102,7 @@ export const GRONY_CHECKS_KEYS = new Set<ManageView>([
 
 // Which advert items are nested under 'advert' view instead of shown separately
 export const ADVERT_KEYS = new Set<ManageView>([
-  'audio', 'audio_status', 'jingle', 'equipment', 'photoshop', 'whatsapp', 'cuttings', 'video',
+  'audio', 'audio_status', 'jingle', 'equipment', 'photoshop', 'whatsapp', 'cuttings', 'video', 'item_photos',
 ])
 
 // Group assignments for remaining LOG_CATEGORIES items (the ones not nested
