@@ -1,15 +1,13 @@
 'use client'
 import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
 import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
-import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
-import dynamic from 'next/dynamic'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 
-// Cust. Receipts and New Customer folded in here as tabs (same treatment
-// Live Sale's own switcher got) since neither had anything left that
-// justified its own left-sidebar destination.
+// One page: the customer table, with each customer's receipts in their details. New customers are registered
+// from Live Sale's GM box; receipts are made with Live Sale's Receipt button.
 
 type Customer = {
   id: number
@@ -349,12 +347,6 @@ export default function CustomersPage({
     return v
   }, [customers, activeFlag, activeLocation, search])
 
-  const totals = useMemo(() => ({
-    customers:   customers.length,
-    receipts:    customers.reduce((s, x) => s + x.receipt_count, 0),
-    sales:       customers.reduce((s, x) => s + parseFloat(x.receipt_total), 0),
-    outstanding: customers.reduce((s, x) => s + parseFloat(x.invoice_outstanding), 0),
-  }), [customers])
 
   if (loading) return (
     <div>
@@ -363,72 +355,34 @@ export default function CustomersPage({
   )
 
   return (
-    <div className="space-y-4 pb-10">
-      {/* This page's own flag pills, one small button per category
-          (🚩/🏳️ + letter + count), clicking narrows the table below to
-          just that category's flagged customers. "New customers this week"
-          is a shop-wide threshold, not a per-customer problem, so it's a
-          plain banner instead of a filter. */}
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto">
-        {FLAG_TYPES.map(({ key, label }) => flagCounts[key] > 0 && (
-          <button key={key} onClick={() => setActiveFlag(activeFlag === key ? null : key)}
-            className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg transition ${activeFlag === key ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
-            🚩 {label} ({flagCounts[key]})
-          </button>
-        ))}
-        <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold pl-1.5 pr-2 py-1 rounded-lg
-          ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
-          title="New customers added in the last 7 days">
-          <span className="relative leading-none">
-            {newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? '🚩' : '🏳️'}
-            <span className={`absolute -bottom-1 -right-1 text-[6px] font-black leading-none rounded-sm px-[1px]
-              ${newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? 'bg-white text-red-700' : 'bg-green-700 text-white'}`}>N</span>
-          </span>
-          <span>{newThisWeek}/{NEW_CUSTOMERS_PER_WEEK_TARGET} this week</span>
-        </span>
-        {(activeFlag || activeLocation) && (
-          <button onClick={() => { setActiveFlag(null); setActiveLocation(null) }} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">
-            Clear filters
-          </button>
-        )}
-      </div>
-
-      {/* Locations filter */}
-      {locationCounts.length > 0 && (
-        <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-2">
-          <span className="text-[10px] font-semibold text-gray-600 shrink-0">Filter by location:</span>
-          {locationCounts.map(([loc, count]) => (
-            <button key={loc} onClick={() => setActiveLocation(activeLocation === loc ? null : loc)}
-              className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg transition ${activeLocation === loc ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-              📍 {loc} ({count})
-            </button>
+    <div className="space-y-2 pb-10">
+      {/* One compact row above the table: flags and location are dropdowns, then search and the columns picker,
+          so the table gets the screen. Totals live in the table's own Sales / Outstanding / Receipts columns. */}
+      <div className="flex items-center gap-1.5">
+        <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
+          title="Show only customers missing something"
+          className={`shrink-0 max-w-[30%] rounded-lg border px-1.5 py-1.5 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          <option value="">🚩 Flags ({FLAG_TYPES.reduce((n, f) => n + (flagCounts[f.key] > 0 ? 1 : 0), 0)})</option>
+          {FLAG_TYPES.map(({ key, label }) => (
+            <option key={key} value={key} disabled={flagCounts[key] === 0}>{label} ({flagCounts[key]})</option>
           ))}
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-gray-900">Customers</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{customers.length} contacts</span>
-          <ColumnsPickerButton prefs={colPrefs} />
-        </div>
+          <option disabled>{newThisWeek < NEW_CUSTOMERS_PER_WEEK_TARGET ? '🚩' : '🏳️'} New this week: {newThisWeek}/{NEW_CUSTOMERS_PER_WEEK_TARGET}</option>
+        </select>
+        {locationCounts.length > 0 && (
+          <select value={activeLocation ?? ''} onChange={e => setActiveLocation(e.target.value || null)}
+            title="Show only customers in one place"
+            className={`shrink-0 max-w-[30%] rounded-lg border px-1.5 py-1.5 text-[11px] font-bold outline-none ${activeLocation ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+            <option value="">📍 Location</option>
+            {locationCounts.map(([loc, count]) => <option key={loc} value={loc}>{loc} ({count})</option>)}
+          </select>
+        )}
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder={`Search ${customers.length} customers…`}
+          className="min-w-0 flex-1 bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+        />
+        <ColumnsPickerButton prefs={colPrefs} />
       </div>
-
-      {/* Summary line -- one plain row instead of four boxed cards */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-        <span>Total Sales <b className="text-gray-900 font-bold">{c(String(totals.sales))}</b></span>
-        <span>Receipts <b className="text-blue-700 font-bold">{totals.receipts}</b></span>
-        <span>Outstanding <b className={`font-bold ${totals.outstanding > 0 ? 'text-red-600' : 'text-gray-400'}`}>{c(String(totals.outstanding))}</b></span>
-        <span>Customers <b className="text-purple-700 font-bold">{totals.customers}</b></span>
-      </div>
-
-      {/* Search */}
-      <input
-        value={search} onChange={e => setSearch(e.target.value)}
-        placeholder="Search customers…"
-        className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-      />
 
       {/* Selected customer detail */}
       {selected && (
