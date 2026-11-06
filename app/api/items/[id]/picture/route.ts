@@ -14,8 +14,8 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (error) return error
   try {
     await ensureItemPictureColumn()
-    const [row] = await sql`SELECT image_url FROM items WHERE id = ${Number((await params).id)}`
-    return success({ image_url: (row?.image_url as string | null) ?? null })
+    const [row] = await sql`SELECT image_url, image_credit FROM items WHERE id = ${Number((await params).id)}`
+    return success({ image_url: (row?.image_url as string | null) ?? null, image_credit: (row?.image_credit as string | null) ?? null })
   } catch (e) { return handleError('item picture GET', e) }
 }
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     if (file.size > 8 * 1024 * 1024) return badRequest('Photo too large (8 MB at most).')
     const saved = await saveFile(`items/${id}-${Date.now()}.${file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'}`, file, file.type)
     const url = `/api/items/picture?p=${encodeURIComponent(saved.pathname)}`
-    await sql`UPDATE items SET image_url = ${url} WHERE id = ${id}`
+    await sql`UPDATE items SET image_url = ${url}, image_credit = NULL WHERE id = ${id}`
     const old = String(item.image_url ?? '').split('p=')[1]
     if (old) await deleteFile(decodeURIComponent(old)).catch(() => {})
     clearItemsCache()
@@ -50,7 +50,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     await ensureItemPictureColumn()
     const id = Number((await params).id)
     const [item] = await sql`SELECT image_url FROM items WHERE id = ${id}`
-    await sql`UPDATE items SET image_url = NULL WHERE id = ${id}`
+    await sql`UPDATE items SET image_url = NULL, image_credit = NULL WHERE id = ${id}`
     const old = String(item?.image_url ?? '').split('p=')[1]
     if (old) await deleteFile(decodeURIComponent(old)).catch(() => {})
     clearItemsCache()

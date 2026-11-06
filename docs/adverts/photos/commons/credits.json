@@ -1,0 +1,88 @@
+{
+ "hdmi": [
+  {
+   "file": "hdmi_0.jpg",
+   "title": "File:HDMI Cable 1.JPG",
+   "author": "Kannan shanmugam,shanmugam studio, Kollam",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:HDMI_Cable_1.JPG"
+  },
+  {
+   "file": "hdmi_2.jpg",
+   "title": "File:HDMI-Connector.jpg",
+   "author": "Evan-Amos",
+   "licence": "Public domain",
+   "page": "https://commons.wikimedia.org/wiki/File:HDMI-Connector.jpg"
+  }
+ ],
+ "charger": [
+  {
+   "file": "charger_1.jpg",
+   "title": "File:Notebook-Computer-AC-Adapter.jpg",
+   "author": "Evan-Amos",
+   "licence": "Public domain",
+   "page": "https://commons.wikimedia.org/wiki/File:Notebook-Computer-AC-Adapter.jpg"
+  }
+ ],
+ "mouse": [
+  {
+   "file": "mouse_2.jpg",
+   "title": "File:2023 Mysz komputerowa Logitech G903 Lightspeed.jpg",
+   "author": "Jacek Halicki",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:2023_Mysz_komputerowa_Logitech_G903_Lightspeed.jpg"
+  }
+ ],
+ "usb": [
+  {
+   "file": "usb_0.jpg",
+   "title": "File:2023 Pendrive'y Verbatim Store \u2018n\u2019 Click 16 GB (1).jpg",
+   "author": "Jacek Halicki",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:2023_Pendrive%27y_Verbatim_Store_%E2%80%98n%E2%80%99_Click_16_GB_(1).jpg"
+  },
+  {
+   "file": "usb_1.jpg",
+   "title": "File:Kingston Technology DataTraveler G4 USB flash drive USB 3.0 32 Gb.jpg",
+   "author": "Dmitry Makeev",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Kingston_Technology_DataTraveler_G4_USB_flash_drive_USB_3.0_32_Gb.jpg"
+  }
+ ],
+ "ink": [
+  {
+   "file": "ink_0.jpg",
+   "title": "File:Refill-Ink-Kit-Color.jpg",
+   "author": "Daniel D\u00edez Sanquirce",
+   "licence": "CC BY-SA 3.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Refill-Ink-Kit-Color.jpg"
+  }
+ ],
+ "stapler": [
+  {
+   "file": "stapler_0.jpg",
+   "title": "File:2017 Zszywacz biurowy.jpg",
+   "author": "Jacek Halicki",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:2017_Zszywacz_biurowy.jpg"
+  }
+ ],
+ "gamepad": [
+  {
+   "file": "gamepad_0.jpg",
+   "title": "File:Trust GM-1500 gamepad controller 3.jpg",
+   "author": "Multicherry",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Trust_GM-1500_gamepad_controller_3.jpg"
+  }
+ ],
+ "toner": [
+  {
+   "file": "toner_1.jpg",
+   "title": "File:Four Samsung laser toner cartridges front view.jpg",
+   "author": "W.carter",
+   "licence": "CC BY-SA 4.0",
+   "page": "https://commons.wikimedia.org/wiki/File:Four_Samsung_laser_toner_cartridges_front_view.jpg"
+  }
+ ]
+}

@@ -16,12 +16,13 @@ async function shrink(file: File): Promise<File> {
 // One photo for an item: shows it, and lets staff add / change / remove it.
 export default function ItemPicture({ itemId }: { itemId: number }) {
   const [url, setUrl] = useState<string | null | undefined>(undefined)
+  const [credit, setCredit] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
     setUrl(undefined)
-    fetch(`/api/items/${itemId}/picture`).then(r => r.json()).then(d => setUrl(d?.image_url ?? null)).catch(() => setUrl(null))
+    fetch(`/api/items/${itemId}/picture`).then(r => r.json()).then(d => { setUrl(d?.image_url ?? null); setCredit(d?.image_credit ?? null) }).catch(() => setUrl(null))
   }, [itemId])
   async function upload(f: File) {
     setBusy(true); setErr('')
@@ -29,13 +30,13 @@ export default function ItemPicture({ itemId }: { itemId: number }) {
       const fd = new FormData(); fd.append('file', await shrink(f))
       const r = await fetch(`/api/items/${itemId}/picture`, { method: 'POST', body: fd }); const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error ?? 'Could not save the photo')
-      setUrl(d.image_url)
+      setUrl(d.image_url); setCredit(null)
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
   async function remove() {
     if (!confirm('Remove this item\'s photo?')) return
-    setBusy(true); await fetch(`/api/items/${itemId}/picture`, { method: 'DELETE' }).catch(() => {}); setUrl(null); setBusy(false)
+    setBusy(true); await fetch(`/api/items/${itemId}/picture`, { method: 'DELETE' }).catch(() => {}); setUrl(null); setCredit(null); setBusy(false)
   }
   return (
     <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-3 py-2">
@@ -48,6 +49,7 @@ export default function ItemPicture({ itemId }: { itemId: number }) {
           <button type="button" disabled={busy} onClick={() => input.current?.click()} className="rounded bg-blue-600 px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : url ? 'Change photo' : 'Add photo'}</button>
           {url && <button type="button" disabled={busy} onClick={() => void remove()} className="rounded bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700">Remove</button>}
         </div>
+        {credit && <p className="max-w-[260px] truncate text-[9px] text-gray-400" title={credit}>Photo: {credit.split(' · http')[0]}</p>}
         {err && <p className="text-[10px] text-red-600">{err}</p>}
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = '' }} />
       </div>
