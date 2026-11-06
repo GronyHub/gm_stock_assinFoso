@@ -84,6 +84,9 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
     }
     emitted.current = ''; onChange(''); setUnknownPhone(false)
     const q = v.trim()
+    // Typed words count as a label straight away (so the sale can be saved); picking a saved customer from the list
+    // below replaces it.
+    if (onLabel) { if (q.length >= 2) { labelShown.current = true; onLabel(q) } else if (labelShown.current) { labelShown.current = false; onLabel(null) } }
     if (q.length < 2) { setHits([]); return }
     const my = ++seq.current
     if (onLabel) fetch(`/api/sales/labels?q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => { if (my === seq.current && Array.isArray(d)) setRecent(d) }).catch(() => {})
@@ -105,6 +108,7 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
     onChange(''); onLabel?.(l)
   }
   function pick(h: Hit) {
+    if (labelShown.current) { labelShown.current = false; onLabel?.(null) }
     const digits = h.customer_id_code.replace(/\D/g, '')
     emitted.current = digits
     setText(`${h.display_name} (${h.customer_id_code})`)
@@ -123,7 +127,7 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
         <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: Math.max(pos.width, 270) }}
           className="z-[200] space-y-1 rounded-lg border border-blue-200 bg-white p-2 text-[10px] leading-snug text-gray-700 shadow-lg" onClick={e => e.stopPropagation()}>
           <p className="font-bold text-blue-800">Who is this sale for? (required)</p>
-          <p>Type a customer&apos;s GM number, phone number or name. If it is a one-off person you will not register, type a short <b>label</b> that tells who it was, then tap &ldquo;Use … as a label&rdquo;.</p>
+          <p>Type a customer&apos;s GM number, phone number or name. If it is a one-off person you will not register, just type a short <b>label</b> that tells who it was. What you type is kept as the label unless you pick a saved customer from the list.</p>
           <p className="text-gray-500">A label is only a description. It is not a customer: no message, no receipt, no total work.</p>
           <p><b>Examples:</b> Man on motor · Policeman · Oyess teacher · Barber at Newtown · Girl in yellow shirt</p>
         </div>
