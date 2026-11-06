@@ -160,9 +160,8 @@ type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'custome
   // "fix this violation" deep link (see ViolationFixPanel.tsx), now its own
   // CASH_ITEMS row so it's a real, navigable destination on its own.
   | 'counts' | 'item360'
-  // Cust. Receipts and New Customer folded into Customers' own tabs (same
-  // treatment Sales/Bills/Loss by Date/Expenses got inside Live Sale) -- see
-  // jumpToCustomersTab, since neither is a real LossView any more.
+  // Cust. Receipts and New Customer are gone: receipts are found in each customer's details and the Sales Log,
+  // and customers are registered from Live Sale's GM box (see jumpToCustomersTab).
   // Same reasoning as 'newCustomer' used to be above -- Expense Orders was a
   // showOrders toggle living inside ExpensesTab itself, invisible to
   // page.tsx, so the pane button could never actually know whether it was
@@ -1059,16 +1058,10 @@ function ItemHubPageInner() {
     setLiveSaleJumpSearch(search)
     setLiveSaleJumpSeq(s => s + 1)
   }
-  // Deep links into a specific Customers tab -- the "+" shortcut menu's
-  // "New Customer" and the global search's page-jump list both land here
-  // now that neither Cust. Receipts nor New Customer is a real LossView
-  // any more (both folded into Customers' own tabs).
-  const [customersJumpSeq, setCustomersJumpSeq] = useState(0)
-  const [customersJumpTab, setCustomersJumpTab] = useState<'customers' | 'receipts' | 'new'>('customers')
-  function jumpToCustomersTab(tab: 'customers' | 'receipts' | 'new') {
+  // Customers is one page (no tabs): receipts are found in each customer's details and on the Sales Log,
+  // and new customers are registered from Live Sale's GM box.
+  function jumpToCustomersTab() {
     pickLossView('customers')
-    setCustomersJumpTab(tab)
-    setCustomersJumpSeq(s => s + 1)
   }
   // Finishes the old ?tab=losses/?tab=expenses deep links (see the lossView
   // initializer above) -- can't call jumpToLiveSaleTab directly from that
@@ -1597,7 +1590,6 @@ function ItemHubPageInner() {
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
   function pickLossView(view: LossView) {
-    if (view === 'customers') setCustomersJumpTab('customers')
     setOuterTab('loss')
     setLossView(view)
     setViolation(null)
@@ -1684,7 +1676,6 @@ function ItemHubPageInner() {
       case 'item':       pickLossView('items');     setAddForm('item'); break
       case 'expense':    jumpToLiveSaleTab('expenses'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
-      case 'customer':   jumpToCustomersTab('new'); break
       case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
       case 'staffTime': {
         pickLossView('teamTimes')
@@ -2209,8 +2200,6 @@ function ItemHubPageInner() {
       // there's no entry for it any more.
       { label: 'Live Sale', action: () => jumpToLiveSaleTab('sale') },
       { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
-      { label: 'New Customer', action: () => jumpToCustomersTab('new') },
-      { label: 'Cust. Receipts', action: () => jumpToCustomersTab('receipts') },
       // Vendors/Customers/Purchase Orders/P&L/CAB aren't CASH_ITEMS entries
       // either any more (each folded into a tab/radio of its own inside
       // Items -- see CASH_ITEMS' own comment above), so the map above never
@@ -6595,7 +6584,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab('customers')} />
+                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab()} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => v.key !== 'items' && (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
@@ -7522,6 +7511,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                     </button>
                                   )
                                 })()}
+                                {tap.invoice_id && (
+                                  <a href={`/receipts/${tap.invoice_id}/print`} target="_blank" rel="noopener noreferrer"
+                                    title={`Receipt ${tap.invoice_number ?? ''}: tap to view or reprint`}
+                                    className="block max-w-[64px] truncate text-[8px] leading-tight font-semibold text-orange-600 underline">
+                                    🧾 {tap.invoice_number ?? 'Receipt'}
+                                  </a>
+                                )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
                                 {tap.wa_sent_at && !tap.undone && (
@@ -10106,8 +10102,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         {outerTab === 'loss' && lossView === 'customers' && (
           <TabErrorBoundary>
             <div className="px-4 pt-2 space-y-2">
-              <CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount}
-                initialMode={customersJumpTab} jumpToTab={customersJumpTab} jumpToTabSeq={customersJumpSeq} />
+              <CustomersPage initialSearch={customerSearchText} onFlagCountChange={setCustomersFlagsCount} />
             </div>
           </TabErrorBoundary>
         )}
