@@ -3,6 +3,7 @@ import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
 import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPhones'
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
+import PageToolbar from '@/lib/pageToolbar'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 
@@ -356,12 +357,13 @@ export default function CustomersPage({
 
   return (
     <div className="space-y-2 pb-10">
-      {/* One compact row above the table: flags and location are dropdowns, then search and the columns picker,
-          so the table gets the screen. Totals live in the table's own Sales / Outstanding / Receipts columns. */}
-      <div className="flex items-center gap-1.5">
+      {/* One compact row: flags and location are dropdowns, then search and the columns picker. On a computer it
+          sits on the top bar beside the staff names (PageToolbar), so the table starts at the very top. Totals
+          live in the table's own Sales / Outstanding / Receipts columns. */}
+      <PageToolbar>
         <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
           title="Show only customers missing something"
-          className={`shrink-0 max-w-[30%] rounded-lg border px-1.5 py-1.5 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
           <option value="">🚩 Flags ({FLAG_TYPES.reduce((n, f) => n + (flagCounts[f.key] > 0 ? 1 : 0), 0)})</option>
           {FLAG_TYPES.map(({ key, label }) => (
             <option key={key} value={key} disabled={flagCounts[key] === 0}>{label} ({flagCounts[key]})</option>
@@ -371,7 +373,7 @@ export default function CustomersPage({
         {locationCounts.length > 0 && (
           <select value={activeLocation ?? ''} onChange={e => setActiveLocation(e.target.value || null)}
             title="Show only customers in one place"
-            className={`shrink-0 max-w-[30%] rounded-lg border px-1.5 py-1.5 text-[11px] font-bold outline-none ${activeLocation ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+            className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeLocation ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
             <option value="">📍 Location</option>
             {locationCounts.map(([loc, count]) => <option key={loc} value={loc}>{loc} ({count})</option>)}
           </select>
@@ -379,10 +381,10 @@ export default function CustomersPage({
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder={`Search ${customers.length} customers…`}
-          className="min-w-0 flex-1 bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+          className="min-w-[120px] flex-1 bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-400"
         />
         <ColumnsPickerButton prefs={colPrefs} />
-      </div>
+      </PageToolbar>
 
       {/* Selected customer detail */}
       {selected && (

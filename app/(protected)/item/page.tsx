@@ -46,6 +46,7 @@ import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
+import { setPageToolbarEl } from '@/lib/pageToolbar'
 import AssignWidget from './_components/AssignWidget'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
@@ -6922,8 +6923,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
-            <>
-              <div className="flex items-center gap-3 overflow-x-auto">
+            <div className="flex items-center gap-3">
+              <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
               {/* Today's running sales total (see liveTodaySalesTotal) --
                   first in the slot so it's never scrolled out of view by
                   overflow-x-auto once the staff bar/tab switcher get long,
@@ -6935,7 +6936,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <PresentStaffBar embedded roster={activeStaff}
                 staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
               </div>
-            </>,
+              {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
+                  Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
+                  that don't use it. */}
+              <div ref={setPageToolbarEl} className="flex min-w-0 flex-1 items-center justify-end empty:hidden" />
+            </div>,
             navSlotEl
           )}
 
