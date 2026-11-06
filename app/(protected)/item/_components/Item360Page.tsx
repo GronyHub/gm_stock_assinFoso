@@ -1,4 +1,5 @@
 'use client'
+import PageToolbar from '@/lib/pageToolbar'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { ItemDetailErrorBoundary } from './ItemDetailErrorBoundary'
@@ -37,12 +38,15 @@ export default function Item360Page() {
 
   return (
     <div className="px-4 pt-3 pb-10 space-y-3">
-      <h1 className="text-lg font-bold text-gray-900">Item 360</h1>
-      <input
-        type="text" value={query} onChange={e => { setQuery(e.target.value); setSelected(null) }}
-        placeholder="Search an item by name or group…"
-        className="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
-      />
+      {/* The search sits on the top bar beside the staff names on a computer (PageToolbar); the sidebar button
+          already names the page, so there's no title. */}
+      <PageToolbar inlineClassName="flex">
+        <input
+          type="text" value={query} onChange={e => { setQuery(e.target.value); setSelected(null) }}
+          placeholder="Item 360: search an item by name or group…"
+          className="min-w-[160px] flex-1 text-sm px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+      </PageToolbar>
       {!selected && (
         <div className="space-y-1">
           {error && <p className="text-sm text-red-600">Couldn&apos;t search. Check your connection and try again.</p>}

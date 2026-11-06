@@ -1,4 +1,5 @@
 'use client'
+import PageToolbar from '@/lib/pageToolbar'
 import React, { useState, useEffect, useMemo, memo, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
@@ -520,7 +521,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
     <div className="flex flex-col h-full min-h-0">
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
-      <div className="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+      <PageToolbar grow={false} inlineClassName="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
         <button onClick={() => setShowManual(v => !v)}
@@ -533,7 +534,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         </button>
         <ColumnsPickerButton prefs={colPrefs} />
         </>}
-      </div>
+      </PageToolbar>
       {showAnalytics && (
         <div className="flex-1 overflow-y-auto min-h-0 p-2">
           <CountsAnalyticsSection />

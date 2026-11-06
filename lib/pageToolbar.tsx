@@ -18,8 +18,15 @@ export function setPageToolbarEl(el: HTMLDivElement | null) {
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
 const usePageToolbarEl = () => useSyncExternalStore(subscribe, () => currentEl, () => null)
 
-export default function PageToolbar({ children, inlineClassName }: { children: ReactNode; inlineClassName?: string }) {
+// inline: keep the row in the page anyway (e.g. Live Sale's "large screen" covers the top bar).
+// grow: whether this row takes the spare width (a search box) or stays its natural size (a few buttons).
+// Several pages' rows can share the spot; each lands in its own group, laid out left to right.
+export default function PageToolbar({ children, inlineClassName, inline = false, grow = true }: {
+  children: ReactNode; inlineClassName?: string; inline?: boolean; grow?: boolean
+}) {
   const el = usePageToolbarEl()
-  if (el) return createPortal(<div className="flex w-full min-w-0 items-center justify-end gap-1.5">{children}</div>, el)
+  if (el && !inline) return createPortal(
+    <div className={`flex min-w-0 flex-wrap items-center justify-end gap-1.5 ${grow ? 'flex-1' : 'shrink-0'}
+      [&>select]:flex-none [&>select]:max-w-[170px] [&>div.relative]:min-w-[150px]`}>{children}</div>, el)
   return <div className={inlineClassName ?? 'flex items-center gap-1.5'}>{children}</div>
 }

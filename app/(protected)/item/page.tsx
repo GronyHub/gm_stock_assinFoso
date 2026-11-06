@@ -46,7 +46,7 @@ import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
-import { setPageToolbarEl } from '@/lib/pageToolbar'
+import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import AssignWidget from './_components/AssignWidget'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
@@ -6939,7 +6939,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
                   that don't use it. */}
-              <div ref={setPageToolbarEl} className="flex min-w-0 flex-1 items-center justify-end empty:hidden" />
+              <div ref={setPageToolbarEl} className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 empty:hidden" />
             </div>,
             navSlotEl
           )}
@@ -6999,7 +6999,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   onto its own row by itself since it lived in a separate
                   conditional block with its own wrapping div. */}
               {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
-                <div className="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
+                <PageToolbar inline={liveExpanded} inlineClassName="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   {(lossView === 'sales' || lossView === 'items') && (<>
                   <select
                     value={liveProductTypeFilter}
@@ -7117,7 +7117,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       a screen with room to spare, unlike mobile where these
                       still need their own row to stay tappable. */}
                   {isDesktop && (lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
-                </div>
+                </PageToolbar>
               )}
               {/* Sale mode filter bar -- now Sale/Log/Receipts' shared row
                   (see the merged "Sales" tab, renderTabSwitcher above): Live
@@ -7311,7 +7311,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
+              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
                 <div className="flex justify-end items-center gap-1.5">
                   {isOwnerLevel(session?.user as any) && (
                     <button
@@ -7359,7 +7359,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     📊
                   </button>
                 </div>
-              </div>
+              </PageToolbar>
               {liveLogShowAnalytics ? (
                 <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
               ) : (
@@ -8041,7 +8041,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {renderModeToggleRow()}
               {/* Row 1: Search, Filter dropdown, Analytics, global search, Help -- no
                   title text, the tab switcher above already says "Sales". */}
-              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
                 <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
                 <select value={liveSalesMonthFilter ?? ''} onChange={e => setLiveSalesMonthFilter(e.target.value ? Number(e.target.value) : null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
@@ -8084,7 +8084,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Attach
                 </label>
                 <ColumnsPickerButton prefs={liveSalesColPrefs} radioStyle />
-              </div>
+              </PageToolbar>
               {/* Row 2: "All" -- part of the same mutually-exclusive radio
                   group as everything else here (History/Bars Only/WIC/GMC's
                   own "RC"-prefixed radios, the violation filters, Customers
@@ -8137,7 +8137,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
               )}
               {renderModeToggleRow()}
-              <div className="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
                 <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[100px]">
                   <option value="">All Vendors</option>
@@ -8175,7 +8175,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Analytics
                 </label>
                 <ColumnsPickerButton prefs={liveBillsColPrefs} radioStyle />
-              </div>
+              </PageToolbar>
               {/* Rows 2-3: one mutually-exclusive radio group -- All/New Bill/Bars
                   Only/History (black) first, then the violation filters (red, with
                   live counts, sorted by count descending). Same treatment as
@@ -8280,7 +8280,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </Fragment>
                 ))}
               </div>
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
+              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
                 <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
                   <option value="">All Accounts</option>
@@ -8304,7 +8304,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </button>
                 {renderExpensesFiltersBar()}
                 <ColumnsPickerButton prefs={liveExpensesColPrefs} hideTrigger open={liveExpensesColumnsOpen} onOpenChange={setLiveExpensesColumnsOpen} />
-              </div>
+              </PageToolbar>
               {liveExpensesAddingNew ? (
                 <div className="px-4 flex-1 overflow-auto">
                   <NewExpenseForm onSuccess={() => setLiveExpensesAddingNew(false)} />
