@@ -46,12 +46,15 @@ export async function GET(req: NextRequest) {
              target.canonical_name AS converts_to_name,
              i.derived_from_item_id,
              COALESCE(i.units_per_pack, 1) AS units_per_pack,
-             i.unit_time_seconds, i.image_url,
+             i.unit_time_seconds, img.image_url,
              COALESCE(i.needs_review, false) AS needs_review,
              NOW() AS updated_at
       FROM active_items i
       LEFT JOIN item_stock_summary s ON s.item_id = i.id
       LEFT JOIN items target ON target.id = i.converts_to_item_id
+      -- active_items is a view frozen at its creation (SELECT * expanded then), so newer columns such as image_url are
+      -- read from the items table itself.
+      LEFT JOIN items img ON img.id = i.id
       WHERE LOWER(COALESCE(i.status, '')) != 'service'
       ORDER BY i.canonical_name
       LIMIT ${limit}
@@ -100,7 +103,7 @@ export async function GET(req: NextRequest) {
       // Deliberately NOT cached: this fallback has no stock figures (soh is a placeholder 0), so keeping it
       // would show every item as 0 pc until the cache expired.
 
-      return NextResponse.json(await withFreshGmcSoh(rows))
+      return NextResponse.json(await withFreshGmcSoh(rows), { headers: { 'X-Degraded': '1' } })
     } catch (e) {
       console.error('items/all fallback error:', e)
       return NextResponse.json([])

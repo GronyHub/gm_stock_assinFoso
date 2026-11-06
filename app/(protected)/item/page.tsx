@@ -2296,6 +2296,7 @@ function ItemHubPageInner() {
   const liveCanDeleteCounts = isOwnerLevel(session?.user as any)
 
   const [liveAllItems, setLiveAllItems] = useState<LiveItem[]>([])
+  const liveAllItemsRef = useRef<LiveItem[]>([])
   const [liveItemsLoading, setLiveItemsLoading] = useState(true)
   const [liveTaps, setLiveTaps] = useState<Tap[]>([])
   // Shop opening/last-sign-out clock times per date -- backs the Log tab's
@@ -3085,7 +3086,12 @@ function ItemHubPageInner() {
         const r = await fetch('/api/items/all')
         if (r.ok) {
           const d = await r.json()
+          // A degraded answer (the server's stock query failed, so every stock figure is a placeholder 0) is never
+          // shown over good data: retry, and only accept it if there is nothing else to show.
+          const degraded = r.headers.get('X-Degraded') === '1'
+          if (degraded && (liveAllItemsRef.current.length > 0 || i < retries)) { if (i < retries) await new Promise(res => setTimeout(res, 1500 * (i + 1))); continue }
           if (Array.isArray(d) && d.length > 0) {
+            liveAllItemsRef.current = d
             setLiveAllItems(d); setLiveItemsError(false); setLiveItemsLoading(false)
             return true
           }
