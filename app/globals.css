@@ -47,3 +47,16 @@
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Sales Log: a cancelled (undone) sale. One straight red line runs through the whole row (drawn on every cell
+   at mid-height, so the cells join into one line), and every text in the row is red. */
+.undone-row > td {
+  background-image: linear-gradient(#dc2626, #dc2626);
+  background-size: 100% 1.5px;
+  background-position: 0 50%;
+  background-repeat: no-repeat;
+}
+.undone-row, .undone-row * {
+  color: #dc2626 !important;
+  text-decoration: none !important;
+}
