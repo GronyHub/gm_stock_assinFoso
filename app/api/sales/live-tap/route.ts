@@ -363,7 +363,10 @@ export async function POST(req: NextRequest) {
     void emailWorkDone(customerIdCode, [{ name: item.canonical_name, qty, price }])
 
     const whatsappUrl = waLocal && !skipWhatsapp ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName, await customerLifetimeTotal(customerIdCode)) : null
-    return success({ tap, whatsappUrl, buyerId, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
+    // The new row carries who it was sold to (a customer, a phone number or just a label), so the Sales Log's
+    // Customer column shows it straight away instead of waiting for the next refresh.
+    const tapOut = { ...tap, buyer_id: buyerId, buyer_name: waName ?? label, buyer_phone: waLocal }
+    return success({ tap: tapOut, whatsappUrl, buyerId, lineQuantity: line.quantity, lineTotal: line.item_total, targetSohAfterReduction, targetItemName, debugDuration: { itemName: item.canonical_name, productType: item.product_type, qty, estimatedDurationSeconds } })
   } catch (e) {
     console.error('[live-tap] Error:', e instanceof Error ? e.message : String(e))
     return handleError('sales/live-tap', e)
