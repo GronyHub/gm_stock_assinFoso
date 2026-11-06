@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 // A page's own controls (filters, search, columns...) moved up onto the top bar, to the right of the
@@ -7,24 +7,16 @@ import { createPortal } from 'react-dom'
 // spot (an empty div in its desktop top-bar portal, see item/page.tsx); a page wraps its control row in
 // <PageToolbar>. On phones the top bar is hidden, no spot is registered, and the row renders in place.
 // Same module-level bridge as lib/navSlot.ts, since the spot and the page are not parent and child.
-type Listener = (el: HTMLDivElement | null) => void
 let currentEl: HTMLDivElement | null = null
-const listeners = new Set<Listener>()
+const listeners = new Set<() => void>()
 
 export function setPageToolbarEl(el: HTMLDivElement | null) {
   currentEl = el
-  listeners.forEach(l => l(el))
+  listeners.forEach(l => l())
 }
 
-function usePageToolbarEl(): HTMLDivElement | null {
-  const [el, setEl] = useState(currentEl)
-  useEffect(() => {
-    setEl(currentEl)
-    listeners.add(setEl)
-    return () => { listeners.delete(setEl) }
-  }, [])
-  return el
-}
+const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l) } }
+const usePageToolbarEl = () => useSyncExternalStore(subscribe, () => currentEl, () => null)
 
 export default function PageToolbar({ children, inlineClassName }: { children: ReactNode; inlineClassName?: string }) {
   const el = usePageToolbarEl()
