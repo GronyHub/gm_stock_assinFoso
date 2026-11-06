@@ -44,6 +44,7 @@ import { usePolling } from '@/lib/usePolling'
 import { useViolations } from './_components/useViolations'
 import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
+import DayCashCell from './_components/DayCashCell'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
@@ -565,7 +566,7 @@ const PANE_ACCENT: Record<OuterTab, string> = {
 // calculated_soh -- these are two independently-fetched catalogues, not a
 // dedupe opportunity for this pass).
 type LiveItem = { id: number; name: string; group: string | null; soh: number; selling_price: string | number; cost_price: string | number; acp_price?: string | number; product_type: string | null; gmc_type?: string | null; count_interval?: string | null; count_cadence_days?: number | null; converts_to_item_id?: number | null; converts_to_name?: string | null; derived_from_item_id?: number | null; units_per_pack?: string | number | null; unit_time_seconds?: string | number | null; needs_review?: boolean }
-type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; invoice_id?: number | null; invoice_number?: string | null; wa_sent_at?: string | null }
+type Tap = { id: number; item_id: number; item_name: string; price: number | string; staff_name: string; tapped_at: string; undone: boolean; receipt_id?: number; quantity: number; soh?: number | null; is_gmc?: boolean; customer_id_code?: string | null; customer_name?: string | null; customer_phone?: string | null; buyer_id?: number | null; buyer_name?: string | null; buyer_phone?: string | null; invoice_id?: number | null; invoice_number?: string | null; wa_sent_at?: string | null; receipt_cash_counted?: string | number | null; receipt_total?: string | number | null }
 type ViolationType = { key: string; label: string; description?: string }
 // Sale mode's due-count queues -- same shape /api/stock/daily,
 // /api/stock/gmc-weekly and /api/stock/overdue already return for CountsTab.
@@ -6587,10 +6588,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(modeActive('sale'))} badge={itemsFlagsCount}
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
+              {/* Sales Rec is the Sales Log's Summary view now (the Summary button on the Log), not its own row;
+                  its flags show on this button. */}
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
-              <SidePaneButton icon="🧾" label="Sales Rec" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('sales'))} badge={salesFlagsCount} onClick={() => goItemsMode('sales')} />
+                active={paneActive(modeActive('log') || modeActive('sales'))} badge={salesFlagsCount} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
@@ -7349,6 +7350,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                   <button
                     type="button"
+                    onClick={() => goItemsMode('sales')}
+                    title="Summary: each day's receipt with cash counted, WNW, photos and older history (was Sales Rec)"
+                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
+                  >
+                    🧾 Summary{salesFlagsCount > 0 ? ` (${salesFlagsCount})` : ''}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}
                     title="Record a sale for a past day, with its customer and receipt (MI basket)"
                     className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition"
@@ -7455,7 +7464,25 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               ₵{formatPrice(dateTotal)}
                             </td>
-                            <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
+                            <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-left">
+                              {(() => {
+                                // Cash counted + WNW for the day's walk-in (WIC) sales; GMC is internal use, no cash.
+                                const wic = (dateTaps || []).filter((t): t is Tap => t != null && !t.is_gmc)
+                                const rid = wic.find(t => t.receipt_id)?.receipt_id ?? null
+                                const ccRaw = wic.find(t => t.receipt_id === rid)?.receipt_cash_counted
+                                const cc = ccRaw === null || ccRaw === undefined || ccRaw === '' ? null : Number(ccRaw)
+                                // WNW uses the day receipt's own total (what Sales Rec, P&L and the high-WNW flag use); the
+                                // Log's own walk-in sum only fills in before that total has loaded.
+                                const rtRaw = wic.find(t => t.receipt_id === rid)?.receipt_total
+                                const wicTotal = rtRaw !== null && rtRaw !== undefined && rtRaw !== '' ? Number(rtRaw)
+                                  : wic.filter(t => !t.undone).reduce((s2, t) => s2 + Number(t.price) * t.quantity, 0)
+                                return (
+                                  <DayCashCell receiptId={rid} cashCounted={cc} salesTotal={wicTotal}
+                                    onSaved={(v, total) => setLiveTaps(prev => prev.map(t => t.receipt_id === rid
+                                      ? { ...t, receipt_cash_counted: v, ...(total !== null ? { receipt_total: total } : {}) } : t))} />
+                                )
+                              })()}
+                            </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">
                               <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
@@ -8067,6 +8094,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* Row 1: Search, Filter dropdown, Analytics, global search, Help -- no
                   title text, the tab switcher above already says "Sales". */}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+                {/* This is the Sales Log's Summary view (formerly Sales Rec): the way back to the Log. */}
+                <button type="button" onClick={() => goItemsMode('log')} title="Back to the Sales Log"
+                  className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition">
+                  ← Sales Log
+                </button>
                 <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
                 <select value={liveSalesMonthFilter ?? ''} onChange={e => setLiveSalesMonthFilter(e.target.value ? Number(e.target.value) : null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
