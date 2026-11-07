@@ -50,6 +50,7 @@ import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import AssignWidget from './_components/AssignWidget'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
@@ -7096,6 +7097,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   conditional block with its own wrapping div. */}
               {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
                 <PageToolbar inline={liveExpanded} inlineClassName="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
+                  {liveMode === 'sale' && <PageGuide page="sale" />}
                   {(lossView === 'sales' || lossView === 'items') && (<>
                   <select
                     value={liveProductTypeFilter}
@@ -7408,6 +7410,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
+                <PageGuide page="log" />
                 <div className="flex flex-wrap justify-end items-center gap-1.5">
                   {/* Sales Rec / Summary's filters, now the Log's: Period, W / G, Bars only, Flags (+ History). */}
                   <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })}
@@ -8260,6 +8263,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
+                <PageGuide page="bills" />
                 <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[100px]">
                   <option value="">All Vendors</option>
@@ -8403,6 +8407,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 ))}
               </div>
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
+                <PageGuide page="expenses" />
                 <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
                   className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
                   <option value="">All Accounts</option>
@@ -10212,7 +10217,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   Sales tab's own violations row for the same reason -- both
                   are an actual per-sale loss rather than a data-hygiene gap
                   (see renderCostGteSpTable/renderSoldBelowCostTable). */}
-              {plSubView === 'pl' ? <ProfitLossTab /> :
+              {plSubView === 'pl' ? <><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="pl" /></PageToolbar><ProfitLossTab /></> :
                 plSubView === 'loss_by_date' ? renderLossesByDateTable() :
                 plSubView === 'loss_by_items' ? renderLossesByItemsTable() :
                 plSubView === 'net_loss' ? renderLossesByItemsTable(true) :
@@ -10352,7 +10357,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <CABTab openConfirmSignal={cabConfirmSignal} />}
+        {outerTab === 'loss' && lossView === 'cab' && <><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="cab" /></PageToolbar><CABTab openConfirmSignal={cabConfirmSignal} /></>}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to

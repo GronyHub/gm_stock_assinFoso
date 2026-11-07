@@ -1,5 +1,6 @@
 'use client'
 import PageToolbar from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import { useState } from 'react'
 import POTab from '../item/_components/POTab'
 
@@ -15,6 +16,7 @@ export default function PurchaseOrdersPage() {
   return (
     <div className="-mx-4 -mt-4 flex flex-col" style={{ height: 'calc(100dvh - 28px - 60px)' }}>
       <PageToolbar inlineClassName="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-200 bg-white">
+        <PageGuide page="purchase_orders" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search purchase orders…"
           className="min-w-[140px] flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400" />

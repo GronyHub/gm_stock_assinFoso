@@ -4,6 +4,7 @@ import CustomerPhones, { type ExtraPhone } from '../item/_components/CustomerPho
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
 import PageToolbar from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 
@@ -361,6 +362,7 @@ export default function CustomersPage({
           sits on the top bar beside the staff names (PageToolbar), so the table starts at the very top. Totals
           live in the table's own Sales / Outstanding / Receipts columns. */}
       <PageToolbar>
+        <PageGuide page="customers" />
         <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
           title="Show only customers missing something"
           className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>

@@ -1,5 +1,6 @@
 'use client'
 import PageToolbar from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import React, { useState, useEffect, useMemo, memo, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import dynamic from 'next/dynamic'
@@ -522,6 +523,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
       {lossPrompt && <LossDialog prompt={lossPrompt} onClose={() => setLossPrompt(null)} onFixRecords={onFixRecords} />}
       {pairingPrompt && <PairingDialog prompt={pairingPrompt} onClose={() => setPairingPrompt(null)} />}
       <PageToolbar grow={false} inlineClassName="flex flex-wrap items-center justify-end gap-1.5 px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <PageGuide page="counts" />
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
         <button onClick={() => setShowManual(v => !v)}
