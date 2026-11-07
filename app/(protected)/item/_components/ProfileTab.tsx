@@ -78,6 +78,51 @@ export default function ProfileTab() {
   const photoInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
   const [photoMenu, setPhotoMenu] = useState(false)
+
+  // In-app camera: the live picture is shown right here and a small square photo is taken from it. Unlike
+  // handing over to the phone's camera app, the browser never leaves the screen, so a low-memory phone does
+  // not clear the page out of memory (that showed "Unable to complete previous operation due to low memory"
+  // and lost the photo). Falls back to the phone's camera app if the camera cannot be opened here.
+  const [camOpen, setCamOpen] = useState(false)
+  const [camErr, setCamErr] = useState('')
+  const [camFacing, setCamFacing] = useState<'user' | 'environment'>('user')
+  const videoEl = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  function stopCam() {
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    streamRef.current = null
+  }
+  useEffect(() => {
+    if (!camOpen) return
+    let live = true
+    setCamErr('')
+    stopCam()
+    if (!navigator.mediaDevices?.getUserMedia) { setCamOpen(false); cameraInput.current?.click(); return }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 640 }, height: { ideal: 640 } }, audio: false })
+      .then(s => {
+        if (!live) { s.getTracks().forEach(t => t.stop()); return }
+        streamRef.current = s
+        if (videoEl.current) { videoEl.current.srcObject = s; void videoEl.current.play().catch(() => {}) }
+      })
+      .catch(() => { if (live) { setCamOpen(false); setPhotoErr('Could not open the camera here. Opening your phone camera instead…'); cameraInput.current?.click() } })
+    return () => { live = false; stopCam() }
+  }, [camOpen, camFacing])
+
+  function snap() {
+    const v = videoEl.current
+    if (!v || !v.videoWidth) return
+    const side = Math.min(v.videoWidth, v.videoHeight)
+    const c = document.createElement('canvas'); c.width = c.height = Math.min(640, side)
+    const ctx = c.getContext('2d')!
+    // front camera is mirrored on screen, so the saved photo is not flipped back
+    ctx.drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, c.width, c.height)
+    c.toBlob(b => {
+      if (!b) { setCamErr('Could not take the photo. Try again.'); return }
+      setCamOpen(false)
+      void uploadPhoto(new File([b], 'photo.jpg', { type: 'image/jpeg' }))
+    }, 'image/jpeg', 0.85)
+  }
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoErr, setPhotoErr] = useState('')
 
@@ -170,9 +215,25 @@ export default function ProfileTab() {
               onChange={e => { const f = e.target.files?.[0]; if (f) void uploadPhoto(f); e.target.value = '' }} />
           </div>
         </div>
+        {camOpen && (
+          <div className="fixed inset-0 z-[400] bg-black flex flex-col items-center justify-center p-4 gap-3">
+            <video ref={videoEl} playsInline muted autoPlay
+              className={`w-full max-w-sm aspect-square object-cover rounded-2xl bg-gray-900 ${camFacing === 'user' ? '-scale-x-100' : ''}`} />
+            {camErr && <p className="text-sm text-red-300">{camErr}</p>}
+            <p className="text-xs text-gray-300">Face the camera in good light, then tap Take photo.</p>
+            <div className="flex items-center gap-3 w-full max-w-sm">
+              <button type="button" onClick={() => setCamOpen(false)}
+                className="px-4 py-3 rounded-xl bg-gray-700 text-white text-sm font-semibold">Cancel</button>
+              <button type="button" onClick={snap}
+                className="flex-1 py-3 rounded-xl bg-green-600 active:bg-green-700 text-white text-base font-bold">Take photo</button>
+              <button type="button" onClick={() => setCamFacing(f => f === 'user' ? 'environment' : 'user')}
+                className="px-4 py-3 rounded-xl bg-gray-700 text-white text-sm font-semibold" title="Switch camera">🔄</button>
+            </div>
+          </div>
+        )}
         {photoMenu && !photoBusy && (
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => { setPhotoMenu(false); cameraInput.current?.click() }}
+            <button type="button" onClick={() => { setPhotoMenu(false); setCamFacing('user'); setCamOpen(true) }}
               className="rounded-xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700">📷 Take photo</button>
             <button type="button" onClick={() => { setPhotoMenu(false); photoInput.current?.click() }}
               className="rounded-xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-700">🖼 Choose from gallery</button>
