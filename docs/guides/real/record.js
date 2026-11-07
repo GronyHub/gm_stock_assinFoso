@@ -64,6 +64,11 @@ function mocks(page, sc) {
 
 function narrate(text, name) {
   const wav = path.join(WORK, name + '.wav')
+  if (process.env.TWI_PY) { // Twi narration: one-off model call per step (slow but simple)
+    const t = spawnSync(process.env.TWI_PY, [path.join(__dirname, 'twi_tts.py'), text, wav]); if (t.status !== 0) throw new Error('twi tts failed: ' + String(t.stderr))
+    const d2 = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav]).stdout.toString()
+    return { wav, dur: parseFloat(d2) }
+  }
   const r = spawnSync('python3', ['-m', 'piper', '-m', VOICE, '-f', wav, '--length-scale', '1.04', '--sentence-silence', '0.35'], { input: text })
   if (r.status !== 0) throw new Error('piper failed: ' + String(r.stderr))
   const d = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav]).stdout.toString()
@@ -129,7 +134,7 @@ async function main() {
   }
   const marks = []
   for (let i = 0; i < sc.steps.length; i++) {
-    const st = sc.steps[i], n = narrate(st.say, `${sc.key}_${i}`)
+    const st = sc.steps[i], n = narrate(process.env.NARRATION_JSON ? JSON.parse(fs.readFileSync(process.env.NARRATION_JSON, 'utf8'))[i] : st.say, `${sc.key}_${i}`)
     const start = Date.now() - t0
     marks.push({ wav: n.wav, at: start + 350 })
     await h.caption(st.caption || '')
