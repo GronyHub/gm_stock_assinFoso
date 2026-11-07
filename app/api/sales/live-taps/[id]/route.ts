@@ -1,7 +1,7 @@
 import { clearItemsCache } from '@/lib/itemsCache'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureLiveSaleTapsTable, reverseTapReceiptEffect } from '@/lib/liveSales'
+import { ensureLiveSaleTapsTable, reverseTapReceiptEffect, refileTapOnReceipts } from '@/lib/liveSales'
 import { NextRequest } from 'next/server'
 
 // Keeps a customer receipt in step when one of its sales is undone: that line is removed and the
@@ -52,8 +52,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const { tappedAt } = body
       if (!tappedAt) return badRequest('Missing tappedAt')
 
+      const [before] = await sql`
+        SELECT id, item_id, item_name, quantity, price, receipt_id, receipt_line_id, undone, staff_name,
+               tapped_at::date::text AS old_day
+        FROM live_sale_taps WHERE id = ${id}`
       await sql`UPDATE live_sale_taps SET tapped_at = ${tappedAt} WHERE id = ${id}`
-      const [tap] = await sql`SELECT tapped_at FROM live_sale_taps WHERE id = ${id}`
+      const [tap] = await sql`SELECT tapped_at, tapped_at::date::text AS new_day FROM live_sale_taps WHERE id = ${id}`
+      // Moved to another day: move it onto that day's receipt too (an undone sale is already off the receipts).
+      if (before && !before.undone && tap && tap.new_day !== before.old_day) {
+        const q = Number(before.quantity) || 1, p = Number(before.price) || 0
+        await refileTapOnReceipts(
+          { id: Number(before.id), item_id: Number(before.item_id), item_name: String(before.item_name), receipt_id: before.receipt_id, receipt_line_id: before.receipt_line_id },
+          { qty: q, price: p }, { qty: q, price: p, tappedAt: tap.tapped_at }, before.staff_name)
+      }
       return success({ tapped_at: tap?.tapped_at })
     }
 
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       // Fetch current tap details
       const [currentTap] = await sql`
-        SELECT id, quantity, price, receipt_line_id, receipt_id, item_name, staff_name
+        SELECT id, item_id, quantity, price, receipt_line_id, receipt_id, item_name, staff_name, undone, tapped_at
         FROM live_sale_taps WHERE id = ${id}
       `
       if (!currentTap) return badRequest('Tap not found')
@@ -79,32 +90,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const oldPrice = Number(currentTap.price) || 0
       const actualNewQty = newQty ?? oldQty
       const actualNewPrice = newPrice ?? oldPrice
-      const oldTotal = oldQty * oldPrice
       const newTotal = actualNewQty * actualNewPrice
 
       // Update the tap
       await sql`
         UPDATE live_sale_taps
-        SET quantity = ${actualNewQty}, price = ${actualNewPrice}, tapped_at = ${newTappedAt}
+        SET quantity = ${actualNewQty}, price = ${actualNewPrice}, tapped_at = COALESCE(${newTappedAt}, tapped_at)
         WHERE id = ${id}
       `
 
-      // Update receipt line if it exists
-      if (currentTap.receipt_line_id) {
-        const [line] = await sql`
-          UPDATE sales_receipt_lines
-          SET quantity = ${actualNewQty}, item_total = ${newTotal}
-          WHERE id = ${currentTap.receipt_line_id}
-          RETURNING id
-        `
-
-        // Update receipt total
-        if (line && currentTap.receipt_id) {
-          await sql`
-            UPDATE sales_receipts SET total = (SELECT COALESCE(SUM(item_total), 0) FROM sales_receipt_lines WHERE receipt_id = ${currentTap.receipt_id})
-            WHERE id = ${currentTap.receipt_id}
-          `
-        }
+      // Day receipts: this sale's own share of its item line changes (not the whole line, which also holds the
+      // day's other sales of the item), and it moves to another day's receipt if its date changed. An undone
+      // sale is already off the receipts.
+      if (!currentTap.undone && currentTap.receipt_id) {
+        await refileTapOnReceipts(
+          { id: Number(currentTap.id), item_id: Number(currentTap.item_id), item_name: String(currentTap.item_name), receipt_id: currentTap.receipt_id, receipt_line_id: currentTap.receipt_line_id },
+          { qty: oldQty, price: oldPrice }, { qty: actualNewQty, price: actualNewPrice, tappedAt: newTappedAt ?? currentTap.tapped_at }, currentTap.staff_name)
       }
 
       const [updatedTap] = await sql`

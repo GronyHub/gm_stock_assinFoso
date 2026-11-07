@@ -88,11 +88,19 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const keepIds: number[] = []
+    // A Live Sale line groups every sale of one item on one day, which can be at different prices (A4 sheets at 70
+    // and at 340): its total is the sum of those sales, not quantity x one price. When such a line comes back with
+    // the same quantity and price it was shown with, keep its total -- recomputing it here used to wipe the
+    // difference whenever a day was re-saved (e.g. to type in the cash counted).
+    const before = new Map((await sql`SELECT id, quantity, item_price, item_total FROM sales_receipt_lines WHERE receipt_id = ${receiptId}`)
+      .map(r => [Number(r.id), r]))
 
     for (const line of lines) {
       const qty = parseFloat(line.quantity) || 0
       const price = parseFloat(line.item_price) || 0
-      const total = qty * price
+      const old = line.id ? before.get(Number(line.id)) : undefined
+      const unchanged = !!old && Math.abs(Number(old.quantity) - qty) < 1e-9 && Math.abs(Number(old.item_price) - price) < 1e-6
+      const total = unchanged ? Number(old.item_total) : qty * price
 
       // A typed name (no explicit pick) is never matched against the existing
       // catalogue by text -- it always becomes its own new item. Untouched
