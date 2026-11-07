@@ -20,8 +20,8 @@ def F(p, s):
 
 # Current shop staff on the system (children_manager accounts and inactive accounts are not shop staff).
 STAFF = [
-    ('GM-01', 'Grony', 'Prince Fiifi Arthur', 'OWNER'),
-    ('GM-02', 'Joe', '', 'MANAGER'),
+    ('GM-01', 'Grony', 'Prince Fiifi Arthur', 'STAFF'),
+    ('GM-02', 'Joe', '', 'STAFF'),
     ('GM-03', 'Bino', 'Simon Kwasi Binolib', 'STAFF'),
     ('GM-04', 'James', 'James Nartey', 'STAFF'),
     ('GM-05', 'Mahama', '', 'STAFF'),
