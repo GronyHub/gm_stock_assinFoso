@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
   if (error) return error
 
   const days = req.nextUrl.searchParams.get('days') || '90'
+  // ?from=YYYY-MM-DD&to=YYYY-MM-DD: one period (the Sales Log's Period filter) instead of the last N days.
+  const from = req.nextUrl.searchParams.get('from'), to = req.nextUrl.searchParams.get('to')
+  const range = !!from && !!to && /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
 
   await ensureLiveSaleTapsTable()
   await ensureSaleBuyers()
@@ -41,7 +44,8 @@ export async function GET(req: NextRequest) {
     LEFT JOIN customers cu ON cu.customer_id_code = t.customer_id_code
     LEFT JOIN sale_buyers b ON b.tap_id = t.id
     LEFT JOIN invoices inv ON inv.id = t.invoice_id
-    WHERE t.tapped_at >= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => ${daysInt})
+    WHERE (${range} AND t.tapped_at::date BETWEEN ${range ? from : '1900-01-01'}::date AND ${range ? to : '1900-01-01'}::date)
+       OR (NOT ${range} AND t.tapped_at >= CURRENT_TIMESTAMP - MAKE_INTERVAL(days => ${daysInt}))
     ORDER BY t.tapped_at DESC
   `
   return success(rows)

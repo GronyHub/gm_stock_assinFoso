@@ -45,6 +45,8 @@ import { useViolations } from './_components/useViolations'
 import PaneDaily from './_components/PaneDaily'
 import AddShortcutButton, { type ShortcutKey } from './_components/AddShortcutButton'
 import DayCashCell from './_components/DayCashCell'
+import LogDayPhotos from './_components/LogDayPhotos'
+import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
@@ -115,6 +117,7 @@ const ActivityDurationsPanel = dynamic(() => import('./_components/ActivityDurat
 // treatment Count 2 and Log got) since none of them had anything left
 // that justified a separate sidebar destination once the "New Sale" flow
 // was dropped and the classic Sales list's own tap-a-sale case moved here.
+const LogFlagLists = dynamic(() => import('./_components/LogFlagLists'), { ssr: false })
 const SalesDaysSection = dynamic(() => import('./_components/SalesDaysSection'), { ssr: false })
 const SalesTab = dynamic(() => import('./_components/SalesTab'), { ssr: false })
 const BillsTab = dynamic(() => import('./_components/BillsTab'), { ssr: false })
@@ -2502,6 +2505,11 @@ function ItemHubPageInner() {
     if (!liveSaleJumpSeq || !liveSaleJumpTab) return
     setLiveMode(liveSaleJumpTab)
     setLiveSalesViolationFilter(liveSaleJumpTab === 'sales' ? liveSaleJumpViolation : null)
+    // Sales record flags (Sales Rec's, now the Log's): open the Log on that flag.
+    if (liveSaleJumpTab === 'log' && liveSaleJumpViolation) {
+      setLogFlag(liveSaleJumpViolation === 'dup_receipts' ? 'dup_receipt' : liveSaleJumpViolation)
+      setLogBarsOnly(false); setLogShowW(true); setLogShowG(true)
+    }
     if (liveSaleJumpTab === 'sales') {
       // Keep the Sales radio row's mutual exclusivity intact -- jumping
       // straight to a violation should win over whatever History/Bars
@@ -3358,6 +3366,28 @@ function ItemHubPageInner() {
   // The Log loads the last 90 days; "Show older sales" loads every sale ever tapped (Sales Log records start
   // 9 Aug 2026; anything older is in the analytics' Days & months).
   const [liveTapsAll, setLiveTapsAll] = useState<'no' | 'loading' | 'yes'>('no')
+  // Everything Sales Rec / Summary held, merged into the Sales Log: the day receipts (cash counted, photos, who
+  // entered them) and the receipt lines no tap stands behind (history imported back to 2023, lines typed in by
+  // hand), loaded per period from /api/sales/log-records; plus Summary's filters (Period, W / G, Bars only, Flags).
+  type LogRec = { id: number; receipt_number: string; day: string; customer_name: string | null; is_gmc: boolean | null; total: string; cash_counted: string | null; entered_by: string | null; attachments: Attachment[] | null }
+  type LogRecLine = { id: number; receipt_id: number; day: string; is_gmc: boolean | null; item_id: number | null; item_name: string; quantity: string | null; item_price: string | null; item_total: string | null; source: string | null }
+  const [logPeriod, setLogPeriod] = useState<{ y: number | null; m: number | null }>({ y: null, m: null })
+  const [logRecs, setLogRecs] = useState<{ receipts: LogRec[]; lines: LogRecLine[] } | null>(null)
+  const [logRecsStatus, setLogRecsStatus] = useState<'loading' | 'ok' | 'error'>('loading')
+  const [logPeriodTaps, setLogPeriodTaps] = useState<Tap[] | null>(null)
+  const [logShowW, setLogShowW] = useState(true)
+  const [logShowG, setLogShowG] = useState(true)
+  const [logBarsOnly, setLogBarsOnly] = useState(false)
+  const [logFlag, setLogFlag] = useState('')
+  const [logFlagsData, setLogFlagsData] = useState<Record<string, unknown> | null>(null)
+  const logYears = useMemo(() => { const now = new Date().getUTCFullYear(); return Array.from({ length: now - 2023 + 1 }, (_, i) => now - i) }, [])
+  function logRange(p: { y: number | null; m: number | null }, all: boolean): [string, string] {
+    const iso = (d: Date) => d.toISOString().slice(0, 10)
+    if (!p.y) return [all ? '2026-08-01' : iso(new Date(Date.now() - 90 * 86400000)), iso(new Date())]
+    if (!p.m) return [`${p.y}-01-01`, `${p.y}-12-31`]
+    const last = new Date(Date.UTC(p.y, p.m, 0)).getUTCDate()
+    return [`${p.y}-${String(p.m).padStart(2, '0')}-01`, `${p.y}-${String(p.m).padStart(2, '0')}-${String(last).padStart(2, '0')}`]
+  }
   function loadAllLiveTaps() {
     setLiveTapsAll('loading')
     fetchTaps(3650).then(taps => { setLiveTaps(taps); setLiveTapsAll('yes') }).catch(() => setLiveTapsAll('no'))
@@ -3670,16 +3700,56 @@ function ItemHubPageInner() {
   // renders from the same mounted component instance, switched by
   // liveMode; a useMemo that only ran while liveMode==='log' would change
   // the hook count the moment you switched tabs and crash the page.
-  const liveTapsByDate = useMemo(() => {
-    const groups = new Map<string, typeof liveTaps>()
-    for (const tap of liveTaps) {
-      if (!tap || !tap.tapped_at) continue
-      const date = tap.tapped_at.slice(0, 10)
-      if (!groups.has(date)) groups.set(date, [])
-      groups.get(date)!.push(tap)
+
+  // The Sales Log's days: every day with tapped sales or a day receipt in the loaded period, each with its taps,
+  // receipts and record lines, after the W / G and Flags filters.
+  const logFlagDates = useMemo(() => {
+    if (!logFlag || !logFlagsData) return null
+    const key = ({ no_cash: 'noCash', high_wnw: 'highWnw', no_attachment: 'noAttachment', sold_below_cost: 'costGteSell' } as Record<string, string>)[logFlag]
+    if (!key) return null
+    const rows = (logFlagsData[key] as { receipt_date?: string }[] | undefined) ?? []
+    return new Set(rows.map(r => String(r.receipt_date ?? '').slice(0, 10)))
+  }, [logFlag, logFlagsData])
+  const logDays = useMemo(() => {
+    const keep = (g: boolean | null | undefined) => (g ? logShowG : logShowW)
+    const map = new Map<string, { taps: Tap[]; receipts: LogRec[]; lines: LogRecLine[] }>()
+    const get = (d: string) => { let v = map.get(d); if (!v) { v = { taps: [], receipts: [], lines: [] }; map.set(d, v) } return v }
+    for (const t of (logPeriod.y ? logPeriodTaps : liveTaps) ?? []) {
+      if (!t || !t.tapped_at || !keep(t.is_gmc)) continue
+      get(t.tapped_at.slice(0, 10)).taps.push(t)
     }
-    return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a))
-  }, [liveTaps])
+    for (const r of logRecs?.receipts ?? []) get(r.day).receipts.push(r)
+    for (const l of logRecs?.lines ?? []) if (keep(l.is_gmc)) get(l.day).lines.push(l)
+    let days = Array.from(map.entries())
+      .filter(([, v]) => v.taps.length > 0 || v.lines.length > 0 || v.receipts.some(r => keep(r.is_gmc)))
+      .sort(([a], [b]) => b.localeCompare(a))
+    if (logFlagDates) days = days.filter(([d]) => logFlagDates.has(d))
+    return days
+  }, [liveTaps, logPeriodTaps, logPeriod.y, logRecs, logShowW, logShowG, logFlagDates])
+
+  // Records (and, for a picked Period, that period's taps) load when the Log is open and the period changes.
+  useEffect(() => {
+    if (liveMode !== 'log') return
+    const [from, to] = logRange(logPeriod, liveTapsAll === 'yes')
+    let off = false
+    setLogRecsStatus('loading')
+    fetch(`/api/sales/log-records?from=${from}&to=${to}`).then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => { if (!off) { setLogRecs({ receipts: d.receipts ?? [], lines: d.lines ?? [] }); setLogRecsStatus('ok') } })
+      .catch(() => { if (!off) setLogRecsStatus('error') })
+    setLogPeriodTaps(null)
+    if (logPeriod.y) {
+      fetch(`/api/sales/live-taps?from=${from}&to=${to}`).then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => { if (!off) setLogPeriodTaps(Array.isArray(d) ? d.filter((t: Tap | null): t is Tap => t != null) : []) })
+        .catch(() => { if (!off) setLogPeriodTaps([]) })
+    }
+    return () => { off = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveMode, logPeriod.y, logPeriod.m, liveTapsAll])
+  // Flags (no cash counted, high WNW, no photo, sold below cost, missing days, duplicate receipts) load once, when used.
+  useEffect(() => {
+    if (liveMode !== 'log' || !logFlag || logFlagsData || logFlag === 'history') return
+    fetch('/api/flags').then(r => r.ok ? r.json() : Promise.reject()).then(d => setLogFlagsData(d ?? {})).catch(() => setLogFlagsData({}))
+  }, [liveMode, logFlag, logFlagsData])
 
   // Shop open/close bounds for the Log tab's Gap column -- only fetched
   // while Log is actually being looked at (same "not until it's viewed"
@@ -3688,7 +3758,7 @@ function ItemHubPageInner() {
   // every date again.
   useEffect(() => {
     if (liveMode !== 'log') return
-    const dates = liveTapsByDate.map(([date]) => date).filter(d => !(d in liveDayBounds))
+    const dates = logDays.filter(([, v]) => v.taps.length > 0).map(([date]) => date).filter(d => !(d in liveDayBounds))
     if (!dates.length) return
     fetch(`/api/staff-times/day-bounds?dates=${dates.join(',')}`)
       .then(r => r.json())
@@ -3702,7 +3772,7 @@ function ItemHubPageInner() {
       })
       .catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveMode, liveTapsByDate])
+  }, [liveMode, logDays])
 
   // Fetch target GMC item info when a GMC service is selected
   // Handles two cases:
@@ -6600,7 +6670,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
+                active={paneActive(modeActive('log'))} badge={salesFlagsCount} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
@@ -7338,6 +7408,35 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
                 <div className="flex justify-end items-center gap-1.5">
+                  {/* Sales Rec / Summary's filters, now the Log's: Period, W / G, Bars only, Flags (+ History). */}
+                  <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })}
+                    title="Period: pick a year (and month) to see older sales and records, back to 2023"
+                    className="shrink-0 rounded border border-gray-300 bg-white px-1 py-0.5 text-[10px] font-semibold text-gray-800">
+                    <option value="">Last 90 days</option>
+                    {logYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  {logPeriod.y && (
+                    <select value={logPeriod.m ?? ''} onChange={e => setLogPeriod(p => ({ ...p, m: e.target.value ? Number(e.target.value) : null }))}
+                      className="shrink-0 rounded border border-gray-300 bg-white px-1 py-0.5 text-[10px] font-semibold text-gray-800">
+                      <option value="">Whole year</option>
+                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((mn, i) => <option key={mn} value={i + 1}>{mn}</option>)}
+                    </select>
+                  )}
+                  <button type="button" onClick={() => setLogShowW(v => !v)} title="Walk-in (WIC) sales"
+                    className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logShowW ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>W</button>
+                  <button type="button" onClick={() => setLogShowG(v => !v)} title="GMC (internal use)"
+                    className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logShowG ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>G</button>
+                  <button type="button" onClick={() => setLogBarsOnly(v => !v)} title="Show only each day's row (totals, cash counted, WNW, photos)"
+                    className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logBarsOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Bars only</button>
+                  <select value={logFlag} onChange={e => setLogFlag(e.target.value)} title="Flags and history"
+                    className={`shrink-0 max-w-[150px] rounded border px-1 py-0.5 text-[10px] font-semibold ${logFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                    <option value="">🚩 Flags{salesFlagsCount ? ` (${salesFlagsCount})` : ''}</option>
+                    {([['no_cash', 'No cash counted', 'noCash'], ['high_wnw', 'High WNW', 'highWnw'], ['no_attachment', 'No photo', 'noAttachment'], ['sold_below_cost', 'Sold below cost', 'costGteSell'], ['missing_days', 'Missing days', 'missingDays'], ['dup_receipt', 'Duplicate receipts', 'dupReceipts']] as const).map(([k, label, dk]) => {
+                      const list = logFlagsData?.[dk] as unknown[] | undefined
+                      return <option key={k} value={k}>{label}{list ? ` (${list.length})` : ''}</option>
+                    })}
+                    <option value="history">History (changes)</option>
+                  </select>
                   {isOwnerLevel(session?.user as any) && (
                     <button
                       type="button"
@@ -7389,8 +7488,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="px-3 pt-3 flex-1 overflow-auto"><SalesDaysSection /><LiveSaleAnalyticsSection /></div>
               ) : (
               <div className="flex-1 overflow-auto" ref={logWrapRef}>
-                {liveTaps.length === 0 ? (
-                  liveTapsStatus === 'loading' ? (
+                {logFlagDates && (
+                  <p className="px-2 py-1 text-[10px] text-red-700 bg-red-50 border-b border-red-100">
+                    Showing the flagged days in this period ({logDays.length}). Pick a year in Period to see flagged days from other years.
+                  </p>
+                )}
+                {(logFlag === 'missing_days' || logFlag === 'dup_receipt' || logFlag === 'history') ? (
+                  <LogFlagLists view={logFlag} flags={logFlagsData as never} onClose={() => setLogFlag('')}
+                    onFixedMissing={d => setLogFlagsData(f => f ? { ...f, missingDays: ((f.missingDays as { missing_date: string }[]) ?? []).filter(x => x.missing_date !== d) } : f)}
+                    onPickDate={d => { setLogFlag(''); setLogPeriod({ y: Number(d.slice(0, 4)), m: Number(d.slice(5, 7)) }) }} />
+                ) : logDays.length === 0 ? (
+                  (logPeriod.y ? (logRecsStatus === 'loading' || logPeriodTaps === null) : liveTapsStatus === 'loading') ? (
                     <p className="text-sm text-gray-400 text-center py-8">Loading sales…</p>
                   ) : liveTapsStatus === 'error' ? (
                     <div className="py-8 text-center">
@@ -7430,14 +7538,23 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       </tr>
                     </thead>
                     <tbody>
-                    {liveTapsByDate.map(([date, dateTaps]) => {
-                      const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
+                    {logDays.map(([date, logDay]) => {
+                      const dateTaps = logDay.taps
+                      // Day total and profit: tapped sales plus the day's record lines (history / typed-in lines).
+                      const recTotal = logDay.lines.reduce((s2, l) => s2 + Number(l.item_total ?? 0), 0)
+                      const recProfit = logDay.lines.reduce((s2, l) => {
+                        const cp = l.item_id ? liveCostPriceByItemId.get(l.item_id) : undefined
+                        return s2 + (cp !== undefined && l.quantity != null ? Number(l.item_total ?? 0) - cp * Number(l.quantity) : 0)
+                      }, 0)
+                      const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0) + recTotal
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
-                        .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0)
+                        .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0) + recProfit
+                      const wicRec = logDay.receipts.find(r => !r.is_gmc) ?? null
+                      const enteredBy = [...new Set(logDay.receipts.map(r => r.entered_by).filter(Boolean))].join(', ')
                       return (
                         <Fragment key={date}>
                           {/* Date header */}
-                          <tr className="bg-green-50 border-b border-green-200">
+                          <tr id={`log-day-${date}`} className="bg-green-50 border-b border-green-200">
                             <td className="sticky left-0 top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               {rcptSelect && (() => {
                                 const ok = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone && !t.invoice_id)
@@ -7466,23 +7583,31 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                               ₵{formatPrice(dateTotal)}
                             </td>
                             <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-left">
+                              <span className="inline-flex items-center gap-1.5">
                               {(() => {
-                                // Cash counted + WNW for the day's walk-in (WIC) sales; GMC is internal use, no cash.
+                                // Cash counted + WNW for the day's walk-in (WIC) receipt; GMC is internal use, no cash.
+                                // The day receipt from the records is the source; today's sales fall back to their taps.
                                 const wic = (dateTaps || []).filter((t): t is Tap => t != null && !t.is_gmc)
-                                const rid = wic.find(t => t.receipt_id)?.receipt_id ?? null
-                                const ccRaw = wic.find(t => t.receipt_id === rid)?.receipt_cash_counted
+                                const rid = wicRec?.id ?? wic.find(t => t.receipt_id)?.receipt_id ?? null
+                                const ccRaw = wicRec ? wicRec.cash_counted : wic.find(t => t.receipt_id === rid)?.receipt_cash_counted
                                 const cc = ccRaw === null || ccRaw === undefined || ccRaw === '' ? null : Number(ccRaw)
-                                // WNW uses the day receipt's own total (what Sales Rec, P&L and the high-WNW flag use); the
-                                // Log's own walk-in sum only fills in before that total has loaded.
-                                const rtRaw = wic.find(t => t.receipt_id === rid)?.receipt_total
+                                const rtRaw = wicRec ? wicRec.total : wic.find(t => t.receipt_id === rid)?.receipt_total
                                 const wicTotal = rtRaw !== null && rtRaw !== undefined && rtRaw !== '' ? Number(rtRaw)
                                   : wic.filter(t => !t.undone).reduce((s2, t) => s2 + Number(t.price) * t.quantity, 0)
                                 return (
                                   <DayCashCell receiptId={rid} cashCounted={cc} salesTotal={wicTotal}
-                                    onSaved={(v, total) => setLiveTaps(prev => prev.map(t => t.receipt_id === rid
-                                      ? { ...t, receipt_cash_counted: v, ...(total !== null ? { receipt_total: total } : {}) } : t))} />
+                                    onSaved={(v, total) => {
+                                      setLiveTaps(prev => prev.map(t => t.receipt_id === rid ? { ...t, receipt_cash_counted: v, ...(total !== null ? { receipt_total: total } : {}) } : t))
+                                      setLogRecs(p => p ? { ...p, receipts: p.receipts.map(r => r.id === rid ? { ...r, cash_counted: String(v), ...(total !== null ? { total: String(total) } : {}) } : r) } : p)
+                                    }} />
                                 )
                               })()}
+                              {logDay.receipts.length > 0 && (
+                                <LogDayPhotos receipts={logDay.receipts}
+                                  onSaved={(rid2, a2) => setLogRecs(p => p ? { ...p, receipts: p.receipts.map(r => r.id === rid2 ? { ...r, attachments: a2 } : r) } : p)} />
+                              )}
+                              {enteredBy && <span className="text-[8px] font-normal text-gray-500" title="Who entered the day receipt">by {enteredBy}</span>}
+                              </span>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">
                               <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
@@ -7492,7 +7617,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           {/* Date's taps -- `group` + an explicit bg on the sticky
                               first cell (not bg-inherit) so scrolled-under columns
                               don't show through it, same fix as Item 360's table. */}
-                          {(dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
+                          {!logBarsOnly && (dateTaps || []).filter((t): t is Tap => t != null).map((tap, i) => {
                             // Gap = time since the previous (chronologically
                             // earlier) tap -- dateTaps is newest-first, so that's
                             // index i+1. The day's oldest tap (i at the end of the
@@ -7649,19 +7774,47 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             </tr>
                             )
                           })}
+                          {/* Record lines: on the day receipt but not tapped (history back to 2023, lines typed in by
+                              hand). Read-only. */}
+                          {!logBarsOnly && logDay.lines.map(l => {
+                            const q = l.quantity == null ? null : Number(l.quantity)
+                            const amt = Number(l.item_total ?? 0)
+                            const cp = l.item_id ? (liveCostPriceByItemId.get(l.item_id) ?? null) : null
+                            const pf = q !== null && cp !== null ? amt - cp * q : null
+                            return (
+                              <tr key={`rec-${l.id}`} title="Recorded on the day receipt (not tapped). Read-only.">
+                                <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 ${isDesktop ? 'whitespace-nowrap' : 'max-w-[118px] min-w-[96px]'} align-top bg-gray-50`}>
+                                  <span className={`inline-block rounded px-0.5 mr-0.5 text-[7px] font-bold leading-tight align-middle ${l.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-600'}`}>{l.is_gmc ? 'GMC' : 'REC'}</span>
+                                  <span className={`text-[9px] leading-tight font-semibold text-gray-700 ${isDesktop ? '' : 'break-words'}`}>{l.item_name}</span>
+                                </td>
+                                <td className="bg-gray-50" />
+                                <td className="bg-gray-50" />
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] font-semibold whitespace-nowrap text-gray-700">₵{formatPrice(amt)}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[8px] text-gray-400">record</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] whitespace-nowrap text-gray-700">{l.item_price != null ? `₵${formatPrice(Number(l.item_price))}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] whitespace-nowrap text-gray-500">{cp !== null ? `₵${formatPrice(cp)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className={`text-[9px] whitespace-nowrap ${pf !== null && pf < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{pf !== null ? `₵${formatPrice(pf)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[9px] text-gray-700">{q !== null ? q : '—'}</span></td>
+                                <td className="bg-gray-50" />
+                                <td className="bg-gray-50" />
+                                <td className="bg-gray-50" />
+                                <td className="bg-gray-50" />
+                              </tr>
+                            )
+                          })}
                         </Fragment>
                       )
                     })}
                     </tbody>
                   </table>
                 )}
-                {liveTapsStatus === 'ok' && liveTaps.length > 0 && liveTapsAll !== 'yes' && (
+                {!logPeriod.y && !logFlag && liveTapsStatus === 'ok' && liveTaps.length > 0 && liveTapsAll !== 'yes' && (
                   <div className="py-3 text-center">
                     <button type="button" onClick={loadAllLiveTaps} disabled={liveTapsAll === 'loading'}
                       className="rounded-lg bg-gray-100 px-3 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-200 disabled:opacity-50">
                       {liveTapsAll === 'loading' ? 'Loading older sales…' : 'Show older sales'}
                     </button>
-                    <p className="mt-1 text-[10px] text-gray-400">Showing the last 90 days. Sales before 9 Aug 2026 are in 📊 Analytics → Days &amp; months.</p>
+                    <p className="mt-1 text-[10px] text-gray-400">Showing the last 90 days. For older sales and records (back to 2023), pick a year in Period.</p>
                   </div>
                 )}
               </div>

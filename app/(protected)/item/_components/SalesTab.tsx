@@ -102,7 +102,8 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
   )
 }
 
-function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
+// Exported for the Sales Log's Flags → Missing days list (LogFlagLists.tsx).
+export function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {
   const [total, setTotal] = useState('')
   const [cash, setCash] = useState('')
   const [saving, setSaving] = useState(false)
