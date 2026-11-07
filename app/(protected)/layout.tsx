@@ -6,6 +6,7 @@ import PushSubscriber from '@/components/PushSubscriber'
 import CaretakerGuard from '@/components/CaretakerGuard'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
+import PhotoReminder from '@/components/PhotoReminder'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -43,6 +44,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <MainContainer>{children}</MainContainer>
       <PushSubscriber />
       <CaretakerGuard />
+      <PhotoReminder />
     </div>
   )
 }
