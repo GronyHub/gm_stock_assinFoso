@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
 import PageToolbar from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Vendor = {
@@ -268,6 +269,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
           names (PageToolbar), so the table starts at the very top. Totals live in the table's own Billed / Paid /
           Outstanding / Bills columns. */}
       <PageToolbar>
+        <PageGuide page="vendors" />
         {noContactCount > 0 && (
           <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
             className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>

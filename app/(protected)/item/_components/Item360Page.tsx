@@ -1,5 +1,6 @@
 'use client'
 import PageToolbar from '@/lib/pageToolbar'
+import PageGuide from '@/components/PageGuide'
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { ItemDetailErrorBoundary } from './ItemDetailErrorBoundary'
@@ -41,6 +42,7 @@ export default function Item360Page() {
       {/* The search sits on the top bar beside the staff names on a computer (PageToolbar); the sidebar button
           already names the page, so there's no title. */}
       <PageToolbar inlineClassName="flex">
+        <PageGuide page="item360" />
         <input
           type="text" value={query} onChange={e => { setQuery(e.target.value); setSelected(null) }}
           placeholder="Item 360: search an item by name or group…"

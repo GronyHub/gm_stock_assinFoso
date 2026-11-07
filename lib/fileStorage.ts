@@ -69,14 +69,35 @@ async function backupToDatabase(pathname: string, contentType: string, data: Buf
   }
 }
 
-export async function saveFile(pathname: string, file: File | Blob, contentType?: string): Promise<{ pathname: string; contentType: string }> {
+export async function saveFile(pathname: string, file: File | Blob, contentType?: string, opts: { backup?: boolean } = {}): Promise<{ pathname: string; contentType: string }> {
   const full = resolveSafePath(pathname)
   const buf = Buffer.from(await file.arrayBuffer())
   await fs.promises.mkdir(path.dirname(full), { recursive: true })
   await fs.promises.writeFile(full, buf)
   const resolvedType = contentType || (file as File).type || 'application/octet-stream'
-  backupToDatabase(pathname, resolvedType, buf) // fire-and-forget -- see comment above
+  // backup: false for big files (page guide videos) -- copying tens of MB into Postgres would eat the Neon
+  // free tier's storage; they live on the Droplet's disk only.
+  if (opts.backup !== false) backupToDatabase(pathname, resolvedType, buf) // fire-and-forget -- see comment above
   return { pathname, contentType: resolvedType }
+}
+
+// Streams part of a file for an HTTP Range request (video seeking; iPhone Safari won't play video without it).
+export async function readFileRange(pathname: string, range: string | null): Promise<{
+  stream: ReadableStream; contentType: string; size: number; start: number; end: number; partial: boolean
+} | null> {
+  const full = resolveSafePath(pathname)
+  let size = 0
+  try { const st = await fs.promises.stat(full); if (!st.isFile()) return null; size = st.size } catch { return null }
+  let start = 0, end = size - 1, partial = false
+  const m = range && /bytes=(\d*)-(\d*)/.exec(range)
+  if (m && size > 0) {
+    partial = true
+    if (m[1] === '' && m[2] !== '') { start = Math.max(0, size - Number(m[2])) }
+    else { start = Number(m[1]) || 0; if (m[2] !== '') end = Math.min(size - 1, Number(m[2])) }
+    if (start > end) { start = 0; end = size - 1; partial = false }
+  }
+  const nodeStream = fs.createReadStream(full, { start, end })
+  return { stream: Readable.toWeb(nodeStream) as ReadableStream, contentType: contentTypeFromExt(full), size, start, end, partial }
 }
 
 export async function readFile(pathname: string): Promise<{ stream: ReadableStream; contentType: string } | null> {
