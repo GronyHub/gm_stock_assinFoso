@@ -3355,8 +3355,15 @@ function ItemHubPageInner() {
       }
     }
   }
+  // The Log loads the last 90 days; "Show older sales" loads every sale ever tapped (Sales Log records start
+  // 9 Aug 2026; anything older is in the analytics' Days & months).
+  const [liveTapsAll, setLiveTapsAll] = useState<'no' | 'loading' | 'yes'>('no')
+  function loadAllLiveTaps() {
+    setLiveTapsAll('loading')
+    fetchTaps(3650).then(taps => { setLiveTaps(taps); setLiveTapsAll('yes') }).catch(() => setLiveTapsAll('no'))
+  }
   function reloadLiveTaps() {
-    fetchTaps(90).then(taps => { setLiveTaps(taps); setLiveTapsStatus('ok') }).catch(() => { /* keep what is on screen */ })
+    fetchTaps(liveTapsAll === 'yes' ? 3650 : 90).then(taps => { setLiveTaps(taps); setLiveTapsStatus('ok') }).catch(() => { /* keep what is on screen */ })
   }
   function loadLiveTapsFresh() {
     setLiveTapsStatus(prev => (prev === 'ok' ? 'ok' : 'loading'))
@@ -7647,6 +7654,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     })}
                     </tbody>
                   </table>
+                )}
+                {liveTapsStatus === 'ok' && liveTaps.length > 0 && liveTapsAll !== 'yes' && (
+                  <div className="py-3 text-center">
+                    <button type="button" onClick={loadAllLiveTaps} disabled={liveTapsAll === 'loading'}
+                      className="rounded-lg bg-gray-100 px-3 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-200 disabled:opacity-50">
+                      {liveTapsAll === 'loading' ? 'Loading older sales…' : 'Show older sales'}
+                    </button>
+                    <p className="mt-1 text-[10px] text-gray-400">Showing the last 90 days. Sales before 9 Aug 2026 are in 📊 Analytics → Days &amp; months.</p>
+                  </div>
                 )}
               </div>
               )}

@@ -8,12 +8,23 @@ import { NextRequest } from 'next/server'
 // whose cash was counted, so an uncounted day doesn't show as a huge shortfall.
 // GET            -> { months: [...] }   one row per month, newest first
 // GET ?month=YYYY-MM -> { days: [...] } one row per day of that month
+// GET ?day=YYYY-MM-DD  -> { lines: [...] } what was sold that day (item, qty, price, amount, who), read-only
 const GMC = 'Grony Multimedia as Customer'
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
   if (error) return error
   try {
+    const day = req.nextUrl.searchParams.get('day')
+    if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      const lines = await sql`
+        SELECT l.id, COALESCE(l.resolved_name, l.raw_item_name, '?') AS item, l.quantity, l.item_price, l.item_total,
+               (r.customer_name = ${GMC}) AS is_gmc, r.customer_name
+        FROM sales_receipts r JOIN sales_receipt_lines l ON l.receipt_id = r.id
+        WHERE r.receipt_date::date = ${day}
+        ORDER BY (r.customer_name = ${GMC}) NULLS FIRST, r.id, l.id`
+      return success({ lines })
+    }
     const month = req.nextUrl.searchParams.get('month')
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       const days = await sql`
