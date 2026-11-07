@@ -1443,7 +1443,8 @@ function ItemHubPageInner() {
   // number on the button is never out of step with what you'd see there.
   const violationCountByType = (types: string[]) =>
     cashViolations.filter(v => types.includes(v.type)).reduce((s, v) => s + v.count, 0)
-  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'dup_receipts', 'no_attachment', 'high_wnw'])
+  // No photo ('no_attachment') isn't counted: photos stopped being required once sales were tapped in.
+  const salesFlagsCount = violationCountByType(['no_cash', 'missing_days', 'dup_receipts', 'high_wnw'])
   const itemsFlagsCount = violationCountByType([
     'no_group', 'duplicates', 'not_in_inventory', 'no_sp', 'no_cp', 'unlinked_named', 'service_violation',
     'alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous',
@@ -3369,7 +3370,7 @@ function ItemHubPageInner() {
   // Everything Sales Rec / Summary held, merged into the Sales Log: the day receipts (cash counted, photos, who
   // entered them) and the receipt lines no tap stands behind (history imported back to 2023, lines typed in by
   // hand), loaded per period from /api/sales/log-records; plus Summary's filters (Period, W / G, Bars only, Flags).
-  type LogRec = { id: number; receipt_number: string; day: string; customer_name: string | null; is_gmc: boolean | null; total: string; cash_counted: string | null; entered_by: string | null; attachments: Attachment[] | null }
+  type LogRec = { id: number; receipt_number: string; day: string; customer_name: string | null; is_gmc: boolean | null; total: string; cash_counted: string | null; attachments: Attachment[] | null }
   type LogRecLine = { id: number; receipt_id: number; day: string; is_gmc: boolean | null; item_id: number | null; item_name: string; quantity: string | null; item_price: string | null; item_total: string | null; source: string | null }
   const [logPeriod, setLogPeriod] = useState<{ y: number | null; m: number | null }>({ y: null, m: null })
   const [logRecs, setLogRecs] = useState<{ receipts: LogRec[]; lines: LogRecLine[] } | null>(null)
@@ -7407,7 +7408,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
-                <div className="flex justify-end items-center gap-1.5">
+                <div className="flex flex-wrap justify-end items-center gap-1.5">
                   {/* Sales Rec / Summary's filters, now the Log's: Period, W / G, Bars only, Flags (+ History). */}
                   <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })}
                     title="Period: pick a year (and month) to see older sales and records, back to 2023"
@@ -7431,7 +7432,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <select value={logFlag} onChange={e => setLogFlag(e.target.value)} title="Flags and history"
                     className={`shrink-0 max-w-[150px] rounded border px-1 py-0.5 text-[10px] font-semibold ${logFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
                     <option value="">🚩 Flags{salesFlagsCount ? ` (${salesFlagsCount})` : ''}</option>
-                    {([['no_cash', 'No cash counted', 'noCash'], ['high_wnw', 'High WNW', 'highWnw'], ['no_attachment', 'No photo', 'noAttachment'], ['sold_below_cost', 'Sold below cost', 'costGteSell'], ['missing_days', 'Missing days', 'missingDays'], ['dup_receipt', 'Duplicate receipts', 'dupReceipts']] as const).map(([k, label, dk]) => {
+                    {([['no_cash', 'No cash counted', 'noCash'], ['high_wnw', 'High WNW', 'highWnw'], ['sold_below_cost', 'Sold below cost', 'costGteSell'], ['missing_days', 'Missing days', 'missingDays'], ['dup_receipt', 'Duplicate receipts', 'dupReceipts']] as const).map(([k, label, dk]) => {
                       const list = logFlagsData?.[dk] as unknown[] | undefined
                       return <option key={k} value={k}>{label}{list ? ` (${list.length})` : ''}</option>
                     })}
@@ -7550,7 +7551,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
                         .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0) + recProfit
                       const wicRec = logDay.receipts.find(r => !r.is_gmc) ?? null
-                      const enteredBy = [...new Set(logDay.receipts.map(r => r.entered_by).filter(Boolean))].join(', ')
                       return (
                         <Fragment key={date}>
                           {/* Date header */}
@@ -7603,10 +7603,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 )
                               })()}
                               {logDay.receipts.length > 0 && (
-                                <LogDayPhotos receipts={logDay.receipts}
-                                  onSaved={(rid2, a2) => setLogRecs(p => p ? { ...p, receipts: p.receipts.map(r => r.id === rid2 ? { ...r, attachments: a2 } : r) } : p)} />
+                                <LogDayPhotos receipts={logDay.receipts} />
                               )}
-                              {enteredBy && <span className="text-[8px] font-normal text-gray-500" title="Who entered the day receipt">by {enteredBy}</span>}
                               </span>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">

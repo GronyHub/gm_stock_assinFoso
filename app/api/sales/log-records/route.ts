@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   try {
     const receipts = await sql`
       SELECT id, receipt_number, receipt_date::date::text AS day, customer_name, (customer_name = ${GMC}) AS is_gmc,
-             total, cash_counted, entered_by, COALESCE(attachments, '[]'::jsonb) AS attachments
+             total, cash_counted, COALESCE(attachments, '[]'::jsonb) AS attachments
       FROM sales_receipts
       WHERE receipt_date::date BETWEEN ${from}::date AND ${to}::date
       ORDER BY receipt_date DESC, id`
