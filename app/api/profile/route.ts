@@ -1,6 +1,7 @@
 import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { ensureStaffPhotoColumn } from '@/lib/staffPhotos'
 import { NextRequest } from 'next/server'
 
 export async function GET() {
@@ -8,8 +9,9 @@ export async function GET() {
   if (error) return error
 
   try {
+    await ensureStaffPhotoColumn()
     const [userData] = await sql`
-      SELECT id, username, display_name, email, phone, role, created_at
+      SELECT id, username, display_name, email, phone, role, created_at, photo_url
       FROM app_users WHERE id = ${user.id}
     `
     return success(userData)
@@ -40,8 +42,9 @@ export async function PUT(req: NextRequest) {
       WHERE id = ${user.id}
     `
 
+    await ensureStaffPhotoColumn()
     const [updated] = await sql`
-      SELECT id, username, display_name, email, phone, role, created_at
+      SELECT id, username, display_name, email, phone, role, created_at, photo_url
       FROM app_users WHERE id = ${user.id}
     `
     return success(updated)

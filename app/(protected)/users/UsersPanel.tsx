@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { fmtDate } from '@/lib/fmtDate'
+import StaffAvatar from '@/components/StaffAvatar'
 
 export type User = {
   id: number
@@ -13,6 +14,7 @@ export type User = {
   active: boolean
   resigned_at: string | null
   deactivation_reason: string | null
+  photo_url?: string | null
 }
 
 export type Role = { key: string; label: string; created_at: string }
@@ -342,7 +344,8 @@ export default function UsersPanel({ users, setUsers, roles }: {
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
+                <StaffAvatar name={u.display_name || u.username} url={u.photo_url} size={40} className="!border-gray-200" />
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900">{u.display_name}</p>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleBadge(u.role)}`}>{u.role}</span>

@@ -39,4 +39,9 @@ export async function register() {
   setInterval(() => {
     void import('./lib/careAlerts').then(m => m.careAlertsTick()).catch(e => console.error('careAlerts tick failed:', e instanceof Error ? e.message : String(e)))
   }, 60000).unref()
+
+  // Customer-service reminders at 08:30, 11:00, 14:30 and 17:30 (Mon-Sat). Turn off with SERVICE_REMINDERS=off.
+  setInterval(() => {
+    void import('./lib/serviceReminders').then(m => m.serviceRemindersTick()).catch(e => console.error('serviceReminders tick failed:', e instanceof Error ? e.message : String(e)))
+  }, 60000).unref()
 }
