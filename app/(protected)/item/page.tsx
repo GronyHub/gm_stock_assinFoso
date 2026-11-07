@@ -115,6 +115,7 @@ const ActivityDurationsPanel = dynamic(() => import('./_components/ActivityDurat
 // treatment Count 2 and Log got) since none of them had anything left
 // that justified a separate sidebar destination once the "New Sale" flow
 // was dropped and the classic Sales list's own tap-a-sale case moved here.
+const SalesDaysSection = dynamic(() => import('./_components/SalesDaysSection'), { ssr: false })
 const SalesTab = dynamic(() => import('./_components/SalesTab'), { ssr: false })
 const BillsTab = dynamic(() => import('./_components/BillsTab'), { ssr: false })
 const CountsTab = dynamic(() => import('./_components/CountsTab'), { ssr: false })
@@ -943,7 +944,8 @@ function ItemHubPageInner() {
   const [liveItemSortOrder, setLiveItemSortOrder] = useState<ItemSortKey[]>(DEFAULT_ITEM_SORT_ORDER)
   const [liveSortOrderModalOpen, setLiveSortOrderModalOpen] = useState(false)
   const rawLiveMode = searchParams.get('mode')
-  const initialLiveMode = (rawLiveMode as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks' | null) ?? 'sale'
+  // 'sales' was Sales Rec / Summary, now retired: old links open the Sales Log instead.
+  const initialLiveMode = ((rawLiveMode === 'sales' ? 'log' : rawLiveMode) as 'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks' | null) ?? 'sale'
   const [liveMode, setLiveMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks'>(initialLiveMode)
   const [itemsPageMode, setItemsPageMode] = useState<'sale' | 'sales' | 'bills' | 'log' | 'expenses' | 'manage' | 'advert' | 'gronyChecks'>(initialLiveMode)
   // Manage tab -- folds the old "Manage"/"Team" left-pane sections into one
@@ -1055,7 +1057,7 @@ function ItemHubPageInner() {
   const [liveSaleJumpSearch, setLiveSaleJumpSearch] = useState<string | null>(null)
   function jumpToLiveSaleTab(tab: 'sale' | 'sales' | 'bills' | 'log' | 'expenses', violation: string | null = null, search: string | null = null) {
     pickLossView('sales')
-    setLiveSaleJumpTab(tab)
+    setLiveSaleJumpTab(tab === 'sales' ? 'log' : tab) // Summary retired: its flags / links land on the Sales Log
     setLiveSaleJumpViolation(violation)
     setLiveSaleJumpSearch(search)
     setLiveSaleJumpSeq(s => s + 1)
@@ -5049,8 +5051,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       setLiveSaleView(null)
       setLiveSaleViolationFilter('noViolations')
     }
-    setItemsPageMode(mode)
-    setLiveMode(mode)
+    // 'sales' (Sales Rec / Summary) is retired -- the Sales Log replaces it.
+    const m = mode === 'sales' ? 'log' : mode
+    setItemsPageMode(m)
+    setLiveMode(m)
   }
 
   // Landing view for Count mode -- straight to the Count Due list (the
@@ -5224,10 +5228,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // (rather than 'sale') so the receipts list these actually affect is the
   // one on screen, then hand off to the existing selectLiveSalesRadio
   // (unchanged -- still the one source of truth for liveSalesRadioValue).
-  function pickSalesView(key: string) {
-    setItemsPageMode('sales')
-    setLiveMode('sales')
-    selectLiveSalesRadio(key)
+  function pickSalesView(_key: string) {
+    // Summary (Sales Rec) is retired; its views now live in the Sales Log and its analytics.
+    setItemsPageMode('log')
+    setLiveMode('log')
   }
 
   // Always lands on the actual P&L report by default -- plSubView doesn't
@@ -6588,10 +6592,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(modeActive('sale'))} badge={itemsFlagsCount}
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
-              {/* Sales Rec is the Sales Log's Summary view now (the Summary button on the Log), not its own row;
-                  its flags show on this button. */}
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('log') || modeActive('sales'))} badge={salesFlagsCount} onClick={() => goItemsMode('log')} />
+                active={paneActive(modeActive('log'))} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
@@ -7350,14 +7352,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   </button>
                   <button
                     type="button"
-                    onClick={() => goItemsMode('sales')}
-                    title="Summary: each day's receipt with cash counted, WNW, photos and older history (was Sales Rec)"
-                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-blue-100 text-blue-700 hover:bg-blue-200 transition"
-                  >
-                    🧾 Summary{salesFlagsCount > 0 ? ` (${salesFlagsCount})` : ''}
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}
                     title="Record a sale for a past day, with its customer and receipt (MI basket)"
                     className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition"
@@ -7385,7 +7379,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
               </PageToolbar>
               {liveLogShowAnalytics ? (
-                <div className="px-3 pt-3 flex-1 overflow-auto"><LiveSaleAnalyticsSection /></div>
+                <div className="px-3 pt-3 flex-1 overflow-auto"><SalesDaysSection /><LiveSaleAnalyticsSection /></div>
               ) : (
               <div className="flex-1 overflow-auto" ref={logWrapRef}>
                 {liveTaps.length === 0 ? (
@@ -8078,104 +8072,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {/* Sales tab -- the classic Sales Receipts list. Folded in here since it
               had nothing left that justified its own sidebar destination once the
               New Sale form was dropped and its own tap-a-sale case moved to Sale mode. */}
-          {liveMode === 'sales' && (
-            <div className={liveRootClassName}>
-              {liveExpanded && (
-                <button
-                  type="button"
-                  onClick={() => setLiveExpanded(false)}
-                  title="Exit large screen"
-                  className="fixed top-2 right-2 z-[60] w-8 h-8 rounded-full bg-gray-900/80 text-white text-sm font-bold flex items-center justify-center shadow-lg hover:bg-gray-900 transition"
-                >
-                  ✕
-                </button>
-              )}
-              {renderModeToggleRow()}
-              {/* Row 1: Search, Filter dropdown, Analytics, global search, Help -- no
-                  title text, the tab switcher above already says "Sales". */}
-              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
-                {/* This is the Sales Log's Summary view (formerly Sales Rec): the way back to the Log. */}
-                <button type="button" onClick={() => goItemsMode('log')} title="Back to the Sales Log"
-                  className="shrink-0 font-bold rounded-lg px-2 py-1 text-[10px] bg-green-100 text-green-700 hover:bg-green-200 transition">
-                  ← Sales Log
-                </button>
-                <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide">Period</span>
-                <select value={liveSalesMonthFilter ?? ''} onChange={e => setLiveSalesMonthFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
-                  <option value="">All Months</option>
-                  {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                    <option key={m} value={i + 1}>{m}</option>
-                  ))}
-                </select>
-                <select value={liveSalesYearFilter ?? ''} onChange={e => setLiveSalesYearFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
-                  <option value="">All Years</option>
-                  {liveSalesAvailableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                {(liveSalesMonthFilter !== null || liveSalesYearFilter !== null) && (
-                  <button onClick={() => { setLiveSalesMonthFilter(null); setLiveSalesYearFilter(null) }}
-                    className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
-                    Clear
-                  </button>
-                )}
-                <div className="border-l border-gray-300 h-4 mx-0.5" />
-                <input
-                  type="text"
-                  value={liveEmbeddedSearch}
-                  onChange={e => setLiveEmbeddedSearch(e.target.value)}
-                  placeholder="Search…"
-                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
-                />
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveSalesShowAnalytics} onClick={() => setLiveSalesShowAnalytics(a => !a)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Analytics
-                </label>
-                <button type="button" title="Record a sale for a past day (with its customer) in the MI basket"
-                  onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true); jumpToLiveSaleTab('sale') }}
-                  className="text-[10px] font-bold text-blue-700 whitespace-nowrap">+ Past sale</button>
-                <label title="Bulk-attach a folder of form photos/scans, matched by date"
-                  className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
-                  <input type="radio" checked={liveSalesShowBulkAttach} onClick={() => setLiveSalesShowBulkAttach(true)} onChange={() => {}}
-                    className="cursor-pointer w-2.5 h-2.5" />
-                  Attach
-                </label>
-                <ColumnsPickerButton prefs={liveSalesColPrefs} radioStyle />
-              </PageToolbar>
-              {/* Row 2: "All" -- part of the same mutually-exclusive radio
-                  group as everything else here (History/Bars Only/WIC/GMC's
-                  own "RC"-prefixed radios, the violation filters, Customers
-                  now its own tab) even though most of that group lives in
-                  the shared row above now (Sale mode's own filter bar, see
-                  pickSalesView); see liveSalesRadioValue/selectLiveSalesRadio
-                  above. */}
-              <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
-                  <input type="radio" name="liveSalesRadio" checked={liveSalesRadioValue === 'all'} onChange={() => selectLiveSalesRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
-                  <span>All</span>
-                </label>
-              </div>
-              {liveSalesShowAnalytics ? (
-                <div className="px-3 pt-3 flex-1 overflow-auto"><SalesAnalyticsSection /></div>
-              ) : (
-                <div className="flex-1 overflow-auto">
-                  <SalesTab items={liveSalesBillsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch}
-                    violation={liveSalesViolationFilter}
-                    jumpToDate={jumpToReceiptDate} jumpToItemName={jumpToReceiptItemName} jumpToReceiptId={jumpToReceiptId}
-                    onJumpDone={() => { setJumpToReceiptDate(null); setJumpToReceiptItemName(null); setJumpToReceiptId(null) }}
-                    showHistory={liveSalesShowHistory} setShowHistory={setLiveSalesShowHistory}
-                    barsOnly={liveSalesBarsOnly} setBarsOnly={setLiveSalesBarsOnly}
-                    showW={liveSalesShowW} setShowW={setLiveSalesShowW}
-                    showG={liveSalesShowG} setShowG={setLiveSalesShowG}
-                    colPrefs={liveSalesColPrefs}
-                    monthFilter={liveSalesMonthFilter} setMonthFilter={setLiveSalesMonthFilter}
-                    yearFilter={liveSalesYearFilter} setYearFilter={setLiveSalesYearFilter}
-                    showBulkAttach={liveSalesShowBulkAttach} setShowBulkAttach={setLiveSalesShowBulkAttach}
-                    onAvailableYearsChange={setLiveSalesAvailableYears} />
-                </div>
-              )}
-            </div>
-          )}
+          {/* Sales Rec / Summary (liveMode 'sales') is retired: day totals are read-only in the Sales Log's
+              analytics (SalesDaysSection), and cash counted is entered on the Log's day rows. */}
 
           {/* Bills tab -- BillsTab itself has no "add new" flow of its own; it always
               relied on a sibling NewBillForm rendered externally, which now lives
