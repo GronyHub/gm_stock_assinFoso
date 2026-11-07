@@ -5,7 +5,7 @@
   const css = `
   #__demo_finger{position:fixed;z-index:2147483646;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
     background:rgba(255,214,0,.55);border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.45);pointer-events:none;
-    transition:left .6s cubic-bezier(.4,0,.2,1),top .6s cubic-bezier(.4,0,.2,1),transform .15s;left:50%;top:60%}
+    transition:left .6s cubic-bezier(.4,0,.2,1),top .6s cubic-bezier(.4,0,.2,1),transform .15s,opacity .3s;left:50%;top:60%;opacity:0}
   #__demo_finger.tap{transform:scale(.7)}
   .__demo_ripple{position:fixed;z-index:2147483645;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
     border:4px solid rgba(255,214,0,.95);pointer-events:none;animation:__demo_r .6s ease-out forwards}
@@ -23,7 +23,7 @@
     const c = document.createElement('div'); c.id = '__demo_cap'; c.style.opacity = '0'; document.body.appendChild(c)
   }
   window.__demo = {
-    move(x, y) { add(); const f = document.getElementById('__demo_finger'); f.style.left = x + 'px'; f.style.top = y + 'px' },
+    move(x, y) { add(); const f = document.getElementById('__demo_finger'); f.style.opacity = '1'; f.style.left = x + 'px'; f.style.top = y + 'px' },
     tap(x, y) {
       add(); const f = document.getElementById('__demo_finger'); f.classList.add('tap'); setTimeout(() => f.classList.remove('tap'), 180)
       const r = document.createElement('div'); r.className = '__demo_ripple'; r.style.left = x + 'px'; r.style.top = y + 'px'

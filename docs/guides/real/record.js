@@ -18,15 +18,20 @@ const VOICE = process.env.VOICE
 const WORK = process.env.WORK_DIR || path.join(__dirname, 'tmp')
 fs.mkdirSync(WORK, { recursive: true })
 const VIEW = { width: 405, height: 720 }          // phone-shaped; scaled up to 720x1280 when the video is made
+const withHidden = u => u + (u.includes('?') ? '&' : '?') + 'sidebarHidden=1'   // the sidebar is hidden the way staff on phones usually have it
 const overlay = fs.readFileSync(path.join(__dirname, 'overlay.js'), 'utf8')
 
 const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
 // Answers every data request the pages make. Unknown GETs get an empty list; unknown writes get { ok: true }.
-function mocks(page, titles) {
+const TITLES = { sale: 'Live Sale', log: 'Sales Log', bills: 'Bills', expenses: 'Expenses', purchase_orders: 'Purchase Orders', vendors: 'Vendors', customers: 'Customers', counts: 'Counts', item360: 'Item 360', pl: 'P&L', cab: 'CAB (Cash at Bank)' }
+function mocks(page, sc) {
+  const titles = TITLES
   return page.route('**/api/**', async route => { try {
     const req = route.request(), u = new URL(req.url()), p = u.pathname, m = req.method(), q = u.searchParams
     if (p.startsWith('/api/auth')) return route.continue()
+    // A scenario can answer its own page's data requests first (sc.mock(path, method, query, body) -> data | undefined).
+    if (sc.mock) { let body = {}; try { body = JSON.parse(req.postData() || '{}') } catch {} const r = sc.mock(p, m, q, body); if (r !== undefined) return json(route, r) }
     if (p === '/api/page-guides') return json(route, m === 'GET' ? S.guide(q.get('page'), titles[q.get('page')] || q.get('page')) : { ok: true })
     if (p === '/api/items/all') return json(route, S.items)
     if (p === '/api/sales/live-taps' && m === 'GET') {
@@ -48,6 +53,8 @@ function mocks(page, titles) {
       return json(route, { id: Number(mm[1]), invoice_amount: String(S.sumToday()), cash_counted: body.cash_counted })
     }
     if (p === '/api/flags') return json(route, {})
+    if (p === '/api/user-permissions') return json(route, { demo: { cash: true, manage: true, pl: true } })
+    if (p === '/api/pane-order' || p === '/api/pane-labels' || p === '/api/pane-groups' || p === '/api/pane-hidden' || p === '/api/app-settings') return json(route, {})
     if (p === '/api/stock/count-progress') return json(route, { total: 0, doneToday: 0 })
     if (p === '/api/staff-times/today') return json(route, { today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
     if (p === '/api/presence' || p === '/api/push/heartbeat' || m !== 'GET') return json(route, { ok: true })
@@ -71,27 +78,28 @@ async function main() {
   const cookie = [{ name: 'authjs.session-token', value: TOKEN, url: BASE }]
 
   // Warm-up (not recorded): hide the sidebar, the way staff on phones usually have it, and keep that for the recording.
-  const warm = await browser.newContext({ ...devices['Pixel 7'], viewport: VIEW, serviceWorkers: 'block' })
+  const warm = await browser.newContext({ ...devices['Pixel 7'], viewport: VIEW, serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 5.6977, longitude: -1.2788 } })
   await warm.addCookies(cookie)
-  const wp = await warm.newPage(); await mocks(wp, sc.titles || {})
-  await wp.goto(BASE + sc.url, { waitUntil: 'networkidle' }); await wp.waitForTimeout(1500)
+  const wp = await warm.newPage(); await mocks(wp, sc)
+  await wp.goto(BASE + withHidden(sc.url), { waitUntil: 'networkidle' }); await wp.waitForTimeout(1500)
   const hide = wp.locator('button[title="Hide sidebar"], button[title="Hide"]').first()
   if (await hide.count()) await hide.click().catch(() => {})
   await wp.waitForTimeout(500)
   const state = await warm.storageState(); await warm.close()
 
-  const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: VIEW, serviceWorkers: 'block', storageState: state, recordVideo: { dir: WORK, size: VIEW } })
+  const ctx = await browser.newContext({ ...devices['Pixel 7'], viewport: VIEW, serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 5.6977, longitude: -1.2788 }, storageState: state, recordVideo: { dir: WORK, size: VIEW } })
   await ctx.addCookies(cookie)
   await ctx.addInitScript(overlay)
   await ctx.addInitScript(() => setInterval(() => { // the "notifications blocked" banner is noise in a guide
-    for (const el of document.querySelectorAll('div')) if (el.children.length < 6 && /Notifications are (blocked|off)/.test(el.textContent || '') && el.textContent.length < 120) { let n = el; while (n.parentElement && n.parentElement.children.length === 1) n = n.parentElement; n.style.display = 'none' }
+    for (const el of document.querySelectorAll('div')) if (el.children.length < 6 && !el.querySelector('main, nav, input') && /Notifications are (blocked|off)/.test(el.textContent || '') && el.textContent.length < 120) { let n = el; for (let k = 0; k < 2 && n.parentElement && n.parentElement.children.length === 1 && !n.parentElement.querySelector('main, nav'); k++) n = n.parentElement; n.style.display = 'none' }
   }, 300))
   const t0 = Date.now()
   const page = await ctx.newPage()
   page.on('dialog', d => d.accept())
   if (process.env.DEBUG_API) page.on('response', async r => { const u = r.url(); if (/log-records|live-taps/.test(u)) console.log('API', r.status(), u.replace(BASE, ''), (await r.text().catch(() => '')).slice(0, 80)) })
-  await mocks(page, sc.titles || {})
-  await page.goto(BASE + sc.url, { waitUntil: 'networkidle' })
+  page.on('console', m => { if (process.env.DEBUG_API && m.type()==='error') console.log('CONSOLE', m.text().slice(0,300)) }); page.on('pageerror', e => { if (process.env.DEBUG_API) console.log('PAGEERR', String(e).slice(0,400)) })
+  await mocks(page, sc)
+  await page.goto(BASE + withHidden(sc.url), { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
 
   const h = {
@@ -116,6 +124,9 @@ async function main() {
     async type(loc, text) { await loc.pressSequentially(text, { delay: 220 }); await page.waitForTimeout(500) },
   }
 
+  if (process.env.SHOT) { // preview: just look at the page with its sample data
+    await page.waitForTimeout(2500); if (process.env.EVAL) console.log(await page.evaluate(process.env.EVAL)); await page.screenshot({ path: process.env.SHOT }); await ctx.close(); await browser.close(); return
+  }
   const marks = []
   for (let i = 0; i < sc.steps.length; i++) {
     const st = sc.steps[i], n = narrate(st.say, `${sc.key}_${i}`)
@@ -123,6 +134,7 @@ async function main() {
     marks.push({ wav: n.wav, at: start + 350 })
     await h.caption(st.caption || '')
     try { await st.run(h, page) } catch (e) { await page.screenshot({ path: path.join(WORK, 'fail.png') }); throw e }
+    if (process.env.STEP_SHOTS) await page.screenshot({ path: path.join(WORK, `s_${sc.key}_${i}.png`) })
     const spent = Date.now() - t0 - start
     await page.waitForTimeout(Math.max(500, n.dur * 1000 + 900 - spent)) // let the narration finish before the next step
   }

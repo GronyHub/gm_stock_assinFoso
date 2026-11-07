@@ -65,6 +65,53 @@ const rec2024 = {
   ].map(([id, rid, day, item_name, quantity, item_price, item_total]) => ({ id, receipt_id: rid, day, is_gmc: false, item_id: null, item_name, quantity: String(quantity), item_price: String(item_price), item_total: String(item_total), source: 'zoho_historical' })),
 }
 
+
+// Suppliers, customers and bills (all invented)
+const vendors = [
+  [41, 'Kwame Paper Supplies', 'Kwame Paper Supplies Ltd', '0244001122', 'Assin Fosu', 4, 5200, 700, 2],
+  [42, 'Accra Toner Depot', 'Accra Toner Depot', '0201234567', 'Accra', 3, 6750, 0, 3],
+  [43, 'Sika Computer Parts', 'Sika Computer Parts', null, 'Kumasi', 2, 1760, 880, 1],
+].map(([id, display_name, company_name, phone, location, bill_count, bill_total, outstanding, payment_count]) => ({
+  id, display_name, company_name, first_name: null, last_name: null, email: null, phone, location, status: 'Active', payment_terms_label: null,
+  is_internal: false, notes: null, bill_count, bill_total: String(bill_total), outstanding: String(outstanding), payment_count, amount_paid: String(bill_total - outstanding),
+}))
+const customers = [
+  [201, 'GM201', 'Ama Serwaa', '0241112233', 'Assin Foso', 14, 1250, 'Printing, Passport pictures'],
+  [202, 'GM202', 'Kofi Mensah', '0207778899', 'Assin Fosu', 6, 640, 'Computer accessories'],
+  [203, 'GM203', 'St. Peter Basic School', '0302554433', 'Assin Foso', 9, 3180, 'Printing, Toner'],
+  [204, 'GM204', 'Efua Ampofo', null, null, 2, 95, null],
+].map(([id, customer_id_code, display_name, phone, location, receipt_count, receipt_total, service_goods]) => ({
+  id, customer_id_code, display_name, company_name: null, first_name: display_name.split(' ')[0], last_name: null, email: id === 201 ? 'ama.serwaa@example.com' : null, phone, extra_phones: [],
+  location, status: 'Active', payment_terms_label: null, opening_balance: '0', credit_limit: null, notes: null, is_internal: false,
+  whatsapp_group_added: id !== 204, last_visited: dayAgo(id - 200), service_goods, created_at: dayAgo(120) + 'T09:00:00Z', source: 'staff_added', added_by: 'demo',
+  receipt_count, receipt_total: String(receipt_total), receipt_balance: '0', invoice_count: 0, invoice_total: '0', invoice_outstanding: '0',
+}))
+const bills = [
+  [301, 'B-1045', 2, 'Kwame Paper Supplies', 1500], [302, 'B-1044', 5, 'Accra Toner Depot', 255], [303, 'B-1043', 9, 'Sika Computer Parts', 864],
+].map(([id, bill_number, ago, vendor_name, total]) => ({ id, bill_number, bill_date: dayAgo(ago), vendor_name, total: String(total), status: 'paid', entered_by: 'demo', attachments: [] }))
+const billLines = [
+  [1, 301, 1, 'A4 SHEETS MAMBO', 30, 50], [2, 302, 6, 'A4 Lam. Singles', 100, 1.8], [3, 302, 10, 'Picture Printing (A4)', 50, 1.5],
+  [4, 303, 4, 'Wireless Mouse', 12, 40], [5, 303, 8, 'Pendrive 16GB', 12, 32],
+].map(([id, bill_id, item_id, item_name, q, p]) => ({ id, bill_id, item_id, item_name, quantity: String(q), unit_price: String(p), item_total: String(q * p), usage_unit: null, unresolved: false }))
+
+const expenses = [
+  [501, 1, 'Transport', 'Taxi to collect paper from Kumasi', 60], [502, 2, 'Electricity', 'ECG prepaid units', 120],
+  [503, 4, 'Repairs', 'Photocopier roller replaced', 85], [504, 6, 'Internet', 'Monthly data bundle', 90], [505, 9, 'Rent', 'Shop rent for the month', 400],
+].map(([id, ago, expense_account, description, amount]) => ({
+  id, expense_date: dayAgo(ago), expense_account, description, vendor_name: null, amount: String(amount), cf_expense_type: null, cf_justify: null,
+  is_property: false, property_status: null, property_type: null, related_item_id: null, availability: null, working: null, location: null,
+  not_working_reason: null, not_available_reason: null, entered_by: 'demo', source: 'app', source_sheet: null, expense_group: null,
+}))
+const pos = [
+  { id: 71, po_number: 'PO-0021', vendor_id: 41, vendor_name: 'Kwame Paper Supplies', order_date: dayAgo(4), expected_date: dayAgo(1), status: 'sent', notes: null, created_by: 'demo', created_at: dayAgo(4) + 'T10:00:00Z',
+    lines: [{ id: 711, item_id: 1, item_name: 'A4 SHEETS MAMBO', qty_ordered: '40', qty_received: '0', unit_price: '50' }, { id: 712, item_id: 6, item_name: 'A4 Lam. Singles', qty_ordered: '100', qty_received: '0', unit_price: '1.8' }] },
+  { id: 72, po_number: 'PO-0020', vendor_id: 42, vendor_name: 'Accra Toner Depot', order_date: dayAgo(12), expected_date: dayAgo(8), status: 'sent', notes: null, created_by: 'demo', created_at: dayAgo(12) + 'T10:00:00Z',
+    lines: [{ id: 721, item_id: 10, item_name: 'Picture Printing (A4)', qty_ordered: '50', qty_received: '50', unit_price: '1.5' }] },
+]
+const counts = [
+  [601, 1, 'A4 SHEETS MAMBO', 1, 143, 'Plain Papers'], [602, 4, 'Wireless Mouse', 2, 8, 'Mouse'], [603, 8, 'Pendrive 16GB', 3, 24, 'Storage Devices'],
+  [604, 5, 'HDMI CABLE 5M', 5, 12, 'Cables'], [605, 6, 'A4 Lam. Singles', 7, 90, 'Stationery'],
+].map(([id, item_id, item_name, ago, qty, cf_group]) => ({ id, item_id, item_name, count_date: dayAgo(ago), quantity_counted: String(qty), notes: null, counted_by: 'demo', source: 'manual', cf_group }))
 const guide = (page, title) => ({ page, title, video_url: `/guides/${page}.mp4`, custom: false, seen: true, can_replace: false })
 
-module.exports = { today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at }
+module.exports = { today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at, vendors, customers, bills, billLines, expenses, pos, counts }
