@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 
-type Ad = { key: string; file: string; square?: string; guide?: boolean; title: string; icon: string; pitch: string; words: string[] }
+type Ad = { key: string; file: string; square?: string; guide?: boolean; note?: string; title: string; icon: string; pitch: string; words: string[] }
 const ADS: Ad[] = [
   { key: 'intro', file: 'Grony_Staff_Intro.mp4', title: 'START HERE: how to use these videos', icon: '🎓', pitch: '', words: [], guide: true },
+  { key: 'cs', file: 'Grony_Customer_Service_TV.mp4', title: 'Customer Service Code (shop TV)', icon: '🤝', pitch: '', words: [], guide: true, note: 'The whole Customer Service Code, section by section, about 95 seconds. It has no sound, so it plays well on the shop TV on a loop. Download it and add it to the TV playlist. Staff can also watch it here any time.' },
   { key: 'all', file: 'Grony_All_Services.mp4', square: 'Grony_All_Services_square.mp4', title: 'All our services', icon: '📣', pitch: 'all our services: computers, training, printing, materials, software, websites, photo, sound, video and hiring', words: [] },
   { key: 'main', file: 'Grony_Ad_main.mp4', square: 'Grony_Ad_main_square.mp4', title: 'Everything in one place', icon: '🌟', pitch: 'printing, computers, software, photo, sound and video', words: [] },
   { key: 'computers', file: 'Grony_Ad_computers.mp4', square: 'Grony_Ad_computers_square.mp4', title: 'Computers, Accessories & Repairs', icon: '💻', pitch: 'computers, accessories and repairs', words: ['computer', 'laptop', 'keyboard', 'mouse', 'accessor', 'charger', 'cable', 'batter', 'connector', 'converter', 'gamepad', 'speaker', 'hardware'] },
@@ -71,8 +72,9 @@ export default function AdvertVideos() {
             <video key={ad.key + sq} src={`/adverts/${fileOf(ad)}`} controls playsInline preload="none" className="max-h-[420px] rounded-lg bg-black" />
             {ad.guide ? (
               <div className="min-w-[200px] flex-1 space-y-2 text-xs text-gray-700">
-                <p className="font-bold text-gray-900">Watch this first.</p>
-                <p>It shows how to find the videos, play them, post them to TikTok and Facebook, and send them to customers on WhatsApp. It has a voice, so turn the sound on.</p>
+                <p className="font-bold text-gray-900">{ad.note ? ad.title : 'Watch this first.'}</p>
+                <p>{ad.note ?? 'It shows how to find the videos, play them, post them to TikTok and Facebook, and send them to customers on WhatsApp. It has a voice, so turn the sound on.'}</p>
+                {ad.note && <a href={`/adverts/${fileOf(ad)}`} download className="inline-block rounded-lg bg-gray-700 px-3 py-2 text-xs font-bold text-white">Download for the TV</a>}
               </div>
             ) : (
             <div className="min-w-[200px] flex-1 space-y-2">
