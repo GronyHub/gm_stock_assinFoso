@@ -7,6 +7,8 @@ import CaretakerGuard from '@/components/CaretakerGuard'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
+import ServiceStrip from '@/components/ServiceStrip'
+import ServiceDailyCard from '@/components/ServiceDailyCard'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -39,11 +41,13 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex flex-col">
       <div className="print:hidden">
         <ImpersonationBar />
+        <ServiceStrip mobile />
         <Nav />
       </div>
       <MainContainer>{children}</MainContainer>
       <PushSubscriber />
       <CaretakerGuard />
+      <ServiceDailyCard />
       <PhotoReminder />
     </div>
   )

@@ -52,6 +52,7 @@ import PresentStaffBar from './_components/PresentStaffBar'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
+import { nextAfterSaleHint } from '@/lib/customerServiceCode'
 import AssignWidget from './_components/AssignWidget'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
@@ -4257,6 +4258,7 @@ function ItemHubPageInner() {
       setLiveLabelByKey(prev => (prev.main ? { ...prev, main: '' } : prev))
       setTimeout(() => setLiveTapStatus([]), 2000)
       showToast(`✓ ${tapItem.name} × ${qtyNum} recorded`, 'success')
+      setTimeout(() => showToast(nextAfterSaleHint(), 'info'), 1500)
       lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
       lastTapIdRef.current = typeof data.tap?.id === 'number' ? data.tap.id : null
       if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message', buyerIds: typeof data.buyerId === 'number' ? [data.buyerId] : undefined })
@@ -6630,7 +6632,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
   return (
     <div className="-mx-4 -mt-4 -mb-6 flex flex-col h-[100dvh]"
-      style={isDesktop ? { height: `calc(100dvh - ${navHeightPx}px)` } : undefined}>
+      style={isDesktop ? { height: `calc(100dvh - ${navHeightPx}px)` } : { height: 'calc(100dvh - var(--svc-strip-h, 0px))' }}>
 
       {/* <InfoCarousel /> */}
 

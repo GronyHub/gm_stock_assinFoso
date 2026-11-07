@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { setNavSlotEl } from '@/lib/navSlot'
 import { setNavHeightPx } from '@/lib/navHeight'
 import { MyAvatar } from '@/components/StaffAvatar'
+import ServiceStrip from '@/components/ServiceStrip'
 
 export default function Nav() {
   // The Item hub is the one page with its own collapsible left sidebar
@@ -50,6 +51,7 @@ export default function Nav() {
   // when nothing is (every other page).
   return (
     <nav ref={navRef} className="hidden md:block bg-white border-b border-gray-200 sticky top-0 z-50">
+      <ServiceStrip />
       <div className={`mx-auto px-4 py-1 flex items-center gap-3 min-h-7 ${isItemHub ? 'max-w-none' : 'max-w-5xl'}`}>
         <div ref={setNavSlotEl} className="flex-1 min-w-0 flex flex-col" />
         {!isItemHub && <MyAvatar size={20} className="shrink-0" />}

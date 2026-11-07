@@ -55,3 +55,39 @@ export const CUSTOMER_SERVICE_CODE: CodeSection[] = [
     { code: 'CS-33', text: 'Report any customer service problem to the manager promptly.' },
   ] },
 ]
+
+export const ALL_RULES = CUSTOMER_SERVICE_CODE.flatMap(s => s.rules.map(r => ({ ...r, section: s.title })))
+
+// One rule per day, the same for everyone, rotating through the whole Code. `dateStr` is YYYY-MM-DD.
+export function ruleOfDay(dateStr: string) {
+  const day = Math.floor(Date.parse(dateStr + 'T00:00:00Z') / 86400000)
+  return ALL_RULES[((day % ALL_RULES.length) + ALL_RULES.length) % ALL_RULES.length]
+}
+
+// Rotating one-liners for the always-visible strip: short versions of the rules that matter most while serving.
+export const STRIP_LINES: { code: string; text: string }[] = [
+  { code: 'CS-1', text: 'Wear your employee tag at all times.' },
+  { code: 'CS-6', text: 'Greet every customer within 10 seconds.' },
+  { code: 'CS-7', text: 'Stop, look up and smile. Phone away.' },
+  { code: 'CS-12', text: 'Agree price, time and work before you start.' },
+  { code: 'CS-13', text: 'Not sure? Say "Let me check". Never guess.' },
+  { code: 'CS-15', text: 'Never argue or mock a customer.' },
+  { code: 'CS-17', text: 'Never give a personal phone or MoMo number.' },
+  { code: 'CS-18', text: 'Every sale gets a receipt and a customer or label.' },
+  { code: 'CS-21', text: 'Check the work with the customer before they pay.' },
+  { code: 'CS-23', text: 'Late? Tell the customer before they ask.' },
+  { code: 'CS-25', text: 'Complaint? Stay calm, apologise, say what you will do.' },
+  { code: 'CS-29', text: 'Thank the customer and say when to expect pickup.' },
+  { code: 'CS-30', text: 'Invite them to join the WhatsApp page.' },
+]
+
+// Short follow-up shown a moment after a sale is saved (never blocks anything). Rotates through the closing rules.
+const AFTER_SALE_HINTS = [
+  'Thank the customer and give the receipt. (CS-29)',
+  'Tell them when to expect pickup or delivery. (CS-29)',
+  'Invite them to join our WhatsApp page. (CS-30)',
+  'Did you check the work with the customer before they paid? (CS-21)',
+  'Smile and say thank you. Every customer, every time. (CS-14)',
+]
+let hintCounter = Math.floor(Math.random() * AFTER_SALE_HINTS.length)
+export function nextAfterSaleHint() { return '🤝 ' + AFTER_SALE_HINTS[hintCounter++ % AFTER_SALE_HINTS.length] }

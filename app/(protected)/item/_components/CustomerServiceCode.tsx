@@ -13,6 +13,10 @@ export default function CustomerServiceCode() {
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState<Set<string>>(new Set(['A']))
 
+  type Team = { username: string; display_name: string; tag_worn: boolean | null; correct: boolean | null; correct_30d: number; days_30d: number }
+  const [team, setTeam] = useState<Team[] | null>(null)
+  useEffect(() => { fetch('/api/customer-service/daily').then(r => r.ok ? r.json() : null).then(d => d?.team && setTeam(d.team)).catch(() => {}) }, [])
+
   const load = () => fetch('/api/customer-service/ack').then(r => r.ok ? r.json() : null).then(d => d && setSt(d)).catch(() => {})
   useEffect(() => { void load() }, [])
 
@@ -61,6 +65,26 @@ export default function CustomerServiceCode() {
           {busy ? 'Saving…' : 'I have read the Code and agree to follow it'}
         </button>
       ))}
+
+      {team && (
+        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+          <p className="px-3 py-2 text-xs font-bold text-gray-500 uppercase tracking-wide bg-gray-50">Today&apos;s card and 30-day score</p>
+          <ul className="divide-y divide-gray-100">
+            {team.map(t => (
+              <li key={t.username} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                <span className="font-medium text-gray-800">{t.display_name || t.username}</span>
+                <span className={`ml-auto text-[11px] font-semibold ${t.tag_worn == null ? 'text-amber-600' : t.tag_worn ? 'text-green-600' : 'text-red-600'}`}>
+                  {t.tag_worn == null ? 'Card not done' : t.tag_worn ? 'Tag on' : 'Tag NOT on'}
+                </span>
+                <span className={`text-[11px] font-semibold ${t.correct == null ? 'text-gray-300' : t.correct ? 'text-green-600' : 'text-red-600'}`}>
+                  {t.correct == null ? '-' : t.correct ? 'Right' : 'Wrong'}
+                </span>
+                <span className="text-[11px] text-gray-500 tabular-nums w-14 text-right">{t.correct_30d}/{t.days_30d}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {st?.all && (
         <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
