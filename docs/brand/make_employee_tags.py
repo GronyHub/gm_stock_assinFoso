@@ -24,7 +24,7 @@ STAFF = [
     ('GM-02', 'Joe', '', 'STAFF'),
     ('GM-03', 'Bino', 'Simon Kwasi Binolib', 'STAFF'),
     ('GM-04', 'James', 'James Nartey', 'STAFF'),
-    ('GM-05', 'Mahama', '', 'STAFF'),
+    ('GM-05', 'Marian', '', 'STAFF'),
 ]
 PHOTOS = {}  # name -> path to a square-ish photo; filled in once staff have added theirs
 for n in STAFF:
