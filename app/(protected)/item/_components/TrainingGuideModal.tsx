@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, type ReactNode, Fragment } from 'react'
 import CarouselSettingsModal from './CarouselSettingsModal'
 import PageLawsList, { type LawFormKind } from './PageLawsList'
+import CustomerServiceCode from './CustomerServiceCode'
 import ContentPage from './ContentPage'
 
 /* -- tiny visual aids -- recreate the real colors/icons/labels used on the
@@ -916,6 +917,7 @@ const TOPICS: Topic[] = [
 ]
 
 const COMPANY_LAWS_TIME_KEY = '__staff_times_laws__'
+const CUSTOMER_SERVICE_KEY = '__customer_service_code__'
 
 export function TrainingGuideModal({ isOpen, onClose }: {
   isOpen: boolean
@@ -1061,7 +1063,20 @@ export function TrainingGuideModal({ isOpen, onClose }: {
             <div className="p-3 border-b border-gray-200">
               <h3 className="text-sm font-bold text-gray-900">⚖️ Laws & Tasks</h3>
             </div>
-            <div className="overflow-y-auto max-h-56 space-y-1 p-2">
+            <div className="overflow-y-auto max-h-[50vh] space-y-1 p-2">
+              {/* Customer Service Code (fixed entry, opens first) */}
+              <div className="bg-white border border-green-300 rounded-lg overflow-hidden">
+                <button type="button" onClick={() => toggleScope(CUSTOMER_SERVICE_KEY)}
+                  className="w-full flex items-center gap-2 text-left px-3 py-2.5 bg-green-50">
+                  <span className="text-gray-400 text-[10px] shrink-0">{expandedScopes.has(CUSTOMER_SERVICE_KEY) ? '▴' : '▾'}</span>
+                  <span className="text-sm font-semibold text-gray-800">🤝 Customer Service Code</span>
+                  <span className="text-xs text-gray-400">(33)</span>
+                </button>
+                {expandedScopes.has(CUSTOMER_SERVICE_KEY) && (
+                  <div className="border-t border-gray-100"><CustomerServiceCode /></div>
+                )}
+              </div>
+
               {/* Company Laws — Time (special fixed entry) */}
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <button type="button" onClick={() => toggleScope(COMPANY_LAWS_TIME_KEY)}
