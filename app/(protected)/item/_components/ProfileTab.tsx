@@ -76,6 +76,8 @@ export default function ProfileTab() {
   }, [username])
 
   const photoInput = useRef<HTMLInputElement>(null)
+  const cameraInput = useRef<HTMLInputElement>(null)
+  const [photoMenu, setPhotoMenu] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoErr, setPhotoErr] = useState('')
 
@@ -152,7 +154,7 @@ export default function ProfileTab() {
             <p className="font-bold text-gray-900 truncate">{profile?.display_name || profile?.username}</p>
             <p className="text-xs text-gray-400">@{profile?.username} · <span className="capitalize">{profile?.role}</span></p>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              <button type="button" disabled={photoBusy} onClick={() => photoInput.current?.click()}
+              <button type="button" disabled={photoBusy} onClick={() => setPhotoMenu(v => !v)}
                 className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">
                 {photoBusy ? 'Saving…' : profile?.photo_url ? 'Change photo' : 'Add photo'}
               </button>
@@ -163,8 +165,19 @@ export default function ProfileTab() {
             </div>
             <input ref={photoInput} type="file" accept="image/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) void uploadPhoto(f); e.target.value = '' }} />
+            {/* capture="user" opens the phone's front camera straight away */}
+            <input ref={cameraInput} type="file" accept="image/*" capture="user" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) void uploadPhoto(f); e.target.value = '' }} />
           </div>
         </div>
+        {photoMenu && !photoBusy && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => { setPhotoMenu(false); cameraInput.current?.click() }}
+              className="rounded-xl border border-blue-200 bg-blue-50 py-3 text-sm font-semibold text-blue-700">📷 Take photo</button>
+            <button type="button" onClick={() => { setPhotoMenu(false); photoInput.current?.click() }}
+              className="rounded-xl border border-gray-200 bg-gray-50 py-3 text-sm font-semibold text-gray-700">🖼 Choose from gallery</button>
+          </div>
+        )}
         {photoErr && <p className="text-xs text-red-600 mt-2">{photoErr}</p>}
         <p className="text-[11px] text-gray-400 mt-3">
           Your display photo shows beside your name across the app and is printed on your employee tag. Use a clear,
