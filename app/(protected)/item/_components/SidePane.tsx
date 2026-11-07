@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { MyAvatar } from '@/components/StaffAvatar'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
 // width right pane" navigation pattern used throughout this app (Grony
@@ -86,7 +87,12 @@ export function paneWidthClass(mode: DisplayMode) {
 export function SidePaneToggle({ mode, onChange, label, onHide }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string; onHide?: () => void }) {
   return (
     <div className="relative border-b border-white/30 bg-[var(--pane-accent)] sticky top-0 z-10">
-      {label && <p className={`px-1.5 pt-1 text-[9px] font-semibold text-blue-200 truncate ${onHide ? 'pr-6' : ''}`}>{label}</p>}
+      {label && (
+        <div className={`px-1.5 pt-1 flex items-center gap-1 min-w-0 ${onHide ? 'pr-6' : ''}`} title="You are signed in as this person">
+          <MyAvatar size={16} />
+          <p className="text-[9px] font-semibold text-blue-200 truncate">{label}</p>
+        </div>
+      )}
       {onHide && (
         <button
           type="button"

@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
+import StaffAvatar from '@/components/StaffAvatar'
 import StaffMemberModal, { type StaffMemberModalProps } from './StaffMemberModal'
 
 const TodayContent = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-gray-400 text-xs">Loading…</p> })
 
 type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; on_break: boolean; worked_seconds: number }
-type RosterEntry = { username: string; active: boolean }
+type RosterEntry = { username: string; active: boolean; photo_url?: string | null }
 type Status = 'present' | 'break' | 'out' | 'absent'
 
 // "2hr 10min" / "45min" / "3hr" -- deliberately "hr"/"min" rather than
@@ -114,7 +115,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
   const computed = roster.map(r => {
     const match = staff.find(s => s.staff_name.toLowerCase() === r.username.toLowerCase())
     if (!match) {
-      return { staff_name: r.username, status: 'absent' as Status, totalMins: null as number | null, workedMins: 0 }
+      return { staff_name: r.username, photo_url: r.photo_url, status: 'absent' as Status, totalMins: null as number | null, workedMins: 0 }
     }
     const inMins = parseTimeMins(match.actual_in)
     const isLoggedOut = match.actual_out != null
@@ -123,7 +124,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
       : (inMins != null ? Math.max(0, nowMins - inMins) : null)
     const workedMins = match.worked_seconds / 60
     const status: Status = isLoggedOut ? 'out' : (match.on_break ? 'break' : 'present')
-    return { staff_name: r.username, status, totalMins, workedMins }
+    return { staff_name: r.username, photo_url: r.photo_url, status, totalMins, workedMins }
   })
   const totalWorkedMins = computed.reduce((sum, c) => sum + c.workedMins, 0)
   const totalPresentMins = computed.reduce((sum, c) => sum + (c.totalMins ?? 0), 0)
@@ -145,6 +146,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
             className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
+              <StaffAvatar name={s.staff_name} url={s.photo_url} size={16} />
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className={s.status === 'absent' ? 'line-through' : ''}>{s.staff_name}</span>
             </span>

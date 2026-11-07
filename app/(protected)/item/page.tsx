@@ -51,6 +51,7 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
+import StaffAvatar from '@/components/StaffAvatar'
 import AssignWidget from './_components/AssignWidget'
 import { COLUMNS, type ColKey } from './_components/lossTabColumns'
 import { SALES_COLUMNS, type ColKey as SalesColKey } from './_components/salesTabColumns'
@@ -1125,7 +1126,7 @@ function ItemHubPageInner() {
   // Active Biz staff members fetched from /api/staff/status -- used to dynamically
   // create individual staff member pages in the pane below STAFF_TEAM_ITEMS.
   // Only includes staff in STAFF_ROSTER (Biz members), not all app users.
-  const [activeStaff, setActiveStaff] = useState<{ username: string; active: boolean }[]>([])
+  const [activeStaff, setActiveStaff] = useState<{ username: string; active: boolean; photo_url?: string | null }[]>([])
   const fetchStaff = () => {
     fetch('/api/staff/status').then(r => r.ok ? r.json() : [])
       .then(d => {
@@ -6801,7 +6802,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 {activeStaff.map((staff) => {
                   const staffViewKey = `staffMember_${staff.username}` as LossView
                   return (
-                    <SidePaneButton key={staff.username} icon="👤" label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider
+                    <SidePaneButton key={staff.username} icon={<StaffAvatar name={staff.username} url={staff.photo_url} size={22} />} label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider
                       active={paneActive(lossView === staffViewKey)}
                       onClick={() => pickLossView(staffViewKey)} />
                   )

@@ -2,6 +2,7 @@ import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { getCached } from '@/lib/cacheStore'
+import { ensureStaffPhotoColumn } from '@/lib/staffPhotos'
 
 const ensureActiveColumn = once(async () => {
   await sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE`.catch(() => {})
@@ -17,6 +18,7 @@ export async function GET() {
   if (error) return error
 
   await ensureActiveColumn()
+  await ensureStaffPhotoColumn()
 
   try {
     // Every open Item hub tab polls this every 10 minutes regardless of
@@ -25,7 +27,7 @@ export async function GET() {
     // that background traffic without any user-visible staleness that
     // matters (deactivation itself is already re-checked on every protected
     // page load in the layout, independent of this endpoint).
-    const rows = await getCached('staff:status', 300, () => sql`SELECT LOWER(username) AS username, active FROM app_users`)
+    const rows = await getCached('staff:status', 300, () => sql`SELECT LOWER(username) AS username, active, photo_url FROM app_users`)
     return success(rows)
   } catch (e) {
     return handleError('staff/status GET', e)

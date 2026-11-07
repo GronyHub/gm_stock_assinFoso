@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import bcrypt from 'bcryptjs'
 import { once } from '@/lib/once'
+import { ensureStaffPhotoColumn } from '@/lib/staffPhotos'
 import { NextRequest } from 'next/server'
 
 // The staff-lifecycle columns. The DROP CONSTRAINT calls further down stay
@@ -19,8 +20,9 @@ export async function GET() {
   if (error) return error
   if (!isOwnerLevel(session?.user as any)) return badRequest('Forbidden')
   await ensureUserLifecycleCols()
+  await ensureStaffPhotoColumn()
   const rows = await sql`
-    SELECT id, username, display_name, email, role, created_at, active, resigned_at::text, deactivation_reason
+    SELECT id, username, display_name, email, role, created_at, active, resigned_at::text, deactivation_reason, photo_url
     FROM app_users ORDER BY id
   `
   return success(rows)
