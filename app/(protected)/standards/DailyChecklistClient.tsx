@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
   addDays, appliesOn, dayLabel, effectiveDue, inPeriod, type CheckEvent, type CheckTile, type Frequency,
@@ -16,6 +17,8 @@ const linkFor = (t: CheckTile): { href: string; label: string } | null =>
   : /^closing questions answered/i.test(t.title) ? { href: '/item?view=closer', label: 'Open Closer' }
   : /^opening questions answered/i.test(t.title) ? { href: '/item?view=opener', label: 'Open Opener' } : null
 
+type Adhoc = { id: number; category: string; note: string; photo_url: string | null; minutes: number; credited: number; recorded_by: string; recorded_at: string }
+
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 
 export default function DailyChecklistClient({ canManage }: { canManage: boolean }) {
@@ -28,6 +31,8 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
   const [clockedIn, setClockedIn] = useState(true)
   const [names, setNames] = useState(false)
   const [present, setPresent] = useState<string[]>([])
+  const [adhoc, setAdhoc] = useState<Adhoc[]>([])
+  const [logging, setLogging] = useState(false)
   const [section, setSection] = useState<string>('All day')
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
@@ -43,7 +48,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
       try {
         const r = await fetch(`/api/daily-checks${d ? `?day=${d}` : ''}`, { cache: 'no-store' })
         const j = await r.json()
-        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setError(''); return }
+        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setAdhoc(Array.isArray(j.adhoc) ? j.adhoc : []); setError(''); return }
       } catch { /* retry */ }
       await new Promise(r => setTimeout(r, 700 * (i + 1)))
     }
@@ -146,6 +151,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
           </button>
         ))}
       </div>
+      {isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mb-2 w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
       <div className="mb-2 flex gap-1.5">
         {([[false, 'Pictures'], [true, 'Names']] as const).map(([v, l]) => (
           <button key={l} type="button" onClick={() => setNames(v)} className={`rounded-full px-3 py-1 text-xs font-bold ${names === v ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{l}</button>
@@ -196,6 +202,19 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
+      {adhoc.length > 0 && (
+        <div className="mt-4 space-y-1">
+          <p className="text-xs font-extrabold uppercase text-[#14213D]">Ad hoc work · {adhoc.length}</p>
+          {adhoc.map(a => (
+            <div key={a.id} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5">
+              <p className="text-[11px] font-bold text-indigo-900">{a.category} · {a.recorded_by} · {hhmm(a.recorded_at)} · {a.credited} min credited</p>
+              <p className="text-[12px] text-gray-900">{a.note}</p>
+              {a.photo_url && <img src={a.photo_url} alt="" className="mt-1 h-14 w-14 rounded-lg border border-gray-200 object-cover" />}
+            </div>
+          ))}
+        </div>
+      )}
+      {logging && <AdhocForm onClose={() => setLogging(false)} onSaved={m => { flash(m); setLogging(false); void load(day) }} />}
       {reporting && <DayReport day={day ?? today} onClose={() => setReporting(false)} />}
       {toast && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{toast}</div>}
     </div>
@@ -355,7 +374,7 @@ function PropsSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTil
   )
 }
 
-type Report = { day: string; total: number; done: number; people: { person: string; done: number; minutes: number }[]; missed: { id: number; section: string; time: string | null; icon: string; title: string }[] }
+type Report = { day: string; total: number; done: number; adhoc: { id: number; category: string; note: string; minutes: number; credited: number; recorded_by: string }[]; people: { person: string; done: number; minutes: number }[]; missed: { id: number; section: string; time: string | null; icon: string; title: string }[] }
 function DayReport({ day, onClose }: { day: string; onClose: () => void }) {
   const [r, setR] = useState<Report | null>(null)
   const [err, setErr] = useState('')
@@ -381,6 +400,21 @@ function DayReport({ day, onClose }: { day: string; onClose: () => void }) {
               </div>
             ))}
           </div>
+          {r.adhoc.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase text-indigo-700">Ad hoc work ({r.adhoc.length})</p>
+              <div className="space-y-1">
+                {r.adhoc.map(a => (
+                  <div key={a.id} className="rounded-lg bg-indigo-50 px-2 py-1 text-xs">
+                    <p><b>{a.recorded_by}</b> · {a.category} · asked {a.minutes} min, credited {a.credited} min</p>
+                    <p className="text-gray-800">{a.note}</p>
+                    <button type="button" className="mt-0.5 font-bold text-red-700 underline" onClick={async () => { if (!confirm('Remove this entry and its work time?')) return; await fetch(`/api/daily-checks/adhoc/${a.id}`, { method: 'DELETE' }); setR(prev => prev && { ...prev, adhoc: prev.adhoc.filter(x => x.id !== a.id) }) }}>Remove</button>
+                    <button type="button" className="ml-3 mt-0.5 font-bold text-blue-700 underline" onClick={async () => { const v = prompt('Credit how many minutes?', String(a.credited)); if (v == null) return; const n = Number(v); const res = await fetch(`/api/daily-checks/adhoc/${a.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ credited: n }) }); if (res.ok) setR(prev => prev && { ...prev, adhoc: prev.adhoc.map(x => x.id === a.id ? { ...x, credited: n } : x) }) }}>Change minutes</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {r.missed.length > 0 && (
             <div>
               <p className="mb-1 text-xs font-bold uppercase text-red-600">Missed ({r.missed.length})</p>
@@ -496,6 +530,50 @@ function AnswerForm({ t, present, onSaved, onClose }: { t: CheckTile; present: s
         <button type="button" disabled={busy || up || (!note.trim() && !photo) || (t.needs_photo && !photo)} onClick={() => void send({ note, photo_url: photo })} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save</button>
       </>)}
       {shownErr && <p className="text-sm text-red-600">{shownErr}</p>}
+    </div>
+  )
+}
+
+// Work that is not on the list for the day: pick the category, say what was done, add a photo if you like.
+function AdhocForm({ onClose, onSaved }: { onClose: () => void; onSaved: (m: string) => void }) {
+  const [category, setCategory] = useState('')
+  const [note, setNote] = useState('')
+  const [mins, setMins] = useState('10')
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [up, setUp] = useState(false)
+  const [localErr, setLocalErr] = useState('')
+  const { busy, err, run } = useRun(onSaved, onClose)
+  async function pick(f: File) {
+    setUp(true); setLocalErr('')
+    try {
+      const fd = new FormData(); fd.append('file', await shrinkPhoto(f))
+      const r = await fetch('/api/announcements/upload', { method: 'POST', body: fd }); const d = await r.json()
+      if (!r.ok) throw new Error(d.error ?? 'Upload failed'); setPhoto(d.url)
+    } catch (e) { setLocalErr((e as Error).message) }
+    setUp(false)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+      <div className="mx-auto max-h-[92vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <p className="text-base font-bold">Log an activity</p>
+        <p className="text-[11px] text-gray-500">For work you did that is not a tile today. It is saved in the history under its category, and its minutes are added to your work time (up to 60 minutes a day).</p>
+        <div className="flex flex-wrap gap-1.5">
+          {LAW_CATEGORIES.map(c => <button key={c.key} type="button" onClick={() => setCategory(c.key)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === c.key ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{c.icon} {c.key}</button>)}
+        </div>
+        <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What did you do?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <label className="flex items-center gap-2 text-sm font-semibold">About how many minutes
+          <input type="number" min={1} max={60} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /></label>
+        <div className="flex items-center gap-2">
+          <label className="cursor-pointer rounded-xl bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700">{up ? 'Uploading…' : photo ? 'Change photo' : '📷 Photo (optional)'}
+            <input type="file" accept="image/*" capture="environment" className="hidden" disabled={up} onChange={e => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = '' }} /></label>
+          {photo && <img src={photo} alt="" className="h-12 w-12 rounded-lg border border-gray-200 object-cover" />}
+        </div>
+        {(localErr || err) && <p className="text-sm text-red-600">{localErr || err}</p>}
+        <button type="button" disabled={busy || up || !category || note.trim().length < 4}
+          onClick={() => void run(() => fetch('/api/daily-checks/adhoc', { method: 'POST', headers: json, body: JSON.stringify({ category, note, minutes: Number(mins), photo_url: photo }) }), 'Activity logged')}
+          className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save activity'}</button>
+        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
+      </div>
     </div>
   )
 }

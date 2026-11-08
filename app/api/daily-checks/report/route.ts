@@ -1,6 +1,6 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureDailyChecks, dayKey, CHECKLIST_START, appliesOn } from '@/lib/dailyChecks'
+import { ensureDailyChecks, ensureAdhoc, dayKey, CHECKLIST_START, appliesOn } from '@/lib/dailyChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 
@@ -27,6 +27,8 @@ export async function GET(req: NextRequest) {
     const all = await sql`SELECT days FROM daily_check_tiles WHERE active AND frequency = 'daily' AND kind <> 'properties'`
     const total = (all as { days: string | null }[]).filter(t => appliesOn(t, day)).length
     const missedToday = (missed as { days: string | null }[]).filter(t => appliesOn(t, day))
-    return success({ day, total, done: total - missedToday.length, people, missed: missedToday })
+    await ensureAdhoc()
+    const adhoc = await sql`SELECT id, category, note, minutes, credited, recorded_by FROM daily_adhoc WHERE day = ${day} ORDER BY recorded_at`
+    return success({ day, total, adhoc, done: total - missedToday.length, people, missed: missedToday })
   } catch (e) { return handleError('daily-checks report', e) }
 }

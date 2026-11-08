@@ -178,3 +178,13 @@ export function parseTileBody(b: any) {
     log_category: clean(b.log_category, 60), needs_photo: !!b.needs_photo,
   }
 }
+
+export const ADHOC_CATEGORY = 'ad hoc activity'
+export const ADHOC_DAILY_CAP_MIN = 60   // most ad hoc minutes credited to one person in a day
+export const ADHOC_ENTRY_MAX_MIN = 60
+export const ensureAdhoc = once(async () => {
+  await sql`CREATE TABLE IF NOT EXISTS daily_adhoc (
+    id SERIAL PRIMARY KEY, day TEXT NOT NULL, category TEXT NOT NULL, note TEXT NOT NULL, photo_url TEXT,
+    minutes INTEGER NOT NULL DEFAULT 0, credited INTEGER NOT NULL DEFAULT 0, recorded_by TEXT NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
+  await sql`CREATE INDEX IF NOT EXISTS daily_adhoc_day ON daily_adhoc (day)`.catch(() => {})
+})

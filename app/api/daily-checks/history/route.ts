@@ -1,6 +1,6 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureDailyChecks, dayKey, addDays, CHECKLIST_START } from '@/lib/dailyChecks'
+import { ensureDailyChecks, ensureAdhoc, dayKey, addDays, CHECKLIST_START } from '@/lib/dailyChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 
@@ -40,8 +40,15 @@ export async function GET(req: NextRequest) {
       FROM daily_check_tiles t LEFT JOIN daily_check_events e ON e.tile_id = t.id AND e.day >= ${from} AND e.day <= ${to}
       WHERE (${section} = '' OR t.section = ${section}) AND (${q} = '' OR LOWER(t.title) LIKE ${'%' + q + '%'})
       GROUP BY t.id ORDER BY t.section, t.position, t.id`
+    await ensureAdhoc()
+    const adhoc = await sql`
+      SELECT id, day, category, note, photo_url, minutes, credited, recorded_by, recorded_at FROM daily_adhoc
+      WHERE day >= ${from} AND day <= ${to} AND NOT ${issues}
+        AND (${section} = '' OR category = ${section}) AND (${person} = '' OR LOWER(recorded_by) = ${person})
+        AND (${q} = '' OR LOWER(note) LIKE ${'%' + q + '%'} OR LOWER(category) LIKE ${'%' + q + '%'})
+      ORDER BY day DESC, recorded_at DESC LIMIT 200`
     const sections = await sql`SELECT DISTINCT section FROM daily_check_tiles ORDER BY section`
     const people = await sql`SELECT DISTINCT recorded_by FROM daily_check_events ORDER BY recorded_by`
-    return success({ from, to, events, summary, sections: (sections as { section: string }[]).map(s => s.section), people: (people as { recorded_by: string }[]).map(s => s.recorded_by) })
+    return success({ from, to, events, adhoc, summary, sections: (sections as { section: string }[]).map(s => s.section), people: (people as { recorded_by: string }[]).map(s => s.recorded_by) })
   } catch (e) { return handleError('daily-checks history', e) }
 }

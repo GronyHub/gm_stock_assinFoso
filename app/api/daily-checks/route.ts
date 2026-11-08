@@ -1,6 +1,6 @@
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureDailyChecks, CHECKLIST_START, dayKey, parseTileBody } from '@/lib/dailyChecks'
+import { ensureDailyChecks, ensureAdhoc, CHECKLIST_START, dayKey, parseTileBody } from '@/lib/dailyChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { getClockState, actorKey } from '@/lib/clockState'
@@ -23,10 +23,12 @@ export async function GET(req: NextRequest) {
       SELECT e.id, e.tile_id, e.day, e.value, e.note, e.extra, e.recorded_by, e.recorded_at
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
       WHERE e.day <= ${day} AND (e.day >= ${day.slice(0, 4) + '-01-01'} OR t.frequency = 'once') ORDER BY e.recorded_at, e.id`
+    await ensureAdhoc()
+    const adhoc = await sql`SELECT id, category, note, photo_url, minutes, credited, recorded_by, recorded_at FROM daily_adhoc WHERE day = ${day} ORDER BY recorded_at`
     const clock = await getClockState(today)
     const me = actorKey(session.user as any)
     const exempt = (session.user as { role?: string })?.role === 'owner'
-    return success({ day, today, tiles, events, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present })
+    return success({ day, today, tiles, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present })
   } catch (e) { return handleError('daily-checks GET', e) }
 }
 

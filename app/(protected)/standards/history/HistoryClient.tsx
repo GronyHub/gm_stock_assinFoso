@@ -4,7 +4,8 @@ import { addDays, dayKey } from '@/lib/dailyChecksShared'
 
 type Ev = { id: number; day: string; recorded_at: string; recorded_by: string; value: string; note: string | null; extra: { answer?: string; persons?: Record<string, string>; about_staff?: string; photo_url?: string; done_at?: string } | null; tile_id: number; title: string; icon: string; section: string; kind: string }
 type Sum = { tile_id: number; title: string; icon: string; section: string; kind: string; times_done: number; last_done: string | null; last_by: string | null }
-type Data = { from: string; to: string; events: Ev[]; summary: Sum[]; sections: string[]; people: string[] }
+type Adhoc = { id: number; day: string; category: string; note: string; photo_url: string | null; minutes: number; credited: number; recorded_by: string; recorded_at: string }
+type Data = { from: string; to: string; events: Ev[]; adhoc: Adhoc[]; summary: Sum[]; sections: string[]; people: string[] }
 const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -33,7 +34,11 @@ export default function HistoryClient() {
   useEffect(() => { const t = setTimeout(() => void load(), 250); return () => clearTimeout(t) }, [load])
 
   const byDay = new Map<string, Ev[]>()
+  const adhocByDay = new Map<string, Adhoc[]>()
+  for (const a of data?.adhoc ?? []) { if (!adhocByDay.has(a.day)) adhocByDay.set(a.day, []); adhocByDay.get(a.day)!.push(a) }
   for (const e of data?.events ?? []) { if (!byDay.has(e.day)) byDay.set(e.day, []); byDay.get(e.day)!.push(e) }
+  for (const d of adhocByDay.keys()) if (!byDay.has(d)) byDay.set(d, [])
+  const days = [...byDay.keys()].sort().reverse()
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
@@ -59,10 +64,18 @@ export default function HistoryClient() {
 
       {data && view === 'days' && (<>
         <p className="mb-1 text-[11px] text-gray-500">{data.events.length} record{data.events.length === 1 ? '' : 's'}{data.events.length >= 400 ? ' (showing the latest 400, narrow the dates)' : ''} from {dlabel(data.from)} to {dlabel(data.to)}</p>
-        {[...byDay.entries()].map(([day, evs]) => (
+        {days.map(day => { const evs = byDay.get(day)!; return (
           <div key={day} className="mb-3">
-            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">{dlabel(day)} · {evs.length}</p>
+            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">{dlabel(day)} · {evs.length + (adhocByDay.get(day)?.length ?? 0)}</p>
             <div className="space-y-1">
+              {(adhocByDay.get(day) ?? []).map(a => (
+                <div key={`a${a.id}`} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5">
+                  <div className="flex items-center gap-2"><span className="rounded bg-indigo-200 px-1.5 text-[9px] font-extrabold uppercase text-indigo-900">Ad hoc</span><p className="flex-1 text-[12px] font-semibold text-gray-900">{a.category}</p><span className="shrink-0 text-[10px] font-bold text-gray-500">{hhmm(a.recorded_at)} · {cap(a.recorded_by)}</span></div>
+                  <p className="text-[11px] text-gray-800">{a.note}</p>
+                  <p className="text-[10px] text-gray-500">{a.credited} of {a.minutes} min credited</p>
+                  {a.photo_url && <a href={a.photo_url} target="_blank" rel="noopener noreferrer"><img src={a.photo_url} alt="" className="mt-1 h-16 w-16 rounded-lg border border-gray-200 object-cover" /></a>}
+                </div>
+              ))}
               {evs.map(e => {
                 const flagged = e.extra?.answer === 'issue' || Object.values(e.extra?.persons ?? {}).includes('not')
                 return (
@@ -83,8 +96,8 @@ export default function HistoryClient() {
               })}
             </div>
           </div>
-        ))}
-        {data.events.length === 0 && <p className="text-sm text-gray-400">Nothing recorded for these filters.</p>}
+        ) })}
+        {data.events.length === 0 && data.adhoc.length === 0 && <p className="text-sm text-gray-400">Nothing recorded for these filters.</p>}
       </>)}
 
       {data && view === 'tasks' && (

@@ -71,6 +71,8 @@ async function ensureCompanyLawsImpl() {
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
+  // The owner approved the remaining sets in conversation.
+  for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
 }
 export const ensureCompanyLaws = once(ensureCompanyLawsImpl)
 
