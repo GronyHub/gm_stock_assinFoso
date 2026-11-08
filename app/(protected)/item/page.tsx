@@ -6656,6 +6656,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} onHide={() => setSidePaneHidden(true)} />
 
+            {/* The Daily Checklist is the first button in the sidebar, on every tab. */}
+            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false}
+              href="/standards" onClick={() => { window.location.href = '/standards' }} />
+
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
                 relationship to any of these, so the list is just empty
@@ -6910,8 +6914,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
                 href="/routine" onClick={() => { window.location.href = '/routine' }} />
-              <SidePaneButton icon="✅" label="Standards" mode={cashDisplayMode} active={false} divider
-                href="/standards" onClick={() => { window.location.href = '/standards' }} />
               {isOwnerLevel(session?.user as any) && (
                 <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={false} divider
                   href="/notifications" onClick={() => { window.location.href = '/notifications' }} />
