@@ -87,7 +87,6 @@ const AliasPicker     = dynamic(() => import('./_components/LossTab').then(m => 
 const MatchPicker     = dynamic(() => import('./_components/LossTab').then(m => m.MatchPicker),     { ssr: false })
 const MergeItemPicker = dynamic(() => import('./_components/LossTab').then(m => m.MergeItemPicker), { ssr: false })
 // Opened on demand only -- no reason to ship them with the first load.
-const TrainingGuideModal = dynamic(() => import('./_components/TrainingGuideModal').then(m => m.TrainingGuideModal), { ssr: false })
 const LawsTasksViewer    = dynamic(() => import('./_components/LawsTasksViewer'), { ssr: false })
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
@@ -939,7 +938,6 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
-  const [liveHelpModalOpen, setLiveHelpModalOpen] = useState(false)
   const [lawsTasksViewerOpen, setLawsTasksViewerOpen] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
@@ -5605,7 +5603,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           if (v === 'analytics') { setLiveExpensesShowAnalytics(a => !a); return }
           if (v === 'accounts') { setLiveExpensesShowAccountsManager(true); return }
           if (v === 'columns') { setLiveExpensesColumnsOpen(true); return }
-          if (v === 'help:guide') { setLiveHelpModalOpen(true); return }
+          if (v === 'help:guide') { window.location.href = '/how-to'; return }
           selectLiveExpensesRadio(v || 'all')
         }}
         className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
@@ -6768,8 +6766,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              <SidePaneButton icon="📖" label="Handbook" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={false} noNewTab onClick={() => setLiveHelpModalOpen(true)} />
+              <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={false}
+                href="/how-to" onClick={() => { window.location.href = '/how-to' }} />
             </div>
             )}
 
@@ -6807,6 +6805,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
+              <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={false}
+                href="/owner-guide" onClick={() => { window.location.href = '/owner-guide' }} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
@@ -7192,7 +7192,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveGmcTypeFilter(v.slice('gmc:'.length))
                       } else if (v === 'help:help') {
                         // Opens the Help Guide modal
-                        setLiveHelpModalOpen(true)
+                        window.location.href = '/how-to'
                         selectEl.value = ''
                       } else if (v === 'settings:sortorder') {
                         setLiveSortOrderModalOpen(true)
@@ -8721,7 +8721,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           if (viewKey === 'lossByItem') setLiveCurrentView({ kind: 'lossByItem' as const })
                           else if (viewKey === 'dailySummary') setLiveCurrentView({ kind: 'dailySummary' as const })
                         } else if (v === 'help:help') {
-                          setLiveHelpModalOpen(true)
+                          window.location.href = '/how-to'
                           selectEl.value = ''
                         } else if (v === 'settings:sortorder') {
                           setLiveSortOrderModalOpen(true)
@@ -10123,16 +10123,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {livePairingPrompt && <PairingDialog prompt={livePairingPrompt} onClose={() => setLivePairingPrompt(null)} />}
           </>)}
 
-          {liveHelpModalOpen && <TrainingGuideModal isOpen={liveHelpModalOpen} onClose={() => setLiveHelpModalOpen(false)} />}
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
           {lawsTasksViewerOpen && <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />}
-            {/* Handbook is a row in the left sidebar: the floating copy only shows where that row is not available. */}
-            {!(outerTab === 'loss' && canSeeCash && !sidePaneHidden) && (
-              <button onClick={() => setLiveHelpModalOpen(true)} title="Handbook" aria-label="Handbook"
-                className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-full shadow-lg transition">
-                📖 Handbook
-              </button>
-            )}
             
           </div>
           {/* Global Search's own permanent floating trigger -- mirrors Laws &

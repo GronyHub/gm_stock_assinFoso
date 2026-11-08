@@ -35,7 +35,7 @@ function Steps({ items }: { items: ReactNode[] }) {
   )
 }
 
-type Topic = {
+export type Topic = {
   id: string
   title: string
   group: string
@@ -71,7 +71,7 @@ type Task = {
   submenu?: string
 }
 
-const TOPICS: Topic[] = [
+export const TOPICS: Topic[] = [
   {
     id: 'app-layout',
     title: 'How is the app laid out?',
@@ -79,13 +79,15 @@ const TOPICS: Topic[] = [
     keywords: 'layout navigation biz uk ch sidebar pane daily home',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">There's no row of tabs across the top any more -- everything opens from one scrollable side pane (it collapses out of the way on a phone; tap the menu icon to bring it back).</p>
-        <p className="text-sm text-gray-700">At the bottom of that pane are the area buttons. Almost everyone only ever sees one:</p>
+        <p className="text-sm text-gray-700">Everything opens from the left sidebar (on a phone, tap the menu icon to bring it back). The buttons you can use have a yellow label for the owner and Joe; staff only see their own buttons.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><MiniPill text="💰 Biz" tone="blue" /> -- the shop's day-to-day work: sales, stock, bills, staff, everything covered in this guide.</li>
-          <li><MiniPill text="🇬🇧 UK" /> and <MiniPill text="🏢 C&amp;H" /> -- separate, private areas that only appear for a couple of specific accounts. If you don't see these buttons, you don't have access to them, and that's expected -- they're outside what this guide covers.</li>
+          <li><strong>Company Laws</strong> -- the rules of each area, with a video and a short quiz for every category.</li>
+          <li><strong>Daily Checklist</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
+          <li><strong>Items / Live Sale</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
+          <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong>, <strong>Team Times</strong> -- the rest of your day-to-day tools.</li>
+          <li><strong>Payslips</strong> and <strong>Profile</strong> -- your own pay and your own details and photo.</li>
         </ul>
-        <p className="text-sm text-gray-700">There's also a <strong>📅 Daily</strong> button pinned just above the area buttons, always there regardless of which area you're in -- it opens the end-of-day Daily Summary report.</p>
+        <p className="text-sm text-gray-700">The staff bar across the top shows who is clocked in. Tap the <strong>Total</strong> chip to open the Home feed.</p>
       </div>
     ),
   },
@@ -95,31 +97,14 @@ const TOPICS: Topic[] = [
     group: 'Getting Started',
     keywords: 'biz cash manage team pane sidebar items purchase orders vendors cab customers opener closer grony checks advert staff members payslips profile settings',
     body: (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-700">Biz is one continuous pane, top to bottom. Scroll down and you'll find, in this order:</p>
-        <div className="space-y-2">
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Cash</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Items -- one tab switcher holding Sale, Log, Sales, Bills, Expenses, and Manage. Purchase Orders and Vendors are radio-buttoned inside Bills, Customers inside Sales, Expense Orders inside Expenses, P&amp;L + CAB inside Sale itself (owner and Joe only), and Manage/Team inside Manage -- see the next topic.</p>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Manage (a tab, not a pane row)</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">One radio list split into two groups. Manage: Opener, Closer, Grony Checks (Arrangement, Cleanliness, Customer Display, Repair Works, and more, nested inside it), Advert (Audio, Advert Status, Jingle Log, Equipment Check, and more, nested inside it), Future, Quality Assurance, Unfortunate Events, App info. Team: Team Times, Team Payments, Team Penalty Points, Team Behaviour, Team Dress Code, Team Display, Team Meeting, Team Company Laws Agreement, Team Assessment, Team Rota, Team Logs -- everything about staff as a whole.</p>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Staff Members</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">A "Home" row (the activity feed), then one row per active staff member -- tap a name to open that person's own page (their tasks, times, assessment scores, meeting attendance, and more).</p>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Personal</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Payslips, and your own Profile.</p>
-          </div>
-          <div className="border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-bold text-gray-800">Settings / Sign out</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">Right at the bottom, above the area buttons.</p>
-          </div>
-        </div>
-        <Callout>An owner can reorder, rename, or regroup any of these rows from Settings → "Reorder &amp; Rename Lists" -- so the exact order you see may not match this list exactly.</Callout>
+      <div className="space-y-2">
+        <p className="text-sm text-gray-700">What each button is for:</p>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Items / Live Sale</p><p className="text-[11px] text-gray-500 mt-0.5">Tap a sale as it happens, find an item, fix its details.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Sales Log</p><p className="text-[11px] text-gray-500 mt-0.5">Every sale by day, receipts, undo a wrong tap.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Counts</p><p className="text-[11px] text-gray-500 mt-0.5">Count what is on the shelf; records and history.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Item 360</p><p className="text-[11px] text-gray-500 mt-0.5">Everything about one item in one place.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Losses and Analytics</p><p className="text-[11px] text-gray-500 mt-0.5">Where stock is lost, and what sells least.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Customers</p><p className="text-[11px] text-gray-500 mt-0.5">Register and find customers and their receipts.</p></div>
       </div>
     ),
   },
@@ -130,7 +115,7 @@ const TOPICS: Topic[] = [
     keywords: 'home feed announcements photos voice notes news',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Tap the <strong>🏠 Home</strong> row at the top of the Staff Members section, or the <strong>Total</strong> chip in the staff time bar above the tab switcher -- either opens the activity feed: announcements, photos, and voice notes, newest first.</p>
+        <p className="text-sm text-gray-700">Tap the <strong>Total</strong> chip in the staff bar across the top. It opens the activity feed: announcements, photos and voice notes, newest first.</p>
       </div>
     ),
   },
@@ -141,42 +126,11 @@ const TOPICS: Topic[] = [
     keywords: 'clock in out opener closer gps location closing report time break',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Clock in and out from <strong>Manage → Team Times</strong> (the Manage tab on Items' own tab switcher). It's GPS-checked -- you have to actually be at the shop, or it won't let you.</p>
+        <p className="text-sm text-gray-700">Clock in and out from <strong>Team Times</strong> in the sidebar. It is GPS-checked: you have to be at the shop, or it will not let you. You can only tick Daily Checklist tiles once you are clocked in.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Opener 🌅</strong> -- whoever clocks in earliest that day.</li>
-          <li><strong>Closer 🌙</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire (was the advert played, any property issue, a new customer, etc).</li>
-          <li><strong>Take a Break</strong> -- once you're clocked in, a "Take a Break"/"End Break" button appears there too. It just flips your status dot red on the staff time bar above the tab switcher so others can see you've stepped away -- it doesn't clock you out or change your worked-time total.</li>
-        </ul>
-      </div>
-    ),
-  },
-  {
-    id: 'role-bar-gone',
-    title: 'What happened to the Joe / Bino / Opener / Closer buttons at the bottom of the screen?',
-    group: 'Getting Started',
-    keywords: 'role bar joe bino opener closer removed badges flags',
-    body: (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-700">That row (the "Role Bar") doesn't exist any more. It used to be the one place every outstanding issue count showed up.</p>
-        <p className="text-sm text-gray-700">Those counts didn't disappear -- they moved to sit directly on whatever they're actually about: Opener and Closer are now their own radio buttons under the Manage tab (each showing its own badge), and every other flag/violation count shows up right on the page it belongs to (Items, Sales, Bills, and so on).</p>
-      </div>
-    ),
-  },
-  {
-    id: 'account-menu-gone',
-    title: 'Where did the account menu (person icon) go?',
-    group: 'Getting Started',
-    keywords: 'account menu person icon users profile customers vendors receipts counts sign out',
-    body: (
-      <div className="space-y-3">
-        <p className="text-sm text-gray-700">There's no separate account menu any more -- everything that used to live there is now a normal row inside the Biz pane instead:</p>
-        <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Users &amp; Roles</strong> → Settings</li>
-          <li><strong>Profile</strong> → Personal section</li>
-          <li><strong>Customers</strong> → a radio button inside Items' Sales tab</li>
-          <li><strong>Vendors</strong> → a radio button inside Items' Bills tab</li>
-          <li><strong>Cust. Receipts</strong> → a tab inside Customers</li>
-          <li><strong>Sign out</strong> → the very bottom of the pane</li>
+          <li><strong>Opener</strong> -- whoever clocks in earliest that day.</li>
+          <li><strong>Closer</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire.</li>
+          <li><strong>Take a Break</strong> -- once clocked in, tap it to show a red dot on the staff bar. It does not clock you out or change your worked time.</li>
         </ul>
       </div>
     ),
