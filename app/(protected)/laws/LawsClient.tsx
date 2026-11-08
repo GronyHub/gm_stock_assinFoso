@@ -6,6 +6,7 @@ import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
+  status?: string; tile_id?: number | null
 }
 type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string }
 const json = { 'Content-Type': 'application/json' }
@@ -52,17 +53,25 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (r.ok) { flash('Law deleted'); void load() } else flash('Could not delete')
   }
 
+  async function approve(body: { id?: number; category?: string }) {
+    const r = await fetch('/api/page-laws/approve', { method: 'POST', headers: json, body: JSON.stringify(body) }); const d = await r.json().catch(() => ({}))
+    if (r.ok) { flash(d.approved ? `Approved ${d.approved}. Tiles are in the Daily Checklist.` : 'Tiles created'); void load() } else flash(d.error ?? 'Could not approve')
+  }
+
   const LawCard = ({ l }: { l: Law }) => {
     const sched = scheduleText(l)
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-3">
+      <div className={`rounded-xl border p-3 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+        {l.status === 'draft' && <p className="mb-1 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <p className="whitespace-pre-line text-sm text-gray-900">{l.text}</p>
         {lines(l.dos).length > 0 && <ul className="mt-2 space-y-0.5">{lines(l.dos).map((x, i) => <li key={i} className="text-[13px] text-green-800">✓ <span className="text-gray-800">{x}</span></li>)}</ul>}
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeLabel(l.law_type)}</span>
+          {l.tile_id && <a href="/standards" className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">✅ In the Daily Checklist</a>}
           {sched && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sched.startsWith('No schedule') ? 'bg-amber-100 text-amber-800' : 'bg-indigo-50 text-indigo-800'}`}>🗓 {sched}</span>}
           {canManage && <span className="ml-auto flex gap-1">
+            {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} className="rounded-lg bg-green-600 px-2 py-1 text-xs font-bold text-white">Approve</button>}
             <button type="button" onClick={() => setDraft(toDraft(l))} className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">Edit</button>
             <button type="button" onClick={() => void remove(l)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Delete</button>
           </span>}
@@ -103,7 +112,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                 <span className="text-4xl leading-none">{c.icon}</span>
                 <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.key}</span>
                 <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
-                <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{list.length} law{list.length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
+                <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{list.filter(l => l.status !== 'draft').length} law{list.filter(l => l.status !== 'draft').length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
+                {list.some(l => l.status === 'draft') && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}
               </button>
             )
           })}
@@ -114,7 +124,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All categories</button>
-            {canManage && cat !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blank(cat))} className="ml-auto rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
+            {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { if (confirm(`Approve all ${catLaws.filter(l => l.status === 'draft').length} draft laws in ${cat}? Their tiles go into the Daily Checklist and the old tiles they replace are stopped.`)) void approve({ category: cat }) }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
+            {canManage && cat !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blank(cat))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           <div className="flex items-center gap-2"><span className="text-3xl">{catInfo?.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{cat}</p><p className="text-xs text-gray-500">{catInfo?.blurb}</p></div></div>
           {cat === 'Customer service' && (

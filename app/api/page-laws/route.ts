@@ -4,12 +4,14 @@ import sql from '@/lib/db'
 import { ensureCompanyLaws, cleanLawBody } from '@/lib/pageLaws'
 import { LAW_CATEGORIES, LAW_TYPES, DAY_CODES, LAW_FREQUENCIES, CATEGORY_FOR_SCOPE } from '@/lib/lawCategories'
 import { isOwnerLevel } from '@/lib/roles'
+import { syncLawTile } from '@/lib/lawTiles'
 import { NextRequest } from 'next/server'
 
 
 export async function GET(req: NextRequest) {
-  const { error } = await requireAuth()
+  const { session: me, error } = await requireAuth()
   if (error) return unauthorized()
+  const owner = isOwnerLevel(me?.user as any)
 
   const scopeKey = req.nextUrl.searchParams.get('scopeKey')
 
@@ -18,12 +20,12 @@ export async function GET(req: NextRequest) {
     await ensureCompanyLaws()
     if (scopeKey) {
       // Fetch laws for a specific scope
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
-      return success(rows)
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
+      return success(owner ? rows : (rows as { status?: string }[]).filter(r => r.status !== 'draft'))
     } else {
       // Fetch all laws across all scopes
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts FROM page_laws ORDER BY scope_key, id`
-      return success(rows)
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id FROM page_laws ORDER BY scope_key, id`
+      return success(owner ? rows : (rows as { status?: string }[]).filter(r => r.status !== 'draft'))
     }
   } catch (e) {
     return handleError('page-laws GET', e)
@@ -50,8 +52,9 @@ export async function POST(req: NextRequest) {
     const [row] = await sql`
       INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts)
       VALUES (${scopeKey}, ${law.text}, false, 'law', ${category}, ${law.subcategory}, ${law.law_type}, ${law.days}, ${law.law_time}, ${law.frequency}, ${law.minutes}, ${law.dos}, ${law.donts})
-      RETURNING id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts
+      RETURNING id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id
     `
+    await syncLawTile(row.id).catch(e => console.error('law tile sync failed:', e instanceof Error ? e.message : String(e)))
     return success(row)
   } catch (e) {
     return handleError('page-laws POST', e)

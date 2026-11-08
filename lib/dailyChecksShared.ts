@@ -21,6 +21,7 @@ export type CheckTile = {
   id: number; section: string; time: string | null; title: string; icon: string; how: string | null
   kind: TileKind; prop_filter: string | null; frequency: Frequency; weekday: string | null; position: number
   days: string | null; ask: string | null; ok_label: string | null; issue_label: string | null; log_category: string | null; needs_photo: boolean
+  category: string | null; subcategory: string | null; law_id: number | null
   minutes: number | null   // work time credited to whoever ticks it (shows in the worked time at the top of the pages)
 }
 export type CheckEvent = {

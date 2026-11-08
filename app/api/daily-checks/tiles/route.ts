@@ -12,7 +12,7 @@ export async function GET() {
     await ensureDailyChecks()
     const tiles = await sql`
       SELECT t.id, t.section, t.time, t.title, t.icon, t.how, t.kind, t.prop_filter, t.frequency, t.weekday, t.position, t.minutes, t.days,
-             t.ask, t.ok_label, t.issue_label, t.log_category, t.needs_photo, t.active,
+             t.ask, t.ok_label, t.issue_label, t.log_category, t.needs_photo, t.active, t.category, t.subcategory, t.law_id,
              (SELECT MAX(e.day) FROM daily_check_events e WHERE e.tile_id = t.id AND e.value = 'Done') AS last_done
       FROM daily_check_tiles t ORDER BY t.section, t.position, t.id`
     return success({ tiles })

@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { ensureCompanyLaws, cleanLawBody } from '@/lib/pageLaws'
 import { LAW_CATEGORIES, LAW_TYPES, DAY_CODES, LAW_FREQUENCIES } from '@/lib/lawCategories'
 import { isOwnerLevel } from '@/lib/roles'
+import { syncLawTile } from '@/lib/lawTiles'
 import { NextRequest } from 'next/server'
 
 const denied = 'Only the owner and manager can change laws.'
@@ -30,6 +31,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const [row] = await sql`UPDATE page_laws SET text = ${law.text}, category = ${law.category}, subcategory = ${law.subcategory}, law_type = ${law.law_type},
     days = ${law.days}, law_time = ${law.law_time}, frequency = ${law.frequency}, minutes = ${law.minutes}, dos = ${law.dos}, donts = ${law.donts} WHERE id = ${lawId} RETURNING id`
   if (!row) return notFound()
+  await syncLawTile(lawId).catch(e => console.error('law tile sync failed:', e instanceof Error ? e.message : String(e)))
   return success(row)
 }
 
@@ -39,6 +41,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!isOwnerLevel(session?.user as any)) return badRequest(denied)
 
   const lawId = await getIdParam(params)
-  await sql`DELETE FROM page_laws WHERE id = ${lawId}`
+  const [gone] = await sql`DELETE FROM page_laws WHERE id = ${lawId} RETURNING tile_id`
+  if (gone?.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${gone.tile_id}`
   return success({ ok: true })
 }
