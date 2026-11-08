@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { ensureDailyChecks, CHECK_SECTIONS, FREQUENCIES, CHECKLIST_START, dayKey } from '@/lib/dailyChecks'
 import { NextRequest } from 'next/server'
 
+const cleanMinutes = (v: unknown) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 && n <= 240 ? n : 5 }
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/
 
 // GET ?day=YYYY-MM-DD -> { tiles, events } : every tile, and the records that can still count on that day
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
     const q = req.nextUrl.searchParams.get('day') ?? ''
     const today = dayKey()
     const day = /^\d{4}-\d{2}-\d{2}$/.test(q) && q >= CHECKLIST_START && q <= today ? q : today
-    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position FROM daily_check_tiles WHERE active ORDER BY position, id`
+    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position, minutes FROM daily_check_tiles WHERE active ORDER BY position, id`
     const events = await sql`
       SELECT e.id, e.tile_id, e.day, e.value, e.note, e.extra, e.recorded_by, e.recorded_at
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
@@ -38,9 +39,9 @@ export async function POST(req: NextRequest) {
     const time = HM.test(b.time ?? '') ? b.time : null
     const frequency = (FREQUENCIES as readonly string[]).includes(b.frequency) ? b.frequency : 'daily'
     const kind = b.kind === 'properties' ? 'properties' : 'tap'
-    const [row] = await sql`INSERT INTO daily_check_tiles (section, time, title, icon, how, kind, prop_filter, frequency, position, created_by)
+    const [row] = await sql`INSERT INTO daily_check_tiles (section, time, title, icon, how, kind, prop_filter, frequency, position, created_by, minutes)
       VALUES (${section}, ${time}, ${title}, ${String(b.icon || '✅').slice(0, 8)}, ${b.how ? String(b.how).slice(0, 600) : null}, ${kind},
-              ${kind === 'properties' ? String(b.prop_filter ?? '').slice(0, 200) : null}, ${frequency}, (SELECT COALESCE(MAX(position), 0) + 1 FROM daily_check_tiles), ${getActorName(session)})
+              ${kind === 'properties' ? String(b.prop_filter ?? '').slice(0, 200) : null}, ${frequency}, (SELECT COALESCE(MAX(position), 0) + 1 FROM daily_check_tiles), ${getActorName(session)}, ${cleanMinutes(b.minutes)})
       RETURNING id`
     return success({ id: row.id }, 201)
   } catch (e) { return handleError('daily-checks POST', e) }

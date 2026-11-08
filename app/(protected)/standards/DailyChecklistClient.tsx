@@ -18,11 +18,14 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const [events, setEvents] = useState<CheckEvent[]>([])
   const [day, setDay] = useState<string | null>(null)
   const [today, setToday] = useState('')
-  const [section, setSection] = useState<string>('Opening')
+  const [section, setSection] = useState<string>('All day')
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [sheet, setSheet] = useState<CheckTile | null>(null)
   const [adding, setAdding] = useState(false)
+  const [reporting, setReporting] = useState(false)
+  const [clock, setClock] = useState(() => nowHM())
+  useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
 
@@ -48,7 +51,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const latest = (t: CheckTile) => day ? events.filter(e => e.tile_id === t.id && inPeriod(t.frequency, e.day, day)).at(-1) : undefined
   // On a given day: daily tiles always; weekly/monthly/yearly tiles stay on their tab; a weekday tile only when it is that weekday (or already done).
   const visible = useMemo(() => tiles, [tiles])
-  const inSection = (s: string) => visible.filter(t => t.section === s)
+  const inSection = (s: string) => s === 'All day' ? visible.filter(t => t.frequency === 'daily' && t.time) : visible.filter(t => t.section === s)
   const doneCount = (s: string) => inSection(s).filter(t => latest(t)?.value === 'Done').length
 
   async function tap(t: CheckTile) {
@@ -60,8 +63,14 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
     } catch { flash('NOT saved. Try again.') }
   }
 
-  const shown = inSection(section)
-  const sections = CHECK_SECTIONS.filter(s => inSection(s).length || canEdit)
+  const shown = section === 'All day' ? [...inSection('All day')].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.id - b.id) : inSection(section)
+  const sections = ['All day', ...CHECK_SECTIONS.filter(s => inSection(s).length || canEdit)]
+  // What to do right now: today's timed daily tiles that are not done. Late = 15 minutes or more past their time.
+  const pending = isToday ? visible.filter(t => t.kind === 'tap' && t.frequency === 'daily' && t.time && !latest(t)).sort((a, b) => a.time!.localeCompare(b.time!) || a.id - b.id) : []
+  const late = pending.filter(t => clock - toMin(t.time!) >= 15)
+  const dueNow = pending.filter(t => { const d = clock - toMin(t.time!); return d >= 0 && d < 15 })
+  const next = pending.filter(t => toMin(t.time!) > clock).slice(0, 3)
+  const [showLate, setShowLate] = useState(false)
   const total = tiles.length, done = tiles.filter(t => latest(t)?.value === 'Done').length
 
   return (
@@ -81,6 +90,33 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
         <button type="button" disabled={!day || day >= today} onClick={() => day && void load(addDays(day, 1))} className="rounded-lg bg-white/15 px-3 py-1 text-lg font-bold disabled:opacity-30">›</button>
       </div>
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+      {isToday && (
+        <div className="mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-extrabold text-[#14213D]">NOW · {String(Math.floor(clock / 60)).padStart(2, '0')}:{String(clock % 60).padStart(2, '0')}</p>
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{late.length} late</span>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{dueNow.length} due now</span>
+            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto text-[11px] font-bold text-blue-700 underline">Day report</button>}
+          </div>
+          {late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Next up below.' : 'All timed tasks are done.'}</p>}
+          {[{ label: 'LATE', rows: showLate ? late : late.slice(0, 4), cls: 'bg-red-50 border-red-300', more: late.length - 4 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
+            <div key={g.label} className="space-y-1">
+              <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label}</p>
+              {g.rows.map(t => (
+                <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${g.cls}`}>
+                  <button type="button" onClick={() => setSheet(t)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="text-lg leading-none">{t.icon}</span>
+                    <span className="shrink-0 text-[10px] font-bold text-gray-500">{t.time}</span>
+                    <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
+                  </button>
+                  {g.label !== 'NEXT' && <button type="button" onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Done</button>}
+                </div>
+              ))}
+              {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
+            </div>
+          ))}
+        </div>
+      )}
       <div className="sticky top-0 z-10 mb-3 flex flex-wrap gap-1.5 bg-white/95 py-2">
         {sections.map(s => (
           <button key={s} type="button" onClick={() => setSection(s)}
@@ -89,27 +125,23 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
           </button>
         ))}
       </div>
-      <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tap a picture when the task is done. Tap a finished one (or press and hold) for options: note, time, not done, undo. Weekly and monthly tasks stay green once done for that week or month.' : 'This is a past day. You can look but not change it.'}</p>
+      <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tiles are small so the whole day fits. Tap one to read it and mark it done. Red = late, amber = due now. Use the Done buttons in the NOW box to tick quickly. Each task you finish adds its minutes to your work time.' : 'This is a past day. You can look but not change it.'}</p>
       {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canEdit ? ' Use + Add tile.' : ''}</p>}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-10 gap-1 sm:grid-cols-12">
         {shown.map(t => {
           const ev = latest(t)
           const state = ev ? (ev.value === 'Not done' ? 'notdone' : 'done') : 'todo'
-          const late = !ev && isToday && t.frequency === 'daily' && t.time && toMin(t.time) + 30 < nowHM()
+          const minsLate = !ev && isToday && t.frequency === 'daily' && t.time ? clock - toMin(t.time) : -1
+          const isLate = minsLate >= 15
+          const isDue = minsLate >= 0 && minsLate < 15
           return (
-            <button key={t.id} type="button" onContextMenu={e => e.preventDefault()}
-              onPointerDown={() => { held.current = false; timer.current = setTimeout(() => { held.current = true; setSheet(t) }, 600) }}
-              onPointerUp={() => { if (timer.current) clearTimeout(timer.current); if (held.current) return; if (!isToday) { setSheet(t); return } if (ev || t.kind === 'properties') setSheet(t); else void tap(t) }}
-              onPointerLeave={() => { if (timer.current) clearTimeout(timer.current) }}
-              className={`relative flex min-h-[132px] select-none flex-col items-center rounded-2xl border-2 px-1.5 pb-1.5 pt-2 text-center active:opacity-70 ${state === 'done' ? 'border-green-500 bg-green-50' : state === 'notdone' ? 'border-gray-400 bg-gray-100' : late ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}>
-              {t.time && t.frequency === 'daily' && <span className={`absolute left-1.5 top-1 text-[10px] font-bold ${late ? 'text-red-600' : 'text-gray-500'}`}>{t.time}</span>}
-              {t.frequency !== 'daily' && <span className="absolute left-1.5 top-1 rounded bg-indigo-100 px-1 text-[9px] font-bold text-indigo-700">{t.weekday ? WEEKDAY_LABEL[t.weekday].slice(0, 3) : PERIOD_WORD[t.frequency]}</span>}
-              {state === 'done' && <span className="absolute right-1.5 top-1 text-sm font-bold text-green-600">✓</span>}
-              <span className="mt-3 text-4xl leading-none">{t.icon}</span>
-              <span className="mt-1.5 line-clamp-3 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
-              <span className={`mt-auto pt-1 text-[10px] font-bold ${state === 'done' ? 'text-green-700' : state === 'notdone' ? 'text-gray-500' : late ? 'text-red-600' : 'text-gray-400'}`}>
-                {ev ? `${ev.value === 'Not done' ? '✕ Not done' : evTime(ev)} · ${ev.recorded_by}` : t.kind === 'properties' ? 'Tap to open list' : late ? 'Overdue' : 'Tap when done'}
-              </span>
+            <button key={t.id} type="button" title={`${t.time ? t.time + ' · ' : ''}${t.title}`} onContextMenu={e => e.preventDefault()}
+              onClick={() => setSheet(t)}
+              className={`relative flex aspect-square select-none flex-col items-center justify-center rounded-md border px-0 text-center active:opacity-70 ${state === 'done' ? 'border-green-500 bg-green-100' : state === 'notdone' ? 'border-gray-400 bg-gray-200' : isLate ? 'border-red-500 bg-red-100' : isDue ? 'border-amber-500 bg-amber-100' : 'border-gray-200 bg-white'}`}>
+              <span className="text-base leading-none sm:text-xl">{t.icon}</span>
+              <span className={`mt-px text-[7px] font-bold leading-none sm:text-[9px] ${isLate ? 'text-red-700' : 'text-gray-500'}`}>{t.frequency !== 'daily' ? (t.weekday ? WEEKDAY_LABEL[t.weekday].slice(0, 3) : t.frequency.slice(0, 4)) : (t.time ?? '')}</span>
+              {state === 'done' && <span className="absolute right-0 top-0 text-[8px] font-bold leading-none text-green-700">✓</span>}
+              {state === 'notdone' && <span className="absolute right-0 top-0 text-[8px] font-bold leading-none text-gray-600">✕</span>}
             </button>
           )
         })}
@@ -117,6 +149,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
+      {reporting && <DayReport day={day ?? today} onClose={() => setReporting(false)} />}
       {adding && <TileForm section={section} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void load(day) }} />}
       {toast && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{toast}</div>}
     </div>
@@ -161,6 +194,7 @@ function TileSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile
           </div>
         </div>
         {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
+        {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
         {isToday && (!ev || editableEv) && (<>
           <p className="text-xs font-bold uppercase text-gray-500">Time it was done {ev ? '' : '(blank = now)'}</p>
@@ -197,6 +231,7 @@ function TileEditor({ t, editing, setEditing, onSaved, onClose }: { t: CheckTile
   const [sec, setSec] = useState(t.section)
   const [freq, setFreq] = useState<Frequency>(t.frequency)
   const [how, setHow] = useState(t.how ?? '')
+  const [mins, setMins] = useState(String(t.minutes ?? 5))
   const [filter, setFilter] = useState(t.prop_filter ?? '')
   const { busy, err, run } = useRun(onSaved, onClose)
   return (
@@ -212,10 +247,12 @@ function TileEditor({ t, editing, setEditing, onSaved, onClose }: { t: CheckTile
           <select value={freq} onChange={e => setFreq(e.target.value as Frequency)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{FREQUENCIES.map(f => <option key={f}>{f}</option>)}</select>
           <input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl border border-gray-300 p-3 text-sm" />
         </div>
+        <label className="flex items-center gap-2 text-sm font-semibold">Work time credited when ticked
+          <input type="number" min={0} max={240} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /> minutes</label>
         <textarea value={how} onChange={e => setHow(e.target.value)} placeholder="How (shown to staff)" rows={2} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         {t.kind === 'properties' && <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Words in the property name, separated by commas" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />}
         {err && <p className="text-sm text-red-600">{err}</p>}
-        <button type="button" disabled={busy || !title.trim()} onClick={() => void run(() => fetch(`/api/daily-checks/${t.id}`, { method: 'PUT', headers: json, body: JSON.stringify({ title, section: sec, time, icon, frequency: freq, how, prop_filter: filter }) }), 'Tile updated')} className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white disabled:opacity-40">Save tile</button>
+        <button type="button" disabled={busy || !title.trim()} onClick={() => void run(() => fetch(`/api/daily-checks/${t.id}`, { method: 'PUT', headers: json, body: JSON.stringify({ title, section: sec, time, icon, frequency: freq, how, minutes: Number(mins), prop_filter: filter }) }), 'Tile updated')} className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white disabled:opacity-40">Save tile</button>
         <button type="button" disabled={busy} onClick={() => { if (confirm('Remove this tile from the checklist? Past records are kept.')) void run(() => fetch(`/api/daily-checks/${t.id}`, { method: 'DELETE' }), 'Tile removed') }} className="w-full py-2 text-sm font-semibold text-red-600">Remove this tile</button>
       </>)}
     </div>
@@ -311,9 +348,10 @@ function TileForm({ section, onClose, onSaved }: { section: string; onClose: () 
   const [list, setList] = useState(false)
   const [filter, setFilter] = useState('')
   const [how, setHow] = useState('')
+  const [mins, setMins] = useState('5')
   const [err, setErr] = useState('')
   async function save() {
-    const r = await fetch('/api/daily-checks', { method: 'POST', headers: json, body: JSON.stringify({ section: sec, title, time, icon, frequency: freq, how, kind: list ? 'properties' : 'tap', prop_filter: filter }) })
+    const r = await fetch('/api/daily-checks', { method: 'POST', headers: json, body: JSON.stringify({ section: sec, title, time, icon, frequency: freq, how, minutes: Number(mins), kind: list ? 'properties' : 'tap', prop_filter: filter }) })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) setErr(d.error ?? 'Could not save'); else onSaved()
   }
@@ -330,6 +368,8 @@ function TileForm({ section, onClose, onSaved }: { section: string; onClose: () 
           <select value={freq} onChange={e => setFreq(e.target.value as Frequency)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{FREQUENCIES.map(f => <option key={f}>{f}</option>)}</select>
           <input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl border border-gray-300 p-3 text-sm" />
         </div>
+        <label className="flex items-center gap-2 text-sm font-semibold">Work time credited when ticked
+          <input type="number" min={0} max={240} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /> minutes</label>
         <textarea value={how} onChange={e => setHow(e.target.value)} placeholder="How (optional, shown to staff)" rows={2} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={list} onChange={e => setList(e.target.checked)} /> This tile opens a list (items from Properties)</label>
         {list && <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Words in the property name, e.g. printer" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />}
@@ -337,6 +377,51 @@ function TileForm({ section, onClose, onSaved }: { section: string; onClose: () 
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button type="button" disabled={!title.trim()} onClick={() => void save()} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Add tile</button>
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+type Report = { day: string; total: number; done: number; people: { person: string; done: number; minutes: number }[]; missed: { id: number; section: string; time: string | null; icon: string; title: string }[] }
+function DayReport({ day, onClose }: { day: string; onClose: () => void }) {
+  const [r, setR] = useState<Report | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    fetch(`/api/daily-checks/report?day=${day}`).then(async x => { const d = await x.json(); if (!x.ok) throw new Error(d.error ?? 'Could not load'); setR(d) }).catch(e => setErr((e as Error).message))
+  }, [day])
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+      <div className="mx-auto max-h-[90vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <p className="text-base font-bold">Day report · {dayLabel(day)}</p>
+        {err && <p className="text-sm text-red-600">{err}</p>}
+        {!r && !err && <p className="text-sm text-gray-400">Loading…</p>}
+        {r && (<>
+          <p className="rounded-xl bg-gray-50 p-3 text-sm font-semibold">{r.done} of {r.total} daily tasks done{r.total - r.done ? `, ${r.total - r.done} missed` : ''}.</p>
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase text-gray-500">Who did what</p>
+            {r.people.length === 0 && <p className="text-sm text-gray-400">Nothing ticked yet.</p>}
+            {r.people.map(p => (
+              <div key={p.person} className="flex items-center gap-2 border-b border-gray-100 py-1.5 text-sm">
+                <span className="font-semibold text-gray-900">{p.person}</span>
+                <span className="ml-auto text-gray-600">{p.done} tasks</span>
+                <span className="w-24 text-right font-semibold text-indigo-700">{Math.floor(p.minutes / 60)}hr {p.minutes % 60}min</span>
+              </div>
+            ))}
+          </div>
+          {r.missed.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase text-red-600">Missed ({r.missed.length})</p>
+              <div className="max-h-72 space-y-1 overflow-y-auto">
+                {r.missed.map(m => (
+                  <div key={m.id} className="flex items-center gap-2 rounded-lg bg-red-50 px-2 py-1 text-xs">
+                    <span className="text-base">{m.icon}</span><span className="shrink-0 font-bold text-gray-500">{m.time ?? ''}</span><span className="font-semibold text-gray-900">{m.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>)}
+        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>
   )

@@ -34,6 +34,28 @@ function place(r: SRow): { section: string; frequency: string } | null {
   return null
 }
 
+// One-time upgrade: every tile gets a work-time value (minutes) that is credited to whoever ticks it, and the
+// tiles that only repeat a clock-in or clock-out (those have their own place in the app) are taken off the list.
+// Past records are kept. Runs only while the minutes column does not exist yet.
+async function migrateMinutes() {
+  try {
+    const [{ has }] = await sql`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'daily_check_tiles' AND column_name = 'minutes') AS has`
+    if (has) return
+    await sql`ALTER TABLE daily_check_tiles ADD COLUMN IF NOT EXISTS minutes INTEGER`
+    await sql`UPDATE daily_check_tiles SET active = false WHERE active AND title ~* '^clocked (in|out)'`
+    // Timed daily tiles: the gap to the next tile in the same section, kept between 3 and 15 minutes.
+    await sql`
+      WITH t AS (
+        SELECT id, (substr(time, 1, 2)::int * 60 + substr(time, 4, 2)::int) AS m,
+               LEAD(substr(time, 1, 2)::int * 60 + substr(time, 4, 2)::int) OVER (PARTITION BY section ORDER BY time, id) AS nm
+        FROM daily_check_tiles WHERE time ~ '^[0-2][0-9]:[0-5][0-9]$'
+      )
+      UPDATE daily_check_tiles d SET minutes = LEAST(GREATEST(COALESCE(t.nm - t.m, 5), 3), 15)
+      FROM t WHERE d.id = t.id AND d.frequency = 'daily' AND d.minutes IS NULL`
+    await sql`UPDATE daily_check_tiles SET minutes = CASE WHEN kind = 'properties' THEN 10 WHEN frequency = 'weekly' THEN 15 WHEN frequency = 'monthly' THEN 20 WHEN frequency IN ('yearly', 'once') THEN 10 ELSE 5 END WHERE minutes IS NULL`
+  } catch (e) { console.error('daily checks minutes migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 async function ensureImpl() {
   await sql`CREATE TABLE IF NOT EXISTS daily_check_tiles (
     id SERIAL PRIMARY KEY, section TEXT NOT NULL, time TEXT, title TEXT NOT NULL, icon TEXT NOT NULL DEFAULT '✅', how TEXT,
@@ -44,6 +66,7 @@ async function ensureImpl() {
     id SERIAL PRIMARY KEY, tile_id INTEGER NOT NULL, day TEXT NOT NULL, value TEXT NOT NULL, note TEXT, extra JSONB,
     recorded_by TEXT NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS daily_check_events_day ON daily_check_events (day)`.catch(() => {})
+  await migrateMinutes()
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM daily_check_tiles`
   if (n > 0) return
   const rows = await sql`SELECT id, station, section, text, how, frequency, kind, position FROM standards_items WHERE active ORDER BY id`.catch(() => []) as SRow[]
@@ -87,3 +110,15 @@ async function ensureImpl() {
   }
 }
 export const ensureDailyChecks = once(ensureImpl)
+
+export const WORK_CATEGORY = 'checklist task'
+// Logs a ticked tile as an activity worth `minutes` of work for `who` (source_id = the checklist record's id).
+export async function creditWork(who: string, title: string, minutes: number, eventId: number) {
+  try {
+    await sql`INSERT INTO announcements (body, author, media_urls, category, estimated_duration_seconds, source_id)
+      VALUES (${'Daily checklist: ' + title}, ${who}, '[]'::jsonb, ${WORK_CATEGORY}, ${Math.max(0, minutes) * 60}, ${eventId})`
+  } catch (e) { console.error('daily checks credit failed:', e instanceof Error ? e.message : String(e)) }
+}
+export async function removeCredit(eventId: number) {
+  await sql`DELETE FROM announcements WHERE category = ${WORK_CATEGORY} AND source_id = ${eventId}`.catch(() => {})
+}

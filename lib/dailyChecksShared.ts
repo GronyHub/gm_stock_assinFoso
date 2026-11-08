@@ -9,6 +9,7 @@ export const CHECKLIST_START = '2026-11-05'
 export type CheckTile = {
   id: number; section: string; time: string | null; title: string; icon: string; how: string | null
   kind: 'tap' | 'properties'; prop_filter: string | null; frequency: Frequency; weekday: string | null; position: number
+  minutes: number | null   // work time credited to whoever ticks it (shows in the worked time at the top of the pages)
 }
 export type CheckEvent = {
   id: number; tile_id: number; day: string; value: string; note: string | null
