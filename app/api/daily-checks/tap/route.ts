@@ -1,6 +1,7 @@
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
+import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
 
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -12,6 +13,11 @@ export async function POST(req: NextRequest) {
   if (error) return error
   try {
     await ensureDailyChecks()
+    // Only someone who is clocked in at the shop can tick tasks (the owner is exempt).
+    if ((session.user as { role?: string })?.role !== 'owner') {
+      const clock = await getClockState(dayKey())
+      if (!clock.present.includes(actorKey(session.user as any))) return badRequest('Clock in first. You can tick tasks only while you are clocked in at the shop.')
+    }
     const b = await req.json().catch(() => ({}))
     const id = Number(b.tile_id)
     const [t] = await sql`SELECT id, title, minutes FROM daily_check_tiles WHERE id = ${id} AND active`

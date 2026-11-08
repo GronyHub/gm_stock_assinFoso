@@ -1,7 +1,14 @@
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensureDailyChecks, dayKey, creditWork, removeCredit } from '@/lib/dailyChecks'
+import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
+
+async function mustBeClockedIn(user: unknown) {
+  if ((user as { role?: string })?.role === 'owner') return null
+  const clock = await getClockState(dayKey())
+  return clock.present.includes(actorKey(user as any)) ? null : 'Clock in first. You can change tasks only while you are clocked in at the shop.'
+}
 
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/
 type Ctx = { params: Promise<{ id: string }> }
@@ -12,6 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (error) return error
   try {
     await ensureDailyChecks()
+    { const msg = await mustBeClockedIn(session.user); if (msg) return badRequest(msg) }
     const id = Number((await params).id)
     const b = await req.json().catch(() => ({}))
     const [e] = await sql`SELECT id, day, extra, tile_id, value FROM daily_check_events WHERE id = ${id}`
@@ -32,9 +40,10 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   } catch (e) { return handleError('daily-checks event PATCH', e) }
 }
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
-  const { error } = await requireAuth()
+  const { session, error } = await requireAuth()
   if (error) return error
   try {
+    { const msg = await mustBeClockedIn(session.user); if (msg) return badRequest(msg) }
     const id = Number((await params).id)
     const [e] = await sql`SELECT day FROM daily_check_events WHERE id = ${id}`
     if (e && e.day !== dayKey()) return badRequest('Only today\'s records can be removed.')

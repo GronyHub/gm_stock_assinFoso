@@ -57,3 +57,20 @@ export function pickIcon(text: string, section: string): string {
   for (const [re, ic] of ICONS) if (re.test(text)) return ic
   return SECTION_ICON[section] ?? '✅'
 }
+
+// When each timed daily tile is really due today. The day starts when the first staff member clocks in (nothing is
+// due, and nothing is late, before that). Tiles whose time was before that moment are queued one after another from
+// the clock-in time, each taking its own minutes; every other tile is due at its own time. Minutes since midnight.
+export function effectiveDue(tiles: { id: number; time: string | null; minutes: number | null; frequency: string; kind: string }[], dayStart: number | null): Map<number, number> {
+  const out = new Map<number, number>()
+  if (dayStart == null) return out
+  const hm = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
+  const timed = tiles.filter(t => t.kind === 'tap' && t.frequency === 'daily' && t.time && /^\d\d:\d\d$/.test(t.time))
+    .sort((a, b) => a.time!.localeCompare(b.time!) || a.id - b.id)
+  let cursor = dayStart
+  for (const t of timed) {
+    const own = hm(t.time!)
+    if (own < dayStart) { out.set(t.id, cursor); cursor += Math.max(1, t.minutes ?? 5) } else out.set(t.id, own)
+  }
+  return out
+}

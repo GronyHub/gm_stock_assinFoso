@@ -2,14 +2,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
-  addDays, dayLabel, inPeriod, type CheckEvent, type CheckTile, type Frequency,
+  addDays, dayLabel, effectiveDue, inPeriod, type CheckEvent, type CheckTile, type Frequency,
 } from '@/lib/dailyChecksShared'
 
 const json = { 'Content-Type': 'application/json' }
 const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
 const evTime = (e: CheckEvent) => e.extra?.done_at ?? hhmm(e.recorded_at)
 const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getUTCMinutes() }
-const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
 
 // Tiles that are a job done on another page of the app get a button that opens it (the stock count).
 const linkFor = (t: CheckTile): { href: string; label: string } | null => /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' } : null
@@ -21,6 +20,9 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const [events, setEvents] = useState<CheckEvent[]>([])
   const [day, setDay] = useState<string | null>(null)
   const [today, setToday] = useState('')
+  const [dayStart, setDayStart] = useState<number | null>(null)
+  const [clockedIn, setClockedIn] = useState(true)
+  const [names, setNames] = useState(false)
   const [section, setSection] = useState<string>('All day')
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
@@ -37,7 +39,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
       try {
         const r = await fetch(`/api/daily-checks${d ? `?day=${d}` : ''}`, { cache: 'no-store' })
         const j = await r.json()
-        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setError(''); return }
+        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setError(''); return }
       } catch { /* retry */ }
       await new Promise(r => setTimeout(r, 700 * (i + 1)))
     }
@@ -58,6 +60,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const doneCount = (s: string) => inSection(s).filter(t => latest(t)?.value === 'Done').length
 
   async function tap(t: CheckTile) {
+    if (locked) { flash('Clock in first.'); return }
     if (t.kind === 'properties') { setSheet(t); return }
     try {
       const r = await fetch('/api/daily-checks/tap', { method: 'POST', headers: json, body: JSON.stringify({ tile_id: t.id }) })
@@ -68,11 +71,15 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
 
   const shown = section === 'All day' ? [...inSection('All day')].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.id - b.id) : inSection(section)
   const sections = ['All day', ...CHECK_SECTIONS.filter(s => inSection(s).length || canEdit)]
-  // What to do right now: today's timed daily tiles that are not done. Late = 15 minutes or more past their time.
-  const pending = isToday ? visible.filter(t => t.kind === 'tap' && t.frequency === 'daily' && t.time && !latest(t)).sort((a, b) => a.time!.localeCompare(b.time!) || a.id - b.id) : []
-  const late = pending.filter(t => clock - toMin(t.time!) >= 15)
-  const dueNow = pending.filter(t => { const d = clock - toMin(t.time!); return d >= 0 && d < 15 })
-  const next = pending.filter(t => toMin(t.time!) > clock).slice(0, 3)
+  // What to do right now. The day starts when the first staff member clocks in; before that nothing is due or late.
+  // A task is late 15 minutes after it was due (see effectiveDue for how the morning tasks are queued from clock-in).
+  const due = useMemo(() => effectiveDue(tiles, dayStart), [tiles, dayStart])
+  const pending = isToday && dayStart != null ? visible.filter(t => due.has(t.id) && !latest(t)).sort((a, b) => due.get(a.id)! - due.get(b.id)! || a.id - b.id) : []
+  const late = pending.filter(t => clock - due.get(t.id)! >= 15)
+  const dueNow = pending.filter(t => { const d = clock - due.get(t.id)!; return d >= 0 && d < 15 })
+  const next = pending.filter(t => due.get(t.id)! > clock).slice(0, 3)
+  const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  const locked = isToday && !clockedIn
   const [showLate, setShowLate] = useState(false)
   const total = tiles.length, done = tiles.filter(t => latest(t)?.value === 'Done').length
 
@@ -101,7 +108,9 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{dueNow.length} due now</span>
             {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto text-[11px] font-bold text-blue-700 underline">Day report</button>}
           </div>
-          {late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Next up below.' : 'All timed tasks are done.'}</p>}
+          {dayStart == null && <p className="text-xs font-semibold text-gray-600">Waiting for the first staff member to clock in. The day&apos;s tasks start when they do.</p>}
+          {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
+          {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Next up below.' : 'All timed tasks are done.'}</p>}
           {[{ label: 'LATE', rows: showLate ? late : late.slice(0, 4), cls: 'bg-red-50 border-red-300', more: late.length - 4 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
             <div key={g.label} className="space-y-1">
               <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label}</p>
@@ -109,11 +118,11 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
                 <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${g.cls}`}>
                   <button type="button" onClick={() => setSheet(t)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <span className="text-lg leading-none">{t.icon}</span>
-                    <span className="shrink-0 text-[10px] font-bold text-gray-500">{t.time}</span>
+                    <span className="shrink-0 text-[10px] font-bold text-gray-500">{fmt(due.get(t.id)!)}</span>
                     <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
                   </button>
                   {g.label !== 'NEXT' && linkFor(t) && <a href={linkFor(t)!.href} className="shrink-0 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-bold text-white">{linkFor(t)!.label}</a>}
-                  {g.label !== 'NEXT' && <button type="button" onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Done</button>}
+                  {g.label !== 'NEXT' && <button type="button" disabled={locked} onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Done</button>}
                 </div>
               ))}
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
@@ -129,13 +138,37 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
           </button>
         ))}
       </div>
-      <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tiles are small so the whole day fits. Tap one to read it and mark it done. Red = late, amber = due now. Use the Done buttons in the NOW box to tick quickly. Each task you finish adds its minutes to your work time.' : 'This is a past day. You can look but not change it.'}</p>
+      <div className="mb-2 flex gap-1.5">
+        {([[false, 'Pictures'], [true, 'Names']] as const).map(([v, l]) => (
+          <button key={l} type="button" onClick={() => setNames(v)} className={`rounded-full px-3 py-1 text-xs font-bold ${names === v ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{l}</button>
+        ))}
+      </div>
+      <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tiles are small so the whole day fits. Tap one to read what it means first, then mark it done there. Switch to Names to read every task as a list. Red = late, amber = due now. Use the Done buttons in the NOW box to tick quickly. Each task you finish adds its minutes to your work time.' : 'This is a past day. You can look but not change it.'}</p>
       {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canEdit ? ' Use + Add tile.' : ''}</p>}
+      {names ? (
+        <div className="space-y-1">
+          {shown.map(t => {
+            const ev = latest(t)
+            const state = ev ? (ev.value === 'Not done' ? 'notdone' : 'done') : 'todo'
+            const minsLate = !ev && isToday && due.has(t.id) ? clock - due.get(t.id)! : -1
+            return (
+              <button key={t.id} type="button" onClick={() => setSheet(t)}
+                className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1 text-left ${state === 'done' ? 'border-green-400 bg-green-50' : state === 'notdone' ? 'border-gray-300 bg-gray-100' : minsLate >= 15 ? 'border-red-400 bg-red-50' : minsLate >= 0 ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                <span className="text-lg leading-none">{t.icon}</span>
+                <span className="w-10 shrink-0 text-[10px] font-bold text-gray-500">{t.frequency !== 'daily' ? PERIOD_WORD[t.frequency] : (t.time ?? '')}</span>
+                <span className="line-clamp-2 flex-1 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
+                {state === 'done' && <span className="text-xs font-bold text-green-700">✓</span>}
+                {state === 'notdone' && <span className="text-xs font-bold text-gray-600">✕</span>}
+              </button>
+            )
+          })}
+        </div>
+      ) : (
       <div className="grid grid-cols-10 gap-1 sm:grid-cols-12">
         {shown.map(t => {
           const ev = latest(t)
           const state = ev ? (ev.value === 'Not done' ? 'notdone' : 'done') : 'todo'
-          const minsLate = !ev && isToday && t.frequency === 'daily' && t.time ? clock - toMin(t.time) : -1
+          const minsLate = !ev && isToday && due.has(t.id) ? clock - due.get(t.id)! : -1
           const isLate = minsLate >= 15
           const isDue = minsLate >= 0 && minsLate < 15
           return (
@@ -150,9 +183,10 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
           )
         })}
       </div>
+      )}
       {sheet && (sheet.kind === 'properties'
-        ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
-        : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
+        ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
+        : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
       {reporting && <DayReport day={day ?? today} onClose={() => setReporting(false)} />}
       {adding && <TileForm section={section} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void load(day) }} />}
       {toast && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{toast}</div>}
