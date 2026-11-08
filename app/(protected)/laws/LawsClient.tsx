@@ -6,17 +6,17 @@ import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null; proof?: string
+  status?: string; tile_id?: number | null; proof?: string; points?: number
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick' })
-const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1) })
+const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 export default function LawsClient({ canManage }: { canManage: boolean }) {
@@ -68,6 +68,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeLabel(l.law_type)}</span>
+          {(l.points ?? 1) > 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">⚖ {l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'} if broken</span>}
           {l.tile_id && <a href="/standards" className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">✅ In the Daily Checklist</a>}
           {sched && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sched.startsWith('No schedule') ? 'bg-amber-100 text-amber-800' : 'bg-indigo-50 text-indigo-800'}`}>🗓 {sched}</span>}
           {canManage && <span className="ml-auto flex gap-1">
@@ -103,6 +104,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Company Laws</h1>
+        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}
         <a href="/standards" className="text-xs font-semibold text-blue-700 underline">Daily Checklist</a>
       </div>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />
@@ -215,6 +217,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
             <div><label className={lab}>How staff prove it</label><select value={d.proof} onChange={e => set('proof', e.target.value)} className={inp}>{PROOFS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
           </div>
         )}
+        <div><label className={lab}>Penalty points if this law is broken</label><input type="number" min={0} max={20} value={d.points} onChange={e => set('points', e.target.value)} className={inp + ' w-24'} /></div>
         <div><label className={lab}>Do (one per line, optional)</label><textarea value={d.dos} onChange={e => set('dos', e.target.value)} rows={3} className={inp} /></div>
         <div><label className={lab}>Don&apos;t (one per line, optional)</label><textarea value={d.donts} onChange={e => set('donts', e.target.value)} rows={3} className={inp} /></div>
         {err && <p className="text-sm text-red-600">{err}</p>}

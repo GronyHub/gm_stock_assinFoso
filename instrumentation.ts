@@ -49,4 +49,9 @@ export async function register() {
   setInterval(() => {
     void import('./lib/checklistAlerts').then(m => m.checklistAlertsTick()).catch(e => console.error('checklistAlerts tick failed:', e instanceof Error ? e.message : String(e)))
   }, 60000).unref()
+
+  // Penalty points: Monday prompt, day-end missed-task points (19:20), clean-week fading (19:30). Turn off with PENALTIES=off.
+  setInterval(() => {
+    void import('./lib/penalties').then(m => m.penaltiesTick()).catch(e => console.error('penalties tick failed:', e instanceof Error ? e.message : String(e)))
+  }, 60000).unref()
 }

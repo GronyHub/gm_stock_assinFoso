@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { MyAvatar } from '@/components/StaffAvatar'
+import { PenaltyChip } from '@/components/PenaltyChip'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
 // width right pane" navigation pattern used throughout this app (Grony
@@ -91,6 +92,7 @@ export function SidePaneToggle({ mode, onChange, label, onHide }: { mode: Displa
         <div className={`px-1.5 pt-1 flex items-center gap-1 min-w-0 ${onHide ? 'pr-6' : ''}`} title="You are signed in as this person">
           <MyAvatar size={16} />
           <p className="text-[9px] font-semibold text-blue-200 truncate">{label}</p>
+          <PenaltyChip />
         </div>
       )}
       {onHide && (

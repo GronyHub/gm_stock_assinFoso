@@ -1,0 +1,122 @@
+'use client'
+import { useCallback, useEffect, useState } from 'react'
+
+type Person = { staff: string; display_name: string; role: string; points: number; warnings: number }
+type Pending = { id: number; staff: string; points: number; reason: string; day: string; created_by: string }
+type Sanction = { id: number; staff: string; tier: number; points_at: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }
+type Entry = { id: number; staff: string; points: number; kind: string; reason: string; source: string; day: string; counted: boolean; status: string; created_by: string | null }
+type Data = { settings: { launch: string; startCounting: string }; people: Person[]; pending: Pending[]; sanctions: Sanction[]; recent: Entry[]; laws: { id: number; text: string; category: string; points: number }[] }
+const json = { 'Content-Type': 'application/json' }
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
+const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const bandCls = (p: number) => p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'
+const tierLabel = (t: number) => t >= 50 ? 'Dismissal' : t >= 30 ? '1-week suspension, 20 hours deducted' : '3-day suspension, 10 hours deducted'
+
+// Penalties for the owner and manager: everyone's points, reports to confirm, sanctions to approve, and a form to record a violation.
+export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
+  const [d, setD] = useState<Data | null>(null)
+  const [err, setErr] = useState('')
+  const [msg, setMsg] = useState('')
+  const [form, setForm] = useState({ staff: '', reason: '', law_id: '', points: '1' })
+  const [start, setStart] = useState('')
+  const load = useCallback(async () => {
+    try { const r = await fetch('/api/penalties', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error ?? 'Could not load'); setD(j); setStart(j.settings.startCounting); setErr('') } catch (e) { setErr((e as Error).message) }
+  }, [])
+  useEffect(() => { void load() }, [load])
+  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
+  async function call(url: string, init: RequestInit, ok: string) {
+    const r = await fetch(url, init); const j = await r.json().catch(() => ({}))
+    if (!r.ok) { flash(j.error ?? 'Failed'); return }
+    flash(ok); void load()
+  }
+  const counting = d ? new Date().toISOString().slice(0, 10) >= d.settings.startCounting : false
+
+  return (
+    <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
+      <div className="mb-2 flex items-center gap-2">
+        <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
+        <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Penalty points</h1>
+        <a href="/laws" className="text-xs font-semibold text-blue-700 underline">Company Laws</a>
+      </div>
+      {err && <p className="text-sm text-red-600">{err}</p>}
+      {!d && !err && <p className="text-sm text-gray-400">Loading…</p>}
+      {d && (<>
+        <div className={`mb-3 rounded-xl p-3 text-xs font-semibold ${counting ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-800'}`}>
+          {counting ? `Points are counting (since ${dlabel(d.settings.startCounting)}).` : `Learning period: violations are warnings only until ${dlabel(d.settings.startCounting)}.`}
+          {isOwner && <span className="ml-2 inline-flex items-center gap-1">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[11px]" />
+            <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[11px] font-bold text-white">Save</button></span>}
+        </div>
+
+        {d.sanctions.filter(s => s.status === 'proposed').length > 0 && (
+          <div className="mb-3 space-y-2">
+            <p className="text-xs font-extrabold uppercase text-red-700">Sanctions waiting for your decision</p>
+            {d.sanctions.filter(s => s.status === 'proposed').map(s => (
+              <div key={s.id} className="rounded-xl border-2 border-red-300 bg-red-50 p-3">
+                <p className="text-sm font-bold text-gray-900">{cap(s.staff)} · {s.points_at} points</p>
+                <p className="text-xs text-gray-700">Recommended: {tierLabel(s.tier)}</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => { if (confirm(s.tier >= 50 ? 'Approve the dismissal? Carry it out in Users.' : `Approve the suspension for ${cap(s.staff)}? It starts tomorrow, blocks clock-in and ticking, and their points drop to ${s.tier / 2}.`)) void call(`/api/penalties/sanctions/${s.id}`, { method: 'POST', headers: json, body: JSON.stringify({ action: 'approve' }) }, 'Approved') }} className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-bold text-white">Approve</button>
+                  <button type="button" onClick={() => void call(`/api/penalties/sanctions/${s.id}`, { method: 'POST', headers: json, body: JSON.stringify({ action: 'reject' }) }, 'Not applied')} className="flex-1 rounded-lg bg-gray-200 py-2 text-sm font-bold text-gray-800">Do not apply</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {d.pending.length > 0 && (
+          <div className="mb-3 space-y-2">
+            <p className="text-xs font-extrabold uppercase text-amber-700">Reports waiting for you to confirm ({d.pending.length})</p>
+            {d.pending.map(p => (
+              <div key={p.id} className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+                <p className="text-sm font-bold text-gray-900">{cap(p.staff)} · {p.points} point</p>
+                <p className="text-xs text-gray-700">{p.reason}</p><p className="text-[10px] text-gray-500">{dlabel(p.day)} · reported by {cap(p.created_by ?? '')}</p>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'confirm' }) }, 'Point confirmed')} className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white">Confirm the point</button>
+                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'dismiss' }) }, 'Dismissed')} className="flex-1 rounded-lg bg-gray-200 py-1.5 text-xs font-bold text-gray-800">Dismiss</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Staff</p>
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {d.people.map(p => (
+            <div key={p.staff} className="rounded-xl border border-gray-200 bg-white p-2 text-center">
+              <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-lg font-extrabold ${bandCls(p.points)}`}>{p.points}</div>
+              <p className="mt-1 text-sm font-bold text-gray-900">{p.display_name || cap(p.staff)}</p>
+              <p className="text-[10px] text-gray-500">{p.warnings} warning{p.warnings === 1 ? '' : 's'}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-3 space-y-2 rounded-xl border border-gray-200 bg-white p-3">
+          <p className="text-sm font-bold">Record a violation</p>
+          <select value={form.staff} onChange={e => setForm(f => ({ ...f, staff: e.target.value }))} className="w-full rounded-xl border border-gray-300 p-2.5 text-sm"><option value="">Which staff member?</option>{d.people.map(p => <option key={p.staff} value={p.staff}>{p.display_name || cap(p.staff)}</option>)}</select>
+          <select value={form.law_id} onChange={e => { const l = d.laws.find(x => x.id === Number(e.target.value)); setForm(f => ({ ...f, law_id: e.target.value, points: l ? String(l.points) : f.points, reason: l && !f.reason ? l.text.slice(0, 120) : f.reason })) }} className="w-full rounded-xl border border-gray-300 p-2.5 text-sm"><option value="">Law broken (optional)</option>{d.laws.map(l => <option key={l.id} value={l.id}>{l.category}: {l.text.slice(0, 70)}</option>)}</select>
+          <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} rows={2} placeholder="What happened?" className="w-full rounded-xl border border-gray-300 p-2.5 text-sm" />
+          <label className="flex items-center gap-2 text-sm font-semibold">Points <input type="number" min={1} max={20} value={form.points} onChange={e => setForm(f => ({ ...f, points: e.target.value }))} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /></label>
+          <button type="button" disabled={!form.staff || form.reason.trim().length < 4} onClick={() => void call('/api/penalties', { method: 'POST', headers: json, body: JSON.stringify({ staff: form.staff, reason: form.reason, law_id: form.law_id || null, points: Number(form.points) }) }, 'Recorded').then(() => setForm({ staff: '', reason: '', law_id: '', points: '1' }))} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">Record violation</button>
+        </div>
+
+        {d.sanctions.filter(s => s.status === 'approved').length > 0 && (
+          <div className="mb-3"><p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Approved sanctions</p>
+            {d.sanctions.filter(s => s.status === 'approved').map(s => <p key={s.id} className="rounded-lg bg-gray-50 px-2 py-1 text-xs text-gray-800"><b>{cap(s.staff)}</b> · {tierLabel(s.tier)}{s.start_date ? ` · ${s.start_date} to ${s.end_date}` : ''}{s.hours ? ` · deduct ${s.hours} hours on the payslip` : ''}</p>)}
+          </div>
+        )}
+
+        <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Latest entries</p>
+        <div className="space-y-1">
+          {d.recent.map(e => (
+            <div key={e.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs ${e.status === 'reversed' || e.status === 'dismissed' ? 'bg-gray-100 text-gray-400 line-through' : e.points < 0 ? 'bg-green-50' : e.counted ? 'bg-red-50' : 'bg-gray-50'}`}>
+              <span className="min-w-0 flex-1"><b>{cap(e.staff)}</b> · {e.points > 0 ? `+${e.points}` : e.points} · {dlabel(e.day)} · {e.reason}{e.points > 0 && !e.counted && e.status === 'active' ? ' (warning)' : ''}{e.status === 'pending' ? ' (pending)' : ''}</span>
+              {(e.status === 'active') && e.kind === 'violation' && <button type="button" onClick={() => { if (confirm('Take this point back?')) void call(`/api/penalties/${e.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'reverse' }) }, 'Point reversed') }} className="shrink-0 font-bold text-red-700 underline">Reverse</button>}
+            </div>
+          ))}
+          {d.recent.length === 0 && <p className="text-sm text-gray-400">No entries yet.</p>}
+        </div>
+      </>)}
+      {msg && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{msg}</div>}
+    </div>
+  )
+}

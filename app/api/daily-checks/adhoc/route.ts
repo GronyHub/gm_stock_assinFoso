@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { dayKey, ensureAdhoc, ADHOC_CATEGORY, ADHOC_DAILY_CAP_MIN, ADHOC_ENTRY_MAX_MIN } from '@/lib/dailyChecks'
 import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import { getClockState, actorKey } from '@/lib/clockState'
+import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest } from 'next/server'
 
 // POST { category, note, minutes?, photo_url? } -- an ad hoc activity: work that was not slated for the day. It is saved
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
     if ((session.user as { role?: string })?.role !== 'owner' && !clock.present.includes(actorKey(session.user as any))) {
       return badRequest('Clock in first. You can log work only while you are clocked in at the shop.')
     }
+    { const msg = await suspendedMessage(actorKey(session.user as any), dayKey()); if ((session.user as { role?: string })?.role !== 'owner' && msg) return badRequest(msg) }
     const b = await req.json().catch(() => ({}))
     const category = String(b.category ?? '')
     if (!LAW_CATEGORIES.some(c => c.key === category)) return badRequest('Choose a category.')

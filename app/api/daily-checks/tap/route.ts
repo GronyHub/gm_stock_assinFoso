@@ -4,6 +4,7 @@ import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { notifyOwners } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
+import { addPoint, suspendedMessage } from '@/lib/penalties'
 import { NextRequest } from 'next/server'
 
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     if ((session.user as { role?: string })?.role !== 'owner' && !clock.present.includes(actorKey(session.user as any))) {
       return badRequest('Clock in first. You can tick tasks only while you are clocked in at the shop.')
     }
+    { const msg = await suspendedMessage(actorKey(session.user as any), dayKey()); if ((session.user as { role?: string })?.role !== 'owner' && msg) return badRequest(msg) }
     const b = await req.json().catch(() => ({}))
     const id = Number(b.tile_id)
     const [t] = await sql`SELECT id, title, minutes, kind, log_category, needs_photo, section FROM daily_check_tiles WHERE id = ${id} AND active`
@@ -74,6 +76,16 @@ export async function POST(req: NextRequest) {
           await sql`INSERT INTO manage_logs (category, notes, photo_url, logged_by, about_staff) VALUES (${t.log_category}, ${l.notes}, ${l.photo}, ${actor}, ${l.about})`
         }
       } catch (e) { console.error('daily-checks mirror to manage_logs failed:', e instanceof Error ? e.message : String(e)) }
+    }
+    // Penalty points: a person marked as not complying with the dress code gets a point at once; a behaviour report waits
+    // for the owner or manager to confirm it.
+    if (t.kind === 'persons' && extra.persons) {
+      for (const [name, v] of Object.entries(extra.persons as Record<string, string>)) {
+        if (v === 'not') await addPoint({ staff: name, reason: 'Not wearing the company T-shirt and employee tag', source: 'dress', ref: `dress:${dayKey(now)}:${id}`, day: dayKey(now), by: actor }).catch(() => {})
+      }
+    }
+    if (t.kind === 'question' && extra.answer === 'issue' && t.log_category === 'team_behaviour_log' && aboutStaff) {
+      await addPoint({ staff: aboutStaff, reason: `Behaviour report: ${String(note ?? '').slice(0, 140)}`, source: 'behaviour', ref: `behaviour:${row.id}`, day: dayKey(now), status: 'pending', by: actor }).catch(() => {})
     }
     if (problem) void notifyOwners(`Checklist: ${String(t.title).split(':')[0]}`, `${actor} reported: ${problem}`)
     if (row.value === 'Done') await creditWork(actor, String(t.title), Number(t.minutes ?? 5), Number(row.id))

@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { distanceMeters, allowedRadiusMeters, SHOP_LAT, SHOP_LNG } from '@/lib/geo'
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports } from '@/lib/closingReports'
+import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
 
@@ -140,6 +141,10 @@ export async function POST(req: NextRequest) {
   const { action, time, latitude, longitude, accuracy, closing_report } = await req.json()
   if (!action || !time) return badRequest('Missing fields')
   if (!['in', 'out'].includes(action)) return badRequest('Invalid action')
+  if (action === 'in' && sessionUser?.role !== 'owner') {
+    const msg = await suspendedMessage(String(sessionUser?.username ?? sessionUser?.name ?? ''), new Date().toISOString().slice(0, 10))
+    if (msg) return badRequest(msg)
+  }
 
   const username = sessionUser?.username ?? sessionUser?.name
   const today = new Date().toISOString().slice(0, 10)

@@ -45,6 +45,24 @@ const names = (titles: string[]) => {
   return short.join(' · ') + (titles.length > 3 ? ` · +${titles.length - 3} more` : '')
 }
 
+// Push to specific logins (never throws).
+export async function pushToUsers(usernames: string[], title: string, body: string) {
+  try {
+    const names = usernames.map(u => u.toLowerCase())
+    if (!names.length) return
+    const subs = await sql`SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE LOWER(username) = ANY(${names})` as unknown as Sub[]
+    await send(subs, title, body)
+  } catch (e) { console.error('pushToUsers failed:', e instanceof Error ? e.message : String(e)) }
+}
+// Push to every shop login (everyone except the children's-section accounts).
+export async function pushToShop(title: string, body: string) {
+  try {
+    const subs = await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username)
+      WHERE au.role <> 'children_manager' AND au.active IS NOT FALSE` as unknown as Sub[]
+    await send(subs, title, body)
+  } catch (e) { console.error('pushToShop failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Tells the owner and Joe something needs their attention (never throws).
 export async function notifyOwners(title: string, body: string) {
   try { await send(await ownerSubs(), title, body) } catch (e) { console.error('notifyOwners failed:', e instanceof Error ? e.message : String(e)) }
