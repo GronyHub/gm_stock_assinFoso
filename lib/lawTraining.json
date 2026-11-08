@@ -1,0 +1,109 @@
+{
+  "Customer service": {
+    "slug": "customer-service", "video": "/law-videos/customer-service.mp4",
+    "related": [{ "label": "Customer Service Code on the shop TV (5 min)", "file": "/adverts/Grony_Customer_Service_TV.mp4" }],
+    "quiz": [
+      { "q": "A customer walks in while you are on a phone call to a friend. What do you do?", "options": ["Finish the call first", "Acknowledge them, end the call and greet them within 10 seconds", "Wave and keep talking"], "answer": 1, "why": "Greet within 10 seconds and keep your phone away from customers." },
+      { "q": "A customer asks for your personal number so they can reach you easily.", "options": ["Give it, they seem nice", "Give the company number 053 432 8977", "Give your MoMo number so they can pay you"], "answer": 1, "why": "No personal phone or MoMo number is ever given. Payments go to the company number or the till." },
+      { "q": "You are not sure of the price of a large print.", "options": ["Guess a price that sounds right", "Say 'Let me check' and ask a colleague or the manager", "Tell the customer it is expensive"], "answer": 1, "why": "Never guess prices. Check first." },
+      { "q": "You made a spelling mistake on a customer's print. What do you do?", "options": ["Hope they do not notice", "Tell them, apologise and reprint free of charge", "Charge them for the reprint"], "answer": 1, "why": "Own the mistake and fix it at no extra charge." }
+    ]
+  },
+  "Customers & WhatsApp": {
+    "slug": "customers-whatsapp", "video": "/law-videos/customers-whatsapp.mp4",
+    "related": [{ "label": "Page guide: Customers", "file": "/guides/customers.mp4" }],
+    "quiz": [
+      { "q": "Where do you reply to a customer's questions, send receipts and record payments?", "options": ["Your personal WhatsApp", "The customer's chat on the company WhatsApp", "A phone call from your own phone"], "answer": 1, "why": "The customer's company WhatsApp chat is the source of truth." },
+      { "q": "How quickly must every WhatsApp message be answered?", "options": ["Within 1 hour", "By the end of the week", "Only if it looks urgent"], "answer": 0, "why": "Every message is answered within 1 hour, quoting prices only from the price list." },
+      { "q": "A customer is not sending their work on WhatsApp. What do you ask them to do?", "options": ["Come back tomorrow", "Send 'hi' to the company number so you can save their contact with their GM number", "Send it to your personal number"], "answer": 1, "why": "Ask them to send hi to the company number, then save the contact as GM number and name." },
+      { "q": "How many new customers must be registered and added to the WhatsApp group each week?", "options": ["At least 1", "At least 5", "At least 50"], "answer": 1, "why": "At least five new customers registered and five added to the WhatsApp group every week." }
+    ]
+  },
+  "Adverts & marketing": {
+    "slug": "adverts-marketing", "video": "/law-videos/adverts-marketing.mp4",
+    "related": [{ "label": "Advert videos (Advert > Video page)", "file": "/adverts/Grony_All_Services.mp4" }],
+    "quiz": [
+      { "q": "What is the first thing to check every morning about the TV?", "options": ["It is on and playing the company advert on repeat", "It is switched off to save power", "It shows the news"], "answer": 0, "why": "The 32-inch TV plays the company advert on repeat all day." },
+      { "q": "You want to post a video of a customer collecting their work. What must you have first?", "options": ["Nothing, it is free advertising", "The customer's permission", "The manager's phone number"], "answer": 1, "why": "Never post a customer's face, CV or document without their permission." },
+      { "q": "In which order is the daily clip posted?", "options": ["WhatsApp group, then Facebook, then TikTok", "TikTok, then a Facebook Reel, then WhatsApp Status and the group", "Only on your personal page"], "answer": 1, "why": "Post to TikTok, then a Facebook Reel, then WhatsApp Status and the group." },
+      { "q": "What should the end of every advert video show?", "options": ["Your personal number", "The company number", "Nothing"], "answer": 1, "why": "End the text with the company number, which is on the monitor sticker." }
+    ]
+  },
+  "Shop display & arrangement": {
+    "slug": "shop-display", "video": "/law-videos/shop-display.mp4",
+    "related": [],
+    "quiz": [
+      { "q": "New goods arrive. Where do they go?", "options": ["In front of the old goods", "Before or behind the old goods, with old goods displayed first", "On the floor until there is time"], "answer": 1, "why": "New goods go before or behind old goods, and old goods are displayed with priority." },
+      { "q": "Which of these must never be displayed anywhere in the shop?", "options": ["Our own service designs", "Another company's logo, design or advert", "Trending services near customers"], "answer": 1, "why": "Never display any other company's logo, design or advert." },
+      { "q": "Where do the hanging items go?", "options": ["On the floor", "On the last shelf of the Boys' showcase", "In the Grony 4 path"], "answer": 1, "why": "Hanging items go on the last shelf of the Boys' showcase. The lower shelf is for faulty items." },
+      { "q": "A pile of boxes is blocking the Grony 4 path. What do you do?", "options": ["Leave it, it is storage", "Clear the path and put storage goods on the Grony 4 shelf", "Stack more on top"], "answer": 1, "why": "The Grony 4 path stays clear and storage goods go on the Grony 4 shelf." }
+    ]
+  },
+  "Cleanliness & safety": {
+    "slug": "cleanliness-safety", "video": "/law-videos/cleanliness-safety.mp4",
+    "related": [],
+    "quiz": [
+      { "q": "A small electrical fire starts. What must you never use on it?", "options": ["The extinguisher", "Water", "Switching off at the mains if it is safe"], "answer": 1, "why": "Never use water on an electrical fire. Pull, Aim, Squeeze, Sweep, and call 192." },
+      { "q": "On which day is the fire alarm tested?", "options": ["Monday", "Wednesday", "Saturday"], "answer": 1, "why": "The fire alarm is tested every Wednesday." },
+      { "q": "A customer's printed document is no longer needed. How is it thrown away?", "options": ["Straight into the bin", "Torn into pieces first, then into the BIN", "Into the WASTE PAPERS slot"], "answer": 1, "why": "Official and customer documents are torn into pieces before going in the BIN. The waste-papers slot is for test prints only." },
+      { "q": "You see a cable lying across a walkway. What do you do?", "options": ["Step over it", "Move it off the walkway and bundle it", "Tell the next shift"], "answer": 1, "why": "No cable may lie across any path or walkway." }
+    ]
+  },
+  "Equipment, power & repairs": {
+    "slug": "equipment-power", "video": "/law-videos/equipment-power.mp4",
+    "related": [],
+    "quiz": [
+      { "q": "A printer is faulty. What do you do?", "options": ["Leave it where it is", "Put it on the lower shelf of the Boys' showcase with a note, and tell Joe the same day", "Throw it away"], "answer": 1, "why": "Faulty items go on the lower shelf with a note (item, fault, date, name), and Joe is told the same day." },
+      { "q": "There is a power cut. What do you do with the UPS?", "options": ["Leave it on", "Keep it off when there is no work, and put it back on charge the moment power returns", "Unplug everything"], "answer": 1, "why": "Keep the UPS off when there is no work, and back on charge as soon as power returns." },
+      { "q": "When may the HP M880 be used?", "options": ["For every job", "Only in extreme cases, after trying every other printer and telling Joe", "Never"], "answer": 1, "why": "The HP M880 is reserved for extreme cases only." },
+      { "q": "At closing, what do you do with the printers?", "options": ["Unplug them completely", "Turn them off at their button but leave them plugged in and on USB", "Leave them on all night"], "answer": 1, "why": "Printers are off at their button but still plugged in and on USB, with the UPS charging." }
+    ]
+  },
+  "Stock & records": {
+    "slug": "stock-records", "video": "/law-videos/stock-records.mp4",
+    "related": [
+      { "label": "Page guide: Live Sale", "file": "/guides/sale.mp4" }, { "label": "Page guide: Sales Log", "file": "/guides/log.mp4" },
+      { "label": "Page guide: Counts", "file": "/guides/counts.mp4" }, { "label": "Page guide: Bills", "file": "/guides/bills.mp4" },
+      { "label": "Page guide: Purchase Orders", "file": "/guides/purchase_orders.mp4" }, { "label": "Page guide: Vendors", "file": "/guides/vendors.mp4" },
+      { "label": "Page guide: Item 360", "file": "/guides/item360.mp4" }
+    ],
+    "quiz": [
+      { "q": "A customer buys several items at once. How do you sell them?", "options": ["One Live Sale tap for each item", "Through MI: one basket, one receipt", "Write it on paper"], "answer": 1, "why": "Several items for one customer are sold through MI, one basket and one receipt." },
+      { "q": "What must every bill have?", "options": ["Only the total", "Its receipt attached, the vendor name, a full item list that adds up, and canonical item names", "Nothing, if the vendor is known"], "answer": 1, "why": "Every bill has its receipt, vendor name, full list of goods adding up to the total, and canonical names." },
+      { "q": "What does WIC mean?", "options": ["Walk-in customer", "Work in cash", "Weekly item count"], "answer": 0, "why": "WIC is walk-in customer. GMC is Grony Multimedia as customer." },
+      { "q": "The app refuses a sale because the price is below cost. What do you do?", "options": ["Force it through", "Do not force it; tell Joe", "Change the item name"], "answer": 1, "why": "A sale the app refuses is not forced. Tell Joe." }
+    ]
+  },
+  "Staff management": {
+    "slug": "staff-management", "video": "/law-videos/staff-management.mp4",
+    "related": [],
+    "quiz": [
+      { "q": "At how many penalty points is the sanction a 3-day suspension?", "options": ["10", "20", "50"], "answer": 1, "why": "20 points is a 3-day suspension (10 hours deducted). 30 points is a week, 50 points is dismissal." },
+      { "q": "You could not clock in on time. What may you do?", "options": ["Enter your time by hand any time", "Enter it by hand only when you could not clock in, with the reason, and never more than 5 times a month", "Ask a colleague to clock in for you"], "answer": 1, "why": "Manual entries need a reason, and more than 5 a month looks highly suspicious." },
+      { "q": "How do penalty points come off?", "options": ["They never do", "5 points come off after a clean record for a week", "All points reset every month"], "answer": 1, "why": "Points reduce by 5 after a clean record for a week." },
+      { "q": "Tasks are left undone at the end of the day. Who shares the points?", "options": ["Nobody", "Everyone who clocked in that day, up to 3 points a day each", "Only the closer"], "answer": 1, "why": "Everyone clocked in shares missed tasks, at most 3 points a day each." }
+    ]
+  },
+  "Security & privacy": {
+    "slug": "security-privacy", "video": "/law-videos/security-privacy.mp4",
+    "related": [],
+    "quiz": [
+      { "q": "A friend of a customer asks you for that customer's phone number. What do you do?", "options": ["Give it, they know each other", "Refuse politely: customer details are private", "Give half the number"], "answer": 1, "why": "Keep customer details private. Never share or reuse them." },
+      { "q": "Which account do you use in your Chrome profile?", "options": ["Your personal email", "The company account only", "Any account"], "answer": 1, "why": "Work in your own Chrome profile with the company account only. No personal email on any browser." },
+      { "q": "A customer wants to pay to your own Mobile Money number.", "options": ["Accept it, it is faster", "Say payment goes to the company Mobile Money number or the till", "Ask them to pay half now"], "answer": 1, "why": "No personal MoMo number is given. Customers pay the company number." },
+      { "q": "A customer's laptop was damaged in the shop this afternoon. What do you do?", "options": ["Say nothing", "Report it in the evening events question, with details and a photo", "Fix it quietly"], "answer": 1, "why": "Report every unfortunate event in the app. The owner is told straight away." }
+    ]
+  },
+  "Finance": {
+    "slug": "finance", "video": "/law-videos/finance.mp4",
+    "related": [
+      { "label": "Page guide: CAB (Cash at Bank)", "file": "/guides/cab.mp4" }, { "label": "Page guide: Expenses", "file": "/guides/expenses.mp4" }, { "label": "Page guide: P&L", "file": "/guides/pl.mp4" }
+    ],
+    "quiz": [
+      { "q": "On which day does the CAB officer confirm cash at bank?", "options": ["Monday", "Saturday", "Wednesday"], "answer": 1, "why": "The CAB officer confirms cash at bank every Saturday." },
+      { "q": "How are cuttings treated?", "options": ["As free", "As expenses, recorded whenever cuttings are printed", "They are ignored"], "answer": 1, "why": "Cuttings are expenses and must be recorded as such." },
+      { "q": "Where do customers pay?", "options": ["Your personal Mobile Money", "The company Mobile Money number or the till", "Any number"], "answer": 1, "why": "Customers pay only to the company Mobile Money number or the till." },
+      { "q": "What does a bill need besides its total?", "options": ["Its receipt, the vendor name and a full list of goods", "Nothing", "Only a signature"], "answer": 0, "why": "Receipt attached, vendor name entered, and a full list of goods adding up to the total." }
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, PROOFS, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
+import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
@@ -26,6 +27,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
+  const { mine: quizMine, reload: reloadQuiz } = useQuizMine()
 
   const load = useCallback(async () => {
     try {
@@ -128,6 +130,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                 <span className="text-4xl leading-none">{c.icon}</span>
                 <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.key}</span>
                 <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
+                {hasTraining(c.key) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${quizMine[c.key]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{quizMine[c.key]?.passed ? '🎬 Quiz passed' : '🎬 Video + quiz'}</span>}
                 <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{list.filter(l => l.status !== 'draft').length} law{list.filter(l => l.status !== 'draft').length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
                 {list.some(l => l.status === 'draft') && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}
               </button>
@@ -144,6 +147,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {canManage && cat !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blank(cat))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           <div className="flex items-center gap-2"><span className="text-3xl">{catInfo?.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{cat}</p><p className="text-xs text-gray-500">{catInfo?.blurb}</p></div></div>
+          {cat && hasTraining(cat) && <CategoryTraining cat={cat} result={quizMine[cat]} onDone={() => void reloadQuiz()} />}
           {cat === 'Customer service' && (
             <details className="rounded-xl border border-green-300 bg-green-50">
               <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-gray-900">🤝 The Customer Service Code (CS-1 to CS-33)</summary>
