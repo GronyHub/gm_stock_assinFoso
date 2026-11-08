@@ -1,19 +1,31 @@
 // Client-safe definitions for the Daily Checklist (the picture-tile version of Standards). Ghana is on GMT, so
 // UTC days are the shop's days.
-export const CHECK_SECTIONS = ['Opening', 'Daytime', 'Stations', 'Social media', 'Closing', 'Grony 2', 'Weekly', 'Monthly', 'Equipment'] as const
-export type CheckSection = typeof CHECK_SECTIONS[number]
+// The usual groups, in the order they show. A group is just a name: the Tile Manager can create any other group and
+// those follow these.
+export const CHECK_SECTIONS = ['Opening', 'Daytime', 'Stations', 'Staff', 'Social media', 'Closing', 'Grony 2', 'Weekly', 'Monthly', 'Equipment'] as string[]
+export type CheckSection = string
+export const TILE_KINDS = ['tap', 'question', 'persons', 'entry', 'properties'] as const
+export type TileKind = typeof TILE_KINDS[number]
+export const KIND_LABEL: Record<string, string> = { tap: 'Tick when done', question: 'Question (all good / report a problem)', persons: 'Tick each person present', entry: 'Write a note or photo', properties: 'Opens a list of items' }
+// The log (Grony Manage) each kind of record also goes into, so those pages keep their history.
+export const LOG_CATEGORIES_FOR_TILES: { key: string; label: string }[] = [
+  { key: '', label: 'None (history in the checklist only)' }, { key: 'cleanliness', label: 'Cleanliness' }, { key: 'arrangement', label: 'Arrangement' },
+  { key: 'team_behaviour_log', label: 'Team Behaviour' }, { key: 'staff_dress_log', label: 'Team Dress Code' }, { key: 'unfortunate_events_log', label: 'Unfortunate Events' },
+  { key: 'customer_display', label: 'Customer Display' }, { key: 'repair_works', label: 'Repair Works' }, { key: 'quality_assurance', label: 'Quality Assurance' }, { key: 'staff_display', label: 'Team Display' },
+]
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly', 'once'] as const
 export type Frequency = typeof FREQUENCIES[number]
 export const CHECKLIST_START = '2026-11-05'
 
 export type CheckTile = {
   id: number; section: string; time: string | null; title: string; icon: string; how: string | null
-  kind: 'tap' | 'properties'; prop_filter: string | null; frequency: Frequency; weekday: string | null; position: number
+  kind: TileKind; prop_filter: string | null; frequency: Frequency; weekday: string | null; position: number
+  days: string | null; ask: string | null; ok_label: string | null; issue_label: string | null; log_category: string | null; needs_photo: boolean
   minutes: number | null   // work time credited to whoever ticks it (shows in the worked time at the top of the pages)
 }
 export type CheckEvent = {
   id: number; tile_id: number; day: string; value: string; note: string | null
-  extra: { done_at?: string } | null; recorded_by: string; recorded_at: string
+  extra: { done_at?: string; answer?: 'ok' | 'issue'; persons?: Record<string, 'ok' | 'not'>; about_staff?: string; photo_url?: string } | null; recorded_by: string; recorded_at: string
 }
 
 export const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -65,7 +77,7 @@ export function effectiveDue(tiles: { id: number; time: string | null; minutes: 
   const out = new Map<number, number>()
   if (dayStart == null) return out
   const hm = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
-  const timed = tiles.filter(t => t.kind === 'tap' && t.frequency === 'daily' && t.time && /^\d\d:\d\d$/.test(t.time))
+  const timed = tiles.filter(t => t.kind !== 'properties' && t.frequency === 'daily' && t.time && /^\d\d:\d\d$/.test(t.time))
     .sort((a, b) => a.time!.localeCompare(b.time!) || a.id - b.id)
   let cursor = dayStart
   for (const t of timed) {
@@ -73,4 +85,10 @@ export function effectiveDue(tiles: { id: number; time: string | null; minutes: 
     if (own < dayStart) { out.set(t.id, cursor); cursor += Math.max(1, t.minutes ?? 5) } else out.set(t.id, own)
   }
   return out
+}
+
+// Does this tile appear on `day`? `days` is a comma list of weekday codes (empty = every day).
+export function appliesOn(t: { days?: string | null }, day: string): boolean {
+  if (!t.days) return true
+  return t.days.split(',').map(x => x.trim()).filter(Boolean).includes(WEEKDAYS[utc(day).getUTCDay()])
 }

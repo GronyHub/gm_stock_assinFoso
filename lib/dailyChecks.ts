@@ -1,6 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { pickIcon } from '@/lib/dailyChecksShared'
+import { pickIcon, TILE_KINDS, FREQUENCIES, WEEKDAYS } from '@/lib/dailyChecksShared'
 export * from './dailyChecksShared'
 
 // The Daily Checklist: tiles staff tap as the day goes by. First run builds the template from the Standards list
@@ -56,6 +56,34 @@ async function migrateMinutes() {
   } catch (e) { console.error('daily checks minutes migration failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// Columns for the richer tile kinds, and the first batch of Grony Manage tiles (added once).
+async function migrateKinds() {
+  try {
+    await sql`ALTER TABLE daily_check_tiles
+      ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS ask TEXT, ADD COLUMN IF NOT EXISTS ok_label TEXT,
+      ADD COLUMN IF NOT EXISTS issue_label TEXT, ADD COLUMN IF NOT EXISTS log_category TEXT,
+      ADD COLUMN IF NOT EXISTS needs_photo BOOLEAN NOT NULL DEFAULT FALSE`
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM daily_check_tiles WHERE created_by = 'manage-tiles-v1'`
+    if (n > 0) return
+    type T = { section: string; time: string; title: string; icon: string; kind: string; ask?: string; ok?: string; issue?: string; log?: string; photo?: boolean; minutes: number; how?: string }
+    const tiles: T[] = [
+      { section: 'Staff', time: '09:00', title: 'Dress code: everyone in the company T-shirt and employee tag', icon: '👕', kind: 'persons', ask: 'Is each person wearing the company T-shirt and the employee tag?', log: 'staff_dress_log', minutes: 3, how: 'Mark every staff member who is at work today. Anyone marked Not wearing is logged and the owner is told.' },
+      { section: 'Staff', time: '15:30', title: 'Team behaviour: any negative behaviour by staff so far today?', icon: '🚦', kind: 'question', ok: 'None so far', issue: 'Report behaviour', log: 'team_behaviour_log', minutes: 3, how: 'Late, rude, on the phone with customers waiting, leaving the counter, arguing. Say None so far if all is well, or report it.' },
+      { section: 'Staff', time: '17:30', title: 'Team behaviour (end of day): any negative behaviour by staff today?', icon: '🚦', kind: 'question', ok: 'None today', issue: 'Report behaviour', log: 'team_behaviour_log', minutes: 3 },
+      { section: 'Closing', time: '18:20', title: 'Unfortunate events: did anything unfortunate happen today?', icon: '⚠️', kind: 'question', ok: 'Nothing happened', issue: 'Report an event', log: 'unfortunate_events_log', minutes: 3, how: 'A theft, accident, damage, dispute, power cut or anything that could affect the shop.' },
+      { section: 'Opening', time: '08:45', title: 'Cleanliness check with a photo: floor, counter, tables, toilets', icon: '🧹', kind: 'entry', log: 'cleanliness', photo: true, minutes: 5, how: 'Take one clear photo of the shop floor and counter, and write anything that was dirty.' },
+      { section: 'Daytime', time: '15:00', title: 'Cleanliness check with a photo (afternoon)', icon: '🧹', kind: 'entry', log: 'cleanliness', photo: true, minutes: 5 },
+      { section: 'Opening', time: '08:50', title: 'Arrangement check with a photo: items and furniture in place', icon: '🪑', kind: 'entry', log: 'arrangement', photo: true, minutes: 5, how: 'Photo of the arranged shop: all items in their places, chairs and tables neat.' },
+      { section: 'Closing', time: '18:55', title: 'Closing questions answered in the app (Closer)', icon: '🔐', kind: 'tap', minutes: 5, how: 'Open the Closer page and answer the closing questions before you clock out.' },
+    ]
+    let pos = 1000
+    for (const t of tiles) {
+      await sql`INSERT INTO daily_check_tiles (section, time, title, icon, how, kind, frequency, position, minutes, ask, ok_label, issue_label, log_category, needs_photo, created_by)
+        VALUES (${t.section}, ${t.time}, ${t.title}, ${t.icon}, ${t.how ?? null}, ${t.kind}, 'daily', ${pos++}, ${t.minutes}, ${t.ask ?? null}, ${t.ok ?? null}, ${t.issue ?? null}, ${t.log ?? null}, ${!!t.photo}, 'manage-tiles-v1')`
+    }
+  } catch (e) { console.error('daily checks kinds migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 async function ensureImpl() {
   await sql`CREATE TABLE IF NOT EXISTS daily_check_tiles (
     id SERIAL PRIMARY KEY, section TEXT NOT NULL, time TEXT, title TEXT NOT NULL, icon TEXT NOT NULL DEFAULT '✅', how TEXT,
@@ -67,6 +95,7 @@ async function ensureImpl() {
     recorded_by TEXT NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS daily_check_events_day ON daily_check_events (day)`.catch(() => {})
   await migrateMinutes()
+  await migrateKinds()
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM daily_check_tiles`
   if (n > 0) return
   const rows = await sql`SELECT id, station, section, text, how, frequency, kind, position FROM standards_items WHERE active ORDER BY id`.catch(() => []) as SRow[]
@@ -121,4 +150,30 @@ export async function creditWork(who: string, title: string, minutes: number, ev
 }
 export async function removeCredit(eventId: number) {
   await sql`DELETE FROM announcements WHERE category = ${WORK_CATEGORY} AND source_id = ${eventId}`.catch(() => {})
+}
+
+const HMRE = /^([01]\d|2[0-3]):[0-5]\d$/
+// One place that cleans a tile sent from the Tile Manager / add form, so adding and editing agree.
+export function parseTileBody(b: any) {
+  const clean = (v: unknown, n: number) => { const x = String(v ?? '').trim().slice(0, n); return x || null }
+  const frequency = (FREQUENCIES as readonly string[]).includes(b.frequency) ? String(b.frequency) : 'daily'
+  const kind = (TILE_KINDS as readonly string[]).includes(b.kind) ? String(b.kind) : 'tap'
+  const days = Array.isArray(b.days) ? b.days : String(b.days ?? '').split(',')
+  const validDays = (WEEKDAYS as readonly string[])
+  const dayList = days.map((d: unknown) => String(d).trim().toLowerCase()).filter((d: string) => validDays.includes(d))
+  const mins = Math.round(Number(b.minutes))
+  return {
+    title: String(b.title ?? '').trim().slice(0, 240),
+    section: String(b.section ?? '').trim().slice(0, 40),
+    time: HMRE.test(b.time ?? '') ? String(b.time) : null,
+    icon: String(b.icon || '✅').slice(0, 8),
+    how: clean(b.how, 600),
+    kind, frequency,
+    prop_filter: kind === 'properties' ? String(b.prop_filter ?? '').slice(0, 200) : null,
+    weekday: frequency === 'weekly' && validDays.includes(String(b.weekday ?? '')) ? String(b.weekday) : null,
+    days: dayList.length && dayList.length < 7 ? dayList.join(',') : null,
+    minutes: Number.isFinite(mins) && mins >= 0 && mins <= 240 ? mins : 5,
+    ask: clean(b.ask, 200), ok_label: clean(b.ok_label, 40), issue_label: clean(b.issue_label, 40),
+    log_category: clean(b.log_category, 60), needs_photo: !!b.needs_photo,
+  }
 }

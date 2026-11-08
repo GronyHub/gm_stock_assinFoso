@@ -2,7 +2,7 @@ import { recordPushResults } from '@/lib/pushHealth'
 import sql from './db'
 import { once } from './once'
 import { getClockState } from './clockState'
-import { effectiveDue } from './dailyChecksShared'
+import { effectiveDue, appliesOn } from './dailyChecksShared'
 
 // Daily Checklist alerts, run from instrumentation.ts once a minute (GMT = Ghana, Monday to Saturday).
 //  - at a tile's time, and again 15 minutes later: staff who are clocked in get a push naming what is due/late
@@ -45,6 +45,11 @@ const names = (titles: string[]) => {
   return short.join(' · ') + (titles.length > 3 ? ` · +${titles.length - 3} more` : '')
 }
 
+// Tells the owner and Joe something needs their attention (never throws).
+export async function notifyOwners(title: string, body: string) {
+  try { await send(await ownerSubs(), title, body) } catch (e) { console.error('notifyOwners failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 export async function checklistAlertsTick(now = new Date()) {
   if (process.env.CHECKLIST_ALERTS === 'off') return
   if (now.getUTCDay() === 0) return // Sunday: shop closed
@@ -58,17 +63,18 @@ export async function checklistAlertsTick(now = new Date()) {
   await ensureTable()
 
   const tiles = await sql`
-    SELECT id, title, time, minutes, frequency, kind FROM daily_check_tiles
-    WHERE active AND frequency = 'daily' AND kind = 'tap' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string }[]
+    SELECT id, title, time, minutes, frequency, kind, days FROM daily_check_tiles
+    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null }[]
+  const todaysTiles = tiles.filter(t => appliesOn(t, day))
   const doneRows = await sql`SELECT tile_id, value FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number; value: string }[]
   const handled = new Set(doneRows.map(r => r.tile_id))
   const doneOnly = new Set(doneRows.filter(r => r.value === 'Done').map(r => r.tile_id))
-  const due = effectiveDue(tiles, clock.dayStart)
+  const due = effectiveDue(todaysTiles, clock.dayStart)
 
   // Tiles whose due time was 0, 15 or 30 minutes ago (2-minute grace; the claim stops repeats).
   const stages: [number, number][] = [[0, 0], [15, 1], [30, 2]]
   for (const [ago, stage] of stages) {
-    const candidates = tiles.filter(t => !handled.has(t.id) && due.has(t.id) && nowMin - ago - due.get(t.id)! >= 0 && nowMin - ago - due.get(t.id)! <= 2)
+    const candidates = todaysTiles.filter(t => !handled.has(t.id) && due.has(t.id) && nowMin - ago - due.get(t.id)! >= 0 && nowMin - ago - due.get(t.id)! <= 2)
       .sort((a, b) => due.get(a.id)! - due.get(b.id)! || a.id - b.id)
     const fresh: { id: number; title: string }[] = []
     for (const t of candidates) {
@@ -88,8 +94,8 @@ export async function checklistAlertsTick(now = new Date()) {
   if (nowMin === 19 * 60 + 15 || nowMin === 19 * 60 + 16) {
     const c = await sql`INSERT INTO daily_check_alerts_sent (day, tile_id, stage) VALUES (${day}, 0, 99) ON CONFLICT DO NOTHING RETURNING tile_id`
     if (!c.length) return
-    const missed = tiles.filter(t => !doneOnly.has(t.id))
-    const total = tiles.length, done = total - missed.length
+    const missed = todaysTiles.filter(t => !doneOnly.has(t.id))
+    const total = todaysTiles.length, done = total - missed.length
     await send(await ownerSubs(), `Checklist today: ${done} of ${total} done`, missed.length ? `Missed ${missed.length}. First: ${names(missed.slice(0, 3).map(m => m.title))}` : 'Everything was done.').catch(() => {})
   }
 }

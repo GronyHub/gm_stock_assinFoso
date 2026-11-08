@@ -1,6 +1,6 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureDailyChecks, dayKey, CHECKLIST_START } from '@/lib/dailyChecks'
+import { ensureDailyChecks, dayKey, CHECKLIST_START, appliesOn } from '@/lib/dailyChecks'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 
@@ -20,11 +20,13 @@ export async function GET(req: NextRequest) {
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
       WHERE e.day = ${day} AND e.value = 'Done' GROUP BY e.recorded_by ORDER BY done DESC`
     const missed = await sql`
-      SELECT t.id, t.section, t.time, t.icon, t.title FROM daily_check_tiles t
-      WHERE t.active AND t.frequency = 'daily' AND t.kind = 'tap'
+      SELECT t.id, t.section, t.time, t.icon, t.title, t.days FROM daily_check_tiles t
+      WHERE t.active AND t.frequency = 'daily' AND t.kind <> 'properties'
         AND NOT EXISTS (SELECT 1 FROM daily_check_events e WHERE e.tile_id = t.id AND e.day = ${day} AND e.value = 'Done')
       ORDER BY t.time NULLS LAST, t.id`
-    const [{ total }] = await sql`SELECT COUNT(*)::int AS total FROM daily_check_tiles WHERE active AND frequency = 'daily' AND kind = 'tap'`
-    return success({ day, total, done: total - missed.length, people, missed })
+    const all = await sql`SELECT days FROM daily_check_tiles WHERE active AND frequency = 'daily' AND kind <> 'properties'`
+    const total = (all as { days: string | null }[]).filter(t => appliesOn(t, day)).length
+    const missedToday = (missed as { days: string | null }[]).filter(t => appliesOn(t, day))
+    return success({ day, total, done: total - missedToday.length, people, missed: missedToday })
   } catch (e) { return handleError('daily-checks report', e) }
 }

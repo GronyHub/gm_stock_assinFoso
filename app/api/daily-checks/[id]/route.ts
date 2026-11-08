@@ -1,37 +1,62 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensureDailyChecks, CHECK_SECTIONS, FREQUENCIES } from '@/lib/dailyChecks'
+import { ensureDailyChecks, parseTileBody } from '@/lib/dailyChecks'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 
-const cleanMinutes = (v: unknown) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 && n <= 240 ? n : 5 }
-const HM = /^([01]\d|2[0-3]):[0-5]\d$/
 type Ctx = { params: Promise<{ id: string }> }
+const denied = 'Only the owner and manager can change the checklist.'
 
-// PUT { title, section, time, icon, frequency, prop_filter, how } -- managers only
+// PUT -- edit a tile (owner and manager). Body fields: see parseTileBody in lib/dailyChecks.ts.
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if ((session.user as { role?: string })?.role === 'staff') return badRequest('Only managers can change the checklist.')
+  if (!isOwnerLevel(session.user as any)) return badRequest(denied)
   try {
     await ensureDailyChecks()
     const id = Number((await params).id)
-    const b = await req.json().catch(() => ({}))
-    const title = String(b.title ?? '').trim().slice(0, 240)
-    const section = String(b.section ?? '')
-    if (!title || !(CHECK_SECTIONS as readonly string[]).includes(section)) return badRequest('Need a section and a title.')
-    const frequency = (FREQUENCIES as readonly string[]).includes(b.frequency) ? b.frequency : 'daily'
-    await sql`UPDATE daily_check_tiles SET title = ${title}, section = ${section}, time = ${HM.test(b.time ?? '') ? b.time : null},
-      icon = ${String(b.icon || '✅').slice(0, 8)}, frequency = ${frequency}, minutes = ${cleanMinutes(b.minutes)}, how = ${b.how ? String(b.how).slice(0, 600) : null},
-      prop_filter = CASE WHEN kind = 'properties' THEN ${String(b.prop_filter ?? '').slice(0, 200)} ELSE prop_filter END WHERE id = ${id}`
+    const t = parseTileBody(await req.json().catch(() => ({})))
+    if (!t.title || !t.section) return badRequest('Need a group and a title.')
+    await sql`UPDATE daily_check_tiles SET title = ${t.title}, section = ${t.section}, time = ${t.time}, icon = ${t.icon}, frequency = ${t.frequency},
+      weekday = ${t.weekday}, days = ${t.days}, how = ${t.how}, minutes = ${t.minutes}, kind = ${t.kind}, ask = ${t.ask}, ok_label = ${t.ok_label},
+      issue_label = ${t.issue_label}, log_category = ${t.log_category}, needs_photo = ${t.needs_photo},
+      prop_filter = CASE WHEN ${t.kind} = 'properties' THEN ${t.prop_filter ?? ''} ELSE NULL END WHERE id = ${id}`
     return success({ ok: true })
   } catch (e) { return handleError('daily-checks PUT', e) }
 }
 
-// DELETE -- takes the tile out of the checklist (past records are kept)
+// PATCH { active?: boolean, move?: 'up' | 'down' } -- stop or restore a tile, or move it in the order.
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session.user as any)) return badRequest(denied)
+  try {
+    await ensureDailyChecks()
+    const id = Number((await params).id)
+    const b = await req.json().catch(() => ({}))
+    if (typeof b.active === 'boolean') await sql`UPDATE daily_check_tiles SET active = ${b.active} WHERE id = ${id}`
+    if (b.move === 'up' || b.move === 'down') {
+      const [me] = await sql`SELECT position, section FROM daily_check_tiles WHERE id = ${id}`
+      if (me) {
+        const [other] = b.move === 'up'
+          ? await sql`SELECT id, position FROM daily_check_tiles WHERE section = ${me.section} AND (position < ${me.position} OR (position = ${me.position} AND id < ${id})) ORDER BY position DESC, id DESC LIMIT 1`
+          : await sql`SELECT id, position FROM daily_check_tiles WHERE section = ${me.section} AND (position > ${me.position} OR (position = ${me.position} AND id > ${id})) ORDER BY position ASC, id ASC LIMIT 1`
+        if (other) {
+          const a = Number(me.position), c = Number(other.position)
+          await sql`UPDATE daily_check_tiles SET position = ${a === c ? (b.move === 'up' ? c - 1 : c + 1) : c} WHERE id = ${id}`
+          if (a !== c) await sql`UPDATE daily_check_tiles SET position = ${a} WHERE id = ${other.id}`
+        }
+      }
+    }
+    return success({ ok: true })
+  } catch (e) { return handleError('daily-checks PATCH', e) }
+}
+
+// DELETE -- takes the tile off the checklist (past records are kept; it can be restored from the Tile Manager)
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if ((session.user as { role?: string })?.role === 'staff') return badRequest('Only managers can change the checklist.')
+  if (!isOwnerLevel(session.user as any)) return badRequest(denied)
   try {
     await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${Number((await params).id)}`
     return success({ ok: true })

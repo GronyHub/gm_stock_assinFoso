@@ -968,16 +968,20 @@ function ItemHubPageInner() {
   // this list -- see MANAGE_LIST_ITEMS.filter below.
   const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
   // The Manage options (Opener, Closer, ... and the Team ones), listed on the left sidebar under a "Manage" heading.
+  // Logging pages that staff now answer from the Daily Checklist instead (tiles for them are in the checklist). Staff no
+  // longer see these rows; the owner and manager keep them, and the checklist's History shows who logged what.
+  const CHECKLIST_LOGGED_KEYS = new Set<string>(['unfortunate_events', 'staff_dress', 'team_behaviour'])
   function manageSideOptions() {
+    const hideForStaff = (key: string) => !isOwnerLevel(session?.user as any) && CHECKLIST_LOGGED_KEYS.has(key)
     return [
-      ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && item.key !== 'advert' && item.key !== 'grony_checks').map(item => ({
+      ...(canSeeManage ? applyPaneOrder(MANAGE_LIST_ITEMS, paneOrder.manage).filter(item => !paneHidden[item.key] && !hideForStaff(item.key) && item.key !== 'advert' && item.key !== 'grony_checks').map(item => ({
         key: item.key as LossView,
         label: item.label,
         badge: item.key === 'opener' ? openerBadgeCount
           : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
           : 0,
       })) : []),
-      ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key]).map(t => ({
+      ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key] && !hideForStaff(t.key)).map(t => ({
         key: t.key as LossView,
         label: t.label,
         badge: t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0,

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
-  addDays, dayLabel, effectiveDue, inPeriod, type CheckEvent, type CheckTile, type Frequency,
+  addDays, appliesOn, dayLabel, effectiveDue, inPeriod, type CheckEvent, type CheckTile, type Frequency,
 } from '@/lib/dailyChecksShared'
 
 const json = { 'Content-Type': 'application/json' }
@@ -11,11 +11,14 @@ const evTime = (e: CheckEvent) => e.extra?.done_at ?? hhmm(e.recorded_at)
 const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getUTCMinutes() }
 
 // Tiles that are a job done on another page of the app get a button that opens it (the stock count).
-const linkFor = (t: CheckTile): { href: string; label: string } | null => /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' } : null
+const linkFor = (t: CheckTile): { href: string; label: string } | null =>
+  /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' }
+  : /^closing questions answered/i.test(t.title) ? { href: '/item?view=closer', label: 'Open Closer' } : null
 
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 
-export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) {
+export default function DailyChecklistClient({ canManage }: { canManage: boolean }) {
+  const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
   const [day, setDay] = useState<string | null>(null)
@@ -23,11 +26,11 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const [dayStart, setDayStart] = useState<number | null>(null)
   const [clockedIn, setClockedIn] = useState(true)
   const [names, setNames] = useState(false)
+  const [present, setPresent] = useState<string[]>([])
   const [section, setSection] = useState<string>('All day')
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [sheet, setSheet] = useState<CheckTile | null>(null)
-  const [adding, setAdding] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [clock, setClock] = useState(() => nowHM())
   useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
@@ -39,7 +42,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
       try {
         const r = await fetch(`/api/daily-checks${d ? `?day=${d}` : ''}`, { cache: 'no-store' })
         const j = await r.json()
-        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setError(''); return }
+        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setError(''); return }
       } catch { /* retry */ }
       await new Promise(r => setTimeout(r, 700 * (i + 1)))
     }
@@ -55,13 +58,13 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   const isToday = !!day && day === today
   const latest = (t: CheckTile) => day ? events.filter(e => e.tile_id === t.id && inPeriod(t.frequency, e.day, day)).at(-1) : undefined
   // On a given day: daily tiles always; weekly/monthly/yearly tiles stay on their tab; a weekday tile only when it is that weekday (or already done).
-  const visible = useMemo(() => tiles, [tiles])
+  const visible = useMemo(() => tiles.filter(t => !day || appliesOn(t, day)), [tiles, day])
   const inSection = (s: string) => s === 'All day' ? visible.filter(t => t.frequency === 'daily' && t.time) : visible.filter(t => t.section === s)
   const doneCount = (s: string) => inSection(s).filter(t => latest(t)?.value === 'Done').length
 
   async function tap(t: CheckTile) {
     if (locked) { flash('Clock in first.'); return }
-    if (t.kind === 'properties') { setSheet(t); return }
+    if (t.kind !== 'tap') { setSheet(t); return }
     try {
       const r = await fetch('/api/daily-checks/tap', { method: 'POST', headers: json, body: JSON.stringify({ tile_id: t.id }) })
       if (!r.ok) throw new Error()
@@ -70,7 +73,8 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
   }
 
   const shown = section === 'All day' ? [...inSection('All day')].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.id - b.id) : inSection(section)
-  const sections = ['All day', ...CHECK_SECTIONS.filter(s => inSection(s).length || canEdit)]
+  const extraGroups = Array.from(new Set(visible.map(t => t.section))).filter(g => !CHECK_SECTIONS.includes(g)).sort()
+  const sections = ['All day', ...[...CHECK_SECTIONS, ...extraGroups].filter(s => inSection(s).length)]
   // What to do right now. The day starts when the first staff member clocks in; before that nothing is due or late.
   // A task is late 15 minutes after it was due (see effectiveDue for how the morning tasks are queued from clock-in).
   const due = useMemo(() => effectiveDue(tiles, dayStart), [tiles, dayStart])
@@ -89,7 +93,8 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Daily Checklist</h1>
         <a href="/standards/reference" className="text-xs font-semibold text-blue-700 underline">Printable list</a>
-        {canEdit && <button type="button" onClick={() => setAdding(true)} className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">+ Add tile</button>}
+        {canManage && <a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a>}
+        {canManage && <a href="/standards/manage" className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">Manage tiles</a>}
       </div>
       <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#14213D] px-3 py-2 text-white">
         <button type="button" disabled={!day || day <= CHECKLIST_START} onClick={() => day && void load(addDays(day, -1))} className="rounded-lg bg-white/15 px-3 py-1 text-lg font-bold disabled:opacity-30">‹</button>
@@ -122,7 +127,9 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
                     <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
                   </button>
                   {g.label !== 'NEXT' && linkFor(t) && <a href={linkFor(t)!.href} className="shrink-0 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-bold text-white">{linkFor(t)!.label}</a>}
-                  {g.label !== 'NEXT' && <button type="button" disabled={locked} onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Done</button>}
+                  {g.label !== 'NEXT' && (t.kind === 'tap'
+                    ? <button type="button" disabled={locked} onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Done</button>
+                    : <button type="button" disabled={locked} onClick={() => setSheet(t)} className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Open</button>)}
                 </div>
               ))}
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
@@ -144,7 +151,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
         ))}
       </div>
       <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tiles are small so the whole day fits. Tap one to read what it means first, then mark it done there. Switch to Names to read every task as a list. Red = late, amber = due now. Use the Done buttons in the NOW box to tick quickly. Each task you finish adds its minutes to your work time.' : 'This is a past day. You can look but not change it.'}</p>
-      {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canEdit ? ' Use + Add tile.' : ''}</p>}
+      {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canManage ? ' Use Manage tiles to add some.' : ''}</p>}
       {names ? (
         <div className="space-y-1">
           {shown.map(t => {
@@ -168,16 +175,17 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
         {shown.map(t => {
           const ev = latest(t)
           const state = ev ? (ev.value === 'Not done' ? 'notdone' : 'done') : 'todo'
+          const flagged = !!ev && (ev.extra?.answer === 'issue' || Object.values(ev.extra?.persons ?? {}).includes('not'))
           const minsLate = !ev && isToday && due.has(t.id) ? clock - due.get(t.id)! : -1
           const isLate = minsLate >= 15
           const isDue = minsLate >= 0 && minsLate < 15
           return (
             <button key={t.id} type="button" title={`${t.time ? t.time + ' · ' : ''}${t.title}`} onContextMenu={e => e.preventDefault()}
               onClick={() => setSheet(t)}
-              className={`relative flex aspect-square select-none flex-col items-center justify-center rounded-md border px-0 text-center active:opacity-70 ${state === 'done' ? 'border-green-500 bg-green-100' : state === 'notdone' ? 'border-gray-400 bg-gray-200' : isLate ? 'border-red-500 bg-red-100' : isDue ? 'border-amber-500 bg-amber-100' : 'border-gray-200 bg-white'}`}>
+              className={`relative flex aspect-square select-none flex-col items-center justify-center rounded-md border px-0 text-center active:opacity-70 ${flagged ? 'border-orange-500 bg-orange-100' : state === 'done' ? 'border-green-500 bg-green-100' : state === 'notdone' ? 'border-gray-400 bg-gray-200' : isLate ? 'border-red-500 bg-red-100' : isDue ? 'border-amber-500 bg-amber-100' : 'border-gray-200 bg-white'}`}>
               <span className="text-base leading-none sm:text-xl">{t.icon}</span>
               <span className={`mt-px text-[7px] font-bold leading-none sm:text-[9px] ${isLate ? 'text-red-700' : 'text-gray-500'}`}>{t.frequency !== 'daily' ? (t.weekday ? WEEKDAY_LABEL[t.weekday].slice(0, 3) : t.frequency.slice(0, 4)) : (t.time ?? '')}</span>
-              {state === 'done' && <span className="absolute right-0 top-0 text-[8px] font-bold leading-none text-green-700">✓</span>}
+              {state === 'done' && <span className={`absolute right-0 top-0 text-[8px] font-bold leading-none ${flagged ? 'text-orange-700' : 'text-green-700'}`}>{flagged ? '!' : '✓'}</span>}
               {state === 'notdone' && <span className="absolute right-0 top-0 text-[8px] font-bold leading-none text-gray-600">✕</span>}
             </button>
           )
@@ -186,9 +194,8 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
       )}
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
-        : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
+        : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
       {reporting && <DayReport day={day ?? today} onClose={() => setReporting(false)} />}
-      {adding && <TileForm section={section} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); void load(day) }} />}
       {toast && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{toast}</div>}
     </div>
   )
@@ -209,7 +216,7 @@ function useRun(onSaved: (m: string) => void, onClose: () => void) {
   return { busy, err, run }
 }
 
-function TileSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; onClose: () => void; onSaved: (m: string) => void }) {
+function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; present: string[]; onClose: () => void; onSaved: (m: string) => void }) {
   const [doneAt, setDoneAt] = useState(ev?.extra?.done_at ?? '')
   const [note, setNote] = useState(ev?.note ?? '')
   const [editing, setEditing] = useState(false)
@@ -235,7 +242,9 @@ function TileSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile
         {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
         {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
-        {isToday && (!ev || editableEv) && (<>
+        {t.kind !== 'tap' && !ev && isToday && <AnswerForm t={t} present={present} onSaved={onSaved} onClose={onClose} />}
+        {ev && t.kind !== 'tap' && <AnswerSummary ev={ev} />}
+        {t.kind === 'tap' && isToday && (!ev || editableEv) && (<>
           <p className="text-xs font-bold uppercase text-gray-500">Time it was done {ev ? '' : '(blank = now)'}</p>
           <div className="flex flex-wrap items-center gap-2">
             {[5, 10, 15, 30, 60].map(m => <button key={m} type="button" onClick={() => ago(m)} className="rounded-full bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-800">{m} min ago</button>)}
@@ -245,55 +254,21 @@ function TileSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile
           <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
         </>)}
         {err && <p className="text-sm text-red-600">{err}</p>}
-        {isToday && !ev && (
+        {t.kind === 'tap' && isToday && !ev && (
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={() => void record('Done')} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Done now</button>
             <button type="button" disabled={busy} onClick={() => void record('Not done')} className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white disabled:opacity-40">Not done</button>
           </div>
         )}
-        {editableEv && (<>
+        {t.kind !== 'tap' && editableEv && <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}
+        {t.kind === 'tap' && editableEv && (<>
           <button type="button" disabled={busy} onClick={() => void patch({}, 'Saved')} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save changes</button>
           <button type="button" disabled={busy} onClick={() => void patch({ value: ev!.value === 'Not done' ? 'Done' : 'Not done' }, 'Changed')} className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {ev!.value === 'Not done' ? 'Done' : 'Not done'}</button>
           <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>
         </>)}
-        {canEdit && <TileEditor t={t} editing={editing} setEditing={setEditing} onSaved={onSaved} onClose={onClose} />}
+        {canEdit && <a href={`/standards/manage?tile=${t.id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this tile in Tile Manager</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
-    </div>
-  )
-}
-
-function TileEditor({ t, editing, setEditing, onSaved, onClose }: { t: CheckTile; editing: boolean; setEditing: (v: boolean) => void; onSaved: (m: string) => void; onClose: () => void }) {
-  const [title, setTitle] = useState(t.title)
-  const [time, setTime] = useState(t.time ?? '')
-  const [icon, setIcon] = useState(t.icon)
-  const [sec, setSec] = useState(t.section)
-  const [freq, setFreq] = useState<Frequency>(t.frequency)
-  const [how, setHow] = useState(t.how ?? '')
-  const [mins, setMins] = useState(String(t.minutes ?? 5))
-  const [filter, setFilter] = useState(t.prop_filter ?? '')
-  const { busy, err, run } = useRun(onSaved, onClose)
-  return (
-    <div className="space-y-2 border-t border-gray-100 pt-3">
-      <button type="button" onClick={() => setEditing(!editing)} className="text-sm font-semibold text-blue-700">{editing ? 'Hide' : 'Edit this tile'}</button>
-      {editing && (<>
-        <div className="flex gap-2">
-          <input value={icon} onChange={e => setIcon(e.target.value)} maxLength={8} className="w-16 rounded-xl border border-gray-300 p-3 text-center text-2xl" aria-label="Picture" />
-          <input value={title} onChange={e => setTitle(e.target.value)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm" />
-        </div>
-        <div className="flex gap-2">
-          <select value={sec} onChange={e => setSec(e.target.value)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{CHECK_SECTIONS.map(s => <option key={s}>{s}</option>)}</select>
-          <select value={freq} onChange={e => setFreq(e.target.value as Frequency)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{FREQUENCIES.map(f => <option key={f}>{f}</option>)}</select>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl border border-gray-300 p-3 text-sm" />
-        </div>
-        <label className="flex items-center gap-2 text-sm font-semibold">Work time credited when ticked
-          <input type="number" min={0} max={240} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /> minutes</label>
-        <textarea value={how} onChange={e => setHow(e.target.value)} placeholder="How (shown to staff)" rows={2} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
-        {t.kind === 'properties' && <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Words in the property name, separated by commas" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />}
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        <button type="button" disabled={busy || !title.trim()} onClick={() => void run(() => fetch(`/api/daily-checks/${t.id}`, { method: 'PUT', headers: json, body: JSON.stringify({ title, section: sec, time, icon, frequency: freq, how, minutes: Number(mins), prop_filter: filter }) }), 'Tile updated')} className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white disabled:opacity-40">Save tile</button>
-        <button type="button" disabled={busy} onClick={() => { if (confirm('Remove this tile from the checklist? Past records are kept.')) void run(() => fetch(`/api/daily-checks/${t.id}`, { method: 'DELETE' }), 'Tile removed') }} className="w-full py-2 text-sm font-semibold text-red-600">Remove this tile</button>
-      </>)}
     </div>
   )
 }
@@ -371,51 +346,8 @@ function PropsSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTil
             className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{unset > 0 ? `${unset} still to set` : 'Finished'}</button>
         )}
         {ev && isToday && <button type="button" disabled={busy} onClick={() => { if (confirm('Remove this record and put the tile back to waiting?')) void run(() => fetch(`/api/daily-checks/events/${ev.id}`, { method: 'DELETE' }), 'Reverted') }} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}
-        {canEdit && <TileEditor t={t} editing={editing} setEditing={setEditing} onSaved={onSaved} onClose={onClose} />}
+        {canEdit && <a href={`/standards/manage?tile=${t.id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this tile in Tile Manager</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
-      </div>
-    </div>
-  )
-}
-
-function TileForm({ section, onClose, onSaved }: { section: string; onClose: () => void; onSaved: () => void }) {
-  const [sec, setSec] = useState(section)
-  const [title, setTitle] = useState('')
-  const [time, setTime] = useState('')
-  const [icon, setIcon] = useState('✅')
-  const [freq, setFreq] = useState<Frequency>('daily')
-  const [list, setList] = useState(false)
-  const [filter, setFilter] = useState('')
-  const [how, setHow] = useState('')
-  const [mins, setMins] = useState('5')
-  const [err, setErr] = useState('')
-  async function save() {
-    const r = await fetch('/api/daily-checks', { method: 'POST', headers: json, body: JSON.stringify({ section: sec, title, time, icon, frequency: freq, how, minutes: Number(mins), kind: list ? 'properties' : 'tap', prop_filter: filter }) })
-    const d = await r.json().catch(() => ({}))
-    if (!r.ok) setErr(d.error ?? 'Could not save'); else onSaved()
-  }
-  return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
-      <div className="mx-auto max-h-[90vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
-        <p className="text-base font-bold">Add a tile</p>
-        <div className="flex gap-2">
-          <input value={icon} onChange={e => setIcon(e.target.value)} maxLength={8} className="w-16 rounded-xl border border-gray-300 p-3 text-center text-2xl" aria-label="Picture" />
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What must be done" className="flex-1 rounded-xl border border-gray-300 p-3 text-sm" />
-        </div>
-        <div className="flex gap-2">
-          <select value={sec} onChange={e => setSec(e.target.value)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{CHECK_SECTIONS.map(s => <option key={s}>{s}</option>)}</select>
-          <select value={freq} onChange={e => setFreq(e.target.value as Frequency)} className="flex-1 rounded-xl border border-gray-300 p-3 text-sm">{FREQUENCIES.map(f => <option key={f}>{f}</option>)}</select>
-          <input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl border border-gray-300 p-3 text-sm" />
-        </div>
-        <label className="flex items-center gap-2 text-sm font-semibold">Work time credited when ticked
-          <input type="number" min={0} max={240} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /> minutes</label>
-        <textarea value={how} onChange={e => setHow(e.target.value)} placeholder="How (optional, shown to staff)" rows={2} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
-        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={list} onChange={e => setList(e.target.checked)} /> This tile opens a list (items from Properties)</label>
-        {list && <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Words in the property name, e.g. printer" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />}
-        <p className="text-[11px] text-gray-500">The time is only a guide. For a weekly or monthly task, staff tick it once for that week or month.</p>
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        <button type="button" disabled={!title.trim()} onClick={() => void save()} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Add tile</button>
-        <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
       </div>
     </div>
   )
@@ -462,6 +394,106 @@ function DayReport({ day, onClose }: { day: string; onClose: () => void }) {
         </>)}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
+    </div>
+  )
+}
+
+const shrinkPhoto = async (file: File): Promise<File> => {
+  try {
+    const bmp = await createImageBitmap(file)
+    const sc = Math.min(1, 1280 / Math.max(bmp.width, bmp.height))
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc)
+    c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height)
+    const blob: Blob | null = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82))
+    return blob ? new File([blob], 'photo.jpg', { type: 'image/jpeg' }) : file
+  } catch { return file }
+}
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
+
+// What a question / person / entry tile recorded, shown once it is done.
+function AnswerSummary({ ev }: { ev: CheckEvent }) {
+  const x = ev.extra ?? {}
+  return (
+    <div className="space-y-1 rounded-xl bg-gray-50 p-3 text-xs text-gray-800">
+      {x.answer === 'ok' && <p className="font-semibold text-green-700">All good, nothing to report.</p>}
+      {x.answer === 'issue' && <p className="font-semibold text-orange-700">Reported{x.about_staff ? ` about ${cap(x.about_staff)}` : ''}.</p>}
+      {x.persons && Object.entries(x.persons).map(([n, v]) => <p key={n}>{v === 'ok' ? '✓' : '✗'} {cap(n)}</p>)}
+      {ev.note && <p>{ev.note}</p>}
+      {x.photo_url && <img src={x.photo_url} alt="" className="h-24 w-24 rounded-lg border border-gray-200 object-cover" />}
+    </div>
+  )
+}
+
+// Question, per-person and note/photo tiles: answered in the pop-up; the answer is saved in the checklist history and
+// in the matching Grony Manage log.
+function AnswerForm({ t, present, onSaved, onClose }: { t: CheckTile; present: string[]; onSaved: (m: string) => void; onClose: () => void }) {
+  const [answer, setAnswer] = useState<'ok' | 'issue' | null>(null)
+  const [note, setNote] = useState('')
+  const [about, setAbout] = useState('')
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [up, setUp] = useState(false)
+  const [persons, setPersons] = useState<Record<string, 'ok' | 'not'>>({})
+  const [localErr, setLocalErr] = useState('')
+  const { busy, err, run } = useRun(onSaved, onClose)
+  const behaviour = t.log_category === 'team_behaviour_log'
+  async function pickPhoto(f: File) {
+    setUp(true); setLocalErr('')
+    try {
+      const fd = new FormData(); fd.append('file', await shrinkPhoto(f))
+      const r = await fetch('/api/announcements/upload', { method: 'POST', body: fd }); const d = await r.json()
+      if (!r.ok) throw new Error(d.error ?? 'Upload failed'); setPhoto(d.url)
+    } catch (e) { setLocalErr((e as Error).message) }
+    setUp(false)
+  }
+  const send = (body: Record<string, unknown>) => run(() => fetch('/api/daily-checks/tap', { method: 'POST', headers: json, body: JSON.stringify({ tile_id: t.id, ...body }) }), `Saved: ${t.title.split(':')[0]}`)
+  const photoBtn = (
+    <div className="flex items-center gap-2">
+      <label className="cursor-pointer rounded-xl bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700">{up ? 'Uploading…' : photo ? 'Change photo' : `📷 Photo${t.needs_photo ? ' (needed)' : ''}`}
+        <input type="file" accept="image/*" capture="environment" className="hidden" disabled={up} onChange={e => { const f = e.target.files?.[0]; if (f) void pickPhoto(f); e.target.value = '' }} /></label>
+      {photo && <img src={photo} alt="" className="h-12 w-12 rounded-lg border border-gray-200 object-cover" />}
+    </div>
+  )
+  const shownErr = localErr || err
+
+  return (
+    <div className="space-y-3">
+      {t.ask && <p className="text-sm font-bold text-gray-900">{t.ask}</p>}
+
+      {t.kind === 'question' && (<>
+        <div className="flex gap-2">
+          <button type="button" disabled={busy} onClick={() => { setAnswer('ok'); void send({ answer: 'ok' }) }} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{t.ok_label || 'All good'}</button>
+          <button type="button" disabled={busy} onClick={() => setAnswer('issue')} className={`flex-1 rounded-xl py-3 text-base font-bold text-white disabled:opacity-40 ${answer === 'issue' ? 'bg-red-700' : 'bg-red-500'}`}>{t.issue_label || 'Report a problem'}</button>
+        </div>
+        {answer === 'issue' && (<>
+          {behaviour && (<>
+            <input list="cl-present" value={about} onChange={e => setAbout(e.target.value)} placeholder="Which staff member?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+            <datalist id="cl-present">{present.map(n => <option key={n} value={cap(n)} />)}</datalist>
+          </>)}
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What happened?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+          {photoBtn}
+          <button type="button" disabled={busy || up || !note.trim() || (behaviour && !about.trim())} onClick={() => void send({ answer: 'issue', note, about_staff: about, photo_url: photo })} className="w-full rounded-xl bg-red-600 py-3 text-base font-bold text-white disabled:opacity-40">Save report</button>
+        </>)}
+      </>)}
+
+      {t.kind === 'persons' && (<>
+        {present.length === 0 && <p className="text-sm text-gray-500">Nobody is clocked in yet.</p>}
+        {present.map(n => (
+          <div key={n} className="flex items-center gap-2 rounded-xl border border-gray-200 p-2">
+            <span className="flex-1 text-sm font-bold text-gray-900">{cap(n)}</span>
+            <button type="button" onClick={() => setPersons(p => ({ ...p, [n]: 'ok' }))} className={`rounded-lg px-3 py-2 text-xs font-bold ${persons[n] === 'ok' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>✓ Yes</button>
+            <button type="button" onClick={() => setPersons(p => ({ ...p, [n]: 'not' }))} className={`rounded-lg px-3 py-2 text-xs font-bold ${persons[n] === 'not' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700'}`}>✗ No</button>
+          </div>
+        ))}
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <button type="button" disabled={busy || present.length === 0 || present.some(n => !persons[n])} onClick={() => void send({ persons, note })} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{present.some(n => !persons[n]) ? `${present.filter(n => !persons[n]).length} still to mark` : 'Save'}</button>
+      </>)}
+
+      {t.kind === 'entry' && (<>
+        <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Write what you saw or did" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        {photoBtn}
+        <button type="button" disabled={busy || up || (!note.trim() && !photo) || (t.needs_photo && !photo)} onClick={() => void send({ note, photo_url: photo })} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save</button>
+      </>)}
+      {shownErr && <p className="text-sm text-red-600">{shownErr}</p>}
     </div>
   )
 }
