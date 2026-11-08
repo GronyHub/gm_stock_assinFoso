@@ -6,6 +6,8 @@ type Pending = { id: number; staff: string; points: number; reason: string; day:
 type Sanction = { id: number; staff: string; tier: number; points_at: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }
 type Entry = { id: number; staff: string; points: number; kind: string; reason: string; source: string; day: string; counted: boolean; status: string; created_by: string | null }
 type Data = { settings: { launch: string; startCounting: string }; people: Person[]; pending: Pending[]; sanctions: Sanction[]; recent: Entry[]; laws: { id: number; text: string; category: string; points: number }[] }
+type Rating = { staff: string; n: number; avg: number; low: number }
+type Ratings = { month: Rating[]; week: Rating[]; star: string | null; recent: { staff: string; stars: number; comment: string | null; customer: string | null; rated_at: string }[] }
 const json = { 'Content-Type': 'application/json' }
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -19,6 +21,8 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
   const [msg, setMsg] = useState('')
   const [form, setForm] = useState({ staff: '', reason: '', law_id: '', points: '1' })
   const [start, setStart] = useState('')
+  const [rt, setRt] = useState<Ratings | null>(null)
+  useEffect(() => { fetch('/api/ratings').then(r => r.ok ? r.json() : null).then(setRt).catch(() => {}) }, [])
   const load = useCallback(async () => {
     try { const r = await fetch('/api/penalties', { cache: 'no-store' }); const j = await r.json(); if (!r.ok) throw new Error(j.error ?? 'Could not load'); setD(j); setStart(j.settings.startCounting); setErr('') } catch (e) { setErr((e as Error).message) }
   }, [])
@@ -116,6 +120,22 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
           {d.recent.length === 0 && <p className="text-sm text-gray-400">No entries yet.</p>}
         </div>
       </>)}
+      {rt && (
+        <div className="mt-6">
+          <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Customer ratings {rt.star && <span className="ml-1 rounded-full bg-yellow-300 px-2 py-0.5 text-[10px] text-[#14213D]">⭐ Service Star this week: {cap(rt.star)}</span>}</p>
+          {rt.month.length === 0 && <p className="text-sm text-gray-400">No ratings yet. They arrive when customers tap the link in a receipt message.</p>}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {rt.month.map(r => { const w = rt.week.find(x => x.staff === r.staff); return (
+              <div key={r.staff} className="rounded-xl border border-gray-200 bg-white p-2 text-center">
+                <p className="text-lg font-extrabold text-amber-600">{r.avg.toFixed(1)} <span className="text-xs">★</span></p>
+                <p className="text-sm font-bold text-gray-900">{cap(r.staff)}</p>
+                <p className="text-[10px] text-gray-500">{r.n} in 30 days{r.low ? ` · ${r.low} low` : ''}{w ? ` · ${w.avg.toFixed(1)} this week` : ''}</p>
+              </div>) })}
+          </div>
+          {rt.recent.length > 0 && (<div className="mt-2 space-y-1">{rt.recent.map((r, i) => (
+            <div key={i} className={`rounded-lg px-2 py-1 text-xs ${r.stars <= 2 ? 'bg-red-50' : 'bg-gray-50'}`}><b>{cap(r.staff)}</b> · <span className="text-amber-500">{'★'.repeat(r.stars)}{'☆'.repeat(5 - r.stars)}</span>{r.customer ? ` · ${r.customer}` : ''}{r.comment ? ` · "${r.comment}"` : ''}</div>))}</div>)}
+        </div>
+      )}
       {msg && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{msg}</div>}
     </div>
   )

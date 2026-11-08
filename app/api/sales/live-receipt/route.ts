@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/logger'
 import { ensureLiveSaleTapsTable } from '@/lib/liveSales'
 import { emailWorkDone } from '@/lib/customerEmail'
 import { receiptWhatsAppUrl, customerLifetimeTotal, normalizeGhPhone } from '@/lib/customerProfile'
+import { ratingLink } from '@/lib/ratings'
 import { findCustomerByPhone } from '@/lib/customerPhones'
 import { NextRequest } from 'next/server'
 
@@ -58,8 +59,9 @@ export async function POST(req: NextRequest) {
     await logActivity(getActorName(session), 'issued receipt', `${number} · ₵${total.toFixed(2)} for ${cust.display_name}`)
 
     void emailWorkDone(code, taps.map(t => ({ name: t.item_name as string, qty: Number(t.quantity), price: Number(t.price) })), number)
+    const rateUrl = phone ? await ratingLink(getActorName(session), 'invoice', Number(inv.id), cust.display_name as string) : null
     const whatsappUrl = phone
-      ? receiptWhatsAppUrl(phone, number, taps.map(t => ({ name: t.item_name, qty: Number(t.quantity), price: Number(t.price) })), code, cust.display_name as string, await customerLifetimeTotal(code))
+      ? receiptWhatsAppUrl(phone, number, taps.map(t => ({ name: t.item_name, qty: Number(t.quantity), price: Number(t.price) })), code, cust.display_name as string, await customerLifetimeTotal(code), rateUrl)
       : null
     return success({ invoiceId: inv.id, invoiceNumber: number, total, whatsappUrl, printUrl: `/receipts/${inv.id}/print` }, 201)
   } catch (e) { return handleError('sales/live-receipt', e) }
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
 
 // GET ?invoiceId=123 -> the WhatsApp link and print page of a receipt already issued from Live Sale.
 export async function GET(req: NextRequest) {
-  const { error } = await requireAuth()
+  const { session: gsession, error } = await requireAuth()
   if (error) return error
   try {
     const id = Number(req.nextUrl.searchParams.get('invoiceId'))
@@ -81,8 +83,9 @@ export async function GET(req: NextRequest) {
     // ?to= : another of this customer's own numbers.
     const to = normalizeGhPhone(req.nextUrl.searchParams.get('to'))
     if (to && code) { const owner = await findCustomerByPhone(to); if (owner && owner.customer_id_code === code) phone = to }
+    const rateUrl = phone ? await ratingLink(getActorName(gsession), 'invoice', id, inv.display_name as string) : null
     const whatsappUrl = phone
-      ? receiptWhatsAppUrl(phone, inv.invoice_number as string, lines.map(l => ({ name: l.raw_item_name as string, qty: Number(l.quantity), price: Number(l.item_price) })), code, inv.display_name as string, await customerLifetimeTotal(code))
+      ? receiptWhatsAppUrl(phone, inv.invoice_number as string, lines.map(l => ({ name: l.raw_item_name as string, qty: Number(l.quantity), price: Number(l.item_price) })), code, inv.display_name as string, await customerLifetimeTotal(code), rateUrl)
       : null
     return success({ invoiceId: id, invoiceNumber: inv.invoice_number, whatsappUrl, printUrl: `/receipts/${id}/print` })
   } catch (e) { return handleError('sales/live-receipt GET', e) }

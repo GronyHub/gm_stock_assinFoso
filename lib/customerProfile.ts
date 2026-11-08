@@ -67,6 +67,7 @@ const LOYALTY = (lifetime?: number | null) => {
       ? `Reach ${cedi(PRIZE_TARGET)} in total and you stand a chance to win an amazing prize from us! Only ${cedi(left)} to go.\n\n`
       : `You have passed ${cedi(PRIZE_TARGET)} with us, so you stand a chance to win an amazing prize from us! Thank you for your trust.\n\n`)
 }
+const RATE_BLOCK = (rateUrl?: string | null) => rateUrl ? `*How was our service today?* Tap to rate us 1 to 5 stars:\n${rateUrl}\n\n` : ''
 const CONTACT_BLOCK = (_customerId?: string | null) =>
   `Send all work and payments in this chat only.\n` +
   `Call / WhatsApp / Mobile Money: 053 432 8977\n\n` +
@@ -76,18 +77,18 @@ const CONTACT_BLOCK = (_customerId?: string | null) =>
   `Join our TikTok page: https://www.tiktok.com/@grony.multimedia\n` +
   `Email: info@gronymultimedia.com`
 
-export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?: string | null, name?: string | null, lifetime?: number | null): string {
+export function purchaseWhatsAppUrl(phone: string, items: WaItem[], customerId?: string | null, name?: string | null, lifetime?: number | null, rateUrl?: string | null): string {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
   const lines = items.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)} = ${cedi(i.qty * i.price)}`).join('\n')
   const text = `${hello(name, customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
-    `Here is what we did for you today:\n${lines}\n*Total: ${cedi(total)}*\n\n${LOYALTY(lifetime)}${CONTACT_BLOCK(customerId)}`
+    `Here is what we did for you today:\n${lines}\n*Total: ${cedi(total)}*\n\n${LOYALTY(lifetime)}${RATE_BLOCK(rateUrl)}${CONTACT_BLOCK(customerId)}`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
 }
 
-export function receiptWhatsAppUrl(phone: string, receiptNo: string, items: WaItem[], customerId?: string | null, name?: string | null, lifetime?: number | null): string {
+export function receiptWhatsAppUrl(phone: string, receiptNo: string, items: WaItem[], customerId?: string | null, name?: string | null, lifetime?: number | null, rateUrl?: string | null): string {
   const total = items.reduce((s, i) => s + i.qty * i.price, 0)
   const lines = items.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)} = ${cedi(i.qty * i.price)}`).join('\n')
   const text = `${hello(name, customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
-    `Receipt ${receiptNo}:\n${lines}\n*Total: ${cedi(total)}* (paid)\n\n${LOYALTY(lifetime)}${CONTACT_BLOCK(customerId)}`
+    `Receipt ${receiptNo}:\n${lines}\n*Total: ${cedi(total)}* (paid)\n\n${LOYALTY(lifetime)}${RATE_BLOCK(rateUrl)}${CONTACT_BLOCK(customerId)}`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
 }

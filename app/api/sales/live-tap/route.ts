@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { emailWorkDone } from '@/lib/customerEmail'
 import { sendSms, purchaseMessage, toE164 } from '@/lib/sms'
+import { ratingLink } from '@/lib/ratings'
 import { purchaseWhatsAppUrl, normalizeGhPhone, ensureCustomerProfileColumns, customerLifetimeTotal } from '@/lib/customerProfile'
 import { recordBuyer } from '@/lib/saleBuyers'
 import { findCustomerByPhone } from '@/lib/customerPhones'
@@ -370,7 +371,8 @@ export async function POST(req: NextRequest) {
     // Email the work done too, when the customer has an email on file.
     void emailWorkDone(customerIdCode, [{ name: item.canonical_name, qty, price }])
 
-    const whatsappUrl = waLocal && !skipWhatsapp ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName, await customerLifetimeTotal(customerIdCode)) : null
+    const rateUrl = waLocal && !skipWhatsapp ? await ratingLink(staffName, 'tap', tap?.id, waName) : null
+    const whatsappUrl = waLocal && !skipWhatsapp ? purchaseWhatsAppUrl(waLocal, [{ name: item.canonical_name, qty, price }], customerIdCode, waName, await customerLifetimeTotal(customerIdCode), rateUrl) : null
     // The new row carries who it was sold to (a customer, a phone number or just a label), so the Sales Log's
     // Customer column shows it straight away instead of waiting for the next refresh.
     const tapOut = { ...tap, buyer_id: buyerId, buyer_name: waName ?? label, buyer_phone: waLocal }

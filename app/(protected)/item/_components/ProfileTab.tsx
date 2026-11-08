@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import StaffAvatar, { announcePhotoChange } from '@/components/StaffAvatar'
 import { PenaltyCard } from '@/components/PenaltyChip'
+import RatingsCard from '@/components/RatingsCard'
 
 type Profile = {
   id: number; username: string; display_name: string; email: string | null; phone: string | null; role: string; photo_url?: string | null
@@ -194,6 +195,7 @@ export default function ProfileTab() {
   return (
     <div className="max-w-md mx-auto space-y-4">
       <PenaltyCard />
+      <RatingsCard />
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="flex items-center gap-4">
           <StaffAvatar name={profile?.display_name || profile?.username || ''} url={profile?.photo_url} size={88} className="!border-gray-200" />
