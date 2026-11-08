@@ -11,6 +11,9 @@ const evTime = (e: CheckEvent) => e.extra?.done_at ?? hhmm(e.recorded_at)
 const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getUTCMinutes() }
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3))
 
+// Tiles that are a job done on another page of the app get a button that opens it (the stock count).
+const linkFor = (t: CheckTile): { href: string; label: string } | null => /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' } : null
+
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 
 export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) {
@@ -109,6 +112,7 @@ export default function DailyChecklistClient({ canEdit }: { canEdit: boolean }) 
                     <span className="shrink-0 text-[10px] font-bold text-gray-500">{t.time}</span>
                     <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
                   </button>
+                  {g.label !== 'NEXT' && linkFor(t) && <a href={linkFor(t)!.href} className="shrink-0 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-bold text-white">{linkFor(t)!.label}</a>}
                   {g.label !== 'NEXT' && <button type="button" onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Done</button>}
                 </div>
               ))}
@@ -194,6 +198,7 @@ function TileSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile
           </div>
         </div>
         {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
+        {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
         {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
         {isToday && (!ev || editableEv) && (<>
