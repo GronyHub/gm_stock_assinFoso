@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
+import { isOwnerLevel } from '@/lib/roles'
 
 // The caretaker account (role children_manager) must never read or change shop
 // data: sales, bills, customers, payroll, the owners' personal ledger, the UK
@@ -16,6 +17,13 @@ const CARETAKER_BLOCKED = [
   '/api/expense-orders', '/api/properties', '/api/search', '/api/flags', '/api/advert-status',
 ]
 
+// Staff (everyone except the owner and Joe) only use Items / Live Sale / Sales Log, Counts, Item 360, Losses,
+// Analytics, Company Laws, the Daily Checklist, their payslips and profile. These pages are not for them: a typed
+// address quietly lands on Items. The data behind them is refused too.
+const STAFF_BLOCKED_PAGES = ['/expenses', '/cash-at-bank', '/purchase-orders', '/vendors', '/customers', '/personal', '/roles', '/users', '/penalties', '/routine', '/notifications', '/staff-times']
+const STAFF_BLOCKED_API = ['/api/cash-at-bank', '/api/personal', '/api/properties', '/api/uk', '/api/impersonate', '/api/expense-orders']
+const under = (path: string, list: string[]) => list.some(p => path === p || path.startsWith(p + '/'))
+
 export const proxy = auth(req => {
   try {
     const role = (req.auth?.user as { role?: string } | undefined)?.role
@@ -23,6 +31,14 @@ export const proxy = auth(req => {
     if (role === 'children_manager' && path.startsWith('/api/')
         && CARETAKER_BLOCKED.some(p => path === p || path.startsWith(p + '/'))) {
       return NextResponse.json(req.method === 'GET' ? [] : { error: 'Not available for this account' }, { status: 403 })
+    }
+    const u = req.auth?.user as { role?: string; username?: string; name?: string } | undefined
+    if (u && u.role !== 'children_manager' && !isOwnerLevel(u)) {
+      if (path.startsWith('/api/')) {
+        if (under(path, STAFF_BLOCKED_API)) return NextResponse.json(req.method === 'GET' ? [] : { error: 'Not available for this account' }, { status: 403 })
+      } else if (under(path, STAFF_BLOCKED_PAGES)) {
+        return NextResponse.redirect(new URL('/item', req.nextUrl))
+      }
     }
   } catch { /* never block the app because of this check */ }
   return NextResponse.next()

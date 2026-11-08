@@ -2126,6 +2126,21 @@ function ItemHubPageInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
+  // Staff (anyone who is not the owner or Joe) only ever see Items / Live Sale / Sales Log, Counts, Item 360, Losses,
+  // Analytics, their own Payslips and Profile. A typed link or an old shortcut to anything else lands on Items.
+  useEffect(() => {
+    if (isOwnerOrJoe || outerTab !== 'loss') return
+    const lossesOnly = lossView === 'pl' && plSubView !== 'pl'
+    const ok = lossView === 'items' || lossView === 'sales' || lossView === 'counts' || lossView === 'item360' || lossesOnly
+      || lossView === 'staffPayslips' || lossView === 'staffProfile' || lossView === 'home'
+    const stuckOnMode = (lossView === 'items' || lossView === 'sales') && ['bills', 'expenses', 'manage', 'advert', 'gronyChecks'].includes(itemsPageMode)
+    if (!ok || stuckOnMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (lossView !== 'items') pickLossView('items')
+      if (stuckOnMode) pickItemsMode('sale')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwnerOrJoe, lossView, plSubView, itemsPageMode, outerTab])
   // The caretaker (role children_manager) works only in C&H: always bring her
   // back to it, including after a typed ?tab= link, and hide the other areas.
   const isCaretakerOnly = role === 'children_manager'
@@ -5390,8 +5405,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             "Go to Count" button (resolveOverageGate), and once in it, its
             own sub-nav (see the countSubView row below) still switches
             between Records/Count Due/Negative SOH same as before. */}
-        <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>
-        <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>
+        {isOwnerOrJoe && <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>}
+        {isOwnerOrJoe && <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>}
         {/* P&L/CAB were previously reachable only via the sidebar (pickLossView)
             or a small radio button buried in Sale mode's own filter row (see
             liveSaleViolationFilter) -- promoted to full tabs here since owners
@@ -5401,7 +5416,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             render as their own full-screen report (see lossView === 'pl'/'cab'
             further down this same flex-col), not a mode within the Items/Sales
             grid, so active state reads off lossView instead. */}
-        {canSeePL && (
+        {canSeePL && isOwnerOrJoe && (
           <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
         )}
         {/* Customers used to only be reachable as a radio inside Receipts'
@@ -5410,14 +5425,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             destination CustomersPage already rendered on its own further
             down this same flex-col (search results/shortcuts already
             landed there too), just not previously reachable from this row. */}
-        <button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>
-        {(canSeeManage || canSeeTeam) && (
+        {isOwnerOrJoe && <button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>}
+        {isOwnerOrJoe && (canSeeManage || canSeeTeam) && (
           <button type="button" onClick={() => pickItemsMode('manage')} title="Manage" className={btnCls(onItemsGrid && itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
         )}
-        {canSeeManage && (
+        {isOwnerOrJoe && canSeeManage && (
           <button type="button" onClick={() => pickItemsMode('advert')} title="Advert" className={btnCls(onItemsGrid && itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
         )}
-        {canSeeManage && (
+        {isOwnerOrJoe && canSeeManage && (
           <button type="button" onClick={() => pickItemsMode('gronyChecks')} title="Grony 1-10 checks" className={btnCls(onItemsGrid && itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
         )}
       </div>
@@ -6661,10 +6676,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} onHide={() => setSidePaneHidden(true)} />
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
-            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false}
+            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false} shared={isOwnerOrJoe}
               href="/laws" onClick={() => { window.location.href = '/laws' }} />
             {/* The Daily Checklist is the second button in the sidebar, on every tab. */}
-            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false} divider
+            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false} divider shared={isOwnerOrJoe}
               href="/standards" onClick={() => { window.location.href = '/standards' }} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
@@ -6681,12 +6696,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {/* Items and Live Sale are the same screen -- one row. Lands on
                   the 'items' view (the superset: it also has the columns
                   picker) in plain Live mode, clearing any filter. */}
-              <SidePaneButton icon="🛒" label={paneLabel('items', 'Items / Live Sale')} mode={cashDisplayMode} divider
+              <SidePaneButton icon="🛒" label={paneLabel('items', 'Items / Live Sale')} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(modeActive('sale'))} badge={itemsFlagsCount}
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
-              <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider
+              <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(modeActive('log'))} badge={salesFlagsCount} onClick={() => goItemsMode('log')} />
+              {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
@@ -6697,10 +6713,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab()} />
+              </>)}
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => v.key !== 'items' && (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
-                  <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode}
+                  <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode} shared={isOwnerOrJoe && v.key === 'counts'}
                     active={paneActive(cashItemActive(v.key))} divider
                     badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + lossByDateFlagsCount)
                       // Expenses/Vendors/Customers all moved off their own
@@ -6719,55 +6736,55 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider
+              <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
-              {canSeePL && (
+              {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
                   active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
               )}
-              {canSeePL && (
+              {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
                   active={paneActive(lossView === 'cab')} badge={cabFlagsCount} onClick={() => pickLossView('cab')} />
               )}
-              <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider
+              <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={lossByDateFlagsCount}
                 noNewTab onClick={() => setLossesOpen(o => !o)} />
               {lossesOpen && (<>
-                <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_date')} onClick={() => goLossSubView('loss_by_date')} />
-                <SidePaneButton icon="•" label="Loss by Items" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Loss by Items" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_items')} onClick={() => goLossSubView('loss_by_items')} />
                 {liveNetLossCount > 0 && (
-                  <SidePaneButton icon="•" label={`Net Loss (${liveNetLossCount})`} mode={cashDisplayMode} divider
+                  <SidePaneButton icon="•" label={`Net Loss (${liveNetLossCount})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'net_loss')} onClick={() => goLossSubView('net_loss')} />
                 )}
                 {liveAcpGteSpCount > 0 && (
-                  <SidePaneButton icon="•" label={`Cost ≥ Selling Price (${liveAcpGteSpCount})`} mode={cashDisplayMode} divider
+                  <SidePaneButton icon="•" label={`Cost ≥ Selling Price (${liveAcpGteSpCount})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
                 )}
                 {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                  <SidePaneButton icon="•" label={`Sold Below Cost (${globalFlags?.costGteSell?.length ?? 0})`} mode={cashDisplayMode} divider
+                  <SidePaneButton icon="•" label={`Sold Below Cost (${globalFlags?.costGteSell?.length ?? 0})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'sold_below_cost')} onClick={() => goLossSubView('sold_below_cost')} />
                 )}
               </>)}
-              <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider
+              <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(itemsPageMode === 'sale' && ['leastSalesServices', 'leastSalesGoods', 'leastSalesGroups', 'leastPurchased'].includes(liveSaleViolationFilter))}
                 noNewTab onClick={() => setAnalyticsOpen(o => !o)} />
               {analyticsOpen && (<>
-                <SidePaneButton icon="•" label="Services: Least Sales" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Services: Least Sales" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesServices')}
                   onClick={() => goSaleFilter('leastSalesServices', { kind: 'least_sales_services' })} />
-                <SidePaneButton icon="•" label="Goods: Least Sales" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Goods: Least Sales" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGoods')}
                   onClick={() => goSaleFilter('leastSalesGoods', { kind: 'least_sales_goods' })} />
-                <SidePaneButton icon="•" label="Groups: Least Sales" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Groups: Least Sales" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastSalesGroups')}
                   onClick={() => goSaleFilter('leastSalesGroups', { kind: 'least_sales_groups' })} />
-                <SidePaneButton icon="•" label="Goods: Longest Unbought" mode={cashDisplayMode} divider
+                <SidePaneButton icon="•" label="Goods: Longest Unbought" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              {!isDesktop && (canSeeManage || canSeeTeam) && (<>
+              {!isDesktop && isOwnerOrJoe && (canSeeManage || canSeeTeam) && (<>
                 <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 border-t border-white/30 mt-1">🛠 Manage</div>
                 {manageSideOptions().map(o => (
                   <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
@@ -6776,15 +6793,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
                 ))}
               </>)}
-              {!isDesktop && canSeeManage && (
+              {!isDesktop && isOwnerOrJoe && canSeeManage && (
                 <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
               )}
-              {!isDesktop && canSeeManage && (
+              {!isDesktop && isOwnerOrJoe && canSeeManage && (
                 <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
-              <SidePaneButton icon="📖" label="Handbook" mode={cashDisplayMode} divider
+              <SidePaneButton icon="📖" label="Handbook" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={false} noNewTab onClick={() => setLiveHelpModalOpen(true)} />
             </div>
             )}
@@ -6801,7 +6818,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 the lossView-driven render blocks lower in this file are
                 left intact. */}
 
-            {canSeeTeam && activeStaff.length > 0 && (
+            {isOwnerOrJoe && canSeeTeam && activeStaff.length > 0 && (
               <div className="mt-1 pt-1 border-t border-white/30">
                 <div className="text-xs font-semibold text-gray-400 px-3 py-2">Staff Members</div>
                 {/* Home used to be its own tab on Items' switcher -- moved
@@ -6830,12 +6847,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   let itemIndex = 0
                   return (<>
                     {personalItems.map((t) => (
-                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={itemIndex++ > 0}
+                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={itemIndex++ > 0} shared={isOwnerOrJoe}
                         active={paneActive(lossView === t.key)}
                         onClick={() => pickLossView(t.key)} />
                     ))}
                     {viewingName.toLowerCase() === username.toLowerCase() && (
-                      <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} active={paneActive(lossView === 'staffProfile')}
+                      <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} shared={isOwnerOrJoe} active={paneActive(lossView === 'staffProfile')}
                         divider={personalItems.length > 0}
                         onClick={() => pickLossView('staffProfile')} />
                     )}
@@ -6919,8 +6936,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
-              <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
-                href="/routine" onClick={() => { window.location.href = '/routine' }} />
+              {isOwnerOrJoe && <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
+                href="/routine" onClick={() => { window.location.href = '/routine' }} />}
               {isOwnerLevel(session?.user as any) && (
                 <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={false} divider
                   href="/notifications" onClick={() => { window.location.href = '/notifications' }} />
@@ -6928,7 +6945,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
                 noNewTab onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
-            {outerTab !== 'uk' && canOpenSettings && (
+            {outerTab !== 'uk' && isOwnerOrJoe && canOpenSettings && (
               <SettingsPane mode={cashDisplayMode} activeView={lossView}
                 viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
                 pickViewing={pickViewing} pickLossView={pickLossView}
@@ -6968,7 +6985,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         )}
         {/* Desktop only: a right sidebar holding the Grony Manage options (they stay in the left pane on phones,
             where there is no room for a second pane). `order-last` puts it at the right end of this row. */}
-        {isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) && (
+        {isDesktop && outerTab === 'loss' && isOwnerOrJoe && (canSeeManage || canSeeTeam) && (
           <div style={{ '--pane-accent': paneAccent } as React.CSSProperties}
             className={`order-last shrink-0 border-l border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 ${cashDisplayMode === 'icon' ? 'w-14' : 'w-36'}`}>
             <div className="flex-1 min-h-0 overflow-y-auto">

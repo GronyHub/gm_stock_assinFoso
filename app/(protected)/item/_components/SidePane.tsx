@@ -174,8 +174,8 @@ export function SidePaneToggle({ mode, onChange, label, onHide }: { mode: Displa
 // instead; `noNewTab` (toggles, sign out) gets no menu at all.
 declare global { interface Window { __gmNewTab?: { prev: string } | null } }
 
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder, href, noNewTab }: {
-  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean; href?: string; noNewTab?: boolean
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder, href, noNewTab, shared }: {
+  icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean; href?: string; noNewTab?: boolean; shared?: boolean
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   useEffect(() => {
@@ -202,7 +202,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
       className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-left transition
         ${divider ? 'border-t border-white/35' : ''}
-        ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : 'text-white hover:bg-white/10'} ${className}`}>
+        ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : shared ? 'text-yellow-300 hover:bg-white/10' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
         typeof icon === 'string' || icon === undefined
           ? <span className="text-base leading-none">{icon ?? '•'}</span>
