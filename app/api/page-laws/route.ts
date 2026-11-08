@@ -1,8 +1,11 @@
 import { requireAuth, badRequest, success, unauthorized, handleError } from '@/lib/api'
 import { ensureDbInitialized } from '@/lib/api/dbInitCache'
 import sql from '@/lib/db'
-import { ensurePageLawsTable } from '@/lib/pageLaws'
+import { ensureCompanyLaws, cleanLawBody } from '@/lib/pageLaws'
+import { LAW_CATEGORIES, LAW_TYPES, DAY_CODES, LAW_FREQUENCIES, CATEGORY_FOR_SCOPE } from '@/lib/lawCategories'
+import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
+
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
@@ -12,14 +15,14 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureDbInitialized()
-    await ensurePageLawsTable()
+    await ensureCompanyLaws()
     if (scopeKey) {
       // Fetch laws for a specific scope
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
       return success(rows)
     } else {
       // Fetch all laws across all scopes
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type FROM page_laws ORDER BY scope_key, id`
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts FROM page_laws ORDER BY scope_key, id`
       return success(rows)
     }
   } catch (e) {
@@ -27,20 +30,27 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// Only the owner and manager add laws -- laws now decide what the Daily Checklist asks of staff. A law added from a
+// page's own flag icon is put in the category that matches that page (or "Needs a category").
 export async function POST(req: NextRequest) {
-  const { error } = await requireAuth()
+  const { session, error } = await requireAuth()
   if (error) return error
+  if (!isOwnerLevel(session?.user as any)) return badRequest('Only the owner and manager can add laws.')
 
-  const { scopeKey, text } = await req.json()
-  if (!scopeKey || !text?.trim()) return badRequest('Missing scopeKey or text')
+  const b = await req.json()
+  const valid = { categories: LAW_CATEGORIES.map(c => c.key), types: LAW_TYPES.map(t => t.key as string), days: [...DAY_CODES] as string[], freqs: [...LAW_FREQUENCIES] as string[] }
+  const law = cleanLawBody(b, valid)
+  const scopeKey = String(b.scopeKey ?? law.category ?? '').trim()
+  if (!scopeKey || !law.text) return badRequest('Missing scopeKey or text')
+  const category = law.category ?? CATEGORY_FOR_SCOPE[scopeKey] ?? null
 
   try {
     await ensureDbInitialized()
-    await ensurePageLawsTable()
+    await ensureCompanyLaws()
     const [row] = await sql`
-      INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type)
-      VALUES (${scopeKey}, ${text.trim()}, false, 'law')
-      RETURNING id, text, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type
+      INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts)
+      VALUES (${scopeKey}, ${law.text}, false, 'law', ${category}, ${law.subcategory}, ${law.law_type}, ${law.days}, ${law.law_time}, ${law.frequency}, ${law.minutes}, ${law.dos}, ${law.donts})
+      RETURNING id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts
     `
     return success(row)
   } catch (e) {

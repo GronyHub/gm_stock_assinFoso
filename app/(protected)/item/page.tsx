@@ -6660,8 +6660,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} onHide={() => setSidePaneHidden(true)} />
 
-            {/* The Daily Checklist is the first button in the sidebar, on every tab. */}
-            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false}
+            {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
+            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false}
+              href="/laws" onClick={() => { window.location.href = '/laws' }} />
+            {/* The Daily Checklist is the second button in the sidebar, on every tab. */}
+            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false} divider
               href="/standards" onClick={() => { window.location.href = '/standards' }} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
