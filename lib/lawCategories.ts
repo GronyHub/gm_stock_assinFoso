@@ -54,4 +54,7 @@ export const CATEGORY_KEYWORDS: Record<string, string> = {
   'Security & privacy': 'password|private|login|cctv|lock|security|email',
   Finance: 'cab|cash|bank|cutting|momo|expense',
 }
-export const PROOFS = [{ key: 'tick', label: 'Tick when done' }, { key: 'photo', label: 'Photo and note' }] as const
+export const PROOFS = [
+  { key: 'tick', label: 'Tick when done' }, { key: 'photo', label: 'Photo and note' },
+  { key: 'question', label: 'Question: all good or report a problem' }, { key: 'persons', label: 'Tick each person at work' },
+] as const

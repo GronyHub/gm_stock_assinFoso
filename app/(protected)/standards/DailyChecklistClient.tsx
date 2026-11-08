@@ -13,7 +13,8 @@ const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getU
 // Tiles that are a job done on another page of the app get a button that opens it (the stock count).
 const linkFor = (t: CheckTile): { href: string; label: string } | null =>
   /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' }
-  : /^closing questions answered/i.test(t.title) ? { href: '/item?view=closer', label: 'Open Closer' } : null
+  : /^closing questions answered/i.test(t.title) ? { href: '/item?view=closer', label: 'Open Closer' }
+  : /^opening questions answered/i.test(t.title) ? { href: '/item?view=opener', label: 'Open Opener' } : null
 
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 

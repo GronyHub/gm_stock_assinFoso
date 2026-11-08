@@ -69,6 +69,7 @@ async function ensureCompanyLawsImpl() {
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
+  await (await import('./lawDraftsMore')).seedMoreLaws()
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
 }
 export const ensureCompanyLaws = once(ensureCompanyLawsImpl)
@@ -123,7 +124,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
-    proof: recurring && b.proof === 'photo' ? 'photo' : 'tick',
+    proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
   }
 }
 
