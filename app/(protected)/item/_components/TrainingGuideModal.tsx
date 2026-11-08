@@ -136,6 +136,59 @@ export const TOPICS: Topic[] = [
     ),
   },
   {
+    id: 'daily-checklist-how',
+    title: 'The Daily Checklist: what to do and when',
+    group: 'Getting Started',
+    keywords: 'daily checklist tiles now late tick photo question persons minutes clock in',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Open <strong>Daily Checklist</strong> from the sidebar. Each small tile is one job. The <strong>Now</strong> box shows what is due this minute; late jobs turn red and the owner and Joe are told.</p>
+        <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
+          <li>You can only tick tiles once you are <strong>clocked in</strong>. The day starts at the first clock-in.</li>
+          <li>Tap a tile to see what it means and how to do it before you confirm.</li>
+          <li>Some tiles ask for a photo, a yes/no question, or ticking each person at work. Do exactly what it asks.</li>
+          <li>The minutes on a tile count as worked time. Missing a job can cost penalty points.</li>
+        </ul>
+        <Callout>Every tile comes from a law in Company Laws. Read the law to see why it exists.</Callout>
+      </div>
+    ),
+  },
+  {
+    id: 'company-laws-how',
+    title: 'Company Laws, videos, quizzes and penalty points',
+    group: 'Getting Started',
+    keywords: 'company laws categories video quiz penalty points sanction suspension learning period',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Open <strong>Company Laws</strong> and tap a category. Each category has a short video, the laws with their do's and don'ts, and a 4-question quiz. Pass the quiz with 3 right.</p>
+        <p className="text-sm text-gray-700">Breaking a law costs penalty points. 20 points is a 3-day suspension, 30 is a week, and 50 is dismissal. Points start counting after your first two weeks, and clean weeks take 5 points off. The owner approves every sanction.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'customers-how',
+    title: 'Customers: find, register and rate',
+    group: 'Getting Started',
+    keywords: 'customers register whatsapp receipts rating',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700">Open <strong>Customers</strong> in the sidebar to find someone by name or number, see their receipts, or register a new customer. Follow the Customers &amp; WhatsApp laws when you save a number or send a message.</p>
+        <p className="text-sm text-gray-700">After a sale, the customer can rate your service from a link. Your rating shows on your Profile.</p>
+      </div>
+    ),
+  },
+  {
+    id: 'item-360-how',
+    title: 'Item 360 and Losses',
+    group: 'Getting Started',
+    keywords: 'item 360 losses loss by date loss by items analytics least sales',
+    body: (
+      <div className="space-y-3">
+        <p className="text-sm text-gray-700"><strong>Item 360</strong> shows one item's sales, stock, counts and price history on one screen. <strong>Losses</strong> opens Loss by Date and Loss by Items; <strong>Analytics</strong> shows the services and goods that sell least and the goods unbought longest.</p>
+      </div>
+    ),
+  },
+  {
     id: 'staff-roles',
     title: 'What are the staff roles?',
     group: 'Getting Started',
@@ -143,45 +196,44 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Staff</strong> -- the default. Covers the day-to-day work: sales, bills, counts, and most of the app.</li>
-          <li><strong>Manager</strong> -- staff, plus can handle certain assignments and removals (e.g. deleting a post, assigning penalty points) that a plain Staff account can't.</li>
-          <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- full access everywhere, including Roles &amp; Permissions itself, private payslip/profile data, and reordering the whole menu.</li>
+          <li><strong>Staff</strong> -- the shop team. You use Company Laws, the Daily Checklist, Items / Live Sale, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
+          <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals.</li>
         </ul>
-        <Callout>Beyond role, an owner can also grant one person access to a specific extra area (P&amp;L, Team, UK, etc) individually -- so two people with the same role won't always see exactly the same things.</Callout>
+        <Callout>Anything you cannot see is not part of your job in the app. If you think you need it, ask Joe.</Callout>
       </div>
     ),
   },
   {
     id: 'overview',
-    title: 'What is Live Sale, and what do the tabs do?',
-    group: 'Overview',
+    title: 'What is Live Sale, and where is everything?',
+    group: 'Getting Started',
     keywords: 'overview tabs switch live log sales bills count mode',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Live Sale is where every walk-in sale, GMC (internal-use) take, count, and bill gets recorded, one item at a time, as it happens -- instead of writing a receipt out at the end of the day.</p>
-        <p className="text-sm text-gray-700">The row of pills at the top switches between five views. They all work on the same underlying data, just filtered/arranged differently:</p>
+        <p className="text-sm text-gray-700">Live Sale is where every walk-in sale is recorded, one item at a time, as it happens -- instead of writing a receipt out at the end of the day. It opens from the <strong>Items / Live Sale</strong> button in the sidebar.</p>
+        <p className="text-sm text-gray-700">Related things have their own sidebar buttons. They all work on the same data:</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { p: 'Live', d: 'The tap-to-sell grid -- the main screen you spend most of your time on.' },
-            { p: 'Log', d: 'Every tap you have made today and on past days, in one history.' },
-            { p: 'Sales', d: 'The classic list of daily sales receipts.' },
-            { p: 'Bills', d: 'Purchases/restocks recorded as bills, plus a New Bill form.' },
-            { p: 'Count', d: 'Everything about stock counts: what is due, past records, and history.' },
+            { p: 'Items / Live Sale', d: 'The tap-to-sell grid -- the main screen you spend most of your time on.' },
+            { p: 'Sales Log', d: 'Every sale you have tapped, by day, with receipts. Fix a mistake here.' },
+            { p: 'Counts', d: 'What is due to be counted, count records and history.' },
+            { p: 'Item 360', d: 'Everything about one item in one place.' },
+            { p: 'Customers', d: 'Register and find customers and their receipts.' },
+            { p: 'Losses / Analytics', d: 'Where stock is lost and what sells least.' },
           ].map(r => (
             <div key={r.p} className="border border-gray-200 rounded-lg p-2">
-              <MiniPill text={r.p} tone={r.p === 'Live' ? 'blue' : 'gray'} />
+              <MiniPill text={r.p} tone={r.p === 'Items / Live Sale' ? 'blue' : 'gray'} />
               <p className="text-[11px] text-gray-500 mt-1">{r.d}</p>
             </div>
           ))}
         </div>
-        <Callout>On a phone, this row scrolls sideways rather than wrapping -- swipe it if a tab looks cut off.</Callout>
       </div>
     ),
   },
   {
     id: 'tapping-a-sale',
     title: 'How to record a walk-in sale',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'tap sale record wic quantity price sell customer qty checkmark inline card',
     body: (
       <div className="space-y-3">
@@ -199,7 +251,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'wic-vs-gmc',
     title: 'What does the WIC / GMC switch mean?',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'wic gmc internal use grony multimedia toggle switch customer',
     body: (
       <div className="space-y-3">
@@ -216,7 +268,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'custom-quantity',
     title: 'Selling a quantity that is not a preset button',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'custom quantity amount preset number type',
     body: (
       <p className="text-sm text-gray-700">The Qty box on each card is a plain number field -- type any amount, it does not have to match a suggested quantity. There is no separate "custom" mode or preset buttons; you always type the exact quantity being sold.</p>
@@ -225,19 +277,19 @@ export const TOPICS: Topic[] = [
   {
     id: 'undo-a-tap',
     title: 'How to undo a tap (fix a mistake)',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'undo mistake wrong tap delete remove cancel',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Tapped the wrong item, or the wrong quantity? Go to the <MiniPill text="Log" /> tab, find the tap in today list, and undo it there.</p>
-        <Callout>Undoing does not delete history -- the tap stays visible in the Log, just crossed out and excluded from the day total, so there is always a record of what was corrected and when.</Callout>
+        <p className="text-sm text-gray-700">Tapped the wrong item, or the wrong quantity? Open <strong>Sales Log</strong> from the sidebar, find the tap in today's list, and undo it there.</p>
+        <Callout>Undoing does not delete history -- the tap stays visible in the Sales Log, just crossed out and excluded from the day total, so there is always a record of what was corrected and when.</Callout>
       </div>
     ),
   },
   {
     id: 'count-now-banner',
     title: 'What does the "COUNT NOW" banner mean?',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'count now due overdue banner amber red pinned top expected',
     body: (
       <div className="space-y-3">
@@ -246,20 +298,20 @@ export const TOPICS: Topic[] = [
           <div><MiniBanner text="⚠ COUNT NOW - Today" bg="bg-amber-500" /> <span className="text-xs text-gray-500 ml-2">Amber = due, but not overdue yet.</span></div>
           <div><MiniBanner text="⚠ COUNT NOW - 3d OVERDUE" bg="bg-red-600" /> <span className="text-xs text-gray-500 ml-2">Red = overdue -- count it as soon as possible.</span></div>
         </div>
-        <p className="text-sm text-gray-700">Tap the item and a count field appears right inside the sale sheet -- you do not need to switch to the Count tab to clear it. Enter what is actually on the shelf and submit; the item drops off this list once it is counted.</p>
+        <p className="text-sm text-gray-700">Tap the item and a count field appears right inside the sale sheet -- you do not need to open Counts to clear it. Enter what is actually on the shelf and submit; the item drops off this list once it is counted.</p>
       </div>
     ),
   },
   {
     id: 'attention-banners',
     title: 'What do the colored warning banners mean, and how do I clear them?',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'negative stock duplicate service violation unlinked sale missing price cost group net gain net loss cost greater than selling price banner warning flag fix solve resolve merge link edit save tap click where all violations',
     body: (
       <div className="space-y-4">
         <p className="text-sm text-gray-700">Besides count-due, an item can carry its own data-integrity warning. There is no single "All violations" button any more -- each warning below is its own dedicated filter in the row above the grid, showing only items with that one problem and only that problem's badge on the card. Pick the specific one you want to work through; each one below has the exact taps to clear it.</p>
 
-        <Callout kind="warn">Tapping one of these flags in the filter row only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, go to the <strong>Items</strong> tab to reach the fix buttons.</Callout>
+        <Callout kind="warn">Tapping one of these flags in the filter row only <strong>narrows the grid</strong> down to the affected items -- it does not open anything to fix. For Duplicate/Unlinked/Service Violation, use the flags panel (📜) on <strong>Items / Live Sale</strong> to reach the fix buttons.</Callout>
 
         <div className="space-y-3">
           <div>
@@ -306,7 +358,7 @@ export const TOPICS: Topic[] = [
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
               <li>If the item also shows <strong>COUNT NOW</strong>, count it -- tap it, enter what is really on the shelf, and submit. That alone corrects the number.</li>
-              <li>If it is not due for a count, the real cause is almost always a restock that was never entered -- check the <strong>Bills</strong> tab for a missing purchase, or add one, before the number will make sense again.</li>
+              <li>If it is not due for a count, the real cause is almost always a restock that was never entered -- ask Joe to check for a missing purchase bill before the number will make sense again.</li>
             </ul>
           </div>
 
@@ -315,7 +367,7 @@ export const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">This item looks like the same product entered twice under a slightly different name.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Go to the <strong>Items</strong> tab.</>,
+              <>Open <strong>Items / Live Sale</strong>.</>,
               <>Open the flags panel (📜) and tap the <strong>Duplicate Items</strong> pill.</>,
               <>Each pair shows both names side by side with two buttons: <strong>Keep "Name A"</strong> or <strong>Keep "Name B"</strong> -- tap whichever one you want to keep. The other full history (sales, bills, counts) merges into it automatically.</>,
               <>If they are genuinely two different products, tap <strong>Different -- Not a Duplicate</strong> instead, so it stops being flagged.</>,
@@ -327,7 +379,7 @@ export const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">A past sale line matches this item by name but was never actually linked to it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Go to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
+              <>Open <strong>Items / Live Sale</strong>, open the flags panel (📜), and tap <strong>Unlinked Sales</strong>.</>,
               <>Each row shows how many sale lines matched this item and a button reading <strong>"Link N sale(s) to this item"</strong> -- tap it to connect them all at once.</>,
             ]} />
           </div>
@@ -337,8 +389,8 @@ export const TOPICS: Topic[] = [
             <p className="text-xs text-gray-600 mt-1">A service item (no physical stock) shows GMC use, a bill, or a stock count against it.</p>
             <p className="text-sm text-gray-800 mt-1"><strong>Fix it:</strong></p>
             <Steps items={[
-              <>Go to the <strong>Items</strong> tab, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they are carrying.</>,
-              <>Track down the wrongly-logged bill, count, or GMC entry (in Bills, Count Records, or the Log) and correct or delete it there.</>,
+              <>Open <strong>Items / Live Sale</strong>, open the flags panel (📜), and tap <strong>Service Violations</strong> to see which services are affected and what data they are carrying.</>,
+              <>Track down the wrongly-logged bill, count, or GMC entry (in Count Records or the Sales Log, or ask Joe about a bill) and correct or delete it there.</>,
               <>If the service still shows a cost price it shouldn't have, edit the item and clear it -- cost pricing belongs on the GMC material it consumes, not on the service itself.</>,
             ]} />
           </div>
@@ -388,7 +440,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'item-filter',
     title: 'Using the item filter (Loss / Gain / Low SOH / count cadence)',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'filter dropdown loss gain soh stock daily every days dormant not counted find',
     body: (
       <div className="space-y-3">
@@ -405,7 +457,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'type-group-filter',
     title: 'The type and group filters',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'type goods services group filter narrow',
     body: (
       <p className="text-sm text-gray-700"><strong>All types / Goods / Services</strong> narrows the grid to physical stock items or service items only. <strong>All groups</strong> narrows it to one category (e.g. "Stationery", "Printing") -- useful once the catalogue gets long.</p>
@@ -414,7 +466,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'search-pick-item',
     title: 'Searching for and picking a specific item',
-    group: 'Live tab',
+    group: 'Items / Live Sale',
     keywords: 'search find pick item box magnifying',
     body: (
       <div className="space-y-3">
@@ -439,7 +491,7 @@ export const TOPICS: Topic[] = [
           <li><strong>Count settings</strong> (see "Changing how often an item is counted" and "Excluding an item from counts" below).</li>
         </ul>
         <p className="text-sm text-gray-700">Save applies immediately -- you do not need to leave the sheet.</p>
-        <Callout>Deleting an item entirely is not done from Live Sale -- that lives on the Items page, and only works once the item has no sales/bills/count history (otherwise it needs to be merged into another item instead).</Callout>
+        <Callout>Deleting an item entirely is not done from Live Sale -- that is not done from here, and only works once the item has no sales/bills/count history (otherwise it needs to be merged into another item instead).</Callout>
       </div>
     ),
   },
@@ -474,35 +526,35 @@ export const TOPICS: Topic[] = [
   },
   {
     id: 'log-tab',
-    title: 'Sales: Log',
-    group: 'Other tabs',
+    title: 'The Sales Log',
+    group: 'Sales Log and Receipts',
     keywords: 'log history taps today past days list sales sale',
     body: (
-      <p className="text-sm text-gray-700">Inside the <strong>Sales</strong> tab, switch to <strong>Log</strong> (next to Sale/Receipts near the top) to see every tap you have made, grouped by date, most recent day first. Use it to double-check today sales against your cash total, review a past day, or undo a tap that was not caught right away.</p>
+      <p className="text-sm text-gray-700">Open <strong>Sales Log</strong> from the sidebar to see every sale you have tapped, grouped by date, most recent day first. Use it to double-check today's sales against your cash total, review a past day, find a receipt, or undo a tap that was not caught right away.</p>
     ),
   },
   {
     id: 'sales-tab',
-    title: 'Sales: Receipts',
-    group: 'Other tabs',
+    title: 'Receipts and customers',
+    group: 'Sales Log and Receipts',
     keywords: 'sales receipts list classic customer named',
-    body: <p className="text-sm text-gray-700">Inside the <strong>Sales</strong> tab, switch to <strong>Receipts</strong> (next to Sale/Log near the top) for the classic list of sales receipts -- useful for named-customer sales that do not belong on the walk-in tap grid.</p>,
+    body: <p className="text-sm text-gray-700">Receipts are found in the <strong>Sales Log</strong> (each day's receipts) and inside each customer's details in <strong>Customers</strong>. Several items for one customer go through one basket and one receipt; a receipt is never typed by hand.</p>,
   },
   {
     id: 'bills-tab',
     title: 'The Bills tab',
-    group: 'Other tabs',
+    group: 'Sales Log and Receipts',
     keywords: 'bills purchase restock new bill vendor',
     body: <p className="text-sm text-gray-700">Lists recorded bills (restocks/purchases) and includes a New Bill form. A bill is what brings stock back onto the shelf and is one of the records the count-reconciliation math checks against.</p>,
   },
   {
     id: 'count-tab-overview',
-    title: 'The Count tab: interval buckets',
-    group: 'Count tab',
+    title: 'Counts: interval buckets',
+    group: 'Counts',
     keywords: 'count tab daily every dormant not counted bucket list',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">The row of pill buttons at the top of the Count tab (Daily, Every 3d/7d/15d/30d/45d, Dormant, Not counted) each show the plain list of items on that cadence -- no due/overdue urgency here, just "which items are on which schedule."</p>
+        <p className="text-sm text-gray-700">The row of pill buttons at the top of the Counts page (Daily, Every 3d/7d/15d/30d/45d, Dormant, Not counted) each show the plain list of items on that cadence -- no due/overdue urgency here, just "which items are on which schedule."</p>
         <p className="text-sm text-gray-700"><strong>Dormant</strong> means an item last two counts both came back at zero with no bill since -- it is dropped out of the regular count rotation until a new bill brings stock back in, so it does not keep nagging for a count of nothing.</p>
       </div>
     ),
@@ -510,11 +562,11 @@ export const TOPICS: Topic[] = [
   {
     id: 'count-records',
     title: 'Count Records: the full count history',
-    group: 'Count tab',
+    group: 'Counts',
     keywords: 'count records history table time expected loss gain edit delete columns',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">This is the Count tab landing view -- every count ever entered, newest day first, with: Item, Group, Qty counted, <strong>Exp</strong> (what the records expected), <strong>Loss/Gain</strong> (the difference -- red for a loss, amber for a gain), Time, who counted it (By), Source, and Notes.</p>
+        <p className="text-sm text-gray-700">This is the first view of the Counts page -- every count ever entered, newest day first, with: Item, Group, Qty counted, <strong>Exp</strong> (what the records expected), <strong>Loss/Gain</strong> (the difference -- red for a loss, amber for a gain), Time, who counted it (By), Source, and Notes.</p>
         <p className="text-sm text-gray-700">Use <strong>Edit</strong> on a row to correct a mistyped quantity or note. <strong>Del</strong> (where visible -- owner-level only) removes a count record entirely.</p>
         <Callout>This table doubles as the old "Loss by Date" feed -- use the All/Losses/Gains filter and the search box above it to narrow down to just the discrepancies, and the period-summary strip (All-Time/Yesterday/Week/Month/Year) for a quick loss total at a glance.</Callout>
       </div>
@@ -523,16 +575,16 @@ export const TOPICS: Topic[] = [
   {
     id: 'count-history',
     title: 'Count History',
-    group: 'Count tab',
+    group: 'Counts',
     keywords: 'count history audit log who edited deleted',
     body: <p className="text-sm text-gray-700">The audit log of count-related actions -- who counted, edited, or deleted what, and when. Use this to trace back a change that does not match what you expected in Count Records.</p>,
   },
   {
     id: 'analytics',
-    title: 'The Analytics button',
+    title: 'Analytics',
     group: 'Everywhere',
     keywords: 'analytics chart graph trend button icon',
-    body: <p className="text-sm text-gray-700">Swaps the current list for charts/trends built from the same data -- shows up on Live, Log, Sales, Bills, and Count Records. Tap it again to go back to the normal list.</p>,
+    body: <p className="text-sm text-gray-700">Swaps the current list for charts/trends built from the same data -- charts the lists on Items / Live Sale, the Sales Log and Counts. The sidebar also has an <strong>Analytics</strong> button with ready-made views such as the least sold goods and services. Tap it again to go back to the normal list.</p>,
   },
   {
     id: 'laws-flags',

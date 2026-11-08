@@ -6807,6 +6807,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <div className="mt-1 pt-1 border-t border-white/30">
               <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={false}
                 href="/owner-guide" onClick={() => { window.location.href = '/owner-guide' }} />
+              <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={false}
+                href="/handbook-announcements" onClick={() => { window.location.href = '/handbook-announcements' }} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
