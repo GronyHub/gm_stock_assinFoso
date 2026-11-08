@@ -222,7 +222,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
       {mode !== 'icon' && (
         (chipLabel || chipBorder)
           ? <span className="block w-full -mx-1 truncate text-[8px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
-          : <span className="w-full truncate">{label}</span>
+          : <span className="w-full whitespace-normal break-words leading-tight">{label}</span>
       )}
     </button>
     {menu && (
