@@ -39,3 +39,19 @@ export function scheduleText(l: { law_type: string; days?: string | null; law_ti
   const parts = [when, l.law_time ?? '', l.minutes ? `${l.minutes} min` : ''].filter(Boolean)
   return parts.length ? parts.join(', ') : 'No schedule set yet'
 }
+
+// Words that mark an old checklist tile as possibly replaced by this category's laws (used by the review list on a
+// category's screen; nothing is stopped until the owner ticks tiles and confirms).
+export const CATEGORY_KEYWORDS: Record<string, string> = {
+  'Adverts & marketing': 'advert|tiktok|facebook|capcut|jingle|status|clip|video|meta |tv |post|social|whatsapp group|channel|banner printing',
+  'Cleanliness & safety': 'clean|mop|sweep|dust|bin|rubbish|waste|wipe|tidy|toilet|fire|extinguisher|smok|alarm|food|drink|eating|cable|extension|flame|exit|laminator',
+  'Customer service': 'greet|customer|complain|receipt|welcome|queue',
+  'Customers & WhatsApp': 'whatsapp|register|customer|bulk|message',
+  'Shop display & arrangement': 'arrang|display|showcase|poster|shelf|shelves|sticker|signboard|tv ',
+  'Equipment, power & repairs': 'printer|power|ups|usb|toner|ink|repair|charger|laptop|scanner|computer',
+  'Stock & records': 'stock|count|item|bill|sale|record|price|receipt',
+  'Staff management': 'staff|clock|meeting|rota|dress|shirt|behaviour|late|attendance',
+  'Security & privacy': 'password|private|login|cctv|lock|security|email',
+  Finance: 'cab|cash|bank|cutting|momo|expense',
+}
+export const PROOFS = [{ key: 'tick', label: 'Tick when done' }, { key: 'photo', label: 'Photo and note' }] as const

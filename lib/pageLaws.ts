@@ -61,13 +61,15 @@ async function ensureCompanyLawsImpl() {
     ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_type TEXT NOT NULL DEFAULT 'standing',
     ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
-    ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT`.catch(() => {})
+    ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick'`.catch(() => {})
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
+  await seedCleanPilot()
+  await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
 }
 export const ensureCompanyLaws = once(ensureCompanyLawsImpl)
 
@@ -121,5 +123,44 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
+    proof: recurring && b.proof === 'photo' ? 'photo' : 'tick',
   }
+}
+
+type Draft2 = Draft & { proof?: 'tick' | 'photo' }
+const CLEAN_DRAFTS: Draft2[] = [
+  { cat: 'Cleanliness & safety', sub: 'Daily cleaning', type: 'recurring', freq: 'daily', time: '08:45', mins: 5, proof: 'photo', text: 'Opening clean: floor mopped; printers, tables and showcases dusted with rag and brush. Take a photo of the clean shop.', dos: 'Mop the whole floor\nDust printers, tables and showcases with the rag and brush\nTake one clear photo of the floor and counter' },
+  { cat: 'Cleanliness & safety', sub: 'Daily cleaning', type: 'recurring', freq: 'daily', time: '15:00', mins: 5, proof: 'photo', text: 'Afternoon cleanliness check: floor, counter, tables and toilets tidy. Take a photo and write anything that was dirty.' },
+  { cat: 'Cleanliness & safety', sub: 'Daily cleaning', type: 'recurring', freq: 'daily', time: '09:10', mins: 3, text: 'Check the PRINTING PAPERS (A4, 4x6, 5x7) are stocked and clean: ream in its wrapper, upright and flat, nothing spilling.' },
+  { cat: 'Cleanliness & safety', sub: 'Closing clean-up', type: 'recurring', freq: 'daily', time: '18:30', mins: 10, text: 'Closing clean-up: bins emptied, the WASTE PAPERS slot emptied, desks and printers cleared, and the laminator switched off, unplugged and cooled.', dos: 'BIN: rubbish and unusable paper only\nTear official and customer documents into pieces before they go in the BIN\nWASTE PAPERS slot: spoilt or unused test prints only\nClear papers off the desks and printers', donts: 'Do not leave the laminator on or near paper and the bin' },
+  { cat: 'Cleanliness & safety', sub: 'Computers', type: 'recurring', freq: 'daily', time: '18:20', mins: 5, text: 'Clean both laptops: Desktop, Documents and Downloads emptied. Customer files go into the GM folders, everything else is deleted, and the Recycle Bin is emptied.' },
+  { cat: 'Cleanliness & safety', sub: 'Weekly cleaning', type: 'recurring', freq: 'weekly', days: 'sat', time: '16:00', mins: 20, text: 'Wash the printer covers, and wipe the printers, laptops, scanner and showcases.' },
+  { cat: 'Cleanliness & safety', sub: 'Fire safety', type: 'recurring', freq: 'daily', time: '08:50', mins: 3, text: 'Fire check: the extinguisher is in place and unblocked with the gauge in the green, and the gate and exits are clear.' },
+  { cat: 'Cleanliness & safety', sub: 'Fire safety', type: 'recurring', freq: 'monthly', time: '10:30', mins: 5, text: 'Check the fire extinguisher\'s service date. It is serviced or refilled every year, and after any use.' },
+  { cat: 'Cleanliness & safety', sub: 'Cables and power', type: 'recurring', freq: 'daily', time: '09:00', mins: 3, text: 'Cable check: no cable lies across any path or walkway, no extension board is plugged into another, and every cable is checked.', dos: 'Extension-board wires may pass under printers\nOne board per station, fixed off the floor, plugged straight into the wall\nBundle cables off the walkway', donts: 'Do not plug an extension board into another board' },
+  { cat: 'Cleanliness & safety', sub: 'Front panel', type: 'standing', text: 'No eating or drinking at the front panel, and no food, water or bags on the front tables. Phones are charged only at the back, and bags, food and water are kept at the back.' },
+  { cat: 'Cleanliness & safety', sub: 'Fire safety', type: 'standing', text: 'Everyone can use the extinguisher: Pull, Aim, Squeeze, Sweep. Switch off at the mains if it is safe. Never use water on an electrical fire. Fight a small fire only if there is a clear exit; otherwise everyone leaves and calls 192.', dos: 'Pull the pin\nAim at the base of the fire\nSqueeze the handle\nSweep side to side\nCall the Fire Service on 192', donts: 'Never use water on an electrical fire\nNever fight a fire with no clear exit' },
+  { cat: 'Cleanliness & safety', sub: 'Fire safety', type: 'standing', text: 'The Fire Service number 192 and Joe\'s number are posted where everyone can see them.' },
+]
+async function seedCleanPilot() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'clean-v1'`
+    if (n > 0) return
+    await sql`UPDATE page_laws SET law_time = '10:00', minutes = 10, dos = COALESCE(dos, 'Tell everyone before the test\nHold the test button until it is loud\nNo sound: fit a new battery and test again\nStill faulty: report it to Joe') WHERE id = 57 AND law_time IS NULL`
+    for (const d of CLEAN_DRAFTS) {
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed, proof)
+        VALUES (${d.cat}, ${d.text}, false, 'law', ${d.cat}, ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'clean-v1', ${d.proof ?? 'tick'})`
+    }
+  } catch (e) { console.error('cleanliness pilot seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// One-off approvals the owner has given in conversation (so the app does what was approved, once).
+async function approveOnce(seed: string, _why: string) {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES (${'approved:' + seed}) ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { approveSeed } = await import('./lawTiles')
+    await approveSeed(seed)
+  } catch (e) { console.error('approve once failed:', e instanceof Error ? e.message : String(e)) }
 }

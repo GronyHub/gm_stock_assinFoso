@@ -1,22 +1,22 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
+import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, PROOFS, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null
+  status?: string; tile_id?: number | null; proof?: string
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '' })
-const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick' })
+const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 export default function LawsClient({ canManage }: { canManage: boolean }) {
@@ -80,6 +80,20 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     )
   }
 
+  const [oldTiles, setOldTiles] = useState<{ id: number; title: string; section: string; law_id: number | null; created_by: string | null; active: boolean }[]>([])
+  const [pick, setPick] = useState<Set<number>>(new Set())
+  useEffect(() => {
+    setPick(new Set())
+    if (!canManage || !cat) { setOldTiles([]); return }
+    fetch('/api/daily-checks/tiles').then(r => r.ok ? r.json() : null).then(d => d?.tiles && setOldTiles(d.tiles)).catch(() => {})
+  }, [cat, canManage, laws])
+  const kw = cat && CATEGORY_KEYWORDS[cat] ? new RegExp(CATEGORY_KEYWORDS[cat], 'i') : null
+  const candidates = kw ? oldTiles.filter(t => t.active && !t.law_id && t.created_by === 'template' && kw.test(t.title)) : []
+  async function stopPicked() {
+    if (!pick.size || !confirm(`Stop ${pick.size} old tile${pick.size === 1 ? '' : 's'}? Their past records are kept and you can restore them in the Tile Manager.`)) return
+    for (const id of pick) await fetch(`/api/daily-checks/${id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ active: false }) })
+    flash('Old tiles stopped'); setPick(new Set()); setOldTiles(o => o.map(t => pick.has(t.id) ? { ...t, active: false } : t))
+  }
   const catInfo = tiles.find(c => c.key === cat)
   const catLaws = cat ? (byCat.get(cat) ?? []) : []
   const subs = Array.from(new Set(catLaws.map(l => l.subcategory ?? 'General')))
@@ -140,6 +154,18 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <div className="space-y-2">{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
+          {canManage && candidates.length > 0 && (
+            <details className="rounded-xl border border-gray-300 bg-gray-50">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-gray-900">Old checklist tiles that may be replaced by these laws ({candidates.length})</summary>
+              <div className="space-y-1 p-2">
+                <p className="text-[11px] text-gray-600">These came from the old Standards list and have no law behind them. Tick the ones the laws above now cover, then stop them. Nothing is stopped until you confirm.</p>
+                <div className="max-h-72 space-y-1 overflow-y-auto">{candidates.map(t => (
+                  <label key={t.id} className="flex items-start gap-2 rounded-lg bg-white p-2 text-xs"><input type="checkbox" checked={pick.has(t.id)} onChange={() => setPick(p => { const n = new Set(p); n.has(t.id) ? n.delete(t.id) : n.add(t.id); return n })} className="mt-0.5" /><span><b className="text-gray-500">{t.section}</b> · {t.title}</span></label>
+                ))}</div>
+                <button type="button" disabled={!pick.size} onClick={() => void stopPicked()} className="w-full rounded-xl bg-red-600 py-2 text-sm font-bold text-white disabled:opacity-40">Stop {pick.size || ''} selected tile{pick.size === 1 ? '' : 's'}</button>
+              </div>
+            </details>
+          )}
           {catLaws.length === 0 && <p className="text-sm text-gray-400">No laws in this category yet.{canManage ? ' Use + Add law.' : ''}</p>}
         </div>
       )}
@@ -186,6 +212,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <div><label className={lab}>Time</label><input type="time" value={d.law_time} onChange={e => set('law_time', e.target.value)} className={inp} /></div>
               <div><label className={lab}>Minutes</label><input type="number" min={1} max={240} value={d.minutes} onChange={e => set('minutes', e.target.value)} className={inp} /></div>
             </div>
+            <div><label className={lab}>How staff prove it</label><select value={d.proof} onChange={e => set('proof', e.target.value)} className={inp}>{PROOFS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
           </div>
         )}
         <div><label className={lab}>Do (one per line, optional)</label><textarea value={d.dos} onChange={e => set('dos', e.target.value)} rows={3} className={inp} /></div>

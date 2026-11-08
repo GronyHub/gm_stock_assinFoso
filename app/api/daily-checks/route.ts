@@ -2,6 +2,7 @@ import { requireAuth, badRequest, getActorName, success, handleError } from '@/l
 import sql from '@/lib/db'
 import { ensureDailyChecks, CHECKLIST_START, dayKey, parseTileBody } from '@/lib/dailyChecks'
 import { isOwnerLevel } from '@/lib/roles'
+import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
 
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
   if (error) return error
   try {
     await ensureDailyChecks()
+    await ensureCompanyLaws().catch(() => {}) // laws that have been approved create their tiles here the first time
     const q = req.nextUrl.searchParams.get('day') ?? ''
     const today = dayKey()
     const day = /^\d{4}-\d{2}-\d{2}$/.test(q) && q >= CHECKLIST_START && q <= today ? q : today
