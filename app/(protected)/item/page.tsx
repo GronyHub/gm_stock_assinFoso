@@ -2132,7 +2132,7 @@ function ItemHubPageInner() {
     if (isOwnerOrJoe || outerTab !== 'loss') return
     const lossesOnly = lossView === 'pl' && plSubView !== 'pl'
     const ok = lossView === 'items' || lossView === 'sales' || lossView === 'counts' || lossView === 'item360' || lossesOnly
-      || lossView === 'staffPayslips' || lossView === 'staffProfile' || lossView === 'home'
+      || lossView === 'staffPayslips' || lossView === 'staffProfile' || lossView === 'home' || lossView === 'customers' || lossView === 'teamTimes'
     const stuckOnMode = (lossView === 'items' || lossView === 'sales') && ['bills', 'expenses', 'manage', 'advert', 'gronyChecks'].includes(itemsPageMode)
     if (!ok || stuckOnMode) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -5425,7 +5425,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             destination CustomersPage already rendered on its own further
             down this same flex-col (search results/shortcuts already
             landed there too), just not previously reachable from this row. */}
-        {isOwnerOrJoe && <button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>}
+        {<button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>}
         {isOwnerOrJoe && (canSeeManage || canSeeTeam) && (
           <button type="button" onClick={() => pickItemsMode('manage')} title="Manage" className={btnCls(onItemsGrid && itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
         )}
@@ -6711,9 +6711,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
               <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
-              <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab()} />
               </>)}
+              <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab()} />
+              <SidePaneButton icon="🕐" label="Team Times" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                active={paneActive(lossView === 'teamTimes')} onClick={() => pickLossView('teamTimes')} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => v.key !== 'items' && (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
@@ -10358,7 +10360,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <>
                 <StaffContent key={myStaffName} view={lossView as StaffView}
                   viewingName={viewingName} role={role} username={username}
-                  canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
+                  canSeeTeam={canSeeTeam || lossView === 'teamTimes'} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage}
                   staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds}
                   openAddSignal={staffTimeSignal} />
               </>
