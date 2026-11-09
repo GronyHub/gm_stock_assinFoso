@@ -112,6 +112,24 @@ const counts = [
   [601, 1, 'A4 SHEETS MAMBO', 1, 143, 'Plain Papers'], [602, 4, 'Wireless Mouse', 2, 8, 'Mouse'], [603, 8, 'Pendrive 16GB', 3, 24, 'Storage Devices'],
   [604, 5, 'HDMI CABLE 5M', 5, 12, 'Cables'], [605, 6, 'A4 Lam. Singles', 7, 90, 'Stationery'],
 ].map(([id, item_id, item_name, ago, qty, cf_group]) => ({ id, item_id, item_name, count_date: dayAgo(ago), quantity_counted: String(qty), notes: null, counted_by: 'demo', source: 'manual', cf_group }))
+
+// Live Sale flag demo (used by scenarios/sale.js only, so other guides keep their data): a few items with problems, and the
+// /api/flags answer that goes with them. Fixing one through Edit > Save changes the item here, and the flag clears.
+const flagItems = [
+  [11, 'Lamination (A3)', 'Stationery', 30, 0, 4],                 // no selling price
+  [12, 'Phone Pouch', '', 14, 25, 12],                             // no group
+  [13, 'Hdmi Cable 5m', 'Cables', 3, 35, 22],                      // duplicate of #5
+].map(([id, name, group, soh, sp, cp]) => ({
+  id, name, group, soh, selling_price: sp, cost_price: cp, acp_price: cp, product_type: 'goods', gmc_type: '',
+  converts_to_item_id: null, converts_to_name: null, derived_from_item_id: null, units_per_pack: 1, unit_time_seconds: null,
+  image_url: null, needs_review: false, updated_at: new Date().toISOString(),
+}))
+const allItems = () => [...items, ...flagItems]
+const flags = () => ({
+  duplicates: [{ id1: 5, name1: 'HDMI CABLE 5M', id2: 13, name2: 'Hdmi Cable 5m' }],
+  unlinkedNamed: [{ item_id: 8, item_name: 'Pendrive 16 GB', line_count: 4 }],
+  noGroup: allItems().filter(i => !i.group).map(i => ({ id: i.id, item_name: i.name })), groupNames: [...new Set(allItems().map(i => i.group).filter(Boolean))],
+})
 const guide = (page, title) => ({ page, title, video_url: `/guides/${page}.mp4`, custom: false, seen: true, can_replace: false })
 
-module.exports = { today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at, vendors, customers, bills, billLines, expenses, pos, counts }
+module.exports = { flagItems, allItems, flags, today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at, vendors, customers, bills, billLines, expenses, pos, counts }

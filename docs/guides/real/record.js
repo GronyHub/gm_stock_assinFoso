@@ -63,6 +63,7 @@ function mocks(page, sc) {
 }
 
 function narrate(text, name) {
+  if (process.env.DRY) return { wav: null, dur: 0 }   // dry run: look at the frames only (STEP_SHOTS=1), no voice, no video file
   const wav = path.join(WORK, name + '.wav')
   const r = spawnSync('python3', ['-m', 'piper', '-m', VOICE, '-f', wav, '--length-scale', '1.04', '--sentence-silence', '0.35'], { input: text })
   if (r.status !== 0) throw new Error('piper failed: ' + String(r.stderr))
@@ -136,12 +137,13 @@ async function main() {
     try { await st.run(h, page) } catch (e) { await page.screenshot({ path: path.join(WORK, 'fail.png') }); throw e }
     if (process.env.STEP_SHOTS) await page.screenshot({ path: path.join(WORK, `s_${sc.key}_${i}.png`) })
     const spent = Date.now() - t0 - start
-    await page.waitForTimeout(Math.max(500, n.dur * 1000 + 900 - spent)) // let the narration finish before the next step
+    await page.waitForTimeout(Math.max(process.env.DRY ? 200 : 500, n.dur * 1000 + 900 - spent)) // let the narration finish before the next step
   }
   await h.caption('')
   await page.waitForTimeout(600)
   const video = await page.video().path()
   await ctx.close(); await browser.close()
+  if (process.env.DRY) { console.log('dry run done (frames in ' + WORK + ')'); return }
 
   // Narration is placed at each step's start; the screen recording is converted to mp4.
   const args = ['-loglevel', 'error', '-y', '-i', video]
