@@ -6,7 +6,7 @@ import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
 import GuideVideo from '@/components/GuideVideo'
 import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
 import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
-import { AREA_VIDEO, fmtTime, lawTime } from '@/lib/lawVideo'
+import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { TOPICS } from '../item/_components/TrainingGuideModal'
 
@@ -47,6 +47,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [signOnly, setSignOnly] = useState(false)
   const vref = useRef<HTMLVideoElement | null>(null)
   const [openCh, setOpenCh] = useState<number | null>(null)
+  const TimeChip = ({ t, label }: { t: number | null; label?: string }) => t === null ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">not in the video yet</span> : <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); seek(t) }} className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">▶ {fmtTime(t)}{label ? ` ${label}` : ''}</button>
   function seek(t: number) {
     const v = vref.current; if (!v) return
     v.scrollIntoView({ behavior: 'smooth', block: 'center' }); v.currentTime = t; void v.play().catch(() => {})
@@ -226,11 +227,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           )}
           {area.flags && (
             <div className="space-y-1 rounded-2xl border border-red-200 bg-red-50 p-2">
-              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them</p>
+              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them{AREA_VIDEO[area.key] && <TimeChip t={findChapter(AREA_VIDEO[area.key], 'Now, flags')?.t ?? null} />}</p>
               <p className="px-1 text-[11px] text-gray-700">Company Law: every flag is fixed as soon as it appears. All flags are in the 🚩 Flags dropdown on Live Sale, and the Daily Checklist asks about them three times a day.</p>
               {LIVE_SALE_FLAGS.map(f => (
                 <details key={f.key} className="rounded-lg bg-white">
-                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}</summary>
+                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}{AREA_VIDEO[area.key] && <TimeChip t={(f.key === 'noSp' ? findChapter(AREA_VIDEO[area.key], 'Follow the steps') : findChapter(AREA_VIDEO[area.key], 'Pick a flag'))?.t ?? null} label={f.key === 'noSp' ? '' : 'how a flag is cleared'} />}</summary>
                   <div className="space-y-1 p-2 text-[13px] text-gray-800">
                     <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
                     <p><b>How to clear it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
@@ -244,7 +245,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return topics.length > 0 ? (
               <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2">
                 <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">How to</p>
-                {topics.map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}</summary><div className="p-2">{t.body}</div></details>)}
+                {topics.map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}{AREA_VIDEO[area.key] && <TimeChip t={area.howtoRe?.[t.id] ? findChapter(AREA_VIDEO[area.key], area.howtoRe[t.id])?.t ?? null : null} />}</summary><div className="p-2">{t.body}</div></details>)}
               </div>
             ) : null
           })()}

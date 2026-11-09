@@ -6,6 +6,9 @@ import items from './videoChapters/items.json'
 export type Chapter = { t: number; title: string; text: string; lawRe?: string }
 export type AreaVideo = { chapters: Chapter[] }
 
+// The chapter whose title or narration matches a pattern: how a how-to topic or a flag is tied to its moment in the video.
+export const findChapter = (v: AreaVideo, re: string): Chapter | null => v.chapters.find(c => new RegExp(re, 'i').test(c.title + ' ' + c.text)) ?? null
+
 export const AREA_VIDEO: Record<string, AreaVideo> = {
   items: items as AreaVideo,
 }
