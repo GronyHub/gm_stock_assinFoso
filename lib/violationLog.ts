@@ -1,4 +1,5 @@
 import { isOwnerLevel } from '@/lib/roles'
+import { SIGNERS } from '@/lib/signers'
 
 // Who may log a violation against whom. The owner and Joe log anyone; Bino may log James only; James logs no one. A violation
 // logged by Bino waits for the owner to confirm; one logged by the owner or Joe counts at once.
@@ -9,6 +10,7 @@ const key = (u: U) => String(u?.username ?? u?.name ?? '').toLowerCase()
 
 export function canLogAgainst(logger: U, target: string): boolean {
   const t = target.toLowerCase()
+  if (!SIGNERS.includes(t)) return false
   if (isOwnerLevel(logger as never)) return t !== key(logger)
   return (LOG_RIGHTS[key(logger)] ?? []).includes(t)
 }

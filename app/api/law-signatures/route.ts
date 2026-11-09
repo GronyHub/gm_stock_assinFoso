@@ -2,7 +2,7 @@ import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { actorKey } from '@/lib/clockState'
-import { isOwnerLevel } from '@/lib/roles'
+import { SIGNERS } from '@/lib/signers'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { NextRequest } from 'next/server'
 
@@ -12,30 +12,24 @@ const ensure = once(async () => {
 })
 // A signature stays valid only while the law's wording is unchanged: a changed law has to be signed again.
 
-// GET -- my signatures: { signed: { lawId: signed_at }, unsigned, total, signers }. The owner and Joe sign nothing, so for them
-// unsigned is 0; with ?all=1 they also get every staff member's signed laws.
-export async function GET(req: NextRequest) {
+// GET -- everyone's signatures on the live laws: { signed: { lawId: signed_at } for me, me, signer, unsigned, total, staff, by: { name: lawIds } }.
+export async function GET() {
   const { user, error } = await getAuthUser()
   if (error) return error
   try {
     await ensureCompanyLaws(); await ensure()
-    const owner = isOwnerLevel(user as any)
     const me = actorKey(user as any)
+    const signer = SIGNERS.includes(me)
     const live = await sql`SELECT id, md5(coalesce(text,'') || '|' || coalesce(dos,'') || '|' || coalesce(donts,'')) AS h FROM page_laws WHERE status = 'live'`
-    const mine = await sql`SELECT law_id, law_hash, signed_at FROM law_signatures WHERE staff = ${me}`
-    const mineMap = new Map(mine.map(r => [Number(r.law_id), r]))
-    const signed: Record<number, string> = {}
-    for (const l of live) { const m = mineMap.get(Number(l.id)); if (m && m.law_hash === l.h) signed[Number(l.id)] = String(m.signed_at) }
-    const out: Record<string, unknown> = { signed, total: live.length, unsigned: owner ? 0 : live.length - Object.keys(signed).length }
-    if (owner && req.nextUrl.searchParams.get('all')) {
-      const staff = await sql`SELECT username FROM app_users WHERE active IS NOT FALSE AND role NOT IN ('owner', 'children_manager') AND LOWER(username) <> 'joe' ORDER BY username`
-      const all = await sql`SELECT law_id, staff, law_hash FROM law_signatures`
-      const hashes = new Map(live.map(l => [Number(l.id), l.h]))
-      const by: Record<string, number[]> = {}
-      for (const r of all) if (hashes.get(Number(r.law_id)) === r.law_hash) (by[String(r.staff)] ??= []).push(Number(r.law_id))
-      out.staff = staff.map(s => String(s.username)); out.by = by
+    const all = await sql`SELECT law_id, staff, law_hash, signed_at FROM law_signatures WHERE staff = ANY(${SIGNERS})`
+    const hashes = new Map(live.map(l => [Number(l.id), l.h]))
+    const by: Record<string, number[]> = {}, signed: Record<number, string> = {}
+    for (const r of all) {
+      if (hashes.get(Number(r.law_id)) !== r.law_hash) continue
+      ;(by[String(r.staff)] ??= []).push(Number(r.law_id))
+      if (String(r.staff) === me) signed[Number(r.law_id)] = String(r.signed_at)
     }
-    return success(out)
+    return success({ signed, me, signer, total: live.length, unsigned: signer ? live.length - Object.keys(signed).length : 0, staff: SIGNERS, by })
   } catch (e) { return handleError('law-signatures GET', e) }
 }
 
@@ -49,6 +43,7 @@ export async function POST(req: NextRequest) {
     const ids = (Array.isArray(b.ids) ? b.ids : []).map(Number).filter(Number.isInteger)
     if (!ids.length) return badRequest('Nothing to sign.')
     const me = actorKey(user as any)
+    if (!SIGNERS.includes(me)) return badRequest('You are not on the list of people who sign the laws.')
     const rows = await sql`SELECT id, md5(coalesce(text,'') || '|' || coalesce(dos,'') || '|' || coalesce(donts,'')) AS h FROM page_laws WHERE status = 'live' AND id = ANY(${ids})`
     for (const r of rows) await sql`INSERT INTO law_signatures (law_id, staff, law_hash) VALUES (${r.id}, ${me}, ${r.h}) ON CONFLICT (law_id, staff) DO UPDATE SET law_hash = ${r.h}, signed_at = now()`
     return success({ signed: rows.length })
