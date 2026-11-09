@@ -68,7 +68,7 @@ async function ensureCompanyLawsImpl() {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
-  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT, ADD COLUMN IF NOT EXISTS quiz TEXT`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT, ADD COLUMN IF NOT EXISTS quiz TEXT, ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'staff'`.catch(() => {})
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
@@ -84,6 +84,7 @@ async function ensureCompanyLawsImpl() {
   await splitMultiViolationLaws()
   await seedUnderstandingLaws()
   await sharpenItemsLaws()
+  await managersOnlyFlags()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -140,7 +141,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
-    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80),
+    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
@@ -490,4 +491,14 @@ async function sharpenItemsLaws() {
         VALUES ('Stock & records', ${d.title}, false, 'law', 'Stock & records', 'Recording', 'standing', 'live', 'sharpen-items-v1', 'tick', 20, ${JSON.stringify(v)}, ${d.title}, ${JSON.stringify(d.quiz)})`
     }
   } catch (e) { console.error('sharpen items laws failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Flags are handled by managers only: the flag laws move to the managers-only section. Written once.
+async function managersOnlyFlags() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('managers-flags-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`UPDATE page_laws SET audience = 'managers' WHERE category = 'Stock & records' AND subcategory = 'Flags'`
+  } catch (e) { console.error('managers flags migration failed:', e instanceof Error ? e.message : String(e)) }
 }

@@ -1,6 +1,7 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { notifyOwners, pushToUsers, pushToShop } from '@/lib/checklistAlerts'
+import { isManagerName } from '@/lib/signers'
 import { getClockState } from '@/lib/clockState'
 import { appliesOn } from '@/lib/dailyChecksShared'
 
@@ -159,15 +160,18 @@ export async function dayEndAssess(day = dayKey()) {
   await ensurePenalties()
   const clock = await getClockState(day)
   if (!clock.everIn.length) return
-  const tiles = await sql`SELECT id, title, days FROM daily_check_tiles WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null }[]
+  const tiles = await sql`SELECT id, title, days, (law_id IS NOT NULL AND law_id IN (SELECT id FROM page_laws WHERE audience = 'managers')) AS mgr FROM daily_check_tiles WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; mgr: boolean }[]
   const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND value = 'Done'` as unknown as { tile_id: number }[]
   const doneSet = new Set(done.map(d => d.tile_id))
   const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id))
   if (!missed.length) return
-  const pts = Math.min(missed.length, MISSED_DAILY_CAP)
-  const first = missed.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
+  // A managers-only task left undone costs only the managers who clocked in; every other task costs everyone who clocked in.
   for (const name of Array.from(new Set(clock.everIn))) {
-    await addPoint({ staff: name, points: pts, reason: `${missed.length} checklist task${missed.length === 1 ? '' : 's'} left undone today (${first}${missed.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })
+    const mine = missed.filter(t => !t.mgr || isManagerName(name))
+    if (!mine.length) continue
+    const pts = Math.min(mine.length, MISSED_DAILY_CAP)
+    const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
+    await addPoint({ staff: name, points: pts, reason: `${mine.length} checklist task${mine.length === 1 ? '' : 's'} left undone today (${first}${mine.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })
   }
 }
 

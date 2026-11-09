@@ -6,6 +6,12 @@ import { LAW_CATEGORIES, LAW_TYPES, DAY_CODES, LAW_FREQUENCIES, CATEGORY_FOR_SCO
 import { isOwnerLevel } from '@/lib/roles'
 import { syncLawTile } from '@/lib/lawTiles'
 import { NextRequest } from 'next/server'
+import { isManagerName } from '@/lib/signers'
+import { actorKey } from '@/lib/clockState'
+
+// Staff see only the all-staff laws; managers and owners see both sections. Staff never see drafts.
+const visibleLaws = (rows: { status?: string; audience?: string }[], owner: boolean, manager: boolean) =>
+  rows.filter(r => (owner || r.status !== 'draft') && (manager || owner || r.audience !== 'managers'))
 
 
 export async function GET(req: NextRequest) {
@@ -20,12 +26,12 @@ export async function GET(req: NextRequest) {
     await ensureCompanyLaws()
     if (scopeKey) {
       // Fetch laws for a specific scope
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
-      return success(owner ? rows : (rows as { status?: string }[]).filter(r => r.status !== 'draft'))
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
+      return success(visibleLaws(rows as { status?: string; audience?: string }[], owner, isManagerName(actorKey(me?.user as any))))
     } else {
       // Fetch all laws across all scopes
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points FROM page_laws ORDER BY scope_key, id`
-      return success(owner ? rows : (rows as { status?: string }[]).filter(r => r.status !== 'draft'))
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points FROM page_laws ORDER BY scope_key, id`
+      return success(visibleLaws(rows as { status?: string; audience?: string }[], owner, isManagerName(actorKey(me?.user as any))))
     }
   } catch (e) {
     return handleError('page-laws GET', e)
@@ -51,9 +57,9 @@ export async function POST(req: NextRequest) {
     await ensureDbInitialized()
     await ensureCompanyLaws()
     const [row] = await sql`
-      INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, proof, points, violations, not_violation, title)
-      VALUES (${scopeKey}, ${law.text}, false, 'law', ${category}, ${law.subcategory}, ${law.law_type}, ${law.days}, ${law.law_time}, ${law.frequency}, ${law.minutes}, ${law.dos}, ${law.donts}, ${law.proof}, ${law.points}, ${JSON.stringify(law.violations)}, ${law.not_violation}, ${law.title})
-      RETURNING id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points
+      INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, proof, points, violations, not_violation, title, audience)
+      VALUES (${scopeKey}, ${law.text}, false, 'law', ${category}, ${law.subcategory}, ${law.law_type}, ${law.days}, ${law.law_time}, ${law.frequency}, ${law.minutes}, ${law.dos}, ${law.donts}, ${law.proof}, ${law.points}, ${JSON.stringify(law.violations)}, ${law.not_violation}, ${law.title}, ${law.audience})
+      RETURNING id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points
     `
     await syncLawTile(row.id).catch(e => console.error('law tile sync failed:', e instanceof Error ? e.message : String(e)))
     return success(row)

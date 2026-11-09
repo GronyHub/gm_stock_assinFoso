@@ -9,14 +9,15 @@ import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
 import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { parseViolations, type Violation } from '@/lib/lawViolations'
+import { isManagerName } from '@/lib/signers'
 import { TOPICS } from '../item/_components/TrainingGuideModal'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; quiz_n?: number; violations?: string | null; not_violation?: string | null
+  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; audience?: string; quiz_n?: number; violations?: string | null; not_violation?: string | null
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
@@ -29,8 +30,8 @@ const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
 const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{15,90}?)[.:!?](\s|$)/); return m ? m[1] : one.slice(0, 80) }
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '' })
-const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1', violations: [], not_violation: '', title: '' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '', audience: l.audience ?? 'staff' })
+const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1', violations: [], not_violation: '', title: '', audience: 'staff' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 export default function LawsClient({ canManage }: { canManage: boolean }) {
@@ -50,7 +51,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     } catch (e) { setError((e as Error).message) }
   }, [])
   useEffect(() => { void load() }, [load])
-  const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
+  const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; manager?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
@@ -159,7 +160,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             const mark = sig?.marks?.[n]?.[l.id]
             return (
               <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 8 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
-                {l.status === 'draft' ? <span className="text-[10px] text-gray-300">-</span>
+                {l.status === 'draft' || (l.audience === 'managers' && !isManagerName(n)) ? <span className="text-[9px] text-gray-300">{l.audience === 'managers' && l.status !== 'draft' ? 'n/a' : '-'}</span>
                   : <>
                     {mark && <span title={`${n}: quiz mark`} className="text-[10px] font-extrabold text-indigo-700">{mark}</span>}
                     {done ? <span title={`${n} signed`} className="text-sm font-extrabold text-green-600">✓</span>
@@ -298,7 +299,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
             const live = catLaws.filter(l => l.status !== 'draft' || canManage)
-            const sorted = [...live].sort((a, b) => (lawTime(av, a) ?? 99999) - (lawTime(av, b) ?? 99999) || a.id - b.id)
+            const byTime = (list: Law[]) => [...list].sort((a, b) => (lawTime(av, a) ?? 99999) - (lawTime(av, b) ?? 99999) || a.id - b.id)
+            const sorted = byTime(live.filter(l => l.audience !== 'managers')), mgrSorted = byTime(live.filter(l => l.audience === 'managers'))
             const extra = howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id]))
             return (
               <div className="space-y-2">
@@ -306,6 +308,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                   <div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
                   {sorted.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
+                {mgrSorted.length > 0 && <ManagerSection area={area} laws={mgrSorted} Card={LawCard} />}
                 <details className="rounded-xl border border-gray-200 bg-white p-2">
                   <summary className="cursor-pointer text-sm font-bold text-gray-900">Video transcript, with times</summary>
                   <div className="mt-1 space-y-1">{av.chapters.map(c => (
@@ -319,12 +322,13 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             )
           })()}
           {!AREA_VIDEO[area.key] && (() => { const rows = howtoRows(area, () => false); return rows.length > 0 ? <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">How to</p>{rows}</div> : null })()}
-          {!AREA_VIDEO[area.key] && subs.map(sub => (
+          {!AREA_VIDEO[area.key] && Array.from(new Set(catLaws.filter(l => l.audience !== 'managers').map(l => l.subcategory ?? 'General'))).map(sub => (
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
-              <div className="space-y-2"><div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
+          {!AREA_VIDEO[area.key] && catLaws.some(l => l.audience === 'managers') && <ManagerSection area={area} laws={catLaws.filter(l => l.audience === 'managers')} Card={LawCard} />}
           {canManage && candidates.length > 0 && (
             <details className="rounded-xl border border-gray-300 bg-gray-50">
               <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-gray-900">Old checklist tiles that may be replaced by these laws ({candidates.length})</summary>
@@ -367,6 +371,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div className="mx-auto max-h-[92vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
         <p className="text-base font-bold">{d.id ? 'Edit law' : 'New law'}</p>
+        <div><label className={lab}>Who sees and keeps this law</label><select value={d.audience} onChange={e => set('audience', e.target.value)} className={inp}><option value="staff">All staff</option><option value="managers">Managers and owners only</option></select></div>
         <div><label className={lab}>Short title (shown in the table)</label><input value={d.title} onChange={e => set('title', e.target.value)} placeholder="For example: Record every sale as soon as it happens" className={inp} /></div>
         <div><label className={lab}>The law (full statement, used for the checklist)</label><textarea value={d.text} onChange={e => set('text', e.target.value)} rows={4} className={inp} /></div>
         <div className="grid grid-cols-2 gap-2">
@@ -480,6 +485,21 @@ function LawQuiz({ law, onClose, onDone }: { law: Law; onClose: () => void; onDo
         {res ? <p className={`rounded-xl p-2 text-center text-sm font-bold ${res.score === res.total ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>Your mark: {res.score}/{res.total}. It now shows in your signature column.</p>
           : qs && <button type="button" disabled={busy || answers.filter(a => a !== undefined).length < qs.length} onClick={() => void submit()} className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">Submit my answers</button>}
         <button type="button" onClick={onClose} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Close</button>
+      </div>
+    </div>
+  )
+}
+
+// The managers-only laws of a tile: its own heading, its own video, its own table. Staff never receive these laws at all.
+function ManagerSection({ area, laws, Card }: { area: LawArea; laws: Law[]; Card: (p: { l: Law }) => React.JSX.Element }) {
+  return (
+    <div className="mt-4 space-y-2 rounded-2xl border-2 border-amber-400 bg-amber-50 p-2">
+      <p className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white">👔 Managers and owners only: this section is not shown to staff</p>
+      <p className="px-1 text-xs text-gray-700">{area.label}: the laws that only managers keep and enforce. {area.managerVideo ? '' : 'The managers\' video for this section is not recorded yet.'}</p>
+      {area.managerVideo && <video src={area.managerVideo} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
+      <div className="space-y-2 overflow-x-auto">
+        <div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
+        {laws.map(l => <Card key={l.id} l={l} />)}
       </div>
     </div>
   )

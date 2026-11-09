@@ -5,6 +5,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
+import { isManagerName } from '@/lib/signers'
 
 
 // GET ?day=YYYY-MM-DD -> { tiles, events } : every tile, and the records that can still count on that day
@@ -15,10 +16,11 @@ export async function GET(req: NextRequest) {
   try {
     await ensureDailyChecks()
     await ensureCompanyLaws().catch(() => {}) // laws that have been approved create their tiles here the first time
+    const mgr = isManagerName(actorKey(session.user as any)) || (session.user as { role?: string })?.role === 'owner'
     const q = req.nextUrl.searchParams.get('day') ?? ''
     const today = dayKey()
     const day = /^\d{4}-\d{2}-\d{2}$/.test(q) && q >= CHECKLIST_START && q <= today ? q : today
-    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position, minutes, days, ask, ok_label, issue_label, log_category, needs_photo, category, subcategory, law_id FROM daily_check_tiles WHERE active ORDER BY position, id`
+    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position, minutes, days, ask, ok_label, issue_label, log_category, needs_photo, category, subcategory, law_id FROM daily_check_tiles WHERE active AND (${mgr} OR law_id IS NULL OR law_id NOT IN (SELECT id FROM page_laws WHERE audience = 'managers')) ORDER BY position, id`
     const events = await sql`
       SELECT e.id, e.tile_id, e.day, e.value, e.note, e.extra, e.recorded_by, e.recorded_at
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id

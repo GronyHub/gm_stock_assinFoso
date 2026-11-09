@@ -9,6 +9,7 @@ export type LawArea = {
   guide?: string                               // the page-guide key that used to sit on the page
   howto?: string[]                             // How To topic ids that now live on this tile
   howtoRe?: Record<string, string>              // how-to topic id -> pattern of the video chapter that shows it
+  managerVideo?: string                        // the video of this tile's managers-only section, when there is one
   flags?: boolean                              // this page has flags: list each with its explanation and fix
   addSub?: string                              // subcategory for a law added from this tile
 }

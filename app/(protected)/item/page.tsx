@@ -62,6 +62,7 @@ import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import CareChildTiles from './_components/CareChildTiles'
+import { isManagerName } from '@/lib/signers'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
@@ -7187,7 +7188,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ))}
                   </select>
                   </>)}
-                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (
+                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (isOwnerOrJoe || isManagerName(username)) && (
                     <select value={activeFlagValue} onChange={e => pickLiveFlag(e.target.value)} title="Every flag on this page, in one place"
                       className={`${COMPACT_SELECT_CLS} ${liveSaleFlagTotal > 0 ? 'border-red-400 bg-red-50 font-bold text-red-700' : 'border-gray-300 bg-white text-gray-900'} flex-1 min-w-0`} style={COMPACT_SELECT_STYLE}>
                       <option value="">{`🚩 Flags (${liveSaleFlagTotal})`}</option>

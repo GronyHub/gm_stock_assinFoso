@@ -1,6 +1,7 @@
 import { recordPushResults } from '@/lib/pushHealth'
 import sql from './db'
 import { once } from './once'
+import { MANAGERS } from './signers'
 import { getClockState } from './clockState'
 import { effectiveDue, appliesOn } from './dailyChecksShared'
 
@@ -81,8 +82,8 @@ export async function checklistAlertsTick(now = new Date()) {
   await ensureTable()
 
   const tiles = await sql`
-    SELECT id, title, time, minutes, frequency, kind, days FROM daily_check_tiles
-    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null }[]
+    SELECT id, title, time, minutes, frequency, kind, days, (law_id IS NOT NULL AND law_id IN (SELECT id FROM page_laws WHERE audience = 'managers')) AS mgr FROM daily_check_tiles
+    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; mgr: boolean; days: string | null }[]
   const todaysTiles = tiles.filter(t => appliesOn(t, day))
   const doneRows = await sql`SELECT tile_id, value FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number; value: string }[]
   const handled = new Set(doneRows.map(r => r.tile_id))
@@ -102,9 +103,11 @@ export async function checklistAlertsTick(now = new Date()) {
     if (!fresh.length) continue
     const list = names(fresh.map(t => t.title))
     try {
-      if (stage === 0) await send(await presentSubs(day), `Checklist: ${fresh.length} due now`, list)
-      else if (stage === 1) await send(await presentSubs(day), `Checklist: ${fresh.length} late`, `Still not done: ${list}`)
-      else await send(await ownerSubs(), `Checklist: ${fresh.length} not done after 30 minutes`, list)
+      const mgrTiles = fresh.filter(t => (todaysTiles.find(x => x.id === t.id) as { mgr?: boolean } | undefined)?.mgr), staffTiles = fresh.filter(t => !mgrTiles.includes(t))
+      if (stage === 0 || stage === 1) {
+        if (staffTiles.length) await send(await presentSubs(day), stage === 0 ? `Checklist: ${staffTiles.length} due now` : `Checklist: ${staffTiles.length} late`, stage === 0 ? names(staffTiles.map(t => t.title)) : `Still not done: ${names(staffTiles.map(t => t.title))}`)
+        if (mgrTiles.length) await pushToUsers(MANAGERS.filter(m => clock.present.includes(m)), stage === 0 ? `Managers: ${mgrTiles.length} due now` : `Managers: ${mgrTiles.length} late`, names(mgrTiles.map(t => t.title)))
+      } else await send(await ownerSubs(), `Checklist: ${fresh.length} not done after 30 minutes`, list)
     } catch (e) { console.error('checklistAlerts send failed:', e instanceof Error ? e.message : String(e)) }
   }
 
