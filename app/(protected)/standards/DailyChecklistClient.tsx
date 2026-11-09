@@ -30,7 +30,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
   const [dayStart, setDayStart] = useState<number | null>(null)
   const [clockedIn, setClockedIn] = useState(true)
   const [names, setNames] = useState(false)
-  const [reminders, setReminders] = useState<{ staff: string; login: { total: number; done: number }; first_sale: { total: number; done: number } }[] | null>(null)
+  const [reminders, setReminders] = useState<{ staff: string; login: { total: number; done: number }; first_sale: { total: number; done: number }; midday?: { total: number; done: number } }[] | null>(null)
   useEffect(() => { fetch('/api/law-reminders?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d?.people && setReminders(d.people)).catch(() => {}) }, [])
   const [present, setPresent] = useState<string[]>([])
   const [adhoc, setAdhoc] = useState<Adhoc[]>([])
@@ -118,7 +118,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
         <div className="mb-2 rounded-xl border border-indigo-200 bg-indigo-50 p-2">
           <p className="text-[11px] font-extrabold uppercase text-indigo-900">Law reminders confirmed today</p>
           <div className="mt-1 flex flex-wrap gap-1.5">{reminders.map(r => (
-            <span key={r.staff} className="rounded-full bg-white px-2 py-1 text-[11px] text-gray-800"><b className="capitalize">{r.staff}</b> · morning <b className={r.login.done === r.login.total ? 'text-green-700' : 'text-amber-700'}>{r.login.done}/{r.login.total}</b> · selling <b className={r.first_sale.done === r.first_sale.total ? 'text-green-700' : 'text-amber-700'}>{r.first_sale.done}/{r.first_sale.total}</b></span>))}</div>
+            <span key={r.staff} className="rounded-full bg-white px-2 py-1 text-[11px] text-gray-800"><b className="capitalize">{r.staff}</b> · morning <b className={r.login.done === r.login.total ? 'text-green-700' : 'text-amber-700'}>{r.login.done}/{r.login.total}</b> · selling <b className={r.first_sale.done === r.first_sale.total ? 'text-green-700' : 'text-amber-700'}>{r.first_sale.done}/{r.first_sale.total}</b>{r.midday && r.midday.total > 0 && <> · mid-day <b className={r.midday.done === r.midday.total ? 'text-green-700' : 'text-gray-500'}>{r.midday.done}/{r.midday.total}</b></>}</span>))}</div>
         </div>
       )}
       {isToday && (

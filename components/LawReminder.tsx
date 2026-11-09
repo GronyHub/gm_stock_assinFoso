@@ -7,7 +7,7 @@ const SNOOZE = 'lawReminderSnoozeUntil'
 // Standing orders as reminders: the ones needed before work starts show after login; the ones about selling show after the person's first sale
 // of the day. Each one is ticked to confirm they agree; the Daily Checklist shows who has confirmed.
 export default function LawReminder() {
-  const [data, setData] = useState<{ stage: 'login' | 'first_sale'; laws: Item[] } | null>(null)
+  const [data, setData] = useState<{ stage: 'login' | 'first_sale' | 'midday'; laws: Item[] } | null>(null)
   const [ticked, setTicked] = useState<Set<number>>(new Set())
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -28,15 +28,15 @@ export default function LawReminder() {
   async function confirm() {
     if (!data) return
     setBusy(true)
-    await fetch('/api/law-reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: data.laws.map(l => l.id) }) }).catch(() => {})
+    await fetch('/api/law-reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: data.laws.map(l => l.id), stage: data.stage }) }).catch(() => {})
     setBusy(false); setData(null); setTicked(new Set())
   }
   function later() { try { localStorage.setItem(SNOOZE, String(Date.now() + 10 * 60 * 1000)) } catch { /* ignore */ } setData(null) }
   return (
     <div className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50 sm:items-center print:hidden">
       <div className="max-h-[92vh] w-full max-w-lg space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-6 sm:rounded-3xl">
-        <p className="text-base font-extrabold text-[#14213D]">{data.stage === 'login' ? '☀️ Before you start work' : '🛒 After your first sale'}</p>
-        <p className="text-xs text-gray-600">{data.stage === 'login' ? 'Read each company law below and tick it to confirm you agree to follow it today.' : 'These laws are about selling. Tick each one to confirm you will follow it.'}</p>
+        <p className="text-base font-extrabold text-[#14213D]">{data.stage === 'login' ? '☀️ Before you start work' : data.stage === 'midday' ? '🕐 Mid-day reminder' : '🛒 After your first sale'}</p>
+        <p className="text-xs text-gray-600">{data.stage === 'login' ? 'Read each company law below and tick it to confirm you agree to follow it today.' : data.stage === 'midday' ? 'A reminder of the selling laws, for the rest of the day. Tick each one to confirm you will keep following it.' : 'These laws are about selling. Tick each one to confirm you will follow it.'}</p>
         <div className="space-y-1.5">{data.laws.map(l => (
           <label key={l.id} className={`flex cursor-pointer items-start gap-2 rounded-xl border-2 p-2 ${ticked.has(l.id) ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
             <input type="checkbox" checked={ticked.has(l.id)} onChange={() => setTicked(t => { const n = new Set(t); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n })} className="mt-1 h-5 w-5" />

@@ -163,7 +163,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {l.law_type === 'recurring' ? <p className="text-[10px] leading-snug text-gray-500">None: it is on the Daily Checklist.</p>
               : l.law_type === 'app' ? <p className="text-[10px] leading-snug text-gray-800">The app enforces it itself.</p>
               : l.reminder === 'login' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after login</b>, before work starts. Each staff member ticks it to confirm they agree. The Daily Checklist shows who has confirmed.</p>
-              : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after the first sale</b> of the day. Each staff member ticks it to confirm they agree. The Daily Checklist shows who has confirmed.</p>
+              : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after the first sale</b> of the day, and again at mid-day (from 13:30). Each staff member ticks it to confirm they agree. The Daily Checklist shows who has confirmed.</p>
               : <p className="text-[10px] leading-snug text-gray-500">None yet.</p>}
           </div>
           <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 10, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
