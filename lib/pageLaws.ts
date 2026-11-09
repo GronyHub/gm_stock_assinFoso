@@ -68,7 +68,7 @@ async function ensureCompanyLawsImpl() {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
-  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT, ADD COLUMN IF NOT EXISTS quiz TEXT, ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'staff'`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT, ADD COLUMN IF NOT EXISTS quiz TEXT, ADD COLUMN IF NOT EXISTS audience TEXT NOT NULL DEFAULT 'staff', ADD COLUMN IF NOT EXISTS reminder TEXT NOT NULL DEFAULT 'none'`.catch(() => {})
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
@@ -85,6 +85,7 @@ async function ensureCompanyLawsImpl() {
   await seedUnderstandingLaws()
   await sharpenItemsLaws()
   await managersOnlyFlags()
+  await seedReminders()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -141,7 +142,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
-    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff',
+    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff', reminder: ['login', 'first_sale'].includes(b.reminder) ? String(b.reminder) : 'none',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
@@ -501,4 +502,21 @@ async function managersOnlyFlags() {
     if (!c.length) return
     await sql`UPDATE page_laws SET audience = 'managers' WHERE category = 'Stock & records' AND subcategory = 'Flags'`
   } catch (e) { console.error('managers flags migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Standing orders of the Items / Live Sale and Sales Log tiles become app reminders: the ones needed before work starts show after login;
+// the ones about selling show after the person's first sale of the day. Written once (the owner can change each law's reminder).
+async function seedReminders() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('reminders-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const rows = await sql`SELECT id, title, subcategory FROM page_laws WHERE law_type = 'standing' AND status = 'live' AND category = 'Stock & records'
+      AND subcategory IN ('Item list', 'Prices', 'Recording', 'Know the words', 'Flags', 'Understanding', 'Sales Log')` as unknown as { id: number; title: string | null; subcategory: string }[]
+    for (const r of rows) {
+      const t = r.title ?? ''
+      const login = /Enter every sale in the app|Never steal|Demonstrate|out-of-date price|real cause of a flag|cannot fix to Joe/i.test(t)
+      await sql`UPDATE page_laws SET reminder = ${login ? 'login' : 'first_sale'} WHERE id = ${r.id}`
+    }
+  } catch (e) { console.error('reminders seed failed:', e instanceof Error ? e.message : String(e)) }
 }
