@@ -100,6 +100,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       <p><b>Why it exists:</b> {w.exists}</p><p><b>What it solves:</b> {w.solves}</p><p><b>How it helps the business:</b> {w.helps}</p><p className="text-red-800"><b>If it is not done:</b> {w.loss}</p>
     </div>
   )
+  const FlagList = ({ av }: { av?: (typeof AREA_VIDEO)[string] }) => (
+    <div className="mt-2 space-y-1 rounded-xl border border-red-200 bg-red-50 p-2">
+      <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Every flag and how to fix it{av && <TimeChip t={findChapter(av, 'Now, flags')?.t ?? null} />}</p>
+      {LIVE_SALE_FLAGS.map(f => (
+        <details key={f.key} className="rounded-lg bg-white">
+          <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}{av && <TimeChip t={(findChapter(av, '^Flag: ' + f.label) ?? findChapter(av, 'Now, flags'))?.t ?? null} />}</summary>
+          <div className="space-y-1 p-2 text-[13px] text-gray-800">
+            <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
+            <p><b>How to fix it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
+          </div>
+        </details>
+      ))}
+    </div>
+  )
+
   const LawCard = ({ l }: { l: Law }) => {
     const sched = scheduleText(l)
     const why = whyFor(l.category, l.subcategory)
@@ -112,6 +127,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         <p className="whitespace-pre-line text-sm text-gray-900">{l.text}</p>
         {lines(l.dos).length > 0 && <ul className="mt-2 space-y-0.5">{lines(l.dos).map((x, i) => <li key={i} className="text-[13px] text-green-800">✓ <span className="text-gray-800">{x}</span></li>)}</ul>}
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
+        {area?.flags && /^Fix flags/i.test(l.text) && <FlagList av={av} />}
         {why && <details className="mt-1"><summary className="cursor-pointer text-[11px] font-bold text-blue-700">Why this law?</summary><WhyBox w={why} /></details>}
         {!canManage && l.status !== 'draft' && (
           <div className="mt-2">{signedAt
@@ -288,21 +304,6 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             </details>
           )}
           {catLaws.length === 0 && <p className="text-sm text-gray-400">No laws in this category yet.{canManage ? ' Use + Add law.' : ''}</p>}
-          {area.flags && (
-            <div className="space-y-1 rounded-2xl border border-red-200 bg-red-50 p-2">
-              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them{AREA_VIDEO[area.key] && <TimeChip t={findChapter(AREA_VIDEO[area.key], 'Now, flags')?.t ?? null} />}</p>
-              <p className="px-1 text-[11px] text-gray-700">Company Law: every flag is fixed as soon as it appears. All flags are in the 🚩 Flags dropdown on Live Sale, and the Daily Checklist asks about them three times a day.</p>
-              {LIVE_SALE_FLAGS.map(f => (
-                <details key={f.key} className="rounded-lg bg-white">
-                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}{AREA_VIDEO[area.key] && <TimeChip t={(findChapter(AREA_VIDEO[area.key], '^Flag: ' + f.label) ?? findChapter(AREA_VIDEO[area.key], 'Now, flags'))?.t ?? null}  />}</summary>
-                  <div className="space-y-1 p-2 text-[13px] text-gray-800">
-                    <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
-                    <p><b>How to clear it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
-                  </div>
-                </details>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

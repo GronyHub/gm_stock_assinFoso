@@ -10,6 +10,22 @@ Read CLAUDE.md, AGENTS.md and VOICE_SESSION_HANDOFF.md (this folder) first. Reco
   BOTTOM (`lib/flagGuide.ts`: what it means / why / steps). Per-flag time chips jump to the chapter whose TITLE is `Flag: <label>` (label from
   `lib/flagGuide.ts`), falling back to the chapter whose text contains "Now, flags".
 
+## NEW REQUIREMENTS (override anything below that conflicts)
+A. THE VIDEO MUST OPEN WITH A PROPER INTRODUCTION to the Live Sale page in general, before any specific feature: what it is for, why it
+   exists, and what it is used for. Make these the FIRST three chapters (show the plain Live Sale grid while speaking; no tapping yet), then
+   continue with the existing "Search the item ..." chapter (remove the sentence "This is Live Sale." from that chapter so it is not repeated):
+   1. title "What Live Sale is for": "Welcome to Live Sale. This is the main page of the shop. It is where every sale is recorded, one item at a
+      time, at the moment it happens."
+   2. title "Why it is here": "It is here because the shop's stock, cash and profit all come from what is recorded here. If a sale is not
+      recorded, the stock figure is wrong, the cash does not add up, and nobody can tell what the shop really earned. Live Sale replaces writing
+      sales down on paper at the end of the day."
+   3. title "What you use it for": "You use it to sell items, to see what is in stock and at what price, to sell several items to one customer
+      with M I, to register a customer while you sell, and to find and fix problems with the items, which the app marks as flags. Now let us
+      see how, step by step."
+B. EVERY flag with a real fix gets its own ~15-second chapter (see 2 below). The "Fix flags" law is read aloud as the FIRST chapter of the
+   flags block at the END of the video (not earlier), followed by "Now, flags" (where they are) and then the per-flag chapters. The law card in
+   the tile now contains the list of every flag with its fix steps and a time chip per flag.
+
 ## Changes to the video (`scenarios/sale.js`, `public/guides/sale.mp4`)
 1. Remove the chapters "Pick a flag: what it means, why, and the steps" and "Follow the steps: tap the item, Edit, price, Save" (the strip is gone).
    Replace "The Daily Checklist asks about flags 3 times a day" with the single law "Fix flags" read aloud in full, with 2 penalty points and one
