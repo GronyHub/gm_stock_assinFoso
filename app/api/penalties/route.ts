@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
       lawCode = (l.code as string | null) ?? null
       reason = `${lawCode ? lawCode + ': ' : ''}${violation ?? String(l.text).slice(0, 80)}. ${note}`.slice(0, 300)
     }
-    if (!Number.isFinite(points) || points < 1 || points > 20) points = 1
+    const max = points >= 50 ? 50 : 20
+    if (!Number.isFinite(points) || points < 1 || points > max) points = 1
     const by = getActorName(session), confirm = logsNeedConfirm(session.user as any)
     const rows = []
     for (const staff of staffs) {

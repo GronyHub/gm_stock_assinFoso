@@ -29,7 +29,10 @@ export async function GET() {
       ;(by[String(r.staff)] ??= []).push(Number(r.law_id))
       if (String(r.staff) === me) signed[Number(r.law_id)] = String(r.signed_at)
     }
-    return success({ signed, me, signer, total: live.length, unsigned: signer ? live.length - Object.keys(signed).length : 0, staff: SIGNERS, by })
+    const mk = await sql`SELECT law_id, staff, score, total, law_hash FROM law_quiz_marks WHERE staff = ANY(${SIGNERS})`.catch(() => [])
+    const marks: Record<string, Record<number, string>> = {}
+    for (const r of mk) if (hashes.get(Number(r.law_id)) === r.law_hash) (marks[String(r.staff)] ??= {})[Number(r.law_id)] = `${r.score}/${r.total}`
+    return success({ signed, marks, me, signer, total: live.length, unsigned: signer ? live.length - Object.keys(signed).length : 0, staff: SIGNERS, by })
   } catch (e) { return handleError('law-signatures GET', e) }
 }
 

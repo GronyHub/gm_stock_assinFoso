@@ -7264,7 +7264,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <option value="view:aliasWide">Alias Wide Table</option>
                       <option value="view:serviceMatches">Service Matches</option>
                       <option value="view:gmcPacks">GMC Packs</option>
-                      <option value="view:newItem">+ New Item</option>
+                      {isOwnerOrJoe && <option value="view:newItem">+ New Item</option>}
                     </optgroup>
                     <optgroup label="GMC Types">
                       <option value="gmc:none">None</option>

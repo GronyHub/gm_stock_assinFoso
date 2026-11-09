@@ -14,22 +14,22 @@ import { TOPICS } from '../item/_components/TrainingGuideModal'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; violations?: string | null; not_violation?: string | null
+  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; quiz_n?: number; violations?: string | null; not_violation?: string | null
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string }[]; not_violation: string; title: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
-const COLS = 'grid-cols-[0.85fr_0.7fr_1.05fr_0.85fr_0.5fr_1.1fr_repeat(4,28px)]'
-const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How']
+const COLS = 'grid-cols-[0.85fr_0.7fr_1.05fr_0.85fr_0.5fr_1.1fr_0.55fr_repeat(4,40px)]'
+const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How', 'Quiz']
 const typeName = (t: string) => t === 'recurring' ? 'Recurring task' : t === 'app' ? 'App-enforced' : 'Standing order'
-const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'Manager logs it, from the shop or the camera')
+const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'A manager or superior logs it: seen in the shop or on the CCTV')
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
 const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{15,90}?)[.:!?](\s|$)/); return m ? m[1] : one.slice(0, 80) }
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record })), not_violation: l.not_violation ?? '', title: l.title ?? '' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '' })
 const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1', violations: [], not_violation: '', title: '' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
@@ -50,7 +50,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     } catch (e) { setError((e as Error).message) }
   }, [])
   useEffect(() => { void load() }, [load])
-  const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; staff?: string[]; by?: Record<string, number[]> } | null>(null)
+  const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
@@ -58,6 +58,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => { fetch('/api/penalties/log-targets').then(r => r.ok ? r.json() : null).then(d => d?.targets && setTargets(d.targets)).catch(() => {}) }, [])
   const [openCh, setOpenCh] = useState<number | null>(null)
   const [whyOpen, setWhyOpen] = useState<Set<number>>(new Set())
+  const [quizFor, setQuizFor] = useState<Law | null>(null)
   const TimeChip = ({ t, label }: { t: number | null; label?: string }) => t === null ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">not in the video yet</span> : <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); seek(t) }} className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">▶ {fmtTime(t)}{label ? ` ${label}` : ''}</button>
   function seek(t: number) {
     const v = vref.current; if (!v) return
@@ -133,7 +134,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div className={`min-w-[640px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div className={`min-w-[720px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <div className={`grid ${COLS}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
@@ -150,14 +151,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {sched && <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}>🗓 {sched}</p>}
             {l.tile_id && <a href="/standards" className="block text-[10px] font-bold text-green-800">✅ In the checklist</a>}
           </div>
+          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 7, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+            {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[10px] font-bold text-white">📝 Quiz {l.quiz_n}</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[10px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[10px] text-gray-300">-</span>}
+          </div>
           {(sig?.staff ?? []).map(n => {
             const done = (sig?.by?.[n] ?? []).includes(l.id)
+            const mark = sig?.marks?.[n]?.[l.id]
             return (
-              <div key={n} className="flex items-center justify-center border-l border-gray-200" style={{ gridColumn: 7 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+              <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 8 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
                 {l.status === 'draft' ? <span className="text-[10px] text-gray-300">-</span>
-                  : done ? <span title={`${n} signed`} className="text-sm font-extrabold text-green-600">✓</span>
-                  : n === sig?.me ? <button type="button" onClick={() => void signLaws([l.id])} title="Sign: I have read this and will follow it" className="rounded-md bg-green-600 px-1 py-1 text-[11px] font-bold text-white">✍</button>
-                  : <span className="text-[10px] text-gray-300">·</span>}
+                  : <>
+                    {mark && <span title={`${n}: quiz mark`} className="text-[10px] font-extrabold text-indigo-700">{mark}</span>}
+                    {done ? <span title={`${n} signed`} className="text-sm font-extrabold text-green-600">✓</span>
+                      : n === sig?.me ? <button type="button" onClick={() => void signLaws([l.id])} title="Sign: I have read this and will follow it" className="rounded-md bg-green-600 px-1 py-1 text-[11px] font-bold text-white">✍</button>
+                      : <span className="text-[10px] text-gray-300">·</span>}
+                  </>}
               </div>
             )
           })}
@@ -174,7 +182,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                   {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}
                 </div>
                 <div className="flex flex-col items-center gap-0.5 border-t border-gray-200 p-1">
-                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{shared ? '⚖ shared' : `⚖ ${v.points}`}</span>
+                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : `⚖ ${v.points}`}</span>
                   {shared && <span className="text-center text-[8px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
                 </div>
                 <div className="border-t border-gray-200 p-1.5">
@@ -295,7 +303,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return (
               <div className="space-y-2">
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[640px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
                   {sorted.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
                 <details className="rounded-xl border border-gray-200 bg-white p-2">
@@ -314,7 +322,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && subs.map(sub => (
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
-              <div className="space-y-2"><div className={`grid min-w-[640px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {canManage && candidates.length > 0 && (
@@ -333,6 +341,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         </div>
       )}
 
+      {quizFor && <LawQuiz law={quizFor} onClose={() => setQuizFor(null)} onDone={() => { void loadSig() }} />}
       {logFor && <LogViolation target={logFor} targets={targets} onClose={() => setLogFor(null)} onDone={m => { flash(m); setLogFor(null) }} />}
       {draft && <Editor d={draft} subs={Array.from(new Set((laws ?? []).map(l => l.subcategory).filter(Boolean) as string[]))} onClose={() => setDraft(null)} onSaved={m => { flash(m); setDraft(null); void load() }} />}
       {msg && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{msg}</div>}
@@ -348,7 +357,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
   async function save() {
     if (!d.violations.some(v => v.text.trim())) { setErr('Add at least one violation: what exactly breaks this law.'); return }
     setBusy(true); setErr('')
-    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record })) }) })
+    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })) }) })
     const j = await r.json().catch(() => ({}))
     setBusy(false)
     if (!r.ok) setErr(j.error ?? 'Could not save'); else onSaved(d.id ? 'Law saved' : 'Law added')
@@ -388,6 +397,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <input value={v.text} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} placeholder="For example: a sale is not recorded the same day" className={inp} />
               <input type="number" min={1} max={20} value={v.points} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, points: e.target.value } : x))} className={inp + ' w-14'} title="Points" />
               <select value={v.by} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, by: e.target.value } : x))} className={inp + ' w-28'}><option value="manager">Manager logs</option><option value="app">App checks</option></select>
+              <label className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-red-700"><input type="checkbox" checked={!!v.dismissal} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, dismissal: e.target.checked } : x))} />Dismissal</label>
               <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700">✕</button>
             </div>))}
           {d.violations.map((v, i) => <input key={'r' + i} value={v.record ?? ''} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, record: e.target.value } : x))} placeholder={`How violation ${i + 1} is recorded (optional)`} className={inp} />)}
@@ -433,6 +443,43 @@ function LogViolation({ target, targets, onClose, onDone }: { target: { law: Law
         {err && <p className="text-sm text-red-600">{err}</p>}
         <div className="flex gap-2"><button type="button" onClick={onClose} className="flex-1 rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-700">Cancel</button>
           <button type="button" disabled={busy || !who.length || note.trim().length < 4} onClick={() => void save()} className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">Log it</button></div>
+      </div>
+    </div>
+  )
+}
+
+// A short quiz on one law. The server marks it; the mark appears in the person's signature column.
+function LawQuiz({ law, onClose, onDone }: { law: Law; onClose: () => void; onDone: () => void }) {
+  const [qs, setQs] = useState<{ q: string; options: string[] }[] | null>(null)
+  const [answers, setAnswers] = useState<number[]>([])
+  const [res, setRes] = useState<{ score: number; total: number; results: { correct: boolean; answer: number; why: string }[] } | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { fetch(`/api/law-quiz/law?id=${law.id}`).then(r => r.ok ? r.json() : null).then(d => d?.questions && setQs(d.questions)).catch(() => {}) }, [law.id])
+  async function submit() {
+    setBusy(true)
+    const r = await fetch('/api/law-quiz/law', { method: 'POST', headers: json, body: JSON.stringify({ law_id: law.id, answers }) })
+    const d = await r.json().catch(() => ({})); setBusy(false)
+    if (r.ok) { setRes(d); onDone() }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
+      <div className="mx-auto max-h-[92vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+        <p className="text-base font-bold">Quiz: {law.code} {law.title}</p>
+        {!qs && <p className="text-sm text-gray-400">Loading…</p>}
+        {qs?.map((q, i) => (
+          <div key={i}>
+            <p className="text-sm font-semibold text-gray-900">{i + 1}. {q.q}</p>
+            <div className="mt-1 space-y-1">{q.options.map((o, j) => {
+              const r = res?.results[i]
+              const cls = r ? (j === r.answer ? 'border-green-500 bg-green-50' : answers[i] === j ? 'border-red-400 bg-red-50' : 'border-gray-200') : answers[i] === j ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'
+              return <button key={j} type="button" disabled={!!res} onClick={() => setAnswers(a => { const n = [...a]; n[i] = j; return n })} className={`block w-full rounded-lg border-2 p-2 text-left text-[13px] text-gray-800 ${cls}`}>{o}</button>
+            })}</div>
+            {res && <p className="mt-1 text-[11px] text-gray-600">{res.results[i].correct ? '✓ Right. ' : '✗ '}{res.results[i].why}</p>}
+          </div>
+        ))}
+        {res ? <p className={`rounded-xl p-2 text-center text-sm font-bold ${res.score === res.total ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>Your mark: {res.score}/{res.total}. It now shows in your signature column.</p>
+          : qs && <button type="button" disabled={busy || answers.filter(a => a !== undefined).length < qs.length} onClick={() => void submit()} className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">Submit my answers</button>}
+        <button type="button" onClick={onClose} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Close</button>
       </div>
     </div>
   )

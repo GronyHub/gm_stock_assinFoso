@@ -1,4 +1,5 @@
-import { badRequest, success } from '@/lib/api'
+import { badRequest, success, requireAuth } from '@/lib/api'
+import { isOwnerLevel } from '@/lib/roles'
 import sql from '@/lib/db'
 import { ensureActiveItemsView } from '@/lib/activeItems'
 import { ensureGmcColumn, ensureDerivedFromColumn } from '@/lib/countRules'
@@ -61,6 +62,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Only the owner and Joe add items (staff search for the existing item and tell Joe if it is missing).
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (!isOwnerLevel(session?.user as any)) return badRequest('Only Grony or Joe can add an item. Tell Joe the item is missing.')
   const body = await req.json()
   const { item_name, cf_group, selling_rate, purchase_rate, units_per_pack, unit_name, product_type } = body
 

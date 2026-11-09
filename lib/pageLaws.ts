@@ -68,7 +68,7 @@ async function ensureCompanyLawsImpl() {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
-  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT, ADD COLUMN IF NOT EXISTS quiz TEXT`.catch(() => {})
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
@@ -83,6 +83,7 @@ async function ensureCompanyLawsImpl() {
   await scopeItemsLaws()
   await splitMultiViolationLaws()
   await seedUnderstandingLaws()
+  await sharpenItemsLaws()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -408,4 +409,85 @@ async function seedUnderstandingLaws() {
         VALUES ('Stock & records', ${d.title}, false, 'law', 'Stock & records', 'Understanding', 'standing', 'live', 'understand-v1', 'tick', 1, ${JSON.stringify(v)}, ${d.title})`
     }
   } catch (e) { console.error('understanding laws seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// ---- SMART wording for the Items / Live Sale laws (Specific, Measurable, Achievable, Realistic, Time-bound), and a short quiz on each. Written once.
+type Q = { q: string; options: string[]; answer: number; why: string }
+const q = (qq: string, a: string, b: string, c: string, why: string): Q => ({ q: qq, options: [a, b, c], answer: 0, why })
+const SHARP: { old: string; title: string; violation: string; points?: number; quiz: Q[] }[] = [
+  { old: 'Record every sale as soon as it happens', title: 'Record every sale within 5 minutes of the customer paying', violation: 'A sale is recorded in Live Sale more than 5 minutes after the customer paid', quiz: [
+    q('How soon must a sale be recorded after the customer pays?', 'Within 5 minutes', 'By the end of the day', 'Whenever there is time', 'Late sales make stock and cash wrong.'),
+    q('What does the red tick do?', 'Records the sale and sends it to the Sales Log', 'Prints the receipt only', 'Deletes the sale', 'The tick records the sale.')] },
+  { old: 'Record shop use as GMC and a customer sale as WIC', title: 'Record shop use with GMC and every customer sale with WIC, every time', violation: 'A customer sale is recorded as GMC, or shop use is recorded as a sale (WIC)', quiz: [
+    q('A customer buys a pen. Which switch is on?', 'WIC', 'GMC', 'Either one', 'WIC is a sale to a customer.'),
+    q('The shop takes paper to print for itself. Which switch?', 'GMC', 'WIC', 'Neither', 'GMC is shop use and is not a sale.')] },
+  { old: 'Give the customer a receipt for every sale', title: 'Hand every customer a receipt before they leave', violation: 'A customer leaves without a receipt', quiz: [
+    q('Where does a customer receipt come from?', 'MI or the Sales Log', 'Typed into Customer Receipts', 'Written by hand', 'Receipts are never typed or written by hand.'),
+    q('A customer is leaving with no receipt. What do you do?', 'Issue it before they leave', 'Let them go', 'Wait until tomorrow', 'Every customer gets a receipt before leaving.')] },
+  { old: 'Sell several items to one customer through MI', title: 'Sell several items to one customer through MI: one basket, one receipt', violation: "Two or more receipts are issued for one customer's single purchase", quiz: [
+    q('A customer buys three items. What do you tap?', 'MI', 'The red tick three times', 'GMC', 'MI keeps them in one basket.'),
+    q('How many receipts for that purchase?', 'One', 'Three', 'None', 'One basket, one receipt.')] },
+  { old: 'Never force a sale the app refuses: tell Joe', title: 'Never force a sale the app refuses: tell Joe at once', violation: 'A refused sale is forced through, or not reported to Joe the same day', quiz: [
+    q('The app refuses a sale because stock is too low. What do you do?', 'Tell Joe and do not force it', 'Force it through', 'Delete the item', 'A forced sale makes the books untrue.')] },
+  { old: 'Do the weekly item group check on its day', title: 'Complete the weekly item group check on its checklist day', violation: 'The weekly item group check is not completed by its checklist time', quiz: [
+    q('How do you fix an item that has no group?', 'Open it, tap Edit, pick the group, tap Save', 'Delete it', 'Ignore it', 'The group is set in the item sheet.'),
+    q('Why do item groups matter?', 'Reports, filters and counts depend on them', 'They are decoration', 'They do not matter', 'A wrongly grouped item hides in the wrong report.')] },
+  { old: 'Leave no item in the wrong group or in no group', title: 'Leave no item in the wrong group, or in no group, for more than 24 hours after a check', violation: 'An item stays in the wrong group, or in no group, more than 24 hours after a check', quiz: [
+    q('How long may an item stay in no group after a check?', 'No more than 24 hours', 'A week', 'Until Joe notices', 'It is fixed within 24 hours.')] },
+  { old: 'Do the monthly price check', title: 'Complete the monthly price check on its day', violation: 'The monthly price check is not completed on its day', quiz: [
+    q('How often is the price list checked?', 'Once a month', 'Once a year', 'Never', 'The price check is monthly.'),
+    q('How do you correct a wrong price?', 'Open the item, Edit, type the price, Save', 'Delete the item', 'Tell the customer', 'Fix it in the item sheet.')] },
+  { old: 'Never sell at an old price after the list is updated', title: 'Never sell at an out-of-date price after the list is updated', violation: 'An item is sold at an old price after the price list was updated', quiz: [
+    q('What do you check on the card before the red tick?', 'The quantity and the price', 'Only the name', 'Nothing', 'A wrong price loses money on every sale.')] },
+  { old: 'Fix every flag as soon as it appears', title: 'Fix every flag on Live Sale the day it appears: none open at closing', violation: 'A flag is still open at closing time', points: 2, quiz: [
+    q('Where are all the flags on Live Sale?', 'The Flags dropdown on the toolbar', 'Under the logo', 'In the Sales Log', 'All flags are in one dropdown.'),
+    q('When must a flag be fixed?', 'The same day it appears', 'Next week', 'When Joe asks', 'None may be open at closing.')] },
+  { old: 'Fix the cause of a flag, never just clear it', title: 'Fix the real cause of a flag: never edit an item only to clear it', violation: 'An item is edited only to clear a flag, without fixing its cause', points: 2, quiz: [
+    q('A flag says No Selling Price. What fixes it?', 'Type the real selling price and Save', 'Delete the item', 'Change its group', 'Fix the cause, never just clear the flag.')] },
+  { old: 'Report a flag you cannot fix to Joe', title: 'Report any flag you cannot fix to Joe before closing', violation: 'A flag that cannot be fixed is not reported to Joe before closing', quiz: [
+    q('You cannot fix a flag. What do you do?', 'Tell Joe before closing', 'Leave it', 'Edit the item at random', 'Joe must hear the same day.')] },
+  { old: 'Understand what Live Sale is for', title: 'Demonstrate strong understanding of the Live Sale concept: what it is for, what it solves, all its features and how it is used', violation: 'A staff member fails to explain, when a manager asks, what Live Sale is for, what it solves, its main features and how it is used, or scores below 80% on its quiz', quiz: [
+    q('What is Live Sale for?', 'Recording every sale as it happens', 'Ordering stock', 'Paying staff', 'It is where every sale is recorded.'),
+    q('What does an unrecorded sale cause?', 'Wrong stock and cash figures', 'Nothing', 'Faster work', 'It hides real profit.'),
+    q('Where do the stock, cash and profit figures come from?', 'What is recorded in Live Sale', 'Guesses', 'Customers', 'Everything comes from the sales recorded.')] },
+  { old: 'Know the app abbreviations', title: 'Demonstrate the meaning of every app abbreviation: SOH, SP, CP, WIC, GMC and CAB', violation: 'A staff member gets any one of the six abbreviations wrong when a manager asks, or uses one wrongly in an entry', quiz: [
+    q('What does SOH stand for?', 'Stock on hand', 'Sales on hold', 'Shop opening hours', 'SOH is stock on hand.'),
+    q('What is GMC?', 'Grony Multimedia as customer: shop use, not a sale', 'A walk-in customer', 'Cash at bank', 'GMC is shop use.'),
+    q('What does CAB stand for?', 'Cash at bank', 'Customer account book', 'Count and bill', 'CAB is cash at bank.')] },
+  { old: 'Know how to find, price and record a sale', title: 'Demonstrate recording a sale, from search to receipt, unaided and in under 2 minutes', violation: 'A staff member cannot record a sale from search to receipt without help, or takes more than 2 minutes, when a manager asks', quiz: [
+    q('What is the first step in recording a sale?', 'Find the item in Search', 'Tap the red tick', 'Type the receipt', 'Search first.'),
+    q('What must be said before the red tick?', 'Who the sale is for', 'Nothing', 'Only the date', 'A GM number, phone, name or label is required.')] },
+]
+const NEW_LAWS: { title: string; violation: string; how: string; quiz: Q[] }[] = [
+  { title: 'Enter every sale in the app: no sale is ever made without an entry', violation: 'A sale is made and never entered in the app', how: 'Enter every sale as the customer pays\nUse Live Sale, or MI for several items\nNever take payment and leave the sale out', quiz: [
+    q('What is the sanction for making a sale and not entering it?', 'Dismissal', 'One penalty point', 'A warning', 'A sale left out of the app is treated as theft.'),
+    q('Is a very small sale excused?', 'No, every sale is entered', 'Yes, under ₵10', 'Yes at night', 'Every sale, however small, is entered.')] },
+  { title: 'Never steal or pilfer money, goods or stock belonging to the shop', violation: 'Money, goods or stock belonging to the shop is taken, hidden or kept for personal use', how: 'Never take, hide or keep shop money, goods or stock\nShop use is recorded with the GMC button, never taken quietly\nA customer overpayment or a found item is handed to Joe', quiz: [
+    q('What is the sanction for stealing money, goods or stock?', 'Dismissal', 'One penalty point', 'A warning', 'Theft is dismissal.'),
+    q('A staff member takes a small shop item home without recording it. What is that?', 'Pilfering, which means dismissal', 'Fine if it is small', 'Allowed with friends', 'Taking without recording is pilfering.')] },
+]
+async function sharpenItemsLaws() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('sharpen-items-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    // The manager or a superior watches the shop and the CCTV: none of these are enforced by the app itself.
+    await sql`UPDATE page_laws SET law_type = 'standing' WHERE law_type = 'app' AND category = 'Stock & records'`
+    // Only the owner and Joe add or delete items now, so the "search before creating an item" law no longer applies.
+    const gone = await sql`DELETE FROM page_laws WHERE title = 'Search for an existing item before creating a new one' RETURNING id`
+    for (const g of gone) await sql`DELETE FROM law_signatures WHERE law_id = ${g.id}`.catch(() => {})
+    for (const d of SHARP) {
+      const rows = await sql`SELECT id, violations FROM page_laws WHERE title = ${d.old}` as unknown as { id: number; violations: string | null }[]
+      for (const r of rows) {
+        const v0 = parseViolations(r.violations)[0]
+        const v = { ...(v0 ?? { by: 'manager' as const }), text: d.violation, points: d.points ?? v0?.points ?? 1 }
+        await sql`UPDATE page_laws SET title = ${d.title}, violations = ${JSON.stringify([v])}, quiz = ${JSON.stringify(d.quiz)} WHERE id = ${r.id}`
+      }
+    }
+    for (const d of NEW_LAWS) {
+      const v = [{ text: d.violation, points: 50, dismissal: true, by: 'manager', how: d.how, chapter: 'Find the item|Search the item', record: 'A manager or superior logs it: seen in the shop or on the CCTV' }]
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, quiz)
+        VALUES ('Stock & records', ${d.title}, false, 'law', 'Stock & records', 'Recording', 'standing', 'live', 'sharpen-items-v1', 'tick', 20, ${JSON.stringify(v)}, ${d.title}, ${JSON.stringify(d.quiz)})`
+    }
+  } catch (e) { console.error('sharpen items laws failed:', e instanceof Error ? e.message : String(e)) }
 }
