@@ -168,7 +168,7 @@ type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | 'custome
   // Manual Count, Analytics) -- previously only reachable indirectly as a
   // "fix this violation" deep link (see ViolationFixPanel.tsx), now its own
   // CASH_ITEMS row so it's a real, navigable destination on its own.
-  | 'counts' | 'item360'
+  | 'counts' | 'item360' | 'flags'
   // Cust. Receipts and New Customer are gone: receipts are found in each customer's details and the Sales Log,
   // and customers are registered from Live Sale's GM box (see jumpToCustomersTab).
   // Same reasoning as 'newCustomer' used to be above -- Expense Orders was a
@@ -1978,6 +1978,9 @@ function ItemHubPageInner() {
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
+  // Flags are for managers only: the owners and Bino. Everyone else never sees a flag (except Negative Stock on Live Sale).
+  const showFlags = isOwnerOrJoe || isManagerName(username)
+  const fl = (n: number) => showFlags ? n : undefined
   const isGrony = username.toLowerCase() === 'grony'
   // The one owner-level gate managing roles/permissions themselves (and
   // previously everything else below) uses -- kept separate from the
@@ -2131,7 +2134,7 @@ function ItemHubPageInner() {
     if (isOwnerOrJoe || outerTab !== 'loss') return
     const lossesOnly = lossView === 'pl' && plSubView !== 'pl'
     const ok = lossView === 'items' || lossView === 'sales' || lossView === 'counts' || lossView === 'item360' || lossesOnly
-      || lossView === 'staffPayslips' || lossView === 'staffProfile' || lossView === 'home' || lossView === 'customers' || lossView === 'teamTimes'
+      || lossView === 'staffPayslips' || lossView === 'staffProfile' || lossView === 'home' || lossView === 'customers' || lossView === 'teamTimes' || (lossView === 'flags' && showFlags)
     const stuckOnMode = (lossView === 'items' || lossView === 'sales') && ['bills', 'expenses', 'manage', 'advert', 'gronyChecks'].includes(itemsPageMode)
     if (!ok || stuckOnMode) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -5292,7 +5295,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // Flags now sit on the tab they belong to instead of one bar at the top of
   // every page.
   function renderSectionFlags() {
-    if (outerTab !== 'loss') return null
+    if (outerTab !== 'loss' || !showFlags) return null
     let section: 'counts' | 'items' | 'receipts' | 'bills' | null = null
     if (lossView === 'counts' || inCountTab) section = 'counts'
     else if (lossView === 'items' || lossView === 'sales') {
@@ -6725,13 +6728,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   the 'items' view (the superset: it also has the columns
                   picker) in plain Live mode, clearing any filter. */}
               <SidePaneButton icon="🛒" label={paneLabel('items', 'Items / Live Sale')} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(modeActive('sale'))} badge={itemsFlagsCount}
+                active={paneActive(modeActive('sale'))} badge={fl(itemsFlagsCount)}
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(modeActive('log'))} badge={salesFlagsCount} onClick={() => goItemsMode('log')} />
+                active={paneActive(modeActive('log'))} badge={fl(salesFlagsCount)} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(lossView === 'customers')} badge={customersFlagsCount} onClick={() => jumpToCustomersTab()} />
+                active={paneActive(lossView === 'customers')} badge={fl(customersFlagsCount)} onClick={() => jumpToCustomersTab()} />
               <SidePaneButton icon="🕐" label="Team Times" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'teamTimes')} onClick={() => pickLossView('teamTimes')} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
@@ -6739,7 +6742,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <Fragment key={v.key}>
                   <SidePaneButton icon={v.icon} label={paneLabel(v.key, v.label)} mode={cashDisplayMode} shared={isOwnerOrJoe && v.key === 'counts'}
                     active={paneActive(cashItemActive(v.key))} divider
-                    badge={v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + lossByDateFlagsCount)
+                    badge={!showFlags ? undefined : v.key === 'sales' ? (salesFlagsCount + billsFlagsCount + lossByDateFlagsCount)
                       // Expenses/Vendors/Customers all moved off their own
                       // CASH_ITEMS row onto the Items row's badge -- 'items'
                       // is the real, reachable entry point into the whole
@@ -6756,10 +6759,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
+              {showFlags && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + (countsFlagsCount - (violationCounts['neg_soh'] ?? 0)) + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
+                active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
               <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={lossByDateFlagsCount}
+                active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={fl(lossByDateFlagsCount)}
                 noNewTab onClick={() => setLossesOpen(o => !o)} />
               {lossesOpen && (<>
                 <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
@@ -6841,13 +6846,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 href="/handbook-announcements" onClick={() => { window.location.href = '/handbook-announcements' }} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('bills'))} badge={billsFlagsCount} onClick={() => goItemsMode('bills')} />
+                active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('expenses'))} badge={expensesFlagsCount} onClick={() => goItemsMode('expenses')} />
+                active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
               <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider
                 active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
               <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'vendors')} badge={vendorsFlagsCount} onClick={() => pickLossView('vendors')} />
+                active={paneActive(lossView === 'vendors')} badge={fl(vendorsFlagsCount)} onClick={() => pickLossView('vendors')} />
               </>)}
               {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
@@ -6855,7 +6860,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               )}
               {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
-                  active={paneActive(lossView === 'cab')} badge={cabFlagsCount} onClick={() => pickLossView('cab')} />
+                  active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
               )}
               {!isDesktop && isOwnerOrJoe && (canSeeManage || canSeeTeam) && (<>
                 <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 border-t border-white/30 mt-1">🛠 Manage</div>
@@ -7188,12 +7193,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ))}
                   </select>
                   </>)}
-                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (isOwnerOrJoe || isManagerName(username)) && (
-                    <select value={activeFlagValue} onChange={e => pickLiveFlag(e.target.value)} title="Every flag on this page, in one place"
-                      className={`${COMPACT_SELECT_CLS} ${liveSaleFlagTotal > 0 ? 'border-red-400 bg-red-50 font-bold text-red-700' : 'border-gray-300 bg-white text-gray-900'} flex-1 min-w-0`} style={COMPACT_SELECT_STYLE}>
-                      <option value="">{`🚩 Flags (${liveSaleFlagTotal})`}</option>
-                      {liveSaleFlagList.filter(f => f.n > 0 || f.value === activeFlagValue).map(f => <option key={f.value} value={f.value}>{f.label} ({f.n})</option>)}
-                    </select>
+                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && liveNegSohCount > 0 && (
+                    <button type="button" onClick={() => pickLiveFlag(activeFlagValue === 'violation:neg_soh' ? '' : 'violation:neg_soh')} title="Items whose stock has gone below zero: count them"
+                      className={`shrink-0 rounded border px-1.5 py-1 text-[9px] font-extrabold ${activeFlagValue === 'violation:neg_soh' ? 'border-red-600 bg-red-600 text-white' : 'border-red-400 bg-red-50 text-red-700'}`}>🔻 Negative stock ({liveNegSohCount})</button>
                   )}
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
@@ -10201,6 +10203,46 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <CountsTab items={liveCountsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={null}
                 onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }}
                 jumpToCountId={jumpToCountId} onJumpDone={() => setJumpToCountId(null)} />
+            </div>
+          </TabErrorBoundary>
+        )}
+        {outerTab === 'loss' && lossView === 'flags' && showFlags && (
+          <TabErrorBoundary>
+            <div className="h-full overflow-y-auto px-3 pb-24 pt-3">
+              <p className="mb-1 text-lg font-bold text-[#14213D]">🚩 Flags</p>
+              <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900">👔 Managers and owners only. Staff never see flags. Company law: every flag is fixed the day it appears. Tap a flag to open it where it is fixed.</p>
+              {(() => {
+                type Row = { label: string; n: number; go: () => void }
+                const groups: { title: string; rows: Row[] }[] = [
+                  { title: 'Live Sale / Items', rows: liveSaleFlagList.map(f => ({ label: f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
+                  { title: 'Counts', rows: [
+                    { label: 'Count due daily', n: violationCounts['daily'] ?? 0, go: () => goCountMode() }, { label: 'Count due every 7 days', n: violationCounts['7day'] ?? 0, go: () => goCountMode() },
+                    { label: 'Count due every 15 days', n: violationCounts['15day'] ?? 0, go: () => goCountMode() } ] },
+                  { title: 'Sales Log and receipts', rows: [
+                    { label: 'No cash recorded', n: violationCounts['no_cash'] ?? 0, go: () => goItemsMode('log') }, { label: 'Missing days', n: violationCounts['missing_days'] ?? 0, go: () => goItemsMode('log') },
+                    { label: 'Duplicate receipts', n: violationCounts['dup_receipts'] ?? 0, go: () => goItemsMode('log') }, { label: 'High walk-in share', n: violationCounts['high_wnw'] ?? 0, go: () => goItemsMode('log') } ] },
+                  { title: 'Bills', rows: [
+                    { label: 'No vendor', n: violationCounts['no_vendor'] ?? 0, go: () => goItemsMode('bills') }, { label: 'No items', n: violationCounts['no_items_bills'] ?? 0, go: () => goItemsMode('bills') },
+                    { label: 'Total mismatch', n: violationCounts['bill_total_mismatch'] ?? 0, go: () => goItemsMode('bills') }, { label: 'No attachment', n: violationCounts['bill_no_attachment'] ?? 0, go: () => goItemsMode('bills') },
+                    { label: 'No expense', n: violationCounts['bill_no_expense'] ?? 0, go: () => goItemsMode('bills') } ] },
+                  { title: 'Cash at bank', rows: [{ label: 'CAB not checked', n: cabFlagsCount, go: () => pickLossView('cab') }] },
+                  { title: 'Losses', rows: [{ label: 'Gains and cost above selling price', n: lossByDateFlagsCount, go: () => goLossSubView('loss_by_date') }] },
+                  { title: 'Team', rows: [{ label: 'Missing staff times', n: staffTimesFlagsCount, go: () => pickLossView('teamTimes') }, { label: 'Dress code (shirt)', n: dressFlagsCount, go: () => pickLossView('staff_dress' as LossView) }] },
+                  { title: 'Expenses, Customers and Vendors', rows: [{ label: 'Expenses', n: expensesFlagsCount, go: () => goItemsMode('expenses') }, { label: 'Customers (missing details)', n: customersFlagsCount, go: () => jumpToCustomersTab() }, { label: 'Vendors (missing details)', n: vendorsFlagsCount, go: () => pickLossView('vendors') }] },
+                ]
+                return <div className="space-y-3">{groups.map(g => {
+                  const total = g.rows.reduce((a, r) => a + r.n, 0)
+                  return (
+                    <div key={g.title} className="rounded-2xl border border-gray-200 bg-white p-2">
+                      <p className="mb-1 flex items-center gap-2 px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{g.title}<span className={`rounded-full px-2 py-0.5 text-[10px] ${total > 0 ? 'bg-red-600 text-white' : 'bg-green-100 text-green-800'}`}>{total > 0 ? total : 'clear'}</span></p>
+                      <div className="space-y-1">{g.rows.map(r => (
+                        <button key={r.label} type="button" disabled={r.n === 0} onClick={r.go} className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${r.n > 0 ? 'bg-red-50 font-semibold text-gray-900' : 'bg-gray-50 text-gray-400'}`}>
+                          <span>{r.label}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${r.n > 0 ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{r.n}</span>
+                        </button>))}</div>
+                    </div>
+                  )
+                })}</div>
+              })()}
             </div>
           </TabErrorBoundary>
         )}
