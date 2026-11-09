@@ -10,6 +10,14 @@ Read CLAUDE.md, AGENTS.md and VOICE_SESSION_HANDOFF.md (this folder) first. Reco
   BOTTOM (`lib/flagGuide.ts`: what it means / why / steps). Per-flag time chips jump to the chapter whose TITLE is `Flag: <label>` (label from
   `lib/flagGuide.ts`), falling back to the chapter whose text contains "Now, flags".
 
+## LATEST (overrides everything below): use docs/guides/real/transcript_items_proposed.md (version 2) as the script, chapter by chapter
+- The Items tile now holds ONLY laws about Live Sale. Do not read or show these in the video: Past days, Receipts (now on the Sales Log tile) and Know the
+  words (now general training). The refused-sale rule is a violation of the law "Record every sale as soon as it happens".
+- Each law chapter reads the law title, then its violations, then the points, then one sentence on why (see the transcript). `lawRe` for each: record
+  every sale = 'Every walk-in sale goes in Live Sale'; item groups = 'Item groups checked'; price list = 'price list is current'; fix flags =
+  'Fix flags'. Violation how-to links use chapter patterns such as 'Find the item|Search the item', 'several items', 'WIC', 'Wrong sale|Undo',
+  'right group', 'current price', 'Now, flags' (see VIOLATION_RULES in lib/pageLaws.ts): keep chapter titles/text compatible with them.
+
 ## NEW REQUIREMENTS (override anything below that conflicts)
 A. THE VIDEO MUST OPEN WITH A PROPER INTRODUCTION to the Live Sale page in general, before any specific feature: what it is for, why it
    exists, and what it is used for. Make these the FIRST three chapters (show the plain Live Sale grid while speaking; no tapping yet), then

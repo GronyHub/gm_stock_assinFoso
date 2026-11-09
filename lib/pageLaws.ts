@@ -80,6 +80,8 @@ async function ensureCompanyLawsImpl() {
   await approveOnce('flags-v2', 'The owner asked for one Fix flags law')
   await assignLawCodes()
   await seedViolationLines()
+  await scopeItemsLaws()
+  await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
 }
@@ -215,6 +217,7 @@ async function seedCashLaws() {
 // changes afterwards, so staff, videos and sanctions can all refer to it.
 const CODED_AREAS: { prefix: string; cat: string; subs: string[] }[] = [
   { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words', 'Flags'] },
+  { prefix: 'SL', cat: 'Stock & records', subs: ['Sales Log'] },
 ]
 async function assignLawCodes() {
   try {
@@ -308,4 +311,27 @@ async function seedViolationLines() {
       if (rule) await sql`UPDATE page_laws SET title = ${rule.title}, violations = ${JSON.stringify(rule.v)}, not_violation = ${rule.not ?? null} WHERE id = ${r.id}`
     }
   } catch (e) { console.error('violation lines seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The Items / Live Sale tile holds only laws about that page. Past days and receipts belong to the Sales Log; the app words are
+// general training for everyone. A moved law gives up its old code and gets a new one where it lands. Written once.
+async function scopeItemsLaws() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('items-scope-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`UPDATE page_laws SET subcategory = 'Sales Log', code = NULL WHERE category = 'Stock & records' AND (text ~* 'Past days are entered only' OR text ~* 'Receipts are issued from MI')`
+    await sql`UPDATE page_laws SET category = 'Staff management', subcategory = 'Training', code = NULL, scope_key = 'Staff management' WHERE category = 'Stock & records' AND text ~* '^Law: app words|App words:'`
+    // the "refused sale is forced" violation belongs to recording a sale, not to receipts
+    const refused = 'A sale the app refused is forced through instead of telling Joe'
+    const rec = await sql`SELECT id, violations FROM page_laws WHERE text ~* 'Every walk-in sale goes in Live Sale'` as unknown as { id: number; violations: string | null }[]
+    const rcp = await sql`SELECT id, violations FROM page_laws WHERE text ~* 'Receipts are issued from MI'` as unknown as { id: number; violations: string | null }[]
+    for (const r of rcp) {
+      const list = parseViolations(r.violations), keep = list.filter(v => v.text !== refused), moved = list.find(v => v.text === refused)
+      if (moved) {
+        await sql`UPDATE page_laws SET violations = ${JSON.stringify(keep)} WHERE id = ${r.id}`
+        for (const t of rec) { const tl = parseViolations(t.violations); if (!tl.some(v => v.text === refused)) await sql`UPDATE page_laws SET violations = ${JSON.stringify([...tl, { ...moved, how: 'If the app refuses a sale, such as a price below cost or not enough stock, do not force it\nTell Joe', chapter: 'Wrong sale|Undo' }])} WHERE id = ${t.id}` }
+      }
+    }
+  } catch (e) { console.error('items scope migration failed:', e instanceof Error ? e.message : String(e)) }
 }
