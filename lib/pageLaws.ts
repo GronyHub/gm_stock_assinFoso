@@ -82,6 +82,7 @@ async function ensureCompanyLawsImpl() {
   await seedViolationLines()
   await scopeItemsLaws()
   await splitMultiViolationLaws()
+  await seedUnderstandingLaws()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -217,7 +218,7 @@ async function seedCashLaws() {
 // Every law on a tile that has a code prefix gets a short code (LS-1, LS-2...) the first time it is seen. A code never
 // changes afterwards, so staff, videos and sanctions can all refer to it.
 const CODED_AREAS: { prefix: string; cat: string; subs: string[] }[] = [
-  { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words', 'Flags'] },
+  { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words', 'Flags', 'Understanding'] },
   { prefix: 'SL', cat: 'Stock & records', subs: ['Sales Log'] },
 ]
 async function assignLawCodes() {
@@ -385,4 +386,26 @@ async function splitMultiViolationLaws() {
       }
     }
   } catch (e) { console.error('split laws failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Three laws about knowing the Live Sale page itself (what it is for, the abbreviations, how to record a sale). They stand: a manager
+// checks by asking, and logs a violation. Live straight away (the owner asked for them).
+const UNDERSTAND: { title: string; violation: string; how: string; chapter: string }[] = [
+  { title: 'Understand what Live Sale is for', violation: 'A staff member cannot say, when a manager asks, what Live Sale is for, what it solves, and what happens when a sale is not recorded', chapter: 'What Live Sale is for|Welcome to Live Sale|This is Live Sale',
+    how: 'Live Sale is the main page of the shop\nEvery sale is recorded here, one item at a time, as it happens\nStock, cash and profit all come from what is recorded here\nA sale that is not recorded makes stock wrong and hides real profit' },
+  { title: 'Know the app abbreviations', violation: 'A staff member cannot say, when a manager asks, what SOH, SP, CP, WIC, GMC or CAB stand for, or uses one wrongly', chapter: 'WIC',
+    how: 'SOH: stock on hand\nSP: selling price. CP: cost price\nWIC: walk-in customer, a real sale\nGMC: Grony Multimedia as customer, shop use and not a sale\nCAB: cash at bank' },
+  { title: 'Know how to find, price and record a sale', violation: 'A staff member cannot show, when a manager asks, how to find an item, set the quantity and price, and record the sale', chapter: 'Find the item|Search the item',
+    how: 'Type the item name in Search\nCheck the quantity and the price on its card\nSay who it is for: a GM number, phone, name or label\nTap the red tick. The sale goes into the Sales Log' },
+]
+async function seedUnderstandingLaws() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'understand-v1'`
+    if (n > 0) return
+    for (const d of UNDERSTAND) {
+      const v = [{ text: d.violation, points: 1, by: 'manager', how: d.how, chapter: d.chapter, record: 'A manager asks, in the shop, and logs it with a note' }]
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title)
+        VALUES ('Stock & records', ${d.title}, false, 'law', 'Stock & records', 'Understanding', 'standing', 'live', 'understand-v1', 'tick', 1, ${JSON.stringify(v)}, ${d.title})`
+    }
+  } catch (e) { console.error('understanding laws seed failed:', e instanceof Error ? e.message : String(e)) }
 }

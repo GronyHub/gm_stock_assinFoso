@@ -16,17 +16,20 @@ type Law = {
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
   status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; violations?: string | null; not_violation?: string | null
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string }[]; not_violation: string; title: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string }[]; not_violation: string; title: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
-const COLS = 'grid-cols-[0.9fr_1.15fr_0.55fr_1.2fr_repeat(4,28px)]'
+const COLS = 'grid-cols-[0.85fr_0.7fr_1.05fr_0.85fr_0.5fr_1.1fr_repeat(4,28px)]'
+const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How']
+const typeName = (t: string) => t === 'recurring' ? 'Recurring task' : t === 'app' ? 'App-enforced' : 'Standing order'
+const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'Manager logs it, from the shop or the camera')
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
 const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{15,90}?)[.:!?](\s|$)/); return m ? m[1] : one.slice(0, 80) }
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter })), not_violation: l.not_violation ?? '', title: l.title ?? '' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record })), not_violation: l.not_violation ?? '', title: l.title ?? '' })
 const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1', violations: [], not_violation: '', title: '' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
@@ -54,6 +57,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
   useEffect(() => { fetch('/api/penalties/log-targets').then(r => r.ok ? r.json() : null).then(d => d?.targets && setTargets(d.targets)).catch(() => {}) }, [])
   const [openCh, setOpenCh] = useState<number | null>(null)
+  const [whyOpen, setWhyOpen] = useState<Set<number>>(new Set())
   const TimeChip = ({ t, label }: { t: number | null; label?: string }) => t === null ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">not in the video yet</span> : <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); seek(t) }} className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">▶ {fmtTime(t)}{label ? ` ${label}` : ''}</button>
   function seek(t: number) {
     const v = vref.current; if (!v) return
@@ -129,17 +133,27 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div className={`min-w-[480px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div className={`min-w-[640px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <div className={`grid ${COLS}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             {l.code && <span className="mb-0.5 inline-block rounded bg-[#14213D] px-1 py-px text-[9px] font-extrabold text-white">{l.code}</span>}
-            <p className="text-[11px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)}</p>
+            <button type="button" onClick={() => setWhyOpen(w => { const n = new Set(w); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n })} title="Why this law?" className="block text-left text-[11px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)} <span className="text-[9px] text-blue-600">why ▾</span></button>
+            {canManage && <div className="mt-1 flex gap-1">
+              {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] font-bold text-white">✓</button>}
+              <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit" className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">✎</button>
+              <button type="button" onClick={() => void remove(l)} title="Delete" className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">🗑</button>
+            </div>}
+          </div>
+          <div className="space-y-1 border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
+            <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
+            {sched && <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}>🗓 {sched}</p>}
+            {l.tile_id && <a href="/standards" className="block text-[10px] font-bold text-green-800">✅ In the checklist</a>}
           </div>
           {(sig?.staff ?? []).map(n => {
             const done = (sig?.by?.[n] ?? []).includes(l.id)
             return (
-              <div key={n} className="flex items-center justify-center border-l border-gray-200" style={{ gridColumn: 5 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+              <div key={n} className="flex items-center justify-center border-l border-gray-200" style={{ gridColumn: 7 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
                 {l.status === 'draft' ? <span className="text-[10px] text-gray-300">-</span>
                   : done ? <span title={`${n} signed`} className="text-sm font-extrabold text-green-600">✓</span>
                   : n === sig?.me ? <button type="button" onClick={() => void signLaws([l.id])} title="Sign: I have read this and will follow it" className="rounded-md bg-green-600 px-1 py-1 text-[11px] font-bold text-white">✍</button>
@@ -147,18 +161,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </div>
             )
           })}
-          {vlines.length === 0 && <p className="col-span-3 m-1.5 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">No violation lines yet.{canManage ? ' Edit the law and add what exactly breaks it.' : ''}</p>}
+          {vlines.length === 0 && <p className="col-span-4 m-1.5 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">No violation lines yet.{canManage ? ' Edit the law and add what exactly breaks it.' : ''}</p>}
           {vlines.map((v, i) => {
             const how = v.how ? v.how.split('\n').map(x => x.trim()).filter(Boolean) : (i === 0 ? lines(l.dos) : [])
             const ch = av && v.chapter ? findChapter(av, v.chapter) : null
             const last = i === vlines.length - 1
+            const shared = l.law_type === 'recurring'
             return (
               <Fragment key={i}>
                 <div className="border-t border-gray-200 p-1.5"><p className="text-[11px] leading-snug text-gray-900">{v.text}</p>{l.not_violation && last && <p className="mt-1 text-[10px] leading-snug text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}</div>
+                <div className="space-y-1 border-t border-gray-200 p-1.5"><p className="text-[10px] leading-snug text-gray-700">{recordText(l, v)}</p>
+                  {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}
+                </div>
                 <div className="flex flex-col items-center gap-0.5 border-t border-gray-200 p-1">
-                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">⚖ {v.points}</span>
-                  <span className="text-center text-[8px] font-bold uppercase leading-tight text-gray-500">{v.by === 'app' ? 'app checks' : 'manager logs'}</span>
-                  {targets.length > 0 && l.status !== 'draft' && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[9px] font-bold text-white">Log</button>}
+                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{shared ? '⚖ shared' : `⚖ ${v.points}`}</span>
+                  {shared && <span className="text-center text-[8px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
                 </div>
                 <div className="border-t border-gray-200 p-1.5">
                   {how.length > 0 && <ol className="list-decimal space-y-0.5 pl-3 text-[10px] leading-snug text-gray-800">{how.map((x, k) => <li key={k}>{x}</li>)}</ol>}
@@ -167,19 +184,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </Fragment>
             )
           })}
-        </div>
-        <div className="space-y-1 border-t border-gray-300 bg-gray-50 p-1.5">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeLabel(l.law_type)}</span>
-            {l.tile_id && <a href="/standards" className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">✅ Checklist</a>}
-            {sched && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${sched.startsWith('No schedule') ? 'bg-amber-100 text-amber-800' : 'bg-indigo-50 text-indigo-800'}`}>🗓 {sched}</span>}
-            {canManage && <span className="ml-auto flex gap-1">
-              {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} className="rounded-lg bg-green-600 px-2 py-1 text-xs font-bold text-white">Approve</button>}
-              <button type="button" onClick={() => setDraft(toDraft(l))} className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">Edit</button>
-              <button type="button" onClick={() => void remove(l)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Delete</button>
-            </span>}
-          </div>
-          {why && <details><summary className="cursor-pointer text-[11px] font-bold text-blue-700">Why this law?</summary><WhyBox w={why} /></details>}
+          {whyOpen.has(l.id) && why && <div className="border-t border-gray-200 bg-blue-50 p-1.5" style={{ gridColumn: '1 / -1' }}><WhyBox w={why} /></div>}
         </div>
         {area?.flags && /^Fix flags/i.test(l.text) && <div className="px-2 pb-2"><FlagList av={av} /></div>}
       </div>
@@ -269,7 +274,6 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>
-          {(() => { const w = whyForArea(area.key, area.match[0]?.cat ?? ''); return w ? <details open className="rounded-xl border border-blue-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">Why this matters</summary><WhyBox w={w} /></details> : null })()}
           {AREA_VIDEO[area.key] && area.guide ? (
             <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
               <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
@@ -286,39 +290,23 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
             const live = catLaws.filter(l => l.status !== 'draft' || canManage)
-            const timed = (t: number) => live.filter(l => lawTime(av, l) === t)
-            const untimed = live.filter(l => lawTime(av, l) === null)
+            const sorted = [...live].sort((a, b) => (lawTime(av, a) ?? 99999) - (lawTime(av, b) ?? 99999) || a.id - b.id)
+            const extra = howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id]))
             return (
-              <div className="space-y-2 overflow-x-auto">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-[#14213D]">Contents: how to, laws and sanctions, in video order</p>
-                <div className={`grid min-w-[480px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}><span>Law</span><span>A violation is</span><span>Points</span><span>How</span>{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
-                {av.chapters.map(c => {
-                  const topics = (area.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter((t): t is (typeof TOPICS)[number] => !!t && !!area.howtoRe?.[t.id] && findChapter(av, area.howtoRe[t.id])?.t === c.t)
-                  return (
-                    <div key={c.t} className="space-y-1.5">
-                      <div className="rounded-xl border border-gray-200 bg-white">
-                        <div className="flex w-full items-start gap-2 p-2">
-                          <button type="button" onClick={() => seek(c.t)} title="Play the video from here" className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">▶ {fmtTime(c.t)}</button>
-                          <button type="button" onClick={() => setOpenCh(openCh === c.t ? null : c.t)} className="flex-1 text-left text-sm font-semibold text-gray-900"><span className="mr-1 text-[10px] font-extrabold uppercase text-gray-400">{c.lawRe ? 'Law' : 'How to'}</span>{c.title} <span className="text-xs text-gray-400">{openCh === c.t ? '▴' : '▾'}</span></button>
-                        </div>
-                        {openCh === c.t && (
-                          <div className="space-y-2 border-t border-gray-100 p-2">
-                            <p className="text-[13px] text-gray-700">{c.text}</p>
-                            {topics.map(t => <div key={t.id} className="rounded-lg bg-gray-50 p-2"><p className="mb-1 text-xs font-extrabold text-gray-900">{t.title}</p>{t.body}</div>)}
-                          </div>
-                        )}
-                      </div>
-                      {timed(c.t).map(l => <LawCard key={l.id} l={l} />)}
-                    </div>
-                  )
-                })}
-                {howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id]))}
-                {untimed.length > 0 && (
-                  <div className="space-y-1.5">
-                    <p className="pt-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">Laws not in the video yet</p>
-                    {untimed.map(l => <LawCard key={l.id} l={l} />)}
-                  </div>
-                )}
+              <div className="space-y-2">
+                <div className="space-y-2 overflow-x-auto">
+                  <div className={`grid min-w-[640px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
+                  {sorted.map(l => <LawCard key={l.id} l={l} />)}
+                </div>
+                <details className="rounded-xl border border-gray-200 bg-white p-2">
+                  <summary className="cursor-pointer text-sm font-bold text-gray-900">Video transcript, with times</summary>
+                  <div className="mt-1 space-y-1">{av.chapters.map(c => (
+                    <div key={c.t} className="flex items-start gap-2 text-[12px]">
+                      <button type="button" onClick={() => seek(c.t)} className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">▶ {fmtTime(c.t)}</button>
+                      <span><b className="text-gray-900">{c.title}.</b> <span className="text-gray-700">{c.text}</span></span>
+                    </div>))}</div>
+                </details>
+                {extra.length > 0 && <details className="rounded-xl border border-gray-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">More how to (text only, not in the video)</summary><div className="mt-1 space-y-1">{extra}</div></details>}
               </div>
             )
           })()}
@@ -326,7 +314,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && subs.map(sub => (
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
-              <div className="space-y-2"><div className={`grid min-w-[480px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}><span>Law</span><span>A violation is</span><span>Points</span><span>How</span>{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[640px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {canManage && candidates.length > 0 && (
@@ -360,7 +348,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
   async function save() {
     if (!d.violations.some(v => v.text.trim())) { setErr('Add at least one violation: what exactly breaks this law.'); return }
     setBusy(true); setErr('')
-    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter })) }) })
+    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record })) }) })
     const j = await r.json().catch(() => ({}))
     setBusy(false)
     if (!r.ok) setErr(j.error ?? 'Could not save'); else onSaved(d.id ? 'Law saved' : 'Law added')
@@ -402,6 +390,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <select value={v.by} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, by: e.target.value } : x))} className={inp + ' w-28'}><option value="manager">Manager logs</option><option value="app">App checks</option></select>
               <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700">✕</button>
             </div>))}
+          {d.violations.map((v, i) => <input key={'r' + i} value={v.record ?? ''} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, record: e.target.value } : x))} placeholder={`How violation ${i + 1} is recorded (optional)`} className={inp} />)}
           {d.violations.map((v, i) => <textarea key={'h' + i} value={v.how ?? ''} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, how: e.target.value } : x))} rows={2} placeholder={`How to avoid violation ${i + 1}: one step per line`} className={inp} />)}
           <button type="button" onClick={() => set('violations', [...d.violations, { text: '', points: '1', by: 'manager' }])} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-700">+ Add a violation</button>
           <div><label className={lab}>Not a violation (optional)</label><input value={d.not_violation} onChange={e => set('not_violation', e.target.value)} className={inp} /></div>
