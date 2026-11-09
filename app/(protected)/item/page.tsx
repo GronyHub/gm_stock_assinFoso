@@ -1508,6 +1508,8 @@ function ItemHubPageInner() {
   // point is to keep surfacing this until a new pack is tapped in or a
   // count settles it (see GmcOverageGateModal). Reuses the same pending-tap
   // refs above (they're just a "what to resume" slot, not gate-specific).
+  // After a sale takes an item's stock below zero the sale stays recorded, and the staff member is told to count the shelf now.
+  const [negPrompt, setNegPrompt] = useState<{ name: string; soh: number } | null>(null)
   const [gmcOverageGate, setGmcOverageGate] = useState<{ itemName: string; targetName: string; given: number; used: number; exhaustedOnDate: string } | null>(null)
   // Staff-triggered follow-up shown right after a GMC tap succeeds -- lets
   // staff mark that specific draw from stock as a business property (a
@@ -4283,6 +4285,11 @@ function ItemHubPageInner() {
       lastBuyerIdRef.current = typeof data.buyerId === 'number' ? data.buyerId : null
       lastTapIdRef.current = typeof data.tap?.id === 'number' ? data.tap.id : null
       if (data.whatsappUrl) setWaPrompt({ url: data.whatsappUrl, label: 'purchase message', buyerIds: typeof data.buyerId === 'number' ? [data.buyerId] : undefined })
+
+      {
+        const sohAfter = Number(data.tap?.soh)
+        if (liveSaleType !== 'GMC' && tapItem.product_type !== 'service' && Number.isFinite(sohAfter) && sohAfter < -0.001) setNegPrompt({ name: tapItem.name, soh: sohAfter })
+      }
 
       // Offer to mark this specific draw as a property -- only makes sense
       // for a real GMC stock draw of a physical good, not a service tap.
@@ -10073,6 +10080,16 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </button>
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
+          )}
+          {negPrompt && (
+            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
+              <div className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-4 shadow-2xl">
+                <p className="text-base font-extrabold text-red-700">🔻 Count the shelf now</p>
+                <p className="text-sm text-gray-800">The sale is recorded. But the records now show <b>{negPrompt.soh}</b> of <b>{negPrompt.name}</b>, which cannot be true. Count what is really on the shelf and enter it, so the stock is corrected.</p>
+                <button type="button" onClick={() => { setNegPrompt(null); goCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">Count it now</button>
+                <button type="button" onClick={() => setNegPrompt(null)} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Later (it stays under Negative stock)</button>
+              </div>
+            </div>
           )}
           {gmcOverageGate && (
             <GmcOverageGateModal

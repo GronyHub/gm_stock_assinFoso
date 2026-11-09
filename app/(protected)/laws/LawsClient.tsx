@@ -23,8 +23,8 @@ const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
-const COLS = 'grid-cols-[0.85fr_0.7fr_1.05fr_0.85fr_0.5fr_1.1fr_0.55fr_repeat(4,40px)]'
-const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How', 'Quiz']
+const COLS = 'grid-cols-[0.85fr_0.8fr_1.05fr_0.85fr_0.5fr_1.1fr_1fr_0.55fr_repeat(4,40px)]'
+const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How', 'Why', 'Quiz']
 const typeName = (t: string) => t === 'recurring' ? 'Recurring task' : t === 'app' ? 'App-enforced' : 'Standing order'
 const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'A manager or superior logs it: seen in the shop or on the CCTV')
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
@@ -135,12 +135,12 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div className={`min-w-[720px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div className={`min-w-[860px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <div className={`grid ${COLS}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             {l.code && <span className="mb-0.5 inline-block rounded bg-[#14213D] px-1 py-px text-[9px] font-extrabold text-white">{l.code}</span>}
-            <button type="button" onClick={() => setWhyOpen(w => { const n = new Set(w); n.has(l.id) ? n.delete(l.id) : n.add(l.id); return n })} title="Why this law?" className="block text-left text-[11px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)} <span className="text-[9px] text-blue-600">why ▾</span></button>
+            <p className="text-[11px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)}</p>
             {canManage && <div className="mt-1 flex gap-1">
               {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] font-bold text-white">✓</button>}
               <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit" className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">✎</button>
@@ -150,16 +150,20 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           <div className="space-y-1 border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
             {sched && <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}>🗓 {sched}</p>}
-            {l.tile_id && <a href="/standards" className="block text-[10px] font-bold text-green-800">✅ In the checklist</a>}
+            <p className="text-[10px] leading-snug text-gray-700"><b>Carried out:</b> {l.law_type === 'recurring' ? (l.tile_id ? 'a tile in the Daily Checklist' : 'a Daily Checklist tile (when approved)') : l.law_type === 'app' ? 'enforced by the app itself' : 'by observation: a manager in the shop or on the CCTV'}</p>
+            {l.tile_id && <a href="/standards" className="block text-[10px] font-bold text-green-800">✅ Open the checklist</a>}
           </div>
-          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 7, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+          <div className="border-l border-gray-200 p-1.5" style={{ gridColumn: 7, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+            {why ? <><p className="text-[10px] leading-snug text-gray-800">{why.exists}</p><p className="mt-1 text-[10px] leading-snug text-red-800"><b>If not done:</b> {why.loss}</p></> : <span className="text-[10px] text-gray-300">-</span>}
+          </div>
+          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 8, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
             {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[10px] font-bold text-white">📝 Quiz {l.quiz_n}</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[10px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[10px] text-gray-300">-</span>}
           </div>
           {(sig?.staff ?? []).map(n => {
             const done = (sig?.by?.[n] ?? []).includes(l.id)
             const mark = sig?.marks?.[n]?.[l.id]
             return (
-              <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 8 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+              <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 9 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
                 {l.status === 'draft' || (l.audience === 'managers' && !isManagerName(n)) ? <span className="text-[9px] text-gray-300">{l.audience === 'managers' && l.status !== 'draft' ? 'n/a' : '-'}</span>
                   : <>
                     {mark && <span title={`${n}: quiz mark`} className="text-[10px] font-extrabold text-indigo-700">{mark}</span>}
@@ -193,7 +197,6 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </Fragment>
             )
           })}
-          {whyOpen.has(l.id) && why && <div className="border-t border-gray-200 bg-blue-50 p-1.5" style={{ gridColumn: '1 / -1' }}><WhyBox w={why} /></div>}
         </div>
         {area?.flags && /^Fix flags/i.test(l.text) && <div className="px-2 pb-2"><FlagList av={av} /></div>}
       </div>
@@ -305,7 +308,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return (
               <div className="space-y-2">
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[860px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
                   {sorted.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
                 {mgrSorted.length > 0 && <ManagerSection area={area} laws={mgrSorted} Card={LawCard} />}
@@ -325,7 +328,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && Array.from(new Set(catLaws.filter(l => l.audience !== 'managers').map(l => l.subcategory ?? 'General'))).map(sub => (
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
-              <div className="space-y-2"><div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[860px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {!AREA_VIDEO[area.key] && catLaws.some(l => l.audience === 'managers') && <ManagerSection area={area} laws={catLaws.filter(l => l.audience === 'managers')} Card={LawCard} />}
@@ -498,7 +501,7 @@ function ManagerSection({ area, laws, Card }: { area: LawArea; laws: Law[]; Card
       <p className="px-1 text-xs text-gray-700">{area.label}: the laws that only managers keep and enforce. {area.managerVideo ? '' : 'The managers\' video for this section is not recorded yet.'}</p>
       {area.managerVideo && <video src={area.managerVideo} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
       <div className="space-y-2 overflow-x-auto">
-        <div className={`grid min-w-[720px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
+        <div className={`grid min-w-[860px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
         {laws.map(l => <Card key={l.id} l={l} />)}
       </div>
     </div>
