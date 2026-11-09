@@ -73,6 +73,8 @@ async function ensureCompanyLawsImpl() {
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
   await seedSanctionsLaw()
   await seedCashLaws()
+  await seedFlagLaws()
+  await approveOnce('flags-v1', 'The owner asked for the flag laws and checks')
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -207,7 +209,7 @@ async function seedCashLaws() {
 // Every law on a tile that has a code prefix gets a short code (LS-1, LS-2...) the first time it is seen. A code never
 // changes afterwards, so staff, videos and sanctions can all refer to it.
 const CODED_AREAS: { prefix: string; cat: string; subs: string[] }[] = [
-  { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words'] },
+  { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words', 'Flags'] },
 ]
 async function assignLawCodes() {
   try {
@@ -219,4 +221,24 @@ async function assignLawCodes() {
       for (const r of rows) if (!r.code) await sql`UPDATE page_laws SET code = ${a.prefix + '-' + ++max} WHERE id = ${r.id} AND code IS NULL`
     }
   } catch (e) { console.error('law codes failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Flags on Live Sale: the law that every flag is fixed as soon as it appears, and three daily checks that put the flags on the
+// Daily Checklist. They go live straight away (the owner asked for them).
+const FLAG_HOW = 'Open Items / Live Sale\nTap 🚩 Flags and read the flag\nFollow the steps shown under the toolbar\nA flag you cannot fix: tell Joe now'
+const FLAG_LAWS: { type: 'recurring' | 'standing'; text: string; time?: string; mins?: number; dos?: string; donts?: string; points?: number }[] = [
+  { type: 'standing', points: 2, text: 'Every flag on Live Sale is fixed as soon as it appears. A flag is never left for the next day, and never hidden by editing the item to make it disappear.', dos: FLAG_HOW, donts: 'Leave a flag open overnight\nEdit an item just to clear a flag' },
+  { type: 'recurring', time: '09:30', mins: 10, text: 'Morning flag check: open 🚩 Flags on Live Sale. Every open flag is fixed now, using the steps shown. Answer all good, or report what you could not fix.', dos: FLAG_HOW },
+  { type: 'recurring', time: '15:30', mins: 10, text: 'Afternoon flag check: open 🚩 Flags on Live Sale and fix any new flag. Answer all good, or report what you could not fix.', dos: FLAG_HOW },
+  { type: 'recurring', time: '18:00', mins: 5, text: 'Closing flag check: no Live Sale flag is left open. Answer all good, or tell Joe which flag is still open and why.', dos: FLAG_HOW },
+]
+async function seedFlagLaws() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'flags-v1'`
+    if (n > 0) return
+    for (const d of FLAG_LAWS) {
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, dos, donts, status, seed, proof, points)
+        VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', 'Flags', ${d.type}, ${d.type === 'recurring' ? 'daily' : null}, ${d.time ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'flags-v1', ${d.type === 'recurring' ? 'question' : 'tick'}, ${d.points ?? 1})`
+    }
+  } catch (e) { console.error('flag laws seed failed:', e instanceof Error ? e.message : String(e)) }
 }

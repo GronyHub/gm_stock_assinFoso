@@ -7,6 +7,7 @@ import GuideVideo from '@/components/GuideVideo'
 import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
 import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
 import { AREA_VIDEO, fmtTime, lawTime } from '@/lib/lawVideo'
+import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { TOPICS } from '../item/_components/TrainingGuideModal'
 
 type Law = {
@@ -106,7 +107,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     return (
       <div className={`rounded-xl border p-3 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
         {l.status === 'draft' && <p className="mb-1 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
-        {l.code && <p className="mb-0.5 text-[11px] font-extrabold text-[#14213D]">{l.code}{av && lawTime(av, l.text) !== null && <button type="button" onClick={() => seek(lawTime(av, l.text)!)} className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">▶ {fmtTime(lawTime(av, l.text)!)} in the video</button>}</p>}
+        {l.code && <p className="mb-0.5 text-[11px] font-extrabold text-[#14213D]">{l.code}{av && lawTime(av, l) !== null && <button type="button" onClick={() => seek(lawTime(av, l)!)} className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">▶ {fmtTime(lawTime(av, l)!)} in the video</button>}</p>}
         <p className="whitespace-pre-line text-sm text-gray-900">{l.text}</p>
         {lines(l.dos).length > 0 && <ul className="mt-2 space-y-0.5">{lines(l.dos).map((x, i) => <li key={i} className="text-[13px] text-green-800">✓ <span className="text-gray-800">{x}</span></li>)}</ul>}
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
@@ -223,6 +224,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
+          {area.flags && (
+            <div className="space-y-1 rounded-2xl border border-red-200 bg-red-50 p-2">
+              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them</p>
+              <p className="px-1 text-[11px] text-gray-700">Company Law: every flag is fixed as soon as it appears. All flags are in the 🚩 Flags dropdown on Live Sale, and the Daily Checklist asks about them three times a day.</p>
+              {LIVE_SALE_FLAGS.map(f => (
+                <details key={f.key} className="rounded-lg bg-white">
+                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}</summary>
+                  <div className="space-y-1 p-2 text-[13px] text-gray-800">
+                    <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
+                    <p><b>How to clear it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
           {(() => {
             const topics = (area.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter(Boolean) as typeof TOPICS
             return topics.length > 0 ? (
@@ -241,8 +257,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
             const live = catLaws.filter(l => l.status !== 'draft' || canManage)
-            const timed = (t: number) => live.filter(l => lawTime(av, l.text) === t)
-            const untimed = live.filter(l => lawTime(av, l.text) === null)
+            const timed = (t: number) => live.filter(l => lawTime(av, l) === t)
+            const untimed = live.filter(l => lawTime(av, l) === null)
             return (
               <div className="space-y-2">
                 <p className="text-xs font-extrabold uppercase tracking-wide text-[#14213D]">Contents: how to, laws and sanctions, in video order</p>

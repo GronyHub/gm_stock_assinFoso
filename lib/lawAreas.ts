@@ -8,11 +8,12 @@ export type LawArea = {
   video?: string                               // a page video when there is no category video
   guide?: string                               // the page-guide key that used to sit on the page
   howto?: string[]                             // How To topic ids that now live on this tile
+  flags?: boolean                              // this page has flags: list each with its explanation and fix
   addSub?: string                              // subcategory for a law added from this tile
 }
 
 export const LAW_AREAS: LawArea[] = [
-  { key: 'items', group: 'Grony Cash', label: 'Items / Live Sale', icon: '🛒', blurb: 'Tapping sales, items, prices and the app words', match: [{ cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words'] }], training: 'Stock & records', video: '/guides/sale.mp4', guide: 'sale', addSub: 'Recording',
+  { key: 'items', group: 'Grony Cash', label: 'Items / Live Sale', icon: '🛒', blurb: 'Tapping sales, items, prices and the app words', match: [{ cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words', 'Flags'] }], training: 'Stock & records', video: '/guides/sale.mp4', guide: 'sale', addSub: 'Recording', flags: true,
     howto: ['overview', 'tapping-a-sale', 'wic-vs-gmc', 'custom-quantity', 'count-now-banner', 'attention-banners', 'pack-items-gmc-only', 'item-filter', 'type-group-filter', 'search-pick-item', 'edit-item', 'count-cadence', 'exclude-from-counts', 'large-screen', 'laws-flags'] },
   { key: 'log', group: 'Grony Cash', label: 'Sales Log', icon: '📈', blurb: 'Reviewing days, receipts and fixing mistakes', match: [{ cat: 'Stock & records', subs: ['Sales Log'] }], video: '/guides/log.mp4', guide: 'log', addSub: 'Sales Log', howto: ['log-tab', 'sales-tab', 'undo-a-tap'] },
   { key: 'customers', group: 'Grony Cash', label: 'Customers', icon: '👥', blurb: 'Registering customers, WhatsApp and messages', match: [{ cat: 'Customers & WhatsApp' }], training: 'Customers & WhatsApp', video: '/guides/customers.mp4', guide: 'customers', howto: ['customers-how'] },

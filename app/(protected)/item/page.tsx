@@ -62,6 +62,7 @@ import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import CareChildTiles from './_components/CareChildTiles'
+import { LIVE_SALE_FLAGS, flagInfo } from '@/lib/flagGuide'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
@@ -5180,6 +5181,56 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // between them and no way to embed one inside the other, so picking
   // either here is the only way in besides the GMC overage gate's own
   // "Go to Count" button (which lands on Count Due the same way).
+  // Every flag on Live Sale in one list (the 🚩 Flags dropdown): the ones that open the item grid, plus the data flags that open
+  // their own fix view. Same counts the old radio row and Critical bar used.
+  const aliasFlagKeys = ['alias_prezoho_sales', 'alias_prezoho_bills', 'alias_prezoho_receipts', 'alias_flagged', 'alias_ambiguous', 'alias_name_conflicts']
+  const liveSaleFlagList: { value: string; key: string; label: string; n: number }[] = [
+    { value: 'sale:noSp', key: 'noSp', label: 'No Selling Price', n: liveNoSpCount },
+    { value: 'sale:noCp', key: 'noCp', label: 'No Cost Price', n: liveNoCpCount },
+    { value: 'sale:noGroup', key: 'noGroup', label: 'No Group', n: violationCounts.no_group || 0 },
+    { value: 'sale:emptyRow', key: 'emptyRow', label: 'Empty Row', n: liveEmptyRowCount },
+    { value: 'sale:duplicates', key: 'duplicates', label: 'Duplicate Items', n: liveDuplicateCount },
+    { value: 'sale:unlinked', key: 'unlinked', label: 'Unlinked Sales', n: liveUnlinkedCount },
+    { value: 'sale:service', key: 'service', label: 'Service Violations', n: liveServiceViolationCount },
+    { value: 'sale:unknownQty', key: 'unknownQty', label: 'Unknown Quantity', n: liveUnknownQtyCount },
+    { value: 'sale:gmcOverage', key: 'gmcOverage', label: 'GMC Pack Overage', n: liveGmcOverageCount },
+    { value: 'sale:netGain', key: 'netGain', label: 'Net Gain', n: liveNetGainCount },
+    { value: 'sale:needsReview', key: 'needsReview', label: 'Needs Review', n: liveNeedsReviewCount },
+    { value: 'sale:lowConfidenceAlias', key: 'lowConfidenceAlias', label: 'Alias Needs Check', n: liveLowConfidenceAliasCount },
+    { value: 'sale:prezohoNotes', key: 'prezohoNotes', label: 'Ledger Notes', n: livePrezohoNotesCount },
+    { value: 'violation:neg_soh', key: 'neg_soh', label: 'Negative Stock', n: (liveItemsWithViolations as Record<string, number[]>)['neg_soh']?.length ?? 0 },
+    ...ITEMS_FLAG_TYPES.filter(f => aliasFlagKeys.includes(f.key)).map(f => ({ value: `violation:${f.key}`, key: f.key, label: f.label, n: (liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0 })),
+  ]
+  const liveSaleFlagTotal = liveSaleFlagList.reduce((a, f) => a + f.n, 0)
+  const activeFlagValue = itemsPageMode === 'sale' && liveSaleFlagList.some(f => f.value === `sale:${liveSaleViolationFilter}`) ? `sale:${liveSaleViolationFilter}`
+    : liveCurrentView?.kind === 'violation' && liveSaleFlagList.some(f => f.value === `violation:${liveCurrentView.key}`) ? `violation:${liveCurrentView.key}` : ''
+  function pickLiveFlag(v: string) {
+    setLiveSaleFilter(null); setLiveGmcTypeFilter(null)
+    if (!v) { setLiveCurrentView(null); pickSaleFilter('noViolations'); return }
+    if (v.startsWith('sale:')) { setLiveCurrentView(null); pickSaleFilter(v.slice(5) as typeof liveSaleViolationFilter); return }
+    setLiveCurrentView({ kind: 'violation' as const, key: v.slice('violation:'.length) })
+  }
+  // The strip under the toolbar: what the chosen flag means on this page and how to clear it, plus the standing reminder.
+  function renderFlagHelp() {
+    const active = liveSaleFlagList.find(f => f.value === activeFlagValue)
+    const info = active ? flagInfo(active.key) : null
+    return (
+      <div className="border-b border-red-200 bg-red-50 px-2 py-1 text-[11px] text-gray-800">
+        {active && info ? (
+          <details open>
+            <summary className="cursor-pointer font-bold text-red-700">🚩 {info.label} ({active.n}): {info.means}</summary>
+            <p className="mt-0.5"><b>Why it matters:</b> {info.why}</p>
+            <ol className="mt-0.5 list-decimal pl-4">{info.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
+          </details>
+        ) : active ? (
+          <p className="font-bold text-red-700">🚩 {active.label} ({active.n})</p>
+        ) : (
+          <p className="font-semibold text-red-700">🚩 {liveSaleFlagTotal} flag{liveSaleFlagTotal === 1 ? '' : 's'} open on Live Sale. Company Law: fix every flag as soon as it appears. Open 🚩 Flags above and pick one to see how to fix it.</p>
+        )}
+      </div>
+    )
+  }
+
   function renderCriticalBar(only?: 'counts' | 'items' | 'receipts' | 'bills') {
     const show = (k: 'counts' | 'items' | 'receipts' | 'bills') => !only || only === k
     const violationButton = (label: string, count: number, onClick: () => void, textColor: string = 'text-gray-700') => {
@@ -5268,7 +5319,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     else if (lossView === 'items' || lossView === 'sales') {
       if (itemsPageMode === 'bills') section = 'bills'
       else if (itemsPageMode === 'sales') section = 'receipts'
-      else if (itemsPageMode === 'sale') section = 'items'
+      // Live Sale's flags are all in its 🚩 Flags dropdown (see renderFlagHelp), so no separate bar for them.
     }
     return section ? renderCriticalBar(section) : null
   }
@@ -7158,6 +7209,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     ))}
                   </select>
                   </>)}
+                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (
+                    <select value={activeFlagValue} onChange={e => pickLiveFlag(e.target.value)} title="Every flag on this page, in one place"
+                      className={`${COMPACT_SELECT_CLS} ${liveSaleFlagTotal > 0 ? 'border-red-400 bg-red-50 font-bold text-red-700' : 'border-gray-300 bg-white text-gray-900'} flex-1 min-w-0`} style={COMPACT_SELECT_STYLE}>
+                      <option value="">{`🚩 Flags (${liveSaleFlagTotal})`}</option>
+                      {liveSaleFlagList.filter(f => f.n > 0 || f.value === activeFlagValue).map(f => <option key={f.value} value={f.value}>{f.label} ({f.n})</option>)}
+                    </select>
+                  )}
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
@@ -7224,13 +7282,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         </option>
                       )
                     })}
-                    <optgroup label="Items">
-                      {ITEMS_FLAG_TYPES.map(f => (
-                        <option key={f.key} value={`violation:${f.key}`}>
-                          {f.label} ({(liveItemsWithViolations as Record<string, number[]>)[f.key]?.length ?? 0})
-                        </option>
-                      ))}
-                    </optgroup>
                     <optgroup label="Views">
                       <option value="view:aliasWide">Alias Wide Table</option>
                       <option value="view:serviceMatches">Service Matches</option>
@@ -7254,6 +7305,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {isDesktop && (lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                 </PageToolbar>
               )}
+              {showControls && outerTab === 'loss' && liveMode === 'sale' && (lossView === 'sales' || lossView === 'items') && !inCountTab && (liveSaleFlagTotal > 0 || activeFlagValue) && renderFlagHelp()}
               {/* Sale mode filter bar -- now Sale/Log/Receipts' shared row
                   (see the merged "Sales" tab, renderTabSwitcher above): Live
                   plus the rest of these filters only ever apply to the tap-
@@ -7279,108 +7331,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       required" group below instead. */}
                   {/* Live / Log / Receipts radios removed -- each has its own sidebar row. */}
 
-                  {itemsPageMode === 'sale' && (<>
-                  {/* Action-required filters (red) - arranged by priority.
-                      Count Due moved to the Count tab (full-page chart, same
-                      as Records/Loss by Date/Items/Net Loss) and Negative
-                      Stock moved there too (see inCountTab) -- unlike Count
-                      Due it stays a tappable-grid filter rather than a full
-                      page, since fixing a negative-stock item means tapping
-                      it right here, but it's still routed through Count's
-                      own sub-nav now rather than this row. */}
-                  {/* Net Gain -- total counted gains outweighing total losses
-                      should never happen under normal operation, so unlike
-                      Net Loss above, this stays a real violation needing
-                      investigation (a missing bill/GMC record, or a wrong
-                      count). */}
-                  {liveNetGainCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'netGain'} onChange={() => pickSaleFilter('netGain')} className="cursor-pointer w-3 h-3" />
-                    <span>Net Gain ({liveNetGainCount})</span>
-                  </label></>)}
-                  {liveDuplicateCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'duplicates'} onChange={() => pickSaleFilter('duplicates')} className="cursor-pointer w-3 h-3" />
-                    <span>Duplicates ({liveDuplicateCount})</span>
-                  </label></>)}
-                  {/* VCP Jump moved to the Bills tab's own flag panel -- it's
-                      really about historical bill data, not the live
-                      tap-to-sell grid, and that's also where the actual fix
-                      happens. Sold Below Cost moved to P&L's sub-nav instead
-                      (see renderSoldBelowCostTable) -- an actual realized
-                      loss, not a bill-data-hygiene concern. */}
-                  {liveServiceViolationCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'service'} onChange={() => pickSaleFilter('service')} className="cursor-pointer w-3 h-3" />
-                    <span>Service ({liveServiceViolationCount})</span>
-                  </label></>)}
-                  {liveUnlinkedCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unlinked'} onChange={() => pickSaleFilter('unlinked')} className="cursor-pointer w-3 h-3" />
-                    <span>Unlinked ({liveUnlinkedCount})</span>
-                  </label></>)}
-                  {/* Empty Row / Missing Selling Price / Missing Cost Price / Missing Group
-                      moved to Critical bar at top -- now appear in the Critical bar's
-                      Items section to surface them as a quick shortcut. */}
-                  {/* Items with at least one sale line whose quantity is
-                      still unknown after the bizims_historical import left
-                      it NULL and couldn't be safely reconstructed from a
-                      consistent price (see /api/flags' unknownQty) -- worth
-                      a per-item review, same treatment as Missing Selling
-                      Price/Cost Price/Group above. */}
-                  {liveUnknownQtyCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'unknownQty'} onChange={() => pickSaleFilter('unknownQty')} className="cursor-pointer w-3 h-3" />
-                    <span>Unknown Quantity ({liveUnknownQtyCount})</span>
-                  </label></>)}
-                  {/* GMC targets whose current pack cycle has already used
-                      more than it was given, with no newer pack tapped in
-                      yet (see /api/flags' gmcOverage) -- the same condition
-                      as the passive Item 360 "USAGE EXCEEDS PACK" card
-                      badge, surfaced here too so it's reviewable/filterable
-                      instead of easy to miss. */}
-                  {liveGmcOverageCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-600">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'gmcOverage'} onChange={() => pickSaleFilter('gmcOverage')} className="cursor-pointer w-3 h-3" />
-                    <span>GMC Pack Overage ({liveGmcOverageCount})</span>
-                  </label></>)}
-                  {/* Unidentified pre-Zoho stub items (see /api/aliases/wide)
-                      -- reachable here regardless of the "Live" (no
-                      banners) default view, so they can be managed even
-                      with every other banner turned off. */}
-                  {liveNeedsReviewCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-fuchsia-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'needsReview'} onChange={() => pickSaleFilter('needsReview')} className="cursor-pointer w-3 h-3" />
-                    <span>Needs Review ({liveNeedsReviewCount})</span>
-                  </label></>)}
-                  {/* Pre-Zoho aliases resolved by best-guess price/name
-                      heuristics (2+ candidates, no confident winner) rather
-                      than a solid match -- worth a manual check via Merge if
-                      it turns out wrong, same as Needs Review above. */}
-                  {liveLowConfidenceAliasCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-indigo-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'lowConfidenceAlias'} onChange={() => pickSaleFilter('lowConfidenceAlias')} className="cursor-pointer w-3 h-3" />
-                    <span>Alias Needs Check ({liveLowConfidenceAliasCount})</span>
-                  </label></>)}
-                  {/* Pre-Zoho ledger day-cells that held descriptive text
-                      instead of a bare quantity -- already classified as
-                      not a sale (gmc_use/restock/loss/etc.), just surfaced
-                      here for a reviewer to glance over per item. */}
-                  {livePrezohoNotesCount > 0 && (<><span className="text-gray-400 px-1">·</span>
-                  <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-teal-700">
-                    <input type="radio" name="liveViolationFilter" checked={itemsPageMode === 'sale' && liveSaleViolationFilter === 'prezohoNotes'} onChange={() => pickSaleFilter('prezohoNotes')} className="cursor-pointer w-3 h-3" />
-                    <span>Ledger Notes ({livePrezohoNotesCount})</span>
-                  </label></>)}
-                  {/* Receipts' own violations moved to Critical bar at top --
-                      No Cash/Missing Days/Dup Receipt/High WNW/No Attachment
-                      now appear in the Critical bar's Receipts section to
-                      surface them as a quick shortcut. */}
-                  {/* Receipts' own view toggles (not violations, hence
-                      gray/black not red) -- "RC" prefix distinguishes them
-                      from this row's other options now that they share it,
-                      same reasoning as Records/Log/Receipts already needing
-                      to read unambiguously alongside everything else here. */}
-                  </>)}
                   {itemsPageMode === 'sales' && (<>
                   {[
                     { key: 'history', label: 'RC History' },

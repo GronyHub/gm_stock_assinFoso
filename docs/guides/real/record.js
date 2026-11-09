@@ -149,6 +149,12 @@ async function main() {
   const fc = marks.map((m, i) => `[${i + 1}:a]adelay=${m.at}|${m.at}[a${i}]`).join(';') + ';' + marks.map((_, i) => `[a${i}]`).join('') + `amix=inputs=${marks.length}:normalize=0:dropout_transition=0[a]`
   args.push('-filter_complex', fc, '-map', '0:v', '-map', '[a]', '-vf', 'scale=720:1280:flags=lanczos,unsharp=5:5:0.7', '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', '30', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', out)
   const r = spawnSync('ffmpeg', args); if (r.status !== 0) throw new Error('ffmpeg: ' + r.stderr)
+  // The transcript with times: one chapter per step (the narration is the text). Copy it to lib/videoChapters/<tile>.json so the
+  // Company Laws tile can jump the video to any line and to the law each step reads out (a step's lawRe matches that law's text).
+  const strip = h => String(h || '').replace(/<[^>]+>/g, '').replace(/^\d+\.\s*/, '')
+  const chapters = sc.steps.map((st, i) => ({ t: Math.max(0, Math.floor(marks[i].at / 1000)), title: strip(st.caption), text: st.say, ...(st.lawRe ? { lawRe: st.lawRe } : {}) }))
+  fs.writeFileSync(out.replace(/\.mp4$/, '') + '.chapters.json', JSON.stringify({ chapters }, null, 1))
+  console.log('chapters', out.replace(/\.mp4$/, '') + '.chapters.json')
   console.log('wrote', out)
 }
 main().catch(e => { console.error(e); process.exit(1) })
