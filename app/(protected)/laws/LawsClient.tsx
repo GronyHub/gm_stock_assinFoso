@@ -1,17 +1,18 @@
 'use client'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, PROOFS, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
 import GuideVideo from '@/components/GuideVideo'
 import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
 import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
+import { AREA_VIDEO, fmtTime, lawTime } from '@/lib/lawVideo'
 import { TOPICS } from '../item/_components/TrainingGuideModal'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null; proof?: string; points?: number
+  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null
 }
 type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string }
 const json = { 'Content-Type': 'application/json' }
@@ -43,6 +44,12 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => { void load() }, [load])
   const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; staff?: string[]; by?: Record<string, number[]> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
+  const vref = useRef<HTMLVideoElement | null>(null)
+  const [openCh, setOpenCh] = useState<number | null>(null)
+  function seek(t: number) {
+    const v = vref.current; if (!v) return
+    v.scrollIntoView({ behavior: 'smooth', block: 'center' }); v.currentTime = t; void v.play().catch(() => {})
+  }
   const loadSig = useCallback(() => fetch(`/api/law-signatures${canManage ? '?all=1' : ''}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSig(d)).catch(() => {}), [canManage])
   useEffect(() => { void loadSig() }, [loadSig])
   useEffect(() => {
@@ -95,9 +102,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const sched = scheduleText(l)
     const why = whyFor(l.category, l.subcategory)
     const signedAt = (sig?.signed ?? {})[l.id]
+    const av = area ? AREA_VIDEO[area.key] : undefined
     return (
       <div className={`rounded-xl border p-3 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
         {l.status === 'draft' && <p className="mb-1 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
+        {l.code && <p className="mb-0.5 text-[11px] font-extrabold text-[#14213D]">{l.code}{av && lawTime(av, l.text) !== null && <button type="button" onClick={() => seek(lawTime(av, l.text)!)} className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-800">▶ {fmtTime(lawTime(av, l.text)!)} in the video</button>}</p>}
         <p className="whitespace-pre-line text-sm text-gray-900">{l.text}</p>
         {lines(l.dos).length > 0 && <ul className="mt-2 space-y-0.5">{lines(l.dos).map((x, i) => <li key={i} className="text-[13px] text-green-800">✓ <span className="text-gray-800">{x}</span></li>)}</ul>}
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
@@ -202,10 +211,16 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           </div>
           <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>
           {(() => { const w = whyForArea(area.key, area.match[0]?.cat ?? ''); return w ? <details open className="rounded-xl border border-blue-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">Why this matters</summary><WhyBox w={w} /></details> : null })()}
-          {area.training && hasTraining(area.training)
+          {AREA_VIDEO[area.key] && area.guide ? (
+            <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
+              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
+              <GuideVideo page={area.guide} videoRef={vref} />
+              {area.training && hasTraining(area.training) && <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} hideVideo />}
+            </div>
+          ) : area.training && hasTraining(area.training)
             ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} />
             : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
-          {area.training && hasTraining(area.training) && area.guide && (
+          {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
           {(() => {
@@ -223,7 +238,36 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <div className="mt-1 space-y-0.5">{sig.staff.map(n => { const ids = catLaws.filter(l => l.status !== 'draft').map(l => l.id); const done = ids.filter(id => (sig.by![n] ?? []).includes(id)).length; return <p key={n} className="text-[13px] text-gray-800"><b className="capitalize">{n}</b>: <span className={done === ids.length ? 'font-bold text-green-700' : 'font-bold text-amber-700'}>{done} of {ids.length}</span></p> })}</div>
             </details>
           )}
-          {subs.map(sub => (
+          {AREA_VIDEO[area.key] && (() => {
+            const av = AREA_VIDEO[area.key]
+            const live = catLaws.filter(l => l.status !== 'draft' || canManage)
+            const timed = (t: number) => live.filter(l => lawTime(av, l.text) === t)
+            const untimed = live.filter(l => lawTime(av, l.text) === null)
+            return (
+              <div className="space-y-2">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-[#14213D]">Contents: how to, laws and sanctions, in video order</p>
+                {av.chapters.map(c => (
+                  <div key={c.t} className="space-y-1.5">
+                    <div className="rounded-xl border border-gray-200 bg-white">
+                      <button type="button" onClick={() => { setOpenCh(openCh === c.t ? null : c.t); seek(c.t) }} className="flex w-full items-start gap-2 p-2 text-left">
+                        <span className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">▶ {fmtTime(c.t)}</span>
+                        <span className="text-sm font-semibold text-gray-900"><span className="mr-1 text-[10px] font-extrabold uppercase text-gray-400">How to</span>{c.title}</span>
+                      </button>
+                      {openCh === c.t && <p className="border-t border-gray-100 p-2 text-[13px] text-gray-700">{c.text}</p>}
+                    </div>
+                    {timed(c.t).map(l => <LawCard key={l.id} l={l} />)}
+                  </div>
+                ))}
+                {untimed.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="pt-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">Not in the video yet</p>
+                    {untimed.map(l => <LawCard key={l.id} l={l} />)}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+          {!AREA_VIDEO[area.key] && subs.map(sub => (
             <div key={sub}>
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
               <div className="space-y-2">{catLaws.filter(l => (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>

@@ -73,6 +73,7 @@ async function ensureCompanyLawsImpl() {
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
   await seedSanctionsLaw()
   await seedCashLaws()
+  await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
 }
@@ -201,4 +202,21 @@ async function seedCashLaws() {
         VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'cash-v1')`
     }
   } catch (e) { console.error('cash laws seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Every law on a tile that has a code prefix gets a short code (LS-1, LS-2...) the first time it is seen. A code never
+// changes afterwards, so staff, videos and sanctions can all refer to it.
+const CODED_AREAS: { prefix: string; cat: string; subs: string[] }[] = [
+  { prefix: 'LS', cat: 'Stock & records', subs: ['Item list', 'Prices', 'Recording', 'Know the words'] },
+]
+async function assignLawCodes() {
+  try {
+    await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS code TEXT`
+    for (const a of CODED_AREAS) {
+      const rows = await sql`SELECT id, code FROM page_laws WHERE category = ${a.cat} AND subcategory = ANY(${a.subs}) ORDER BY id`
+      let max = 0
+      for (const r of rows) { const m = String(r.code ?? '').match(/-(\d+)$/); if (m) max = Math.max(max, Number(m[1])) }
+      for (const r of rows) if (!r.code) await sql`UPDATE page_laws SET code = ${a.prefix + '-' + ++max} WHERE id = ${r.id} AND code IS NULL`
+    }
+  } catch (e) { console.error('law codes failed:', e instanceof Error ? e.message : String(e)) }
 }

@@ -22,7 +22,7 @@ export function useQuizMine() {
 }
 
 // One unit with the category's laws: the video, the related videos, and a short quiz.
-export default function CategoryTraining({ cat, result, onDone }: { cat: string; result?: { score: number; total: number; passed: boolean }; onDone: () => void }) {
+export default function CategoryTraining({ cat, result, onDone, hideVideo }: { cat: string; result?: { score: number; total: number; passed: boolean }; onDone: () => void; hideVideo?: boolean }) {
   const t = data[cat]
   const [answers, setAnswers] = useState<number[]>([])
   const [shown, setShown] = useState<{ score: number; total: number; passed: boolean } | null>(null)
@@ -41,9 +41,9 @@ export default function CategoryTraining({ cat, result, onDone }: { cat: string;
 
   return (
     <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
-      <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {cat}</p>
-      <video key={t.video} src={t.video} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />
-      {t.related.length > 0 && (
+      {!hideVideo && <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {cat}</p>}
+      {!hideVideo && <video key={t.video} src={t.video} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
+      {!hideVideo && t.related.length > 0 && (
         <div className="space-y-1">
           <p className="px-1 text-[11px] font-bold text-gray-600">More videos for this category</p>
           {t.related.map(v => (
