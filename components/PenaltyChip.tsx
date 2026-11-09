@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 export type PenaltyMe = {
   points: number; learning: boolean; countingFrom: string; warnings: number; fadeIn: number | null
   next: { points: number; days: number; hours: number; label: string } | null
-  entries: { id: number; points: number; kind: string; reason: string; day: string; counted: boolean; status: string }[]
+  entries: { id: number; points: number; kind: string; reason: string; day: string; counted: boolean; status: string; source?: string; law_code?: string | null; violation?: string | null; dispute_note?: string | null; ack_at?: string | null; withdraw_reason?: string | null }[]
   sanctions: { id: number; tier: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }[]
 }
 let cached: PenaltyMe | null = null
@@ -16,6 +16,7 @@ function load(force = false) {
   if (!pending) pending = fetch('/api/penalties/me', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) { cached = d; at = Date.now(); subs.forEach(f => f()) } }).catch(() => {}).finally(() => { pending = null })
   return pending
 }
+export const reloadPenalty = () => load(true)
 export function usePenalty(): PenaltyMe | null {
   const [v, setV] = useState<PenaltyMe | null>(cached)
   useEffect(() => { const f = () => setV(cached); subs.add(f); void load(); return () => { subs.delete(f) } }, [])
@@ -41,6 +42,11 @@ const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-
 // The full picture, at the top of the profile page.
 export function PenaltyCard() {
   const p = usePenalty()
+  async function act(id: number, action: 'acknowledge' | 'dispute', note?: string) {
+    const r = await fetch(`/api/penalties/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, note }) })
+    if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.error ?? 'Could not save'); return }
+    await reloadPenalty()
+  }
   if (!p) return null
   const b = band(p.points)
   const target = p.next?.points ?? 50
@@ -68,7 +74,15 @@ export function PenaltyCard() {
             {p.entries.map(e => (
               <div key={e.id} className={`rounded-lg px-2 py-1 text-[11px] ${e.status === 'pending' ? 'bg-amber-50' : e.points < 0 ? 'bg-green-50' : e.counted ? 'bg-red-50' : 'bg-gray-50'}`}>
                 <b>{e.points > 0 ? `+${e.points}` : e.points}</b> · {dlabel(e.day)} · {e.reason}
-                {e.status === 'pending' ? ' (waiting for the owner to confirm)' : e.points > 0 && !e.counted ? ' (warning, did not count)' : ''}
+                {e.status === 'pending' ? ' (waiting for the owner to confirm)' : e.points > 0 && !e.counted && e.status === 'active' ? ' (warning, did not count)' : ''}
+                {e.status === 'disputed' && <span className="block font-semibold text-amber-800">You disputed this: {e.dispute_note}. It does not count until the owner decides.</span>}
+                {e.status === 'withdrawn' && <span className="block font-semibold text-green-800">Withdrawn: {e.withdraw_reason}</span>}
+                {e.source === 'manual' && ['active', 'pending'].includes(e.status) && (
+                  <span className="mt-1 flex gap-2">
+                    {e.ack_at ? <span className="font-semibold text-gray-500">Acknowledged</span> : <button type="button" onClick={() => void act(e.id, 'acknowledge')} className="rounded-lg bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-800">Acknowledge</button>}
+                    <button type="button" onClick={() => { const note = prompt('Why do you dispute this? Write what happened.'); if (note) void act(e.id, 'dispute', note) }} className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Dispute</button>
+                  </span>
+                )}
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ export async function GET() {
     const st = await getSettings()
     const points = await totalPoints(me)
     const entries = await sql`
-      SELECT id, points, kind, reason, source, day, counted, status FROM staff_penalties
+      SELECT id, points, kind, reason, source, day, counted, status, law_code, violation, dispute_note, ack_at, withdraw_reason FROM staff_penalties
       WHERE staff = ${me} AND status <> 'reversed' ORDER BY day DESC, id DESC LIMIT 40`
     const [w] = await sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${me} AND status = 'active' AND NOT counted AND kind = 'violation'`
     const [lr] = await sql`SELECT MAX(day) FILTER (WHERE kind IN ('violation', 'fade') AND counted AND status = 'active') AS last FROM staff_penalties WHERE staff = ${me}`

@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
+import { parseViolations } from '@/lib/lawViolations'
 
 // One row per law, scoped to a page the same way custom_tasks/page_notes
 // are (scope_key namespace) -- unlike Notes (PageLawsNote, still one
@@ -67,6 +68,7 @@ async function ensureCompanyLawsImpl() {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT`.catch(() => {})
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
@@ -77,6 +79,7 @@ async function ensureCompanyLawsImpl() {
   await approveOnce('flags-v1', 'The owner asked for the flag laws and checks')
   await approveOnce('flags-v2', 'The owner asked for one Fix flags law')
   await assignLawCodes()
+  await seedViolationLines()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
 }
@@ -132,6 +135,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
+    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500),
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
@@ -247,4 +251,36 @@ async function seedFlagLaws() {
         VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', 'Flags', ${d.type}, ${d.type === 'recurring' ? 'daily' : null}, ${d.time ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'flags-v2', ${d.type === 'recurring' ? 'question' : 'tick'}, ${d.points ?? 1})`
     }
   } catch (e) { console.error('flag laws seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The first violation lines, written once for the laws of the Grony Cash pages (the owner edits them from the law). A law whose text
+// is not recognised is left empty for the owner to fill in.
+const V = (text: string, points = 1) => ({ text, points, by: 'manager' as const })
+const VIOLATION_RULES: { re: RegExp; v: ReturnType<typeof V>[]; not?: string }[] = [
+  { re: /Every walk-in sale goes in Live Sale/i, v: [V('A sale is not recorded in Live Sale as soon as it happens'), V('Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC'), V('A customer is not given a receipt for a sale'), V('Several items for one customer are recorded as separate sales and not through MI'), V('A new item is created without first searching for an existing one')], not: 'Shop use recorded with the GMC button. A sale recorded a little late because the customer was still choosing.' },
+  { re: /Past days are entered only/i, v: [V('A past day is entered without + Past sale, or with the wrong sale date'), V('The same sale or work is typed twice')] },
+  { re: /Receipts are issued from MI/i, v: [V('A receipt is typed by hand into Customer Receipts'), V('A sale the app refused is forced through instead of telling Joe')] },
+  { re: /Item groups checked/i, v: [V('The weekly item group check is not done on its day'), V('An item is left in the wrong group, or in no group, after the check')] },
+  { re: /price list is current/i, v: [V('The monthly price check is not done'), V('An old price is sold after the price list was updated')] },
+  { re: /App words/i, v: [V('An entry is made with the wrong term, for example shop use recorded as a sale')] },
+  { re: /^Fix flags/i, v: [V('A flag is left open overnight', 2), V('An item is edited only to make a flag disappear', 2), V('A flag that cannot be fixed is not reported to Joe')] },
+  { re: /Check the Sales Log at closing/i, v: [V('The closing Sales Log check is not done'), V('A cash difference is not written down and told to Joe before leaving')] },
+  { re: /wrong tap is undone in the Sales Log/i, v: [V('A wrong tap is left uncorrected overnight'), V('A sale is deleted or hidden to make a figure match', 3)] },
+  { re: /receipt comes from the Sales Log or MI/i, v: [V('A customer receipt is retyped or rewritten')] },
+  { re: /open Item 360 and find the cause/i, v: [V('An item is edited to change a loss, negative stock or price before its cause is found')] },
+  { re: /changed only to fix a real mistake/i, v: [V('An item is edited to hide a loss or make a count match', 3)] },
+  { re: /Review Loss by Date/i, v: [V('The weekly loss review is not done'), V('An item with repeated losses is not counted again and its cause not written')] },
+  { re: /not sold for a long time|Longest Unbought/i, v: [V('A long-unsold item is reordered without telling Joe')] },
+]
+async function seedViolationLines() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('violations-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const rows = await sql`SELECT id, text FROM page_laws WHERE (violations IS NULL OR violations = '') AND category = 'Stock & records'` as unknown as { id: number; text: string }[]
+    for (const r of rows) {
+      const rule = VIOLATION_RULES.find(x => x.re.test(r.text))
+      if (rule) await sql`UPDATE page_laws SET violations = ${JSON.stringify(rule.v)}, not_violation = ${rule.not ?? null} WHERE id = ${r.id}`
+    }
+  } catch (e) { console.error('violation lines seed failed:', e instanceof Error ? e.message : String(e)) }
 }

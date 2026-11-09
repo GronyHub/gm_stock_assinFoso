@@ -30,6 +30,7 @@ export const ensurePenalties = once(async () => {
     status TEXT NOT NULL DEFAULT 'active', created_by TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), note TEXT)`.catch(() => {})
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS staff_penalties_ref ON staff_penalties (staff, source, ref) WHERE ref IS NOT NULL`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS staff_penalties_staff ON staff_penalties (staff)`.catch(() => {})
+  await sql`ALTER TABLE staff_penalties ADD COLUMN IF NOT EXISTS violation TEXT, ADD COLUMN IF NOT EXISTS law_code TEXT, ADD COLUMN IF NOT EXISTS dispute_note TEXT, ADD COLUMN IF NOT EXISTS ack_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS withdraw_reason TEXT`.catch(() => {})
   await sql`CREATE TABLE IF NOT EXISTS penalty_sanctions (
     id SERIAL PRIMARY KEY, staff TEXT NOT NULL, tier INTEGER NOT NULL, points_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'proposed',
     days INTEGER NOT NULL DEFAULT 0, hours INTEGER NOT NULL DEFAULT 0, start_date TEXT, end_date TEXT,
@@ -55,15 +56,15 @@ export async function totalPoints(staff: string): Promise<number> {
   return Math.max(0, Number(r?.t ?? 0))
 }
 
-type Add = { staff: string; points?: number; reason: string; source: string; ref?: string; day?: string; lawId?: number | null; status?: 'active' | 'pending'; by?: string }
+type Add = { staff: string; points?: number; reason: string; source: string; ref?: string; day?: string; lawId?: number | null; status?: 'active' | 'pending'; by?: string; violation?: string; lawCode?: string | null }
 // Records a violation. During the learning period it is a warning (does not count); a pending one waits for the owner.
 export async function addPoint(a: Add) {
   await ensurePenalties()
   const staff = a.staff.toLowerCase(), day = a.day ?? dayKey(), points = a.points ?? 1, status = a.status ?? 'active'
   const counted = status === 'active' && await isCounting(day)
   const before = await totalPoints(staff)
-  const [row] = await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, ref, day, law_id, counted, status, created_by)
-    VALUES (${staff}, ${points}, 'violation', ${a.reason}, ${a.source}, ${a.ref ?? null}, ${day}, ${a.lawId ?? null}, ${counted}, ${status}, ${a.by ?? 'system'})
+  const [row] = await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, ref, day, law_id, counted, status, created_by, violation, law_code)
+    VALUES (${staff}, ${points}, 'violation', ${a.reason}, ${a.source}, ${a.ref ?? null}, ${day}, ${a.lawId ?? null}, ${counted}, ${status}, ${a.by ?? 'system'}, ${a.violation ?? null}, ${a.lawCode ?? null})
     ON CONFLICT DO NOTHING RETURNING id, staff, points, reason, counted, status`
   if (!row) return null
   if (status === 'active') {

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 type Person = { staff: string; display_name: string; role: string; points: number; warnings: number }
-type Pending = { id: number; staff: string; points: number; reason: string; day: string; created_by: string }
+type Pending = { id: number; staff: string; points: number; reason: string; day: string; created_by: string; status?: string; dispute_note?: string | null }
 type Sanction = { id: number; staff: string; tier: number; points_at: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }
 type Entry = { id: number; staff: string; points: number; kind: string; reason: string; source: string; day: string; counted: boolean; status: string; created_by: string | null }
 type Data = { settings: { launch: string; startCounting: string }; people: Person[]; pending: Pending[]; sanctions: Sanction[]; recent: Entry[]; laws: { id: number; text: string; category: string; points: number }[] }
@@ -69,15 +69,23 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
 
         {d.pending.length > 0 && (
           <div className="mb-3 space-y-2">
-            <p className="text-xs font-extrabold uppercase text-amber-700">Reports waiting for you to confirm ({d.pending.length})</p>
+            <p className="text-xs font-extrabold uppercase text-amber-700">Waiting for you: reports to confirm and disputed violations ({d.pending.length})</p>
             {d.pending.map(p => (
               <div key={p.id} className="rounded-xl border border-amber-300 bg-amber-50 p-3">
                 <p className="text-sm font-bold text-gray-900">{cap(p.staff)} · {p.points} point</p>
                 <p className="text-xs text-gray-700">{p.reason}</p><p className="text-[10px] text-gray-500">{dlabel(p.day)} · reported by {cap(p.created_by ?? '')}</p>
+                {p.status === 'disputed' && <p className="mt-1 rounded-lg bg-white p-2 text-xs text-red-800"><b>Disputed by {cap(p.staff)}:</b> {p.dispute_note}</p>}
+                {p.status === 'disputed' ? (
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'uphold' }) }, 'Violation upheld')} className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white">Uphold: it counts</button>
+                  <button type="button" onClick={() => { const reason = prompt('Why is it withdrawn? (kept on record)'); if (reason) void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'withdraw', reason }) }, 'Violation withdrawn') }} className="flex-1 rounded-lg bg-gray-200 py-1.5 text-xs font-bold text-gray-800">Withdraw</button>
+                </div>
+                ) : (
                 <div className="mt-2 flex gap-2">
                   <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'confirm' }) }, 'Point confirmed')} className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white">Confirm the point</button>
                   <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'dismiss' }) }, 'Dismissed')} className="flex-1 rounded-lg bg-gray-200 py-1.5 text-xs font-bold text-gray-800">Dismiss</button>
                 </div>
+                )}
               </div>
             ))}
           </div>

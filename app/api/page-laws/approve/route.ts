@@ -1,5 +1,6 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
+import sql from '@/lib/db'
 import { approveDrafts } from '@/lib/lawTiles'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -14,6 +15,10 @@ export async function POST(req: NextRequest) {
     const b = await req.json().catch(() => ({}))
     const id = Number(b.id), category = String(b.category ?? '')
     if (!id && !category) return badRequest('Say which law or category.')
+    const bare = id
+      ? await sql`SELECT code, left(text, 60) AS t FROM page_laws WHERE id = ${id} AND status = 'draft' AND (violations IS NULL OR violations = '' OR violations = '[]')`
+      : await sql`SELECT code, left(text, 60) AS t FROM page_laws WHERE category = ${category ?? ''} AND status = 'draft' AND (violations IS NULL OR violations = '' OR violations = '[]')`
+    if (bare.length) return badRequest(`Every law needs at least one violation before it goes live. Missing: ${bare.map(b => b.code ?? b.t).join('; ')}. Edit the law and add what breaks it.`)
     const n = await approveDrafts(id ? { id } : { category })
     return success({ approved: n })
   } catch (e) { return handleError('page-laws approve', e) }
