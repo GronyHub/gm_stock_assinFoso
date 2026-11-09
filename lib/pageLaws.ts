@@ -72,6 +72,7 @@ async function ensureCompanyLawsImpl() {
   await (await import('./lawDraftsMore')).seedMoreLaws()
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
   await seedSanctionsLaw()
+  await seedCashLaws()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
 }
@@ -178,4 +179,26 @@ async function seedSanctionsLaw() {
       VALUES ('Staff management', ${'Sanctions: every violation of the Company Laws costs penalty points (each law shows its points; for now it is 1). Your points are always shown at the top of your profile. 20 points is a 3-day suspension with 10 hours deducted. 30 points is a 1-week suspension with 20 hours deducted. 50 points is dismissal. The owner approves every sanction. After a suspension your points drop to half the level. Points reduce by 5 after a clean record for a week. Everyone clocked in shares any checklist task left undone at the end of the day (at most 3 points a day each). The first two weeks are a learning period: violations are warnings and do not count.'},
               false, 'law', 'Staff management', 'Sanctions', 'standing', ${'20 points: 3-day suspension, 10 hours deducted\n30 points: 1-week suspension, 20 hours deducted\n50 points: dismissal\nA clean week: 5 points come off'}, 'live', 'sanctions-v1', 0)`
   } catch (e) { console.error('sanctions law seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Laws for the Grony Cash pages that had none (Sales Log, Item 360, Losses and analytics). They start as drafts: the owner
+// reads them on their tile and approves.
+const CASH_DRAFTS: { sub: string; type: 'recurring' | 'standing'; text: string; freq?: string; days?: string; time?: string; mins?: number; dos?: string; donts?: string }[] = [
+  { sub: 'Sales Log', type: 'recurring', freq: 'daily', time: '18:15', mins: 5, text: 'Check the Sales Log at closing: every sale of the day is there, the day\'s cash is counted and matches the log, and any difference is written down and told to Joe before leaving.', dos: 'Open the Sales Log and the day\'s receipts\nCount the cash and compare\nWrite down any difference and tell Joe' },
+  { sub: 'Sales Log', type: 'standing', text: 'A wrong tap is undone in the Sales Log the same day. A sale is never deleted or hidden to make a figure match.', dos: 'Undo the tap and enter the right sale\nTell Joe if the day is already closed', donts: 'Delete a sale to hide a difference' },
+  { sub: 'Sales Log', type: 'standing', text: 'A customer\'s receipt comes from the Sales Log or MI. It is never retyped or rewritten.' },
+  { sub: 'Item 360', type: 'standing', text: 'When an item shows a loss, negative stock or a wrong price, open Item 360 and find the cause (a bill, count, sale or edit) before changing anything.', dos: 'Read the item\'s history\nFix the record that caused it\nTell Joe if you cannot find the cause' },
+  { sub: 'Item 360', type: 'standing', text: 'Item details are changed only to fix a real mistake, never to hide a loss or make a count match.' },
+  { sub: 'Losses and analytics', type: 'recurring', freq: 'weekly', days: 'mon', time: '10:00', mins: 15, text: 'Review Loss by Date and Loss by Items. Any item with repeated losses is counted again and the likely cause is written down for Joe.', dos: 'Open Losses, then Loss by Items\nCount the worst items again\nWrite the likely cause' },
+  { sub: 'Losses and analytics', type: 'standing', text: 'Items that have not sold for a long time (Goods: Longest Unbought) are reported to Joe so they are not reordered by mistake.' },
+]
+async function seedCashLaws() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'cash-v1'`
+    if (n > 0) return
+    for (const d of CASH_DRAFTS) {
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed)
+        VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'cash-v1')`
+    }
+  } catch (e) { console.error('cash laws seed failed:', e instanceof Error ? e.message : String(e)) }
 }

@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { TOPICS } from '../item/_components/TrainingGuideModal'
+import { MOVED_TOPIC_IDS } from '@/lib/lawAreas'
 
 const OWNER_GROUPS = new Set(['Development Setup', 'Troubleshooting', 'Hosting & Infrastructure', 'Design with Claude AI'])
 const OWNER_IDS = new Set(['bills-tab'])
@@ -10,7 +11,7 @@ export const isOwnerTopic = (t: { id: string; group: string }) => OWNER_GROUPS.h
 export default function GuideClient({ mode }: { mode: 'howto' | 'owner' }) {
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
-  const topics = useMemo(() => TOPICS.filter(t => (mode === 'owner') === isOwnerTopic(t)), [mode])
+  const topics = useMemo(() => TOPICS.filter(t => !MOVED_TOPIC_IDS.has(t.id) && (mode === 'owner') === isOwnerTopic(t)), [mode])
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return q ? topics.filter(t => t.title.toLowerCase().includes(q) || t.keywords.includes(q) || t.group.toLowerCase().includes(q)) : topics

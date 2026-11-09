@@ -9,6 +9,7 @@ import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
 import ServiceStrip from '@/components/ServiceStrip'
 import ServiceDailyCard from '@/components/ServiceDailyCard'
+import LawSignPrompt from '@/components/LawSignPrompt'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -49,6 +50,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <CaretakerGuard />
       <ServiceDailyCard />
       <PhotoReminder />
+      <LawSignPrompt />
     </div>
   )
 }

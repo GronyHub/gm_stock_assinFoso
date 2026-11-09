@@ -3,6 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, PROOFS, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
+import GuideVideo from '@/components/GuideVideo'
+import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
+import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
+import { TOPICS } from '../item/_components/TrainingGuideModal'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
@@ -37,15 +41,33 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     } catch (e) { setError((e as Error).message) }
   }, [])
   useEffect(() => { void load() }, [load])
-  useEffect(() => { const c = new URLSearchParams(window.location.search).get('cat'); if (c) setCat(c) }, [])
+  const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; staff?: string[]; by?: Record<string, number[]> } | null>(null)
+  const [signOnly, setSignOnly] = useState(false)
+  const loadSig = useCallback(() => fetch(`/api/law-signatures${canManage ? '?all=1' : ''}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSig(d)).catch(() => {}), [canManage])
+  useEffect(() => { void loadSig() }, [loadSig])
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const t = q.get('tile'), c = q.get('cat')
+    if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
+    if (q.get('sign')) setSignOnly(true)
+  }, [])
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
-  const byCat = useMemo(() => {
-    const m = new Map<string, Law[]>()
-    for (const l of laws ?? []) { const k = l.category ?? UNCATEGORISED; if (!m.has(k)) m.set(k, []); m.get(k)!.push(l) }
-    return m
-  }, [laws])
-  const tiles = [...LAW_CATEGORIES.map(c => ({ ...c })), ...(canManage && byCat.has(UNCATEGORISED) ? [{ key: UNCATEGORISED, icon: '❓', blurb: 'Laws added the old way. Give each a category.' }] : [])]
+  const areas: LawArea[] = useMemo(() => {
+    const list = LAW_AREAS.filter(a => canManage || !a.ownerOnly)
+    const unc = (laws ?? []).some(l => !l.category)
+    return canManage && unc ? [...list, { key: UNCATEGORISED, group: 'Grony Manage' as const, label: UNCATEGORISED, icon: '❓', blurb: 'Laws added the old way. Give each a category.', match: [] }] : list
+  }, [canManage, laws])
+  const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l))
+  const unsignedIn = (a: LawArea) => areaLaws(a).filter(l => l.status !== 'draft' && !(sig?.signed ?? {})[l.id])
+  useEffect(() => {
+    if (!signOnly || !sig || !laws || cat) return
+    const first = areas.find(a => unsignedIn(a).length > 0)
+    if (first) setCat(first.key)
+    setSignOnly(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signOnly, sig, laws])
+  const tiles = areas
   const searching = q.trim().length > 1
   const hits = searching ? (laws ?? []).filter(l => (l.text + ' ' + (l.subcategory ?? '') + ' ' + (l.dos ?? '') + ' ' + (l.donts ?? '')).toLowerCase().includes(q.trim().toLowerCase())) : []
 
@@ -60,14 +82,31 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (r.ok) { flash(d.approved ? `Approved ${d.approved}. Tiles are in the Daily Checklist.` : 'Tiles created'); void load() } else flash(d.error ?? 'Could not approve')
   }
 
+  async function signLaws(ids: number[]) {
+    const r = await fetch('/api/law-signatures', { method: 'POST', headers: json, body: JSON.stringify({ ids }) })
+    if (r.ok) { flash(ids.length > 1 ? 'Signed. Thank you.' : 'Signed'); void loadSig() } else flash('Could not sign')
+  }
+  const WhyBox = ({ w }: { w: Why }) => (
+    <div className="mt-2 space-y-1 rounded-lg bg-blue-50 p-2 text-[12px] text-gray-800">
+      <p><b>Why it exists:</b> {w.exists}</p><p><b>What it solves:</b> {w.solves}</p><p><b>How it helps the business:</b> {w.helps}</p><p className="text-red-800"><b>If it is not done:</b> {w.loss}</p>
+    </div>
+  )
   const LawCard = ({ l }: { l: Law }) => {
     const sched = scheduleText(l)
+    const why = whyFor(l.category, l.subcategory)
+    const signedAt = (sig?.signed ?? {})[l.id]
     return (
       <div className={`rounded-xl border p-3 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
         {l.status === 'draft' && <p className="mb-1 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <p className="whitespace-pre-line text-sm text-gray-900">{l.text}</p>
         {lines(l.dos).length > 0 && <ul className="mt-2 space-y-0.5">{lines(l.dos).map((x, i) => <li key={i} className="text-[13px] text-green-800">✓ <span className="text-gray-800">{x}</span></li>)}</ul>}
         {lines(l.donts).length > 0 && <ul className="mt-1 space-y-0.5">{lines(l.donts).map((x, i) => <li key={i} className="text-[13px] text-red-700">✗ <span className="text-gray-800">{x}</span></li>)}</ul>}
+        {why && <details className="mt-1"><summary className="cursor-pointer text-[11px] font-bold text-blue-700">Why this law?</summary><WhyBox w={why} /></details>}
+        {!canManage && l.status !== 'draft' && (
+          <div className="mt-2">{signedAt
+            ? <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">✍ Signed {new Date(signedAt).toLocaleDateString()}</span>
+            : <button type="button" onClick={() => void signLaws([l.id])} className="rounded-lg bg-green-600 px-3 py-1 text-xs font-bold text-white">✍ I have read this and will follow it. Sign</button>}</div>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeLabel(l.law_type)}</span>
           {(l.points ?? 1) > 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">⚖ {l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'} if broken</span>}
@@ -90,15 +129,18 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (!canManage || !cat) { setOldTiles([]); return }
     fetch('/api/daily-checks/tiles').then(r => r.ok ? r.json() : null).then(d => d?.tiles && setOldTiles(d.tiles)).catch(() => {})
   }, [cat, canManage, laws])
-  const kw = cat && CATEGORY_KEYWORDS[cat] ? new RegExp(CATEGORY_KEYWORDS[cat], 'i') : null
+  const area = tiles.find(c => c.key === cat) ?? null
+  const kwCat = area?.match[0]?.cat
+  const kw = kwCat && CATEGORY_KEYWORDS[kwCat] ? new RegExp(CATEGORY_KEYWORDS[kwCat], 'i') : null
   const candidates = kw ? oldTiles.filter(t => t.active && !t.law_id && t.created_by === 'template' && kw.test(t.title)) : []
   async function stopPicked() {
     if (!pick.size || !confirm(`Stop ${pick.size} old tile${pick.size === 1 ? '' : 's'}? Their past records are kept and you can restore them in the Tile Manager.`)) return
     for (const id of pick) await fetch(`/api/daily-checks/${id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ active: false }) })
     flash('Old tiles stopped'); setPick(new Set()); setOldTiles(o => o.map(t => pick.has(t.id) ? { ...t, active: false } : t))
   }
-  const catInfo = tiles.find(c => c.key === cat)
-  const catLaws = cat ? (byCat.get(cat) ?? []) : []
+  const catInfo = area
+  const catLaws = area ? areaLaws(area) : []
+  const blankFor = (a: LawArea): Draft => ({ ...blank(a.match[0]?.cat ?? ''), subcategory: a.addSub ?? a.match[0]?.subs?.[0] ?? '' })
   const subs = Array.from(new Set(catLaws.map(l => l.subcategory ?? 'General')))
 
   return (
@@ -116,42 +158,69 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       {laws && searching && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-500">{hits.length} law{hits.length === 1 ? '' : 's'} found</p>
-          {hits.map(l => (<div key={l.id}><button type="button" onClick={() => { setQ(''); setCat(l.category ?? UNCATEGORISED) }} className="mb-0.5 text-[11px] font-bold text-blue-700 underline">{l.category ?? UNCATEGORISED}{l.subcategory ? ` › ${l.subcategory}` : ''}</button><LawCard l={l} /></div>))}
+          {hits.map(l => (<div key={l.id}><button type="button" onClick={() => { setQ(''); setCat((tiles.find(a => lawInArea(a, l)) ?? { key: UNCATEGORISED }).key) }} className="mb-0.5 text-[11px] font-bold text-blue-700 underline">{l.category ?? UNCATEGORISED}{l.subcategory ? ` › ${l.subcategory}` : ''}</button><LawCard l={l} /></div>))}
         </div>
       )}
 
       {laws && !searching && !cat && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {tiles.map(c => {
-            const list = byCat.get(c.key) ?? []
-            const sched = list.filter(l => l.law_type === 'recurring').length
-            return (
-              <button key={c.key} type="button" onClick={() => setCat(c.key)} className="flex min-h-[130px] flex-col items-center rounded-2xl border-2 border-gray-200 bg-white p-3 text-center active:opacity-70">
-                <span className="text-4xl leading-none">{c.icon}</span>
-                <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.key}</span>
-                <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
-                {hasTraining(c.key) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${quizMine[c.key]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{quizMine[c.key]?.passed ? '🎬 Quiz passed' : '🎬 Video + quiz'}</span>}
-                <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{list.filter(l => l.status !== 'draft').length} law{list.filter(l => l.status !== 'draft').length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
-                {list.some(l => l.status === 'draft') && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}
-              </button>
-            )
-          })}
+        <div className="space-y-4">
+          {!canManage && (sig?.unsigned ?? 0) > 0 && <div className="rounded-xl border border-amber-300 bg-amber-50 p-2 text-sm font-semibold text-amber-900">✍ You have {sig?.unsigned} law{sig?.unsigned === 1 ? '' : 's'} to sign. Open a tile marked to sign and sign each law.</div>}
+          {(['Grony Cash', 'Grony Manage'] as const).map(group => (
+            <div key={group}>
+              <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{group}{group === 'Grony Cash' ? ' (the sidebar pages)' : ' (running the shop)'}</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {tiles.filter(a => a.group === group).map(c => {
+                  const list = areaLaws(c)
+                  const sched = list.filter(l => l.law_type === 'recurring').length
+                  const live = list.filter(l => l.status !== 'draft')
+                  const todo = unsignedIn(c).length
+                  const t = c.training && hasTraining(c.training) ? c.training : null
+                  return (
+                    <button key={c.key} type="button" onClick={() => setCat(c.key)} className="flex min-h-[130px] flex-col items-center rounded-2xl border-2 border-gray-200 bg-white p-3 text-center active:opacity-70">
+                      <span className="text-4xl leading-none">{c.icon}</span>
+                      <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.label}</span>
+                      <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
+                      {(t || c.video) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${t && quizMine[t]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{t && quizMine[t]?.passed ? '🎬 Quiz passed' : t ? '🎬 Video + quiz' : '🎬 Video'}</span>}
+                      <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{live.length} law{live.length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
+                      {!canManage && todo > 0 && <span className="text-[10px] font-extrabold text-amber-700">✍ {todo} to sign</span>}
+                      {list.some(l => l.status === 'draft') && canManage && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {laws && !searching && cat && (
+      {laws && !searching && cat && area && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All categories</button>
-            {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { if (confirm(`Approve all ${catLaws.filter(l => l.status === 'draft').length} draft laws in ${cat}? Their tiles go into the Daily Checklist and the old tiles they replace are stopped.`)) void approve({ category: cat }) }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
-            {canManage && cat !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blank(cat))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
+            <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All laws</button>
+            {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = catLaws.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws in ${area.label}? Their tiles go into the Daily Checklist and the old tiles they replace are stopped.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
+            {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
-          <div className="flex items-center gap-2"><span className="text-3xl">{catInfo?.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{cat}</p><p className="text-xs text-gray-500">{catInfo?.blurb}</p></div></div>
-          {cat && hasTraining(cat) && <CategoryTraining cat={cat} result={quizMine[cat]} onDone={() => void reloadQuiz()} />}
-          {cat === 'Customer service' && (
-            <details className="rounded-xl border border-green-300 bg-green-50">
-              <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-gray-900">🤝 The Customer Service Code (CS-1 to CS-33)</summary>
-              <div className="bg-white"><CustomerServiceCode /></div>
+          <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>
+          {(() => { const w = whyForArea(area.key, area.match[0]?.cat ?? ''); return w ? <details open className="rounded-xl border border-blue-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">Why this matters</summary><WhyBox w={w} /></details> : null })()}
+          {area.training && hasTraining(area.training)
+            ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} />
+            : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
+          {area.training && hasTraining(area.training) && area.guide && (
+            <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
+          )}
+          {(() => {
+            const topics = (area.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter(Boolean) as typeof TOPICS
+            return topics.length > 0 ? (
+              <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2">
+                <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">How to</p>
+                {topics.map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}</summary><div className="p-2">{t.body}</div></details>)}
+              </div>
+            ) : null
+          })()}
+          {!canManage && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : catLaws.some(l => l.status !== 'draft') ? <p className="rounded-xl bg-green-50 p-2 text-center text-sm font-bold text-green-800">✍ You have signed every law here.</p> : null })()}
+          {canManage && sig?.staff && sig.by && catLaws.some(l => l.status !== 'draft') && (
+            <details className="rounded-xl border border-gray-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">Who has signed</summary>
+              <div className="mt-1 space-y-0.5">{sig.staff.map(n => { const ids = catLaws.filter(l => l.status !== 'draft').map(l => l.id); const done = ids.filter(id => (sig.by![n] ?? []).includes(id)).length; return <p key={n} className="text-[13px] text-gray-800"><b className="capitalize">{n}</b>: <span className={done === ids.length ? 'font-bold text-green-700' : 'font-bold text-amber-700'}>{done} of {ids.length}</span></p> })}</div>
             </details>
           )}
           {subs.map(sub => (
