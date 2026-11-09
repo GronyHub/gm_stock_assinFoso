@@ -99,6 +99,13 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
     return () => clearInterval(tick)
   }, [])
 
+  const [pts, setPts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let live = true
+    const load = () => fetch('/api/penalties/summary', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && d?.points) setPts(d.points) }).catch(() => {})
+    void load(); const t = setInterval(load, 5 * 60 * 1000)
+    return () => { live = false; clearInterval(t) }
+  }, [])
   if (roster.length === 0) return null
 
   // Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
@@ -148,7 +155,8 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
               <StaffAvatar name={s.staff_name} url={s.photo_url} size={16} />
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className={s.status === 'absent' ? 'line-through' : ''}>{s.staff_name}</span>
+              <span className={`hidden sm:inline ${s.status === 'absent' ? 'line-through' : ''}`}>{s.staff_name}</span>
+              {pts[s.staff_name.toLowerCase()] !== undefined && <span title={`${s.staff_name}: penalty points so far`} className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${pts[s.staff_name.toLowerCase()] >= 20 ? 'bg-red-600 text-white' : pts[s.staff_name.toLowerCase()] >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{pts[s.staff_name.toLowerCase()]}</span>}
             </span>
             {s.status !== 'absent' && s.totalMins != null && (
               <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
