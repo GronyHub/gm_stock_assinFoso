@@ -172,7 +172,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   const howtoRows = (a: LawArea, covered: (id: string) => boolean) =>
     (a.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter((t): t is (typeof TOPICS)[number] => !!t && !covered(t.id))
-      .map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}</summary><div className="p-2">{t.body}</div></details>)
+      .map(t => <details key={t.id} className="rounded-xl border border-gray-200 bg-white"><summary className="flex cursor-pointer items-center gap-2 p-2 text-sm font-semibold text-gray-900"><span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">no video</span><span><span className="mr-1 text-[10px] font-extrabold uppercase text-gray-400">How to</span>{t.title}</span></summary><div className="border-t border-gray-100 p-2">{t.body}</div></details>)
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
@@ -259,22 +259,27 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return (
               <div className="space-y-2">
                 <p className="text-xs font-extrabold uppercase tracking-wide text-[#14213D]">Contents: how to, laws and sanctions, in video order</p>
-                {av.chapters.map(c => (
-                  <div key={c.t} className="space-y-1.5">
-                    <div className="rounded-xl border border-gray-200 bg-white">
-                      <button type="button" onClick={() => { setOpenCh(openCh === c.t ? null : c.t); seek(c.t) }} className="flex w-full items-start gap-2 p-2 text-left">
-                        <span className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">▶ {fmtTime(c.t)}</span>
-                        <span className="text-sm font-semibold text-gray-900"><span className="mr-1 text-[10px] font-extrabold uppercase text-gray-400">How to</span>{c.title}</span>
-                      </button>
-                      {openCh === c.t && <p className="border-t border-gray-100 p-2 text-[13px] text-gray-700">{c.text}</p>}
+                {av.chapters.map(c => {
+                  const topics = (area.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter((t): t is (typeof TOPICS)[number] => !!t && !!area.howtoRe?.[t.id] && findChapter(av, area.howtoRe[t.id])?.t === c.t)
+                  return (
+                    <div key={c.t} className="space-y-1.5">
+                      <div className="rounded-xl border border-gray-200 bg-white">
+                        <div className="flex w-full items-start gap-2 p-2">
+                          <button type="button" onClick={() => seek(c.t)} title="Play the video from here" className="shrink-0 rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-bold text-white">▶ {fmtTime(c.t)}</button>
+                          <button type="button" onClick={() => setOpenCh(openCh === c.t ? null : c.t)} className="flex-1 text-left text-sm font-semibold text-gray-900"><span className="mr-1 text-[10px] font-extrabold uppercase text-gray-400">{c.lawRe ? 'Law' : 'How to'}</span>{c.title} <span className="text-xs text-gray-400">{openCh === c.t ? '▴' : '▾'}</span></button>
+                        </div>
+                        {openCh === c.t && (
+                          <div className="space-y-2 border-t border-gray-100 p-2">
+                            <p className="text-[13px] text-gray-700">{c.text}</p>
+                            {topics.map(t => <div key={t.id} className="rounded-lg bg-gray-50 p-2"><p className="mb-1 text-xs font-extrabold text-gray-900">{t.title}</p>{t.body}</div>)}
+                          </div>
+                        )}
+                      </div>
+                      {timed(c.t).map(l => <LawCard key={l.id} l={l} />)}
                     </div>
-                    {timed(c.t).map(l => <LawCard key={l.id} l={l} />)}
-                  </div>
-                ))}
-                {(() => { const rows = howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id])); return rows.length > 0 ? (
-                  <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2">
-                    <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">More how to (text only, not in the video)</p>{rows}
-                  </div>) : null })()}
+                  )
+                })}
+                {howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id]))}
                 {untimed.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="pt-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">Laws not in the video yet</p>
