@@ -154,6 +154,10 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const blankFor = (a: LawArea): Draft => ({ ...blank(a.match[0]?.cat ?? ''), subcategory: a.addSub ?? a.match[0]?.subs?.[0] ?? '' })
   const subs = Array.from(new Set(catLaws.map(l => l.subcategory ?? 'General')))
 
+  const howtoRows = (a: LawArea, covered: (id: string) => boolean) =>
+    (a.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter((t): t is (typeof TOPICS)[number] => !!t && !covered(t.id))
+      .map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}</summary><div className="p-2">{t.body}</div></details>)
+
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
       <div className="mb-2 flex items-center gap-2">
@@ -225,30 +229,6 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
-          {area.flags && (
-            <div className="space-y-1 rounded-2xl border border-red-200 bg-red-50 p-2">
-              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them{AREA_VIDEO[area.key] && <TimeChip t={findChapter(AREA_VIDEO[area.key], 'Now, flags')?.t ?? null} />}</p>
-              <p className="px-1 text-[11px] text-gray-700">Company Law: every flag is fixed as soon as it appears. All flags are in the 🚩 Flags dropdown on Live Sale, and the Daily Checklist asks about them three times a day.</p>
-              {LIVE_SALE_FLAGS.map(f => (
-                <details key={f.key} className="rounded-lg bg-white">
-                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}{AREA_VIDEO[area.key] && <TimeChip t={(f.key === 'noSp' ? findChapter(AREA_VIDEO[area.key], 'Follow the steps') : findChapter(AREA_VIDEO[area.key], 'Pick a flag'))?.t ?? null} label={f.key === 'noSp' ? '' : 'how a flag is cleared'} />}</summary>
-                  <div className="space-y-1 p-2 text-[13px] text-gray-800">
-                    <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
-                    <p><b>How to clear it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
-                  </div>
-                </details>
-              ))}
-            </div>
-          )}
-          {(() => {
-            const topics = (area.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter(Boolean) as typeof TOPICS
-            return topics.length > 0 ? (
-              <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2">
-                <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">How to</p>
-                {topics.map(t => <details key={t.id} className="rounded-lg bg-gray-50"><summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">{t.title}{AREA_VIDEO[area.key] && <TimeChip t={area.howtoRe?.[t.id] ? findChapter(AREA_VIDEO[area.key], area.howtoRe[t.id])?.t ?? null : null} />}</summary><div className="p-2">{t.body}</div></details>)}
-              </div>
-            ) : null
-          })()}
           {!canManage && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : catLaws.some(l => l.status !== 'draft') ? <p className="rounded-xl bg-green-50 p-2 text-center text-sm font-bold text-green-800">✍ You have signed every law here.</p> : null })()}
           {canManage && sig?.staff && sig.by && catLaws.some(l => l.status !== 'draft') && (
             <details className="rounded-xl border border-gray-200 bg-white p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">Who has signed</summary>
@@ -275,15 +255,20 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                     {timed(c.t).map(l => <LawCard key={l.id} l={l} />)}
                   </div>
                 ))}
+                {(() => { const rows = howtoRows(area, id => !!area.howtoRe?.[id] && !!findChapter(av, area.howtoRe[id])); return rows.length > 0 ? (
+                  <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2">
+                    <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">More how to (text only, not in the video)</p>{rows}
+                  </div>) : null })()}
                 {untimed.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="pt-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">Not in the video yet</p>
+                    <p className="pt-1 text-xs font-extrabold uppercase tracking-wide text-gray-500">Laws not in the video yet</p>
                     {untimed.map(l => <LawCard key={l.id} l={l} />)}
                   </div>
                 )}
               </div>
             )
           })()}
+          {!AREA_VIDEO[area.key] && (() => { const rows = howtoRows(area, () => false); return rows.length > 0 ? <div className="space-y-1 rounded-2xl border border-gray-200 bg-white p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">How to</p>{rows}</div> : null })()}
           {!AREA_VIDEO[area.key] && subs.map(sub => (
             <div key={sub}>
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
@@ -303,6 +288,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             </details>
           )}
           {catLaws.length === 0 && <p className="text-sm text-gray-400">No laws in this category yet.{canManage ? ' Use + Add law.' : ''}</p>}
+          {area.flags && (
+            <div className="space-y-1 rounded-2xl border border-red-200 bg-red-50 p-2">
+              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-red-800">🚩 Flags on this page and how to clear them{AREA_VIDEO[area.key] && <TimeChip t={findChapter(AREA_VIDEO[area.key], 'Now, flags')?.t ?? null} />}</p>
+              <p className="px-1 text-[11px] text-gray-700">Company Law: every flag is fixed as soon as it appears. All flags are in the 🚩 Flags dropdown on Live Sale, and the Daily Checklist asks about them three times a day.</p>
+              {LIVE_SALE_FLAGS.map(f => (
+                <details key={f.key} className="rounded-lg bg-white">
+                  <summary className="cursor-pointer px-2 py-1.5 text-sm font-semibold text-gray-900">🚩 {f.label}{AREA_VIDEO[area.key] && <TimeChip t={(findChapter(AREA_VIDEO[area.key], '^Flag: ' + f.label) ?? findChapter(AREA_VIDEO[area.key], 'Now, flags'))?.t ?? null}  />}</summary>
+                  <div className="space-y-1 p-2 text-[13px] text-gray-800">
+                    <p><b>What it means:</b> {f.means}</p><p><b>Why it matters:</b> {f.why}</p>
+                    <p><b>How to clear it:</b></p><ol className="list-decimal pl-5">{f.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

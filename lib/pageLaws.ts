@@ -75,6 +75,7 @@ async function ensureCompanyLawsImpl() {
   await seedCashLaws()
   await seedFlagLaws()
   await approveOnce('flags-v1', 'The owner asked for the flag laws and checks')
+  await approveOnce('flags-v2', 'The owner asked for one Fix flags law')
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -225,20 +226,25 @@ async function assignLawCodes() {
 
 // Flags on Live Sale: the law that every flag is fixed as soon as it appears, and three daily checks that put the flags on the
 // Daily Checklist. They go live straight away (the owner asked for them).
-const FLAG_HOW = 'Open Items / Live Sale\nTap 🚩 Flags and read the flag\nFollow the steps shown under the toolbar\nA flag you cannot fix: tell Joe now'
+const FLAG_NAMES = 'No Selling Price, No Cost Price, No Group, Empty Row, Duplicate Items, Unlinked Sales, Service Violations, Unknown Quantity, GMC Pack Overage, Net Gain, Needs Review, Alias Needs Check, Ledger Notes, Negative Stock and the old alias checks'
 const FLAG_LAWS: { type: 'recurring' | 'standing'; text: string; time?: string; mins?: number; dos?: string; donts?: string; points?: number }[] = [
-  { type: 'standing', points: 2, text: 'Every flag on Live Sale is fixed as soon as it appears. A flag is never left for the next day, and never hidden by editing the item to make it disappear.', dos: FLAG_HOW, donts: 'Leave a flag open overnight\nEdit an item just to clear a flag' },
-  { type: 'recurring', time: '09:30', mins: 10, text: 'Morning flag check: open 🚩 Flags on Live Sale. Every open flag is fixed now, using the steps shown. Answer all good, or report what you could not fix.', dos: FLAG_HOW },
-  { type: 'recurring', time: '15:30', mins: 10, text: 'Afternoon flag check: open 🚩 Flags on Live Sale and fix any new flag. Answer all good, or report what you could not fix.', dos: FLAG_HOW },
-  { type: 'recurring', time: '18:00', mins: 5, text: 'Closing flag check: no Live Sale flag is left open. Answer all good, or tell Joe which flag is still open and why.', dos: FLAG_HOW },
+  { type: 'recurring', time: '09:30', mins: 10, points: 2, text: 'Fix flags: every flag on Live Sale is fixed as soon as it appears. Open 🚩 Flags and fix what is open now. A flag is never left for the next day and never hidden by editing an item just to make it disappear. Flags: ' + FLAG_NAMES + '.',
+    dos: 'Open Items / Live Sale\nTap 🚩 Flags and open each flag\nFix it using the how-to for that flag\nA flag you cannot fix: tell Joe now', donts: 'Leave a flag open overnight\nEdit an item just to clear a flag' },
 ]
 async function seedFlagLaws() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'flags-v1'`
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'flags-v2'`
     if (n > 0) return
+    // The four flag laws first made are replaced by this one law (and their checklist tiles stopped).
+    const old = await sql`SELECT id FROM page_laws WHERE seed = 'flags-v1'` as unknown as { id: number }[]
+    if (old.length) {
+      await sql`DELETE FROM page_laws WHERE seed = 'flags-v1'`
+      const { syncLawTile } = await import('./lawTiles')
+      for (const r of old) await syncLawTile(r.id).catch(() => {})
+    }
     for (const d of FLAG_LAWS) {
       await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, dos, donts, status, seed, proof, points)
-        VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', 'Flags', ${d.type}, ${d.type === 'recurring' ? 'daily' : null}, ${d.time ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'flags-v1', ${d.type === 'recurring' ? 'question' : 'tick'}, ${d.points ?? 1})`
+        VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', 'Flags', ${d.type}, ${d.type === 'recurring' ? 'daily' : null}, ${d.time ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'flags-v2', ${d.type === 'recurring' ? 'question' : 'tick'}, ${d.points ?? 1})`
     }
   } catch (e) { console.error('flag laws seed failed:', e instanceof Error ? e.message : String(e)) }
 }

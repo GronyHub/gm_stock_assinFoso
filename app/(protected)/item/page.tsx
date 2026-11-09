@@ -62,7 +62,6 @@ import { useColumnPrefs, ColumnsPickerButton } from './_components/columnPrefs'
 import { MANAGE_LIST_ITEMS, MANAGE_GROUP_LABELS, MANAGE_GROUP_ICONS, GRONY_CHECKS_ITEMS, GRONY_CHECKS_KEYS, ADVERT_ITEMS, ADVERT_KEYS, useFixedCategoryIds, type ManageView } from './_components/manageViewData'
 import { STAFF_PERSONAL_ITEMS, STAFF_TEAM_ITEMS, STAFF_ADMIN_TEAM_ITEMS, type StaffView } from './_components/staffViewData'
 import CareChildTiles from './_components/CareChildTiles'
-import { LIVE_SALE_FLAGS, flagInfo } from '@/lib/flagGuide'
 import { requestOpenChild } from './_components/careUtils'
 import CustomerBox from './_components/CustomerBox'
 import NewCustomerForm from './_components/NewCustomerForm'
@@ -5210,27 +5209,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (v.startsWith('sale:')) { setLiveCurrentView(null); pickSaleFilter(v.slice(5) as typeof liveSaleViolationFilter); return }
     setLiveCurrentView({ kind: 'violation' as const, key: v.slice('violation:'.length) })
   }
-  // The strip under the toolbar: what the chosen flag means on this page and how to clear it, plus the standing reminder.
-  function renderFlagHelp() {
-    const active = liveSaleFlagList.find(f => f.value === activeFlagValue)
-    const info = active ? flagInfo(active.key) : null
-    return (
-      <div className="border-b border-red-200 bg-red-50 px-2 py-1 text-[11px] text-gray-800">
-        {active && info ? (
-          <details open>
-            <summary className="cursor-pointer font-bold text-red-700">🚩 {info.label} ({active.n}): {info.means}</summary>
-            <p className="mt-0.5"><b>Why it matters:</b> {info.why}</p>
-            <ol className="mt-0.5 list-decimal pl-4">{info.fix.map((x, i) => <li key={i}>{x}</li>)}</ol>
-          </details>
-        ) : active ? (
-          <p className="font-bold text-red-700">🚩 {active.label} ({active.n})</p>
-        ) : (
-          <p className="font-semibold text-red-700">🚩 {liveSaleFlagTotal} flag{liveSaleFlagTotal === 1 ? '' : 's'} open on Live Sale. Company Law: fix every flag as soon as it appears. Open 🚩 Flags above and pick one to see how to fix it.</p>
-        )}
-      </div>
-    )
-  }
-
   function renderCriticalBar(only?: 'counts' | 'items' | 'receipts' | 'bills') {
     const show = (k: 'counts' | 'items' | 'receipts' | 'bills') => !only || only === k
     const violationButton = (label: string, count: number, onClick: () => void, textColor: string = 'text-gray-700') => {
@@ -7305,7 +7283,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {isDesktop && (lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
                 </PageToolbar>
               )}
-              {showControls && outerTab === 'loss' && liveMode === 'sale' && (lossView === 'sales' || lossView === 'items') && !inCountTab && (liveSaleFlagTotal > 0 || activeFlagValue) && renderFlagHelp()}
               {/* Sale mode filter bar -- now Sale/Log/Receipts' shared row
                   (see the merged "Sales" tab, renderTabSwitcher above): Live
                   plus the rest of these filters only ever apply to the tap-
