@@ -30,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!law.category) return badRequest('Choose a category.')
   if (!law.violations.length) return badRequest('Add at least one violation: what exactly breaks this law, and its points.')
   const [row] = await sql`UPDATE page_laws SET text = ${law.text}, category = ${law.category}, subcategory = ${law.subcategory}, law_type = ${law.law_type},
-    days = ${law.days}, law_time = ${law.law_time}, frequency = ${law.frequency}, minutes = ${law.minutes}, dos = ${law.dos}, donts = ${law.donts}, proof = ${law.proof}, points = ${law.points}, violations = ${JSON.stringify(law.violations)}, not_violation = ${law.not_violation} WHERE id = ${lawId} RETURNING id`
+    days = ${law.days}, law_time = ${law.law_time}, frequency = ${law.frequency}, minutes = ${law.minutes}, dos = ${law.dos}, donts = ${law.donts}, proof = ${law.proof}, points = ${law.points}, violations = ${JSON.stringify(law.violations)}, not_violation = ${law.not_violation}, title = ${law.title} WHERE id = ${lawId} RETURNING id`
   if (!row) return notFound()
   await syncLawTile(lawId).catch(e => console.error('law tile sync failed:', e instanceof Error ? e.message : String(e)))
   return success(row)

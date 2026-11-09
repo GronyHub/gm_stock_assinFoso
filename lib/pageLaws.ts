@@ -68,7 +68,7 @@ async function ensureCompanyLawsImpl() {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
     }
   } catch (e) { console.error('company laws first sort failed:', e instanceof Error ? e.message : String(e)) }
-  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS violations TEXT, ADD COLUMN IF NOT EXISTS not_violation TEXT, ADD COLUMN IF NOT EXISTS title TEXT`.catch(() => {})
   await seedAdvertsPilot() // after the first sort, so the existing daily advert laws are already marked recurring
   await seedCleanPilot()
   await (await import('./lawDraftsMore')).seedMoreLaws()
@@ -135,7 +135,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     frequency: recurring && valid.freqs.includes(String(b.frequency ?? '')) ? String(b.frequency) : null,
     minutes: recurring && Number.isFinite(mins) && mins > 0 && mins <= 240 ? mins : null,
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
-    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500),
+    violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80),
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
@@ -255,32 +255,57 @@ async function seedFlagLaws() {
 
 // The first violation lines, written once for the laws of the Grony Cash pages (the owner edits them from the law). A law whose text
 // is not recognised is left empty for the owner to fill in.
-const V = (text: string, points = 1) => ({ text, points, by: 'manager' as const })
-const VIOLATION_RULES: { re: RegExp; v: ReturnType<typeof V>[]; not?: string }[] = [
-  { re: /Every walk-in sale goes in Live Sale/i, v: [V('A sale is not recorded in Live Sale as soon as it happens'), V('Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC'), V('A customer is not given a receipt for a sale'), V('Several items for one customer are recorded as separate sales and not through MI'), V('A new item is created without first searching for an existing one')], not: 'Shop use recorded with the GMC button. A sale recorded a little late because the customer was still choosing.' },
-  { re: /Past days are entered only/i, v: [V('A past day is entered without + Past sale, or with the wrong sale date'), V('The same sale or work is typed twice')] },
-  { re: /Receipts are issued from MI/i, v: [V('A receipt is typed by hand into Customer Receipts'), V('A sale the app refused is forced through instead of telling Joe')] },
-  { re: /Item groups checked/i, v: [V('The weekly item group check is not done on its day'), V('An item is left in the wrong group, or in no group, after the check')] },
-  { re: /price list is current/i, v: [V('The monthly price check is not done'), V('An old price is sold after the price list was updated')] },
-  { re: /App words/i, v: [V('An entry is made with the wrong term, for example shop use recorded as a sale')] },
-  { re: /^Fix flags/i, v: [V('A flag is left open overnight', 2), V('An item is edited only to make a flag disappear', 2), V('A flag that cannot be fixed is not reported to Joe')] },
-  { re: /Check the Sales Log at closing/i, v: [V('The closing Sales Log check is not done'), V('A cash difference is not written down and told to Joe before leaving')] },
-  { re: /wrong tap is undone in the Sales Log/i, v: [V('A wrong tap is left uncorrected overnight'), V('A sale is deleted or hidden to make a figure match', 3)] },
-  { re: /receipt comes from the Sales Log or MI/i, v: [V('A customer receipt is retyped or rewritten')] },
-  { re: /open Item 360 and find the cause/i, v: [V('An item is edited to change a loss, negative stock or price before its cause is found')] },
-  { re: /changed only to fix a real mistake/i, v: [V('An item is edited to hide a loss or make a count match', 3)] },
-  { re: /Review Loss by Date/i, v: [V('The weekly loss review is not done'), V('An item with repeated losses is not counted again and its cause not written')] },
-  { re: /not sold for a long time|Longest Unbought/i, v: [V('A long-unsold item is reordered without telling Joe')] },
+type VL = { text: string; points: number; by: 'manager' | 'app'; how?: string; chapter?: string }
+const V = (text: string, how?: string, chapter?: string, points = 1): VL => ({ text, points, by: 'manager', ...(how ? { how } : {}), ...(chapter ? { chapter } : {}) })
+const REC = 'Find the item in Search\nCheck the quantity and the price on its card\nSay who it is for: a GM number, phone, name or label\nTap the red tick. The sale goes into the Sales Log'
+const VIOLATION_RULES: { re: RegExp; title: string; v: VL[]; not?: string }[] = [
+  { re: /Every walk-in sale goes in Live Sale/i, title: 'Record every sale as soon as it happens', not: 'Shop use recorded with the GMC button. A sale recorded a little late because the customer was still choosing.', v: [
+    V('A sale is not recorded in Live Sale as soon as it happens', REC, 'Find the item|Search the item'),
+    V('Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC', 'Keep the switch on WIC for a sale to a customer\nUse GMC only for things the shop uses itself, never for a sale', 'WIC'),
+    V('A customer is not given a receipt for a sale', 'Issue the receipt from MI, or find the sale in the Sales Log and give it to the customer\nNever type a receipt by hand', 'several items|Sales Log'),
+    V('Several items for one customer are recorded as separate sales and not through MI', 'Tap MI\nAdd each item to the basket\nPick the customer\nIssue one receipt for everything', 'several items'),
+    V('A new item is created without first searching for an existing one', 'Type the item name in Search first\nCreate a new item only if nothing matches', 'Find the item|Search the item')] },
+  { re: /Past days are entered only/i, title: 'Enter past days correctly', v: [
+    V('A past day is entered without + Past sale, or with the wrong sale date', 'Tap + Past sale\nChoose the right sale date\nEnter the sale once', 'Past days|Past sale'),
+    V('The same sale or work is typed twice', 'Check the Sales Log before entering a sale for a day that was already worked', 'Past days|Past sale')] },
+  { re: /Receipts are issued from MI/i, title: 'Issue receipts properly', v: [
+    V('A receipt is typed by hand into Customer Receipts', 'Issue the receipt from MI, or from the Sales Log', 'Wrong sale|Undo|Sales Log'),
+    V('A sale the app refused is forced through instead of telling Joe', 'If the app refuses a sale, such as a price below cost or not enough stock, do not force it\nTell Joe', 'Wrong sale|Undo|Sales Log')] },
+  { re: /Item groups checked/i, title: 'Keep every item in the right group', v: [
+    V('The weekly item group check is not done on its day', 'Open the Flags dropdown and look at No Group\nOpen each item, tap Edit, pick the right group, tap Save', 'right group|Item groups'),
+    V('An item is left in the wrong group, or in no group, after the check', 'Open the item, tap Edit, pick the right group, tap Save', 'right group|Item groups')] },
+  { re: /price list is current/i, title: 'Keep the price list current', v: [
+    V('The monthly price check is not done', 'Compare the price list with the prices on the cards\nCorrect a price: open the item, tap Edit, type the price, tap Save', 'current price|Prices'),
+    V('An old price is sold after the price list was updated', 'Check the price on the card before tapping the tick', 'current price|Prices')] },
+  { re: /App words/i, title: 'Use the app words correctly', v: [
+    V('An entry is made with the wrong term, for example shop use recorded as a sale', 'SOH is stock on hand\nSP is selling price, CP is cost price\nWIC is a walk-in customer sale, GMC is shop use\nCAB is cash at bank', 'words')] },
+  { re: /^Fix flags/i, title: 'Fix flags as soon as they appear', v: [
+    V('A flag is left open overnight', 'Open Items / Live Sale, tap 🚩 Flags, open the flag and fix it with the steps for that flag', 'Now, flags', 2),
+    V('An item is edited only to make a flag disappear', 'Fix the real cause the flag points to. Never edit just to clear it', 'Now, flags', 2),
+    V('A flag that cannot be fixed is not reported to Joe', 'If you cannot fix a flag, tell Joe the same day', 'Now, flags')] },
+  { re: /Check the Sales Log at closing/i, title: 'Check the Sales Log at closing', v: [
+    V('The closing Sales Log check is not done', 'Open the Sales Log and the day\'s receipts\nCount the cash and compare it with the log', 'Sales Log'),
+    V('A cash difference is not written down and told to Joe before leaving', 'Write down the difference\nTell Joe before you leave', 'Sales Log')] },
+  { re: /wrong tap is undone in the Sales Log/i, title: 'Correct wrong taps the same day', v: [
+    V('A wrong tap is left uncorrected overnight', 'Open the Sales Log\nUndo the wrong tap\nEnter the right sale', 'Wrong sale|Undo|Sales Log'),
+    V('A sale is deleted or hidden to make a figure match', 'Never delete or hide a sale. Undo it in the Sales Log and tell Joe if the day is closed', 'Wrong sale|Undo|Sales Log', 3)] },
+  { re: /receipt comes from the Sales Log or MI/i, title: 'Never rewrite a receipt', v: [V('A customer receipt is retyped or rewritten', 'Find the receipt in the Sales Log or MI and give it as it is', 'Sales Log')] },
+  { re: /open Item 360 and find the cause/i, title: 'Find the cause before changing an item', v: [V('An item is edited to change a loss, negative stock or price before its cause is found', 'Open Item 360\nRead the item\'s history\nFix the record that caused it', 'Item 360')] },
+  { re: /changed only to fix a real mistake/i, title: 'Change item details only to fix a mistake', v: [V('An item is edited to hide a loss or make a count match', 'Edit an item only to correct a real mistake, and say what you corrected', 'Item 360', 3)] },
+  { re: /Review Loss by Date/i, title: 'Review losses every week', v: [
+    V('The weekly loss review is not done', 'Open Losses, then Loss by Items\nLook at the items with repeated losses', 'Loss'),
+    V('An item with repeated losses is not counted again and its cause not written', 'Count the item again\nWrite the likely cause for Joe', 'Loss')] },
+  { re: /not sold for a long time|Longest Unbought/i, title: 'Report long-unsold items', v: [V('A long-unsold item is reordered without telling Joe', 'Open Analytics, then Goods: Longest Unbought\nReport those items to Joe before any reorder', 'Analytics')] },
 ]
 async function seedViolationLines() {
   try {
     await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
-    const c = await sql`INSERT INTO law_migrations (key) VALUES ('violations-v1') ON CONFLICT DO NOTHING RETURNING key`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('violations-v2') ON CONFLICT DO NOTHING RETURNING key`
     if (!c.length) return
-    const rows = await sql`SELECT id, text FROM page_laws WHERE (violations IS NULL OR violations = '') AND category = 'Stock & records'` as unknown as { id: number; text: string }[]
+    const rows = await sql`SELECT id, text FROM page_laws WHERE title IS NULL AND category = 'Stock & records'` as unknown as { id: number; text: string }[]
     for (const r of rows) {
       const rule = VIOLATION_RULES.find(x => x.re.test(r.text))
-      if (rule) await sql`UPDATE page_laws SET violations = ${JSON.stringify(rule.v)}, not_violation = ${rule.not ?? null} WHERE id = ${r.id}`
+      if (rule) await sql`UPDATE page_laws SET title = ${rule.title}, violations = ${JSON.stringify(rule.v)}, not_violation = ${rule.not ?? null} WHERE id = ${r.id}`
     }
   } catch (e) { console.error('violation lines seed failed:', e instanceof Error ? e.message : String(e)) }
 }
