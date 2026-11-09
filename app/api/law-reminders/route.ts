@@ -6,6 +6,8 @@ import { SIGNERS, isManagerName } from '@/lib/signers'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { parseViolations } from '@/lib/lawViolations'
 import { NextRequest } from 'next/server'
+import { notifyOwners } from '@/lib/checklistAlerts'
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_reminder_confirms (day TEXT NOT NULL, staff TEXT NOT NULL, law_id INTEGER NOT NULL, confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (day, staff, law_id))`.catch(() => {})
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
     if (!ids.length) return badRequest('Nothing to confirm.')
     if (b.stage === 'midday') for (const id of ids) await sql`INSERT INTO law_reminder_repeats (day, staff, law_id) VALUES (${today()}, ${me}, ${id}) ON CONFLICT DO NOTHING`
     else for (const id of ids) await sql`INSERT INTO law_reminder_confirms (day, staff, law_id) VALUES (${today()}, ${me}, ${id}) ON CONFLICT DO NOTHING`
+    void notifyOwners(`${cap(me)} agreed to the ${b.stage === 'midday' ? 'mid-day' : b.stage === 'first_sale' ? 'first-sale' : 'morning'} law reminders`, `${ids.length} law${ids.length === 1 ? '' : 's'} read and agreed to.`)
     return success({ confirmed: ids.length })
   } catch (e) { return handleError('law-reminders POST', e) }
 }

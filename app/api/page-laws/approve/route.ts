@@ -4,6 +4,8 @@ import sql from '@/lib/db'
 import { approveDrafts } from '@/lib/lawTiles'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
+import { pushToUsers } from '@/lib/checklistAlerts'
+import { SIGNERS } from '@/lib/signers'
 
 // POST { id } or { category } -- approve draft laws (owner and manager). Recurring laws get their checklist tiles.
 export async function POST(req: NextRequest) {
@@ -20,6 +22,7 @@ export async function POST(req: NextRequest) {
       : await sql`SELECT code, left(text, 60) AS t FROM page_laws WHERE category = ${category ?? ''} AND status = 'draft' AND (violations IS NULL OR violations = '' OR violations = '[]')`
     if (bare.length) return badRequest(`Every law needs at least one violation before it goes live. Missing: ${bare.map(b => b.code ?? b.t).join('; ')}. Edit the law and add what breaks it.`)
     const n = await approveDrafts(id ? { id } : { category })
+    if (n > 0) void pushToUsers(SIGNERS, 'Company Laws updated', `${n} new law${n === 1 ? '' : 's'} to read and sign. Open Company Laws.`)
     return success({ approved: n })
   } catch (e) { return handleError('page-laws approve', e) }
 }

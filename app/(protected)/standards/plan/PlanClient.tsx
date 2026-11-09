@@ -4,7 +4,6 @@ import { addDays, appliesOn, dayKey, WEEKDAYS, WEEKDAY_LABEL, type CheckTile } f
 
 const END = '2026-12-31'
 type Tile = CheckTile & { section: string; minutes: number | null; law_id: number | null; category: string | null }
-type Person = { staff: string; login: { total: number }; first_sale: { total: number } }
 const wd = (day: string) => WEEKDAYS[new Date(day + 'T00:00:00Z').getUTCDay()]
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -12,14 +11,11 @@ const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-
 // holds. Built from the live tiles, so it follows every change made in Company Laws and the Tile Manager.
 export default function PlanClient() {
   const [tiles, setTiles] = useState<Tile[] | null>(null)
-  const [people, setPeople] = useState<Person[]>([])
   const [open, setOpen] = useState<string | null>(null)
   useEffect(() => {
     fetch('/api/daily-checks', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d?.tiles && setTiles(d.tiles)).catch(() => {})
-    fetch('/api/law-reminders?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d?.people && setPeople(d.people)).catch(() => {})
   }, [])
   const today = dayKey()
-  const login = Math.max(0, ...people.map(p => p.login.total)), selling = Math.max(0, ...people.map(p => p.first_sale.total))
 
   // What a given date holds: tiles for that weekday, weekly tiles on their weekday, monthly tiles on the 1st (due that month).
   const forDay = (day: string) => {
@@ -55,16 +51,13 @@ export default function PlanClient() {
         <div className="mb-3 rounded-2xl border-2 border-[#14213D] bg-white p-3">
           <p className="mb-1 text-sm font-extrabold text-[#14213D]">An ordinary working day (Monday to Saturday)</p>
           <ul className="space-y-1">
-            <Fixed time="Login" text={`Reminder before work starts: ${login} standing orders to tick and confirm. The Daily Checklist shows who has confirmed.`} />
             {typical.filter(r => r.when && r.when < '13:30').map(r => <Row key={r.t.id} r={r} />)}
-            <Fixed time="1st sale" text={`After each person's first sale: ${selling} selling laws to tick and confirm.`} />
-            <Fixed time="13:30" text="Mid-day: the selling laws once more, for anyone who has sold today." />
             {typical.filter(r => r.when && r.when >= '13:30').map(r => <Row key={r.t.id} r={r} />)}
             <Fixed time="19:15" text="The owner and Joe get the day's summary: how many tiles were done." />
             <Fixed time="19:20" text="Day end: every task left undone costs everyone clocked in a shared point (1 to 3 a day). Managers-only tasks cost managers only." />
             <Fixed time="19:30" text="A clean week takes 5 points off." />
           </ul>
-          <p className="mt-2 text-[11px] text-gray-500">{typical.length} tiles, about {mins(typical)} minutes on a typical day. Tiles with a weekday, a week or a month are added on top of this on their own days below. Sunday: the shop is closed.</p>
+          <p className="mt-2 text-[11px] text-gray-500">{typical.length} tiles, about {mins(typical)} minutes on a typical day. Law reminders are not on the checklist: they come as a notice at login, after the first sale and at mid-day. Tiles with a weekday, a week or a month are added on top of this on their own days below. Sunday: the shop is closed.</p>
         </div>
 
         <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Every day from {dlabel(today)} to {dlabel(END)} ({days.length} days)</p>

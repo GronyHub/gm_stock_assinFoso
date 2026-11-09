@@ -162,8 +162,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           <div className="border-l border-gray-200 p-1.5" style={{ gridColumn: 9, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
             {l.law_type === 'recurring' ? <p className="text-[10px] leading-snug text-gray-500">None: it is on the Daily Checklist.</p>
               : l.law_type === 'app' ? <p className="text-[10px] leading-snug text-gray-800">The app enforces it itself.</p>
-              : l.reminder === 'login' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after login</b>, before work starts. Each staff member ticks it to confirm they agree. The Daily Checklist shows who has confirmed.</p>
-              : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after the first sale</b> of the day, and again at mid-day (from 13:30). Each staff member ticks it to confirm they agree. The Daily Checklist shows who has confirmed.</p>
+              : l.reminder === 'login' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after login</b>, before work starts. Each staff member ticks once to agree to all the reminders, and the owners get a notification.</p>
+              : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>Reminder after the first sale</b> of the day, and again at mid-day (from 13:30). Each staff member ticks once to agree, and the owners get a notification.</p>
               : <p className="text-[10px] leading-snug text-gray-500">None yet.</p>}
           </div>
           <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 10, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
@@ -299,11 +299,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {AREA_VIDEO[area.key] && area.guide ? (
             <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
               <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
-              <GuideVideo page={area.guide} videoRef={vref} />
+              <GuideVideo page={area.guide} videoRef={vref} onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
               {area.training && hasTraining(area.training) && <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} hideVideo />}
             </div>
           ) : area.training && hasTraining(area.training)
-            ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} />
+            ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} onWatched={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
             : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
           {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
@@ -510,7 +510,7 @@ function ManagerSection({ area, laws, Card }: { area: LawArea; laws: Law[]; Card
     <div className="mt-4 space-y-2 rounded-2xl border-2 border-amber-400 bg-amber-50 p-2">
       <p className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white">👔 Managers and owners only: this section is not shown to staff</p>
       <p className="px-1 text-xs text-gray-700">{area.label}: the laws that only managers keep and enforce. {area.managerVideo ? '' : 'The managers\' video for this section is not recorded yet.'}</p>
-      {area.managerVideo && <video src={area.managerVideo} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
+      {area.managerVideo && <video onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key + '-managers', label: area.label + ' managers video' }) }).catch(() => {})} src={area.managerVideo} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
       <div className="space-y-2 overflow-x-auto">
         <div className={`grid min-w-[1160px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
         {laws.map(l => <Card key={l.id} l={l} />)}

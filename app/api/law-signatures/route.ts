@@ -5,6 +5,8 @@ import { actorKey } from '@/lib/clockState'
 import { SIGNERS, isManagerName } from '@/lib/signers'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { NextRequest } from 'next/server'
+import { notifyOwners } from '@/lib/checklistAlerts'
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_signatures (
@@ -50,7 +52,9 @@ export async function POST(req: NextRequest) {
     const me = actorKey(user as any)
     if (!SIGNERS.includes(me)) return badRequest('You are not on the list of people who sign the laws.')
     const rows = await sql`SELECT id, md5(coalesce(text,'') || '|' || coalesce(dos,'') || '|' || coalesce(donts,'')) AS h FROM page_laws WHERE status = 'live' AND id = ANY(${ids}) AND (audience <> 'managers' OR ${isManagerName(me)})`
+    const codes = await sql`SELECT code FROM page_laws WHERE id = ANY(${rows.map(r => Number(r.id))})`
     for (const r of rows) await sql`INSERT INTO law_signatures (law_id, staff, law_hash) VALUES (${r.id}, ${me}, ${r.h}) ON CONFLICT (law_id, staff) DO UPDATE SET law_hash = ${r.h}, signed_at = now()`
+    if (rows.length) void notifyOwners(`${cap(me)} signed ${rows.length} law${rows.length === 1 ? '' : 's'}`, codes.map(c => c.code).filter(Boolean).slice(0, 6).join(', ') + (rows.length > 6 ? ` and ${rows.length - 6} more` : ''))
     return success({ signed: rows.length })
   } catch (e) { return handleError('law-signatures POST', e) }
 }
