@@ -81,6 +81,7 @@ async function ensureCompanyLawsImpl() {
   await assignLawCodes()
   await seedViolationLines()
   await scopeItemsLaws()
+  await splitMultiViolationLaws()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -334,4 +335,54 @@ async function scopeItemsLaws() {
       }
     }
   } catch (e) { console.error('items scope migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// One law, one violation: the title of the law each violation line belongs to (the law is the positive form of the violation).
+const LAW_FOR: Record<string, string> = {
+  'A sale is not recorded in Live Sale as soon as it happens': 'Record every sale as soon as it happens',
+  'Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC': 'Record shop use as GMC and a customer sale as WIC',
+  'A customer is not given a receipt for a sale': 'Give the customer a receipt for every sale',
+  'Several items for one customer are recorded as separate sales and not through MI': 'Sell several items to one customer through MI',
+  'A new item is created without first searching for an existing one': 'Search for an existing item before creating a new one',
+  'A sale the app refused is forced through instead of telling Joe': 'Never force a sale the app refuses: tell Joe',
+  'A past day is entered without + Past sale, or with the wrong sale date': 'Enter past days with + Past sale and the right date',
+  'The same sale or work is typed twice': 'Never type the same sale or work twice',
+  'A receipt is typed by hand into Customer Receipts': 'Issue receipts from MI or the Sales Log, never by hand',
+  'The weekly item group check is not done on its day': 'Do the weekly item group check on its day',
+  'An item is left in the wrong group, or in no group, after the check': 'Leave no item in the wrong group or in no group',
+  'The monthly price check is not done': 'Do the monthly price check',
+  'An old price is sold after the price list was updated': 'Never sell at an old price after the list is updated',
+  'An entry is made with the wrong term, for example shop use recorded as a sale': 'Use the app words correctly',
+  'A flag is left open overnight': 'Fix every flag as soon as it appears',
+  'An item is edited only to make a flag disappear': 'Fix the cause of a flag, never just clear it',
+  'A flag that cannot be fixed is not reported to Joe': 'Report a flag you cannot fix to Joe',
+  'The closing Sales Log check is not done': 'Check the Sales Log at closing',
+  'A cash difference is not written down and told to Joe before leaving': 'Write down a cash difference and tell Joe before leaving',
+  'A wrong tap is left uncorrected overnight': 'Correct a wrong tap the same day',
+  'A sale is deleted or hidden to make a figure match': 'Never delete or hide a sale to make a figure match',
+  'The weekly loss review is not done': 'Review losses every week',
+  'An item with repeated losses is not counted again and its cause not written': 'Count an item with repeated losses again and write its cause',
+}
+// A law with several violation lines is split into one law per violation (each with its own code, signatures and row). The first
+// stays with the original law, so its checklist tile and signatures carry on; the others become standing laws. Written once.
+async function splitMultiViolationLaws() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('split-laws-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const rows = await sql`SELECT id, scope_key, category, subcategory, status, seed, violations, not_violation, title FROM page_laws WHERE violations IS NOT NULL AND violations <> '' AND violations <> '[]'` as unknown as { id: number; scope_key: string; category: string; subcategory: string | null; status: string; seed: string | null; violations: string; not_violation: string | null; title: string | null }[]
+    for (const r of rows) {
+      const list = parseViolations(r.violations)
+      const first = list[0]
+      if (!first) continue
+      const t0 = LAW_FOR[first.text] ?? r.title
+      if (list.length === 1) { if (t0 && t0 !== r.title) await sql`UPDATE page_laws SET title = ${t0} WHERE id = ${r.id}`; continue }
+      await sql`UPDATE page_laws SET title = ${t0}, violations = ${JSON.stringify([first])} WHERE id = ${r.id}`
+      for (const v of list.slice(1)) {
+        const title = LAW_FOR[v.text] ?? v.text
+        await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, dos, status, seed, proof, points, violations, title)
+          VALUES (${r.scope_key}, ${title}, false, 'law', ${r.category}, ${r.subcategory}, 'standing', ${v.how ?? null}, ${r.status}, ${r.seed}, 'tick', ${v.points}, ${JSON.stringify([v])}, ${title})`
+      }
+    }
+  } catch (e) { console.error('split laws failed:', e instanceof Error ? e.message : String(e)) }
 }
