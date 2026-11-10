@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { distanceMeters, allowedRadiusMeters, SHOP_LAT, SHOP_LNG } from '@/lib/geo'
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
-import { ensureClosingReports } from '@/lib/closingReports'
+import { ensureClosingReports, saveClosingReport, validClosing } from '@/lib/closingReports'
 import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
@@ -222,46 +222,10 @@ export async function POST(req: NextRequest) {
       const others = presentToday.filter((r: any) => r.staff_name !== username)
       isCloser = others.every((r: any) => r.actual_out)
 
-      if (isCloser) {
-        await ensureClosingReports()
-        const [existingReport] = await sql`SELECT id FROM closing_reports WHERE work_date = ${today}`
-        if (!existingReport) {
-          const cr = closing_report
-          const yesNoKeys = ['advert_played', 'property_issue', 'speaker_brought_in', 'new_customer', 'unfortunate_event'] as const
-          const valid = cr && typeof cr === 'object' && yesNoKeys.every(k => typeof cr[k] === 'boolean')
-          if (!valid) {
-            return success({
-              requires_closing_report: true,
-              present_staff: presentToday.map((r: any) => r.staff_name),
-              error: 'You are the Closer for today — please answer the closing questions before clocking out.',
-            })
-          }
-
-          const noTshirt = (Array.isArray(cr.no_tshirt_staff) ? cr.no_tshirt_staff : [])
-            .map((s: any) => String(s).trim()).filter(Boolean)
-          await sql`
-            INSERT INTO closing_reports
-              (work_date, closer_name, no_tshirt_staff, advert_played, property_issue,
-               speaker_brought_in, new_customer, new_customer_details,
-               unfortunate_event, unfortunate_event_details)
-            VALUES
-              (${today}, ${username}, ${noTshirt.join(', ')}, ${cr.advert_played}, ${cr.property_issue},
-               ${cr.speaker_brought_in}, ${cr.new_customer}, ${cr.new_customer ? (cr.new_customer_details || null) : null},
-               ${cr.unfortunate_event}, ${cr.unfortunate_event ? (cr.unfortunate_event_details || null) : null})
-            ON CONFLICT (work_date) DO NOTHING
-          `
-          closerReportJustSaved = true
-
-          const summary = [
-            `No company T-shirt: ${noTshirt.length ? noTshirt.join(', ') : 'none'}`,
-            `Roadside advert played: ${cr.advert_played ? 'Yes' : 'No'}`,
-            `Spoilt/lost property: ${cr.property_issue ? 'Yes' : 'No'}`,
-            `Speaker & wires brought in: ${cr.speaker_brought_in ? 'Yes' : 'No'}`,
-            `New customer of interest: ${cr.new_customer ? `Yes — ${cr.new_customer_details || 'no details'}` : 'No'}`,
-            `Unfortunate event: ${cr.unfortunate_event ? `Yes — ${cr.unfortunate_event_details || 'no details'}` : 'No'}`,
-          ].join(' · ')
-          await logActivity(username, 'submitted closing report', summary)
-        }
+      // The closing report is no longer a gate on clocking out (clock-out is automatic when forgotten). It is answered from the Daily Checklist;
+      // if the closer sends it with the clock-out anyway, it is saved.
+      if (isCloser && validClosing(closing_report)) {
+        closerReportJustSaved = await saveClosingReport(today, username, closing_report)
       }
     }
 

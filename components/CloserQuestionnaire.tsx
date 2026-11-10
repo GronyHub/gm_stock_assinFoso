@@ -32,8 +32,7 @@ function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boole
 const qCls = 'text-sm font-semibold text-gray-800'
 const textareaCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
 
-// End-of-day questionnaire the Closer (last staff member to clock out) must
-// answer before their clock-out is accepted.
+// End-of-day closing report. Answered from the Daily Checklist (components/ClosingReportCard.tsx); it no longer blocks clocking out.
 export default function CloserQuestionnaire({ presentStaff, saving, onSubmit, onCancel }: {
   presentStaff: string[]
   saving: boolean

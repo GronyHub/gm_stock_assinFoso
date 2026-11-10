@@ -1,5 +1,6 @@
 'use client'
 import WithMic from '@/components/WithMic'
+import ClosingReportCard from '@/components/ClosingReportCard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import {
@@ -96,6 +97,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
+      <ClosingReportCard />
       <div className="mb-1 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Daily Checklist</h1>

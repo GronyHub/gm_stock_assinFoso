@@ -145,6 +145,15 @@ export async function attendanceTick(now = new Date()) {
   if (hm === '08:15' && await claim(`joeheads:${day}`)) {
     await pushToUsers(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
   }
+  if (hm === '18:30' && await claim(`closingrem:${day}`)) {
+    // Nudge whoever is at the shop if the closing report (Daily Checklist) is still not answered.
+    const [r] = await sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`.catch(() => [])
+    if (!r) {
+      const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
+      const who = rows.map(x => x.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
+      if (who.length) await pushToUsers(who, 'Closing report', 'The closing report is not answered yet. Open the Daily Checklist and tap Answer now.')
+    }
+  }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:00' && await claim(`cctvcatch:${day}`)) { await detectReviews(day, false) }
   // Every morning: anyone with an earlier day still open is asked to enter their time out (they cannot go on in the app until they do).
