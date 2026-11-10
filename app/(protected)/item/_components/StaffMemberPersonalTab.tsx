@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import ManageLogPanel from './ManageLogPanel'
-import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
 import StaffMeetingPanel from './StaffMeetingPanel'
@@ -9,7 +8,7 @@ import StaffTimesView from './StaffTimesView'
 import ProfileTab from './ProfileTab'
 import { PayslipsTab } from '../../staff/StaffClient'
 
-export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'meeting' | 'display' | 'laws'
+export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'meeting' | 'display'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'times', icon: '🕐', label: 'Times' },
@@ -21,7 +20,6 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'behaviour', icon: '🚦', label: 'Behaviour' },
   { key: 'meeting', icon: '🗣️', label: 'Meeting' },
   { key: 'display', icon: '📌', label: 'Display' },
-  { key: 'laws', icon: '⚖️', label: 'Laws' },
 ]
 
 export default function StaffMemberPersonalTab({
@@ -170,9 +168,6 @@ export default function StaffMemberPersonalTab({
         )}
         {activeTab === 'display' && (
           <div className="p-3"><ManageLogPanel category="staff_display" label="My Display" icon="📌" filterAboutStaff={staffName} /></div>
-        )}
-        {activeTab === 'laws' && (
-          <div className="p-3"><ContentPage contentKey="training_laws" title="⚖️ My Company Laws Agreement" submenu="My Laws" /></div>
         )}
       </div>
     </div>

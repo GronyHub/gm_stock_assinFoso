@@ -8,7 +8,7 @@
 export type StaffView =
   | 'staffPayslips' | 'staffProfile'
   | 'teamTimes' | 'team_payments' | 'allStaff' | 'team_behaviour' | 'users' | 'roles'
-  | 'staff_meeting' | 'staff_display' | 'rota' | 'training_laws' | 'logs' | 'staff_dress'
+  | 'staff_meeting' | 'staff_display' | 'rota' | 'logs' | 'staff_dress'
   | 'teamPayslips' | 'teamProfiles'
 
 // Times/Violations/Ana used to live here too -- dropped so Personal is just
@@ -59,7 +59,6 @@ export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[]
   { key: 'staff_dress', label: 'Team Dress Code', icon: '👕' },
   { key: 'staff_display', label: 'Team Display', icon: '📌' },
   { key: 'staff_meeting', label: 'Team Meeting', icon: '🗣️' },
-  { key: 'training_laws', label: 'Team Company Laws Agreement', icon: '⚖️' },
   { key: 'rota', label: 'Team Rota', icon: '🗓️' },
   { key: 'logs', label: 'Team Logs', icon: '📜' },
 ]

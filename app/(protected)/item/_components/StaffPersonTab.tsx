@@ -129,7 +129,6 @@ export default function StaffContent({
     </>)}
     {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Team Display" icon="📌" aboutStaffRoster={staffRoster} />}
     {canSeeTeam && view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
-    {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Team Company Laws Agreement" submenu="Team Company Laws Agreement" />}
     {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2"><LogsPage /></div>}
     {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
       <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />
