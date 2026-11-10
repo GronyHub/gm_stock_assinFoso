@@ -3,6 +3,8 @@ import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName, SIGNERS } from '@/lib/signers'
 import { ensureAttendance, openRecords, REVIEW_FROM } from '@/lib/attendance'
 import { canDecideFor } from '@/lib/penalties'
+import { getClockState } from '@/lib/clockState'
+import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 
 // "Waiting for me": everything the signed-in person owes or must decide, from every part of the app, in one list.
 // urgency: 'now' (overdue or blocking), 'soon' (due today or within 24 hours), 'later'. `href` opens in the hub's right pane; `hub` asks the hub to open a view.
@@ -29,6 +31,24 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
     if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/standards' })
+    // checklist tasks the shop owes now: tiles past their due time and not yet done today (the same list the day-end point is counted from)
+    await safe(async () => {
+      const now = new Date()
+      if (now.getUTCDay() === 0) return
+      const clock = await getClockState(day)
+      if (clock.dayStart == null || !clock.present.includes(me)) return
+      const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
+      const tiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, (law_id IS NOT NULL AND law_id IN (SELECT id FROM page_laws WHERE audience = 'managers')) AS mgr FROM daily_check_tiles
+        WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; mgr: boolean }[]
+      const todays = tiles.filter(t => appliesOn(t, day) && (!t.mgr || manager))
+      const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number }[]).map(r => r.tile_id))
+      const due = effectiveDue(todays, clock.dayStart)
+      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
+      if (!late.length) return
+      const worst = nowMin - due.get(late[0].id)!
+      const names = late.slice(0, 3).map(t => t.title.slice(0, 40)).join('; ') + (late.length > 3 ? ` and ${late.length - 3} more` : '')
+      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: '/standards' })
+    }, undefined)
   }
 
   if (isStaff) {

@@ -266,6 +266,7 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
         </div>
         {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
         {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
+        {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[11px] font-semibold text-red-700">If this is still undone at the end of the day, everyone clocked in gets a penalty point (at most 3 a day).</p>}
         {t.law_id && t.category && <a href={`/laws?cat=${encodeURIComponent(t.category)}`} className="block text-[11px] font-semibold text-blue-700 underline">From the Company Laws · {t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
         {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}

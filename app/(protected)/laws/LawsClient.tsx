@@ -16,7 +16,7 @@ import { TOPICS } from '../item/_components/trainingTopics'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; quiz_n?: number; violations?: string | null; not_violation?: string | null
+  status?: string; kept?: { done: number; of: number; last: string | null; missed_last: boolean }; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; quiz_n?: number; violations?: string | null; not_violation?: string | null
 }
 type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string }
 const json = { 'Content-Type': 'application/json' }
@@ -169,6 +169,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {l.law_type === 'recurring' ? (<>
               <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}><b>🗓 When:</b> {sched || 'not set yet'}</p>
               <p className="text-[10px] leading-snug text-gray-800"><b>✅ Daily Checklist:</b> {l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
+              {l.tile_id && l.kept && <p className="text-[10px] font-semibold leading-snug text-gray-800">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
             </>) : l.law_type === 'app' ? (
               <p className="text-[10px] leading-snug text-gray-800"><b>⚙ In the app:</b> the app enforces it itself.</p>
             ) : (<>
