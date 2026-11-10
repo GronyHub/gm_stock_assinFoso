@@ -1,4 +1,5 @@
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
+import { actorKey } from '@/lib/clockState'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureAttendance, applyApproval } from '@/lib/attendance'
@@ -12,9 +13,10 @@ export async function GET() {
   if (!isOwnerLevel(session.user as any)) return success({ pending: [] })
   try {
     await ensureAttendance()
+    const me = actorKey(session.user as any)
     const pending = await sql`SELECT c.id, c.staff, c.work_date, c.proposed_out, c.requested_at, t.actual_in, t.actual_out AS estimated
       FROM clock_corrections c LEFT JOIN staff_times t ON LOWER(t.staff_name) = c.staff AND t.work_date = c.work_date
-      WHERE c.status = 'pending' ORDER BY c.requested_at`
+      WHERE c.status = 'pending' AND c.staff <> ${me} ORDER BY c.requested_at`
     return success({ pending })
   } catch (e) { return handleError('clock corrections GET', e) }
 }
@@ -27,7 +29,9 @@ export async function PATCH(req: NextRequest) {
   try {
     await ensureAttendance()
     const b = await req.json().catch(() => ({}))
-    const id = Number(b.id), by = getActorName(session)
+    const id = Number(b.id), by = getActorName(session), me = actorKey(session.user as any)
+    const [own] = await sql`SELECT staff FROM clock_corrections WHERE id = ${id}`
+    if (own && String(own.staff) === me) return badRequest('You cannot approve your own time. Grony approves Joe, and Joe approves the others.')
     if (b.action === 'approve') { const out = await applyApproval(id, by, b.time ? String(b.time) : undefined); return success({ ok: !!out, out }) }
     if (b.action === 'reject') {
       const [c] = await sql`SELECT staff, work_date FROM clock_corrections WHERE id = ${id} AND status = 'pending'`

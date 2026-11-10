@@ -2,10 +2,9 @@ import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { actorKey } from '@/lib/clockState'
 import { SIGNERS } from '@/lib/signers'
-import { isOwnerLevel } from '@/lib/roles'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { ensureAttendance, openRecords, lastActivityMins, setClockOut, to12h, hhmmTo12h, CLOSING_MINS } from '@/lib/attendance'
-import { notifyOwners } from '@/lib/checklistAlerts'
+import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -61,12 +60,14 @@ export async function POST(req: NextRequest) {
       if (mins <= inMins) return badRequest('Your time out must be after your clock-in.')
       if (mins > 23 * 60 + 59) return badRequest('That is not a valid time.')
       const t12 = hhmmTo12h(String(b.time))
-      if (isOwnerLevel(user as any)) { await setClockOut(me, date, t12, 'manual', me); return success({ out: t12, approved: true }) }
+      if (me === 'grony') { await setClockOut(me, date, t12, 'manual', me); return success({ out: t12, approved: true }) }
       // Until an owner approves, the app's own last-activity time stands in, so the day is never left open.
       if (!rec.actual_out) await setClockOut(me, date, to12h(await lastActivityMins(me, date, inMins)), 'estimated', 'system')
       await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND status = 'pending'`
       await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Entered by ' + cap(me)})`
-      void notifyOwners(`${cap(me)} sent a clock-out time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      // Joe's own times are approved by Grony only; everyone else's by Grony or Joe.
+      if (me === 'joe') void pushToUsers(['grony'], 'Joe sent a clock-out time to approve', `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      else void notifyOwners(`${cap(me)} sent a clock-out time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
       return success({ out: t12, pending: true })
     }
     return badRequest('Unknown action.')

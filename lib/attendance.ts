@@ -25,14 +25,18 @@ export const ensureAttendance = once(async () => {
     reviewed_by TEXT, reviewed_at TIMESTAMPTZ, sales_ok BOOLEAN, laws_ok BOOLEAN, note TEXT)`.catch(() => {})
 })
 
-// The last thing a staff member did in the app on a day (a sale tap or a checklist tick), as minutes of the day. Never before their clock-in, never after closing.
+// The last thing a staff member did that can only be done AT the shop: a Live Sale tap, a Daily Checklist tick (photos, cleaning, closing) or a
+// shop routine tick. Looking at pages or reading laws does not count, because that can be done from anywhere. Never before clock-in, never after closing.
 export async function lastActivityMins(staff: string, day: string, clockInMins: number): Promise<number> {
   let best = clockInMins
-  try {
-    const t = await sql`SELECT MAX(tapped_at) AS m FROM live_sale_taps WHERE LOWER(staff_name) = ${staff} AND tapped_at::date = ${day}::date`
-    const e = await sql`SELECT MAX(recorded_at) AS m FROM daily_check_events WHERE LOWER(recorded_by) = ${staff} AND day = ${day}`
-    for (const r of [t[0]?.m, e[0]?.m]) { if (r) { const d = new Date(r as string); if (d.toISOString().slice(0, 10) === day) best = Math.max(best, d.getUTCHours() * 60 + d.getUTCMinutes()) } }
-  } catch { /* fall back to the clock-in time */ }
+  const take = (m: unknown) => { if (m) { const d = new Date(m as string); if (d.toISOString().slice(0, 10) === day) best = Math.max(best, d.getUTCHours() * 60 + d.getUTCMinutes()) } }
+  const sources: (() => Promise<unknown>)[] = [
+    async () => take((await sql`SELECT MAX(tapped_at) AS m FROM live_sale_taps WHERE LOWER(staff_name) = ${staff} AND tapped_at::date = ${day}::date AND NOT undone`)[0]?.m),
+    async () => take((await sql`SELECT MAX(recorded_at) AS m FROM daily_check_events WHERE LOWER(recorded_by) = ${staff} AND day = ${day}`)[0]?.m),
+    async () => take((await sql`SELECT MAX(recorded_at) AS m FROM shop_routine_events WHERE LOWER(recorded_by) = ${staff} AND recorded_at::date = ${day}::date`)[0]?.m),
+    async () => take((await sql`SELECT MAX(created_at) AS m FROM sale_buyers WHERE LOWER(created_by) = ${staff} AND created_at::date = ${day}::date`)[0]?.m),
+  ]
+  for (const f of sources) { try { await f() } catch { /* a missing table is skipped */ } }
   return Math.min(Math.max(best, clockInMins), CLOSING_MINS)
 }
 
@@ -109,7 +113,7 @@ export async function attendanceTick(now = new Date()) {
   if (hm === '19:00' && await claim(`stillhere:${day}`)) {
     await ensureAttendance()
     const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
-    const who = rows.map(r => r.n).filter(n => SIGNERS.includes(n))
+    const who = rows.map(r => r.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
     if (who.length) await pushToUsers(who, 'Are you still at the shop?', 'It is 7pm and you have not clocked out. Open the app and tell us.')
   }
   if (hm === '19:40' && await claim(`cctv:${day}`)) { await detectReviews(day, true) }
@@ -118,8 +122,10 @@ export async function attendanceTick(now = new Date()) {
   if (min === 0 && hr >= 8 && hr <= 20 && hr % 2 === 0) {
     await ensureAttendance()
     if (await claim(`remind:${day}:${hr}`)) {
-      const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending'`
+      const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe'`
       if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open the Daily Checklist.`)
+      const [{ j }] = await sql`SELECT COUNT(*)::int AS j FROM clock_corrections WHERE status = 'pending' AND staff = 'joe'`
+      if (Number(j) > 0) await pushToUsers(['grony'], 'Joe\'s clock-out time to approve', 'Open the Daily Checklist.')
       const [{ r }] = await sql`SELECT COUNT(*)::int AS r FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`
       if (Number(r) > 0) await pushToUsers(['joe'], 'CCTV review still due', `${r} day${Number(r) === 1 ? '' : 's'} waiting for your review.`)
     }

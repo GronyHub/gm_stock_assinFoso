@@ -4,6 +4,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import { ensureAttendance, to12h } from '@/lib/attendance'
 import { pushToUsers, notifyOwners } from '@/lib/checklistAlerts'
 import { SIGNERS } from '@/lib/signers'
+import { actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
 
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
@@ -19,7 +20,8 @@ export async function GET(req: NextRequest) {
     const summary = req.nextUrl.searchParams.get('summary')
     const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${new Date().toISOString().slice(0, 10)}`
     const [oldest] = await sql`SELECT work_date FROM cctv_reviews WHERE status = 'pending' AND work_date < ${new Date().toISOString().slice(0, 10)} ORDER BY work_date LIMIT 1`
-    if (summary) return success({ pending: Number(n), oldest: oldest?.work_date ?? null })
+    // Grony is in the UK and cannot watch the shop CCTV: only Joe is forced to review; Grony can read the results and prompt Joe.
+    if (summary) return success(actorKey(session.user as any) === 'joe' ? { pending: Number(n), oldest: oldest?.work_date ?? null } : { pending: 0, oldest: null, all: Number(n) })
     const rows = await sql`SELECT work_date::text AS day, windows, staff, status, reviewed_by, reviewed_at, sales_ok, laws_ok, note FROM cctv_reviews ORDER BY (status = 'pending') DESC, work_date DESC LIMIT 30`
     const reviews = []
     for (const r of rows) {
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if (!canReview(session.user)) return badRequest('Only Joe and the owner review the CCTV.')
+  if (actorKey(session.user as any) !== 'joe') return badRequest('Joe reviews the CCTV (he has the CCTV app). Grony can prompt him from the Daily Checklist.')
   try {
     await ensureAttendance()
     const b = await req.json().catch(() => ({}))
