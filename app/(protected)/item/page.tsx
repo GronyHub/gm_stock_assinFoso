@@ -2025,7 +2025,15 @@ function ItemHubPageInner() {
   // renders -- not just whether the slot happens to exist.
   const navSlotEl = useNavSlotEl()
   const isDesktop = useIsDesktop()
-  useEffect(() => { setBarH(barRef.current?.offsetHeight ?? 0) }, [embedUrl, personal, isDesktop, outerTab])
+  // The staff bar loads after the page (its people arrive later), so its height is watched, not read once: the right-pane page always starts BELOW it.
+  useEffect(() => {
+    const el = barRef.current
+    setBarH(el?.offsetHeight ?? 0)
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setBarH(el.offsetHeight))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [embedUrl, personal, isDesktop, outerTab])
   // Nav's real rendered height (see lib/navHeight.ts) -- used below to size
   // this page's own content area to "the rest of the viewport", instead of
   // a hardcoded assumption that goes stale the moment Nav grows a second
