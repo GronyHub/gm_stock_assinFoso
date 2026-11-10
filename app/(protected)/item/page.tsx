@@ -1610,6 +1610,13 @@ function ItemHubPageInner() {
   // Pages that are not part of the hub (Company Laws, the Daily Checklist, How To...) and a person's own page open INSIDE the right pane, so the left
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
+  const [myDayBadge, setMyDayBadge] = useState(0)
+  useEffect(() => {
+    let live = true
+    const load = () => fetch('/api/my-day?count=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && d) setMyDayBadge(Number(d.total ?? 0)) }).catch(() => {})
+    void load(); const t = setInterval(load, 5 * 60 * 1000)
+    return () => { live = false; clearInterval(t) }
+  }, [])
   const [voiceSaleText, setVoiceSaleText] = useState('')
   const [scanItem, setScanItem] = useState<{ id: number; name: string; selling_price: number; soh: number } | null>(null)
   const [scanSignal, setScanSignal] = useState(0)
@@ -1624,7 +1631,7 @@ function ItemHubPageInner() {
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
     if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
-    const msg = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data?.type === 'close-embed') setEmbedUrl(null) }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') setEmbedUrl(null); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own)
     return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own) }
@@ -1690,7 +1697,9 @@ function ItemHubPageInner() {
     { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },
     { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },
     { label: 'Penalties', names: ['penalties', 'penalty points'], run: () => openEmbed('/penalties') },
+    { label: 'Waiting for me', names: ['my day', 'waiting for me', 'my tasks', 'to do', 'what is waiting'], run: () => openEmbed('/my-day') },
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
+    { label: 'System check', names: ['system check', 'integrity', 'health check'], run: () => openEmbed('/integrity') },
     { label: 'Barcode labels', names: ['barcode labels', 'labels', 'barcodes'], run: () => openEmbed('/barcode-labels') },
     { label: 'Live Sale', names: ['live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
     { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },
@@ -6783,6 +6792,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
+            <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={embedActive('/my-day')} badge={myDayBadge} href="/my-day" onClick={() => openEmbed('/my-day')} />
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={embedActive('/laws')} shared={isOwnerOrJoe}
               href="/laws" onClick={() => openEmbed('/laws')} />
@@ -6904,6 +6914,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 href="/handbook-announcements" onClick={() => openEmbed('/handbook-announcements')} />
               <SidePaneButton icon="🏷️" label="Barcode labels" mode={cashDisplayMode} divider active={embedActive('/barcode-labels')}
                 href="/barcode-labels" onClick={() => openEmbed('/barcode-labels')} />
+              <SidePaneButton icon="🩺" label="System check" mode={cashDisplayMode} divider active={embedActive('/integrity')}
+                href="/integrity" onClick={() => openEmbed('/integrity')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
