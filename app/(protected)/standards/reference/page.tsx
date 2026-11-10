@@ -1,10 +1,4 @@
-import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import StandardsClient from '../StandardsClient'
 
-export default async function StandardsPage() {
-  const session = await auth()
-  if (!session) redirect('/login')
-  const role = (session.user as { role?: string })?.role ?? 'staff'
-  return <StandardsClient canEdit={role !== 'staff'} />
-}
+// The printable standards list is retired: the Company Laws are the one source and the Daily Checklist is the one place to tick.
+export default function ReferenceRedirect() { redirect('/standards') }
