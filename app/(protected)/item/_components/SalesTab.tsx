@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo, memo } from 'react'
+import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { fmtDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import { useFitWidth } from '@/lib/useFitWidth'
@@ -38,13 +39,6 @@ type Line = {
 
 type EditLine = { id: number | null; itemId: number | null; item_name: string; quantity: string; item_price: string; nameTouched: boolean }
 
-const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function fmtShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
-}
 
 function fmtCust(name: string | null) {
   if (!name) return 'W'

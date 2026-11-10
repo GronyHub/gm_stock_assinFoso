@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, Fragment } from 'react'
+import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
@@ -54,13 +55,6 @@ type Vendor = { id: number; display_name: string }
 type SearchItem = { id: number; name: string; group: string }
 type EditLine = { id: number | null; itemId: number | null; itemName: string; qty: string; price: string }
 
-const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function fmtShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
-}
 
 function fmt(val: string | number | null) {
   if (val == null) return '—'

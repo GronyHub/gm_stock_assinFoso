@@ -1,5 +1,6 @@
 'use client'
 import WithMic from '@/components/WithMic'
+import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import React, { useState, useEffect, useMemo, memo, ReactNode } from 'react'
@@ -53,13 +54,6 @@ type DailyItem = {
   calculated_soh: number; last_count_date: string | null; days_overdue: number | null
 }
 
-const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function fmtShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
-}
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 

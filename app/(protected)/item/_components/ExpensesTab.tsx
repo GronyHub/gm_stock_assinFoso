@@ -1,5 +1,6 @@
 'use client'
 import { useFitWidth } from '@/lib/useFitWidth'
+import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
@@ -41,13 +42,6 @@ const PROPERTY_LOCATIONS = Array.from({ length: 10 }, (_, i) => `Grony ${i + 1}`
 const NOT_WORKING_REASONS = ['Faulty - Needs Repair', 'Condemned - Beyond Repairs']
 const NOT_AVAILABLE_REASONS = ['Spoilt and thrown away', 'Stolen', "At Grony's House"]
 
-const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function fmtShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
-}
 
 function fmt(val: string | null) {
   if (val == null) return '—'

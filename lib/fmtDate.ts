@@ -53,3 +53,11 @@ export function daysBetween(a: string, b: string): number {
   const ms = new Date(b).getTime() - new Date(a).getTime()
   return Math.max(0, Math.round(ms / 86400000))
 }
+
+// "5 No 26-Th" -- the short date used in the Bills, Counts, Expenses, Purchase Orders, Properties and Sales tabs (read as UTC, which is Ghana's time).
+const SHORT_MONTHS = ['Ja', 'Fe', 'Mr', 'Ap', 'My', 'Ju', 'Jl', 'Au', 'Se', 'Oc', 'No', 'De']
+const SHORT_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+export function fmtShortUtc(dateStr: string): string {
+  const d = new Date(dateStr)
+  return `${d.getUTCDate()} ${SHORT_MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${SHORT_DAYS[d.getUTCDay()]}`
+}

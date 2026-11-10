@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo, memo, useRef } from 'react'
+import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
@@ -69,13 +70,6 @@ type FlatRow = {
   gmcType?: string | null
 }
 
-const MONTHS = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
-const DAYS   = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-function fmtShort(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCFullYear()).slice(-2)}-${DAYS[d.getUTCDay()]}`
-}
 
 function fmt(val: string | null) {
   if (!val) return '—'
