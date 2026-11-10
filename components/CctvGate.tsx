@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import LawLink from '@/components/LawLink'
 
 // Joe (and the owner) must review the CCTV for days staff worked without Joe clocked in. The reminder can be put off for an hour, but not once a day is 2+ days old.
 // Also: staff questions raised by those reviews appear here for the person asked to answer.
@@ -30,6 +31,7 @@ export default function CctvGate() {
           <p className="text-sm text-gray-800"><b>{q.from_user}</b> asks: {q.about}</p>
           <textarea value={ans} onChange={e => setAns(e.target.value)} rows={3} placeholder="Your answer" className="w-full rounded-xl border-2 border-gray-300 p-2 text-sm" />
           {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
+          <LawLink name="Review the CCTV when staff work without the manager" />
           <button type="button" disabled={ans.trim().length < 3} onClick={async () => { const r = await fetch('/api/staff-queries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: q.id, answer: ans }) }); if (r.ok) { setAns(''); setMsg(''); check() } else setMsg('Could not send. Try again.') }} className="w-full rounded-xl bg-[#14213D] py-2.5 text-sm font-bold text-white disabled:opacity-40">Send my answer</button>
         </div>
       </div>)
@@ -40,6 +42,7 @@ export default function CctvGate() {
       <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
         <p className="text-base font-extrabold text-red-700">CCTV review needed</p>
         <p className="text-sm text-gray-800">{pending} day{pending === 1 ? ' has' : 's have'} staff at work while you were not clocked in. Review the CCTV and confirm that every sale and every law was as expected.</p>
+        <LawLink name="Review the CCTV when staff work without the manager" />
         <a href="/cctv-review" className="block w-full rounded-xl bg-red-600 py-2.5 text-center text-sm font-bold text-white">Review the CCTV now</a>
         {ageDays < 2 && <button type="button" onClick={() => { try { localStorage.setItem(SNOOZE, String(Date.now() + 60 * 60 * 1000)) } catch { /* ignore */ } setSnoozed(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me in 1 hour</button>}
       </div>

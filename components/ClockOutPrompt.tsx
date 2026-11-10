@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import LawLink from '@/components/LawLink'
 
 type Prev = { date: string; in: string }
 type Auto = { id: number; date: string; out: string; basis: string }
@@ -38,6 +39,7 @@ export default function ClockOutPrompt() {
         <p className="text-sm text-gray-700">That is the time of your last activity in the app. If you really left at a different time, enter it. Grony and Joe will approve it.</p>
         <input type="time" value={fixTime} onChange={e => setFixTime(e.target.value)} className="w-full rounded-xl border-2 border-gray-300 p-2 text-lg" />
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
+        <LawLink name="Clock out when you leave" />
         <button type="button" disabled={!fixTime || busy} onClick={async () => { const d = await post({ action: 'enter', date: fix.date, time: fixTime }); if (d) { setFix(null); void load() } }} className="w-full rounded-xl bg-[#14213D] py-2.5 text-sm font-bold text-white disabled:opacity-40">Send my time for approval</button>
         <button type="button" onClick={() => { setFix(null); void load() }} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">That time is correct</button>
       </div>
@@ -55,6 +57,7 @@ export default function ClockOutPrompt() {
             <input type="time" value={times[p.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [p.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
             <button type="button" disabled={!times[p.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: p.date, time: times[p.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send time out for {p.date}</button>
           </div>))}
+        <LawLink name="Clock out when you leave" />
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
     </div>
@@ -71,6 +74,7 @@ export default function ClockOutPrompt() {
             <input type="time" value={times[a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
             <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
           </div>))}
+        <LawLink name="Clock out when you leave" />
         <button type="button" onClick={() => { try { localStorage.setItem('clockAutoSnooze', String(Date.now() + 2 * 60 * 60 * 1000)) } catch { /* ignore */ } setLater(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me later (2 hours)</button>
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
@@ -82,6 +86,7 @@ export default function ClockOutPrompt() {
         <p className="text-base font-extrabold text-[#14213D]">Are you still at the shop?</p>
         <p className="text-sm text-gray-700">It is past 7pm and you have not clocked out.</p>
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
+        <LawLink name="Clock out when you leave" />
         <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'still_here' }); if (d) void load() }} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">Yes, I am still here</button>
         <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'left' }); if (d) { setFix({ date: new Date().toISOString().slice(0, 10), out: d.out }); setFixTime('') } }} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">No, I have left</button>
       </div>
