@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       const vs = parseViolations(l.violations)
       const v = vs[Number(b.violation_index)]
       if (vs.length && !v) return badRequest('Choose which violation it was.')
+      if (v && v.points === 0) return badRequest('That rule has no penalty, so no point can be logged for it.')
       if (v) { violation = v.text; points = v.points } else if (!Number.isFinite(points) || points < 1) points = Number(l.points) || 1
       lawCode = (l.code as string | null) ?? null
       reason = `${lawCode ? lawCode + ': ' : ''}${violation ?? String(l.text).slice(0, 80)}. ${note}`.slice(0, 300)

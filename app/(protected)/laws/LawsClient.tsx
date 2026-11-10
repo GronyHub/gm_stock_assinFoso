@@ -195,7 +195,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                   {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}
                 </div>
                 <div className="flex flex-col items-center gap-0.5 border-t border-gray-200 p-1">
-                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : `⚖ ${v.points}`}</span>
+                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
                   {shared && <span className="text-center text-[8px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
                 </div>
                 <div className="border-t border-gray-200 p-1.5">
@@ -372,7 +372,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
   async function save() {
     if (!d.violations.some(v => v.text.trim())) { setErr('Add at least one violation: what exactly breaks this law.'); return }
     setBusy(true); setErr('')
-    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })) }) })
+    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: v.points === '0' ? 0 : Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })) }) })
     const j = await r.json().catch(() => ({}))
     setBusy(false)
     if (!r.ok) setErr(j.error ?? 'Could not save'); else onSaved(d.id ? 'Law saved' : 'Law added')
@@ -412,7 +412,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
           {d.violations.map((v, i) => (
             <div key={i} className="flex items-center gap-1">
               <input value={v.text} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} placeholder="For example: a sale is not recorded the same day" className={inp} />
-              <input type="number" min={1} max={20} value={v.points} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, points: e.target.value } : x))} className={inp + ' w-14'} title="Points" />
+              <input type="number" min={0} max={20} value={v.points} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, points: e.target.value } : x))} className={inp + ' w-14'} title="Points" />
               <select value={v.by} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, by: e.target.value } : x))} className={inp + ' w-28'}><option value="manager">Manager logs</option><option value="app">App checks</option></select>
               <label className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-red-700"><input type="checkbox" checked={!!v.dismissal} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, dismissal: e.target.checked } : x))} />Dismissal</label>
               <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700">✕</button>

@@ -34,9 +34,9 @@ function Day({ r, laws, open, toggle, done }: { r: Review; laws: Law[]; open: bo
   const [lawId, setLawId] = useState('')
   const [vi, setVi] = useState(0)
   const [q, setQ] = useState('')
-  const lawList = laws.filter(l => { try { return (JSON.parse(l.violations) as V[]).length > 0 } catch { return false } })
+  const lawList = laws.filter(l => { try { return (JSON.parse(l.violations) as V[]).some(v => v.points > 0) } catch { return false } })
   const picked = lawList.find(l => String(l.id) === lawId)
-  const vs: V[] = picked ? JSON.parse(picked.violations) : []
+  const vs: V[] = picked ? (JSON.parse(picked.violations) as V[]).filter(v => v.points > 0) : []
   async function call(url: string, body: object, ok: string) {
     setMsg('')
     const res = await fetch(url, { method: url.includes('penalties') ? 'POST' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

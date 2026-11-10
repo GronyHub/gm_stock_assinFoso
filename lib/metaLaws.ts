@@ -46,6 +46,25 @@ export async function seedMetaJoe() {
   } catch (e) { console.error('meta joe seed failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// Plain rules the app follows itself. They carry no penalty (points 0): they are written down so staff can read and sign them.
+const RULES = [
+  { title: 'Clock out when you leave', audience: 'staff', violation: 'You leave without clocking out. No penalty: the app clocks you out at the time of your last action at the shop (a Live Sale tap or a checklist tick, even after 7pm), tells you, and you tap OK, send the correct time for approval, or tap Remind me later',
+    how: 'Clock out when you leave the shop\nAt 7pm the app asks: are you still at the shop?\nIf you forget, the app clocks you out using your last shop-only action and sends you a prompt\nA time you send is approved by Joe (Joe\'s is approved by Grony)\nWith no shop action to go on, you must enter your time out before you carry on' },
+  { title: 'Review the CCTV when staff work without the manager', audience: 'managers', violation: 'Days when staff were at work and the manager had not clocked in are not reviewed on CCTV. No penalty here: the 48-hour law carries the point',
+    how: 'The app lists the days and the times staff worked without the manager\nWatch the CCTV for those times\nConfirm that every sale was entered and every law was kept\nIf not, log a violation or send a question to the staff member' },
+]
+export async function seedRules() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('rules-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    for (const d of RULES) {
+      const v = [{ text: d.violation, points: 0, by: 'app', how: d.how, record: 'The app does this itself and keeps the record' }]
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, live_at, audience)
+        VALUES ('Staff management', ${d.title}, false, 'law', 'Staff management', 'Company laws', 'app', 'live', 'rules-v1', 'tick', 0, ${JSON.stringify(v)}, ${d.title}, now(), ${d.audience})`
+    }
+  } catch (e) { console.error('rules seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Joe's app-enforced points: reviews and decisions left waiting more than 48 hours. One point per item.
 export async function metaTickJoe(day: string) {
   const rows = await sql`SELECT id, code FROM page_laws WHERE seed = 'meta-v2' ORDER BY id` as unknown as { id: number; code: string | null }[]
