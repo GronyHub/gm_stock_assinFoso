@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { quizOfDay } from '@/lib/serviceQuiz'
 import { ruleOfDay } from '@/lib/customerServiceCode'
+import { isSnoozed, snooze } from '@/lib/snooze'
 
 // Start-of-day customer service card: today's rule, "is your tag on?", and one scenario question.
 // Shown once per day per person on the first page they open; after it is answered it does not come back until tomorrow.
@@ -16,7 +17,7 @@ export default function ServiceDailyCard() {
   useEffect(() => {
     let live = true
     fetch('/api/customer-service/daily').then(r => r.ok ? r.json() : null).then(d => {
-      if (live && d && !d.skip && !d.done) setDay(d.day)
+      if (live && d && !d.skip && !d.done && !isSnoozed('serviceCardSnooze')) setDay(d.day)
     }).catch(() => {})
     return () => { live = false }
   }, [])
@@ -83,6 +84,7 @@ export default function ServiceDailyCard() {
               {busy ? 'Saving…' : 'Submit answer'}
             </button>
           )}
+          {!res && <button type="button" onClick={() => { snooze('serviceCardSnooze', 30); setClosed(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Later: remind me in 30 minutes</button>}
         </div>
       </div>
     </div>

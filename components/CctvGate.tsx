@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import LawLink from '@/components/LawLink'
 import WithMic from '@/components/WithMic'
+import { isSnoozed, snooze } from '@/lib/snooze'
 
 // Joe (and the owner) must review the CCTV for days staff worked without Joe clocked in. The reminder can be put off for an hour, but not once a day is 2+ days old.
 // Also: staff questions raised by those reviews appear here for the person asked to answer.
@@ -13,6 +14,8 @@ export default function CctvGate() {
   const [qs, setQs] = useState<Q[]>([])
   const [ans, setAns] = useState('')
   const [msg, setMsg] = useState('')
+  const [qLater, setQLater] = useState(false)
+  useEffect(() => { setQLater(isSnoozed('cctvQSnooze')); const t = setInterval(() => setQLater(isSnoozed('cctvQSnooze')), 60000); return () => clearInterval(t) }, [])
   const check = () => {
     if (window.location.pathname.startsWith('/login')) return
     fetch('/api/cctv-review?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) { setPending(d.pending ?? 0); setOldest(d.oldest ?? null) } }).catch(() => {})
@@ -25,7 +28,7 @@ export default function CctvGate() {
   useEffect(() => { const f = (e: Event) => setEmbed((e as CustomEvent).detail ?? null); window.addEventListener('embed-changed', f); return () => window.removeEventListener('embed-changed', f) }, [])
   const onPage = (typeof window !== 'undefined' && window.location.pathname.startsWith('/cctv-review')) || !!embed?.startsWith('/cctv-review')
   const ageDays = oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / 86400000) : 0
-  if (qs.length) {
+  if (qs.length && !qLater) {
     const q = qs[0]
     return (
       <div className="fixed inset-0 z-[97] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
@@ -36,6 +39,7 @@ export default function CctvGate() {
           {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
           <LawLink name="Review the CCTV when staff work without the manager" />
           <button type="button" disabled={ans.trim().length < 3} onClick={async () => { const r = await fetch('/api/staff-queries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: q.id, answer: ans }) }); if (r.ok) { setAns(''); setMsg(''); check() } else setMsg('Could not send. Try again.') }} className="w-full rounded-xl bg-[#14213D] py-2.5 text-sm font-bold text-white disabled:opacity-40">Send my answer</button>
+          <button type="button" onClick={() => { snooze('cctvQSnooze', 30); setQLater(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Answer later (30 minutes)</button>
         </div>
       </div>)
   }
