@@ -49,6 +49,7 @@ import LogDayPhotos from './_components/LogDayPhotos'
 import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
+import VoiceSale from '@/components/VoiceSale'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
@@ -10103,6 +10104,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <button type="button" onClick={() => setNegPrompt(null)} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Later (it stays under Negative stock)</button>
               </div>
             </div>
+          )}
+          {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && (
+            <VoiceSale onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
           )}
           {gmcOverageGate && (
             <GmcOverageGateModal
