@@ -1691,6 +1691,7 @@ function ItemHubPageInner() {
     { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },
     { label: 'Penalties', names: ['penalties', 'penalty points'], run: () => openEmbed('/penalties') },
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
+    { label: 'Barcode labels', names: ['barcode labels', 'labels', 'barcodes'], run: () => openEmbed('/barcode-labels') },
     { label: 'Live Sale', names: ['live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
     { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },
     { label: 'Customers', names: ['customers'], run: () => jumpToCustomersTab() },
@@ -6893,6 +6894,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 href="/owner-guide" onClick={() => openEmbed('/owner-guide')} />
               <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={embedActive('/handbook-announcements')}
                 href="/handbook-announcements" onClick={() => openEmbed('/handbook-announcements')} />
+              <SidePaneButton icon="🏷️" label="Barcode labels" mode={cashDisplayMode} divider active={embedActive('/barcode-labels')}
+                href="/barcode-labels" onClick={() => openEmbed('/barcode-labels')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
@@ -10124,6 +10127,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <ScanButton className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} -translate-y-14`}
             onItem={it => {
               if (outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal) { setScanItem(it); setScanSignal(n => n + 1); return }
+              const ev = { item: { id: it.id, name: it.name }, handled: false }
+              window.dispatchEvent(new CustomEvent('scan-item', { detail: ev })) // the Counts page opens its count box for this item
+              if (ev.handled) return
               let doc: Document | null = null; try { doc = embedRef.current?.contentDocument ?? null } catch { /* ignore */ }
               if (!fillSearchBox(doc ?? document, it.name)) showToast(`Scanned: ${it.name} (₵${it.selling_price})`, 'success')
             }} />

@@ -140,15 +140,17 @@ function CountRow({ item, onSaved, onLoss, onPairing, onLog }: {
 
 // Ad-hoc count of ANY item, any time -- not just the ones due today. Same-day
 // counts replace rather than duplicate (see /api/stock/count).
-function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
+function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing, initialItem }: {
   items: Item[]
+  initialItem?: Item | null
   onSaved: () => void
   onClose: () => void
   onLoss: (d: any, retry: (extra: LossExtra) => void) => void
   onPairing: (itemName: string, packs: PackRef[], retry: () => void) => void
 }) {
   const [q, setQ] = useState('')
-  const [sel, setSel] = useState<Item | null>(null)
+  const [sel, setSel] = useState<Item | null>(initialItem ?? null)
+  useEffect(() => { if (initialItem) setSel(initialItem) }, [initialItem])
   const [qty, setQty] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -288,6 +290,13 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const [overdueItems, setOverdueItems] = useState<DailyItem[]>([])
   const [dailyLoading, setDailyLoading] = useState(true)
   const [showManual, setShowManual] = useState(false)
+  // A scanned barcode (see components/ScanButton.tsx) opens the Manual Count form with that item already chosen.
+  const [scanned, setScanned] = useState<Item | null>(null)
+  useEffect(() => {
+    const h = (e: Event) => { const d = (e as CustomEvent).detail as { item: { id: number; name: string }; handled: boolean }; d.handled = true; setScanned({ id: d.item.id, item_name: d.item.name, cf_group: null }); setShowManual(true) }
+    window.addEventListener('scan-item', h)
+    return () => window.removeEventListener('scan-item', h)
+  }, [])
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [lossPrompt, setLossPrompt] = useState<LossPrompt | null>(null)
   const promptLoss = (d: any, retry: (extra: LossExtra) => void) => setLossPrompt({ d, retry })
@@ -447,7 +456,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
           )}
         </div>
         {showManual && (
-          <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
+          <ManualCountForm items={items} initialItem={scanned} onClose={() => { setShowManual(false); setScanned(null) }} onLoss={promptLoss} onPairing={promptPairing}
             onSaved={() => { loadRecords(); loadDaily() }} />
         )}
         {dailyLoading ? (
@@ -540,7 +549,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         </div>
       )}
       {!showAnalytics && showManual && (
-        <ManualCountForm items={items} onClose={() => setShowManual(false)} onLoss={promptLoss} onPairing={promptPairing}
+        <ManualCountForm items={items} initialItem={scanned} onClose={() => { setShowManual(false); setScanned(null) }} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
       {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">

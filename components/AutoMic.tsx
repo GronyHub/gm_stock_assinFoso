@@ -1,6 +1,8 @@
 'use client'
 import { usePathname } from 'next/navigation'
 import GlobalMic from '@/components/GlobalMic'
+import ScanButton from '@/components/ScanButton'
+import { fillSearchBox } from '@/lib/voiceCommands'
 import type { Dest } from '@/lib/voiceCommands'
 
 // Pages that are not shown inside the hub (Sales, Receipts...) get the same microphone in the same bottom-right place.
@@ -17,5 +19,9 @@ export default function AutoMic() {
   const path = usePathname()
   if (path === '/item') return null
   if (typeof window !== 'undefined') { try { if (window.self !== window.top) return null } catch { return null } }
-  return <GlobalMic dests={DESTS} className="bottom-4 right-4" />
+  return (<>
+    <GlobalMic dests={DESTS} className="bottom-4 right-4" />
+    {/* The same scan button as in the hub: the scanned item's name goes into this page's search box. */}
+    <ScanButton className="bottom-4 right-4 -translate-y-14" onItem={it => { if (!fillSearchBox(document, it.name)) alert(`Scanned: ${it.name} (₵${it.selling_price})`) }} />
+  </>)
 }
