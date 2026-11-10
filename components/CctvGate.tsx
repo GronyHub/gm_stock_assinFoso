@@ -39,7 +39,7 @@ export default function CctvGate() {
         </div>
       </div>)
   }
-  if (!pending || onPage || (snoozed && ageDays < 2)) return null
+  if (!pending || onPage || snoozed) return null
   return (
     <div className="fixed inset-0 z-[97] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
       <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
@@ -47,7 +47,7 @@ export default function CctvGate() {
         <p className="text-sm text-gray-800">{pending} day{pending === 1 ? ' has' : 's have'} staff at work while you were not clocked in. Review the CCTV and confirm that every sale and every law was as expected.</p>
         <LawLink name="Review the CCTV when staff work without the manager" />
         <a href="/cctv-review" className="block w-full rounded-xl bg-red-600 py-2.5 text-center text-sm font-bold text-white">Review the CCTV now</a>
-        {ageDays < 2 && <button type="button" onClick={() => { try { localStorage.setItem(SNOOZE, String(Date.now() + 60 * 60 * 1000)) } catch { /* ignore */ } setSnoozed(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me in 1 hour</button>}
+        <button type="button" onClick={() => { try { localStorage.setItem(SNOOZE, String(Date.now() + (ageDays >= 2 ? 30 : 60) * 60 * 1000)) } catch { /* ignore */ } setSnoozed(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Not now: remind me in {ageDays >= 2 ? '30 minutes' : '1 hour'}</button>
       </div>
     </div>
   )
