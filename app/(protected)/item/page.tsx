@@ -6711,7 +6711,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
             </>}>
-            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} onHide={() => setSidePaneHidden(true)} />
+            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} onHide={() => setSidePaneHidden(true)} />
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false} shared={isOwnerOrJoe}

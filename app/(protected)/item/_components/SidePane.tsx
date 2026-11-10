@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { MyAvatar } from '@/components/StaffAvatar'
-import { PenaltyChip } from '@/components/PenaltyChip'
+import MySelfChip from './MySelfChip'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
 // width right pane" navigation pattern used throughout this app (Grony
@@ -85,14 +84,12 @@ export function paneWidthClass(mode: DisplayMode) {
 // `onHide`, when passed, floats a small "hide sidebar" button over the
 // label's own row instead of it taking a layout slot of its own -- no extra
 // border/column, it just sits on top of space the label wasn't using.
-export function SidePaneToggle({ mode, onChange, label, onHide }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string; onHide?: () => void }) {
+export function SidePaneToggle({ mode, onChange, label, username, onHide }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string; username?: string; onHide?: () => void }) {
   return (
     <div className="relative border-b border-white/30 bg-[var(--pane-accent)] sticky top-0 z-10">
       {label && (
-        <div className={`px-1.5 pt-1 flex items-center gap-1 min-w-0 ${onHide ? 'pr-6' : ''}`} title="You are signed in as this person">
-          <MyAvatar size={16} />
-          <p className="text-[9px] font-semibold text-blue-200 truncate">{label}</p>
-          <PenaltyChip />
+        <div className={`px-1 pt-1 ${onHide ? 'pr-6' : ''}`}>
+          <MySelfChip name={label} username={username} />
         </div>
       )}
       {onHide && (
