@@ -17,7 +17,8 @@ export async function GET() {
   try {
     await ensureAttendance()
     const me = actorKey(user as any)
-    if (!SIGNERS.includes(me)) return success({ askNow: false, previous: [] })
+    // Grony is the owner in the UK and is never at the shop: no clock-out checks for him.
+    if (!SIGNERS.includes(me) || me === 'grony') return success({ askNow: false, previous: [], autos: [] })
     const day = today(), now = new Date()
     const open = await openRecords(me)
     const todays = open.find(r => r.d === day)
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureAttendance()
     const me = actorKey(user as any)
-    if (!SIGNERS.includes(me)) return badRequest('Not on the staff list.')
+    if (!SIGNERS.includes(me) || me === 'grony') return badRequest('Not on the shop staff list.')
     const b = await req.json().catch(() => ({}))
     const day = today()
     if (b.action === 'auto_ok') { await sql`UPDATE clock_autos SET status = 'ok' WHERE id = ${Number(b.id)} AND staff = ${me}`; return success({ ok: true }) }
@@ -62,7 +63,6 @@ export async function POST(req: NextRequest) {
       if (mins <= inMins) return badRequest('Your time out must be after your clock-in.')
       if (mins > 23 * 60 + 59) return badRequest('That is not a valid time.')
       const t12 = hhmmTo12h(String(b.time))
-      if (me === 'grony') { await setClockOut(me, date, t12, 'manual', me); return success({ out: t12, approved: true }) }
       // Until an owner approves, the app's own last-activity time stands in, so the day is never left open.
       if (!rec.actual_out) await setClockOut(me, date, to12h(await lastActivityMins(me, date, inMins)), 'estimated', 'system')
       await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND status = 'pending'`
