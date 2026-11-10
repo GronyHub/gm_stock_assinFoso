@@ -20,6 +20,9 @@ export const ensureAttendance = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS staff_queries (
     id SERIAL PRIMARY KEY, staff TEXT NOT NULL, from_user TEXT NOT NULL, about TEXT NOT NULL, work_date TEXT, review_day TEXT, status TEXT NOT NULL DEFAULT 'open',
     answer TEXT, asked_at TIMESTAMPTZ NOT NULL DEFAULT now(), answered_at TIMESTAMPTZ)`.catch(() => {})
+  await sql`CREATE TABLE IF NOT EXISTS clock_autos (
+    id SERIAL PRIMARY KEY, staff TEXT NOT NULL, work_date TEXT NOT NULL, out_time TEXT NOT NULL, basis TEXT, status TEXT NOT NULL DEFAULT 'notified',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (staff, work_date))`.catch(() => {})
   await sql`CREATE TABLE IF NOT EXISTS cctv_reviews (
     work_date TEXT PRIMARY KEY, windows TEXT NOT NULL, staff TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     reviewed_by TEXT, reviewed_at TIMESTAMPTZ, sales_ok BOOLEAN, laws_ok BOOLEAN, note TEXT)`.catch(() => {})
@@ -27,9 +30,10 @@ export const ensureAttendance = once(async () => {
 
 // The last thing a staff member did that can only be done AT the shop: a Live Sale tap, a Daily Checklist tick (photos, cleaning, closing) or a
 // shop routine tick. Looking at pages or reading laws does not count, because that can be done from anywhere. Never before clock-in, never after closing.
-export async function lastActivityMins(staff: string, day: string, clockInMins: number): Promise<number> {
-  let best = clockInMins
-  const take = (m: unknown) => { if (m) { const d = new Date(m as string); if (d.toISOString().slice(0, 10) === day) best = Math.max(best, d.getUTCHours() * 60 + d.getUTCMinutes()) } }
+export async function lastActivityMins(staff: string, day: string, clockInMins: number): Promise<number> { return (await lastActivity(staff, day, clockInMins)).mins }
+export async function lastActivity(staff: string, day: string, clockInMins: number): Promise<{ mins: number; found: boolean }> {
+  let best = clockInMins, found = false
+  const take = (m: unknown) => { if (m) { const d = new Date(m as string); if (d.toISOString().slice(0, 10) === day) { const v = d.getUTCHours() * 60 + d.getUTCMinutes(); if (v > clockInMins) { found = true; best = Math.max(best, v) } } } }
   const sources: (() => Promise<unknown>)[] = [
     async () => take((await sql`SELECT MAX(tapped_at) AS m FROM live_sale_taps WHERE LOWER(staff_name) = ${staff} AND tapped_at::date = ${day}::date AND NOT undone`)[0]?.m),
     async () => take((await sql`SELECT MAX(recorded_at) AS m FROM daily_check_events WHERE LOWER(recorded_by) = ${staff} AND day = ${day}`)[0]?.m),
@@ -37,7 +41,7 @@ export async function lastActivityMins(staff: string, day: string, clockInMins: 
     async () => take((await sql`SELECT MAX(created_at) AS m FROM sale_buyers WHERE LOWER(created_by) = ${staff} AND created_at::date = ${day}::date`)[0]?.m),
   ]
   for (const f of sources) { try { await f() } catch { /* a missing table is skipped */ } }
-  return Math.min(Math.max(best, clockInMins), CLOSING_MINS)
+  return { mins: Math.min(Math.max(best, clockInMins), CLOSING_MINS), found }
 }
 
 // An open record: clocked in on a day, never clocked out.
@@ -45,6 +49,26 @@ export async function openRecords(staff: string, onlyBefore?: string) {
   const rows = await sql`SELECT work_date::text AS d, actual_in FROM staff_times WHERE LOWER(staff_name) = ${staff} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'
     AND work_date >= (${today()}::date - 60) ORDER BY work_date` as unknown as { d: string; actual_in: string }[]
   return onlyBefore ? rows.filter(r => r.d < onlyBefore) : rows
+}
+
+// The law: nobody is left clocked in. When someone has not clocked out, the app clocks them out at the time of their last shop-only action and tells them.
+// With no such action at all there is nothing to base a time on, so nothing is set and the person is asked to enter their time (the next-day gate).
+export async function autoClockOut(day: string, includeToday = false) {
+  await ensureAttendance()
+  const rows = await sql`SELECT LOWER(staff_name) AS n, work_date::text AS d, actual_in FROM staff_times WHERE actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__' AND work_date <= ${includeToday ? day : new Date(Date.parse(day) - 86400000).toISOString().slice(0, 10)} AND work_date >= (${day}::date - 60)` as unknown as { n: string; d: string; actual_in: string }[]
+  let n = 0
+  for (const r of rows) {
+    if (!SIGNERS.includes(r.n) || r.n === 'grony') continue
+    const inM = parseTimeMins(r.actual_in); if (inM == null) continue
+    const a = await lastActivity(r.n, r.d, inM)
+    if (!a.found) continue
+    const out = to12h(a.mins)
+    await setClockOut(r.n, r.d, out, 'auto', 'system')
+    await sql`INSERT INTO clock_autos (staff, work_date, out_time, basis) VALUES (${r.n}, ${r.d}, ${out}, 'your last action at the shop in the app') ON CONFLICT DO NOTHING`
+    n++
+    void pushToUsers([r.n], 'You were clocked out for you', `You did not clock out on ${r.d}. The app set your time out to ${out}, your last action at the shop. Open the app to tap OK or send the correct time.`)
+  }
+  return n
 }
 
 export async function setClockOut(staff: string, day: string, out12: string, source: string, by: string) {
@@ -123,6 +147,9 @@ export async function attendanceTick(now = new Date()) {
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:00' && await claim(`cctvcatch:${day}`)) { await detectReviews(day, false) }
   // Every morning: anyone with an earlier day still open is asked to enter their time out (they cannot go on in the app until they do).
+  if (hm === '07:10' && await claim(`autoclock:${day}`)) { await autoClockOut(day).catch(e => console.error('auto clock-out failed:', e instanceof Error ? e.message : String(e))) }
+  if (hm === '23:30' && await claim(`autoclocktoday:${day}`)) { await autoClockOut(day, true).catch(() => {}) }
+  if (await claim('autoretro-v1')) { await autoClockOut(day).catch(e => console.error('auto clock-out retro failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:30' && await claim(`openprev:${day}`)) {
     await ensureAttendance()
     for (const n of SIGNERS.filter(x => x !== 'grony')) {

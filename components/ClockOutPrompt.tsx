@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 
 type Prev = { date: string; in: string }
-type State = { askNow: boolean; previous: Prev[] }
+type Auto = { id: number; date: string; out: string; basis: string }
+type State = { askNow: boolean; previous: Prev[]; autos: Auto[] }
 
 // 1) Before work the next day: every earlier day left open must have its time out entered (non-owners' entries go to Grony and Joe to approve).
 // 2) From 7pm: "Are you still at the shop?" -- no logs them out at the time of their last activity and lets them send the correct time.
@@ -13,7 +14,7 @@ export default function ClockOutPrompt() {
   const [busy, setBusy] = useState(false)
   const [fix, setFix] = useState<{ date: string; out: string } | null>(null)
   const [fixTime, setFixTime] = useState('')
-  const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [] }) }).catch(() => {})
+  const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [], autos: d.autos ?? [] }) }).catch(() => {})
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
     void load()
@@ -51,6 +52,22 @@ export default function ClockOutPrompt() {
             <p className="text-sm font-bold text-gray-900">{p.date} <span className="font-normal text-gray-600">(you clocked in at {p.in})</span></p>
             <input type="time" value={times[p.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [p.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
             <button type="button" disabled={!times[p.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: p.date, time: times[p.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send time out for {p.date}</button>
+          </div>))}
+        {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
+      </div>
+    </div>
+  )
+  if (st.autos.length) return (
+    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
+      <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
+        <p className="text-base font-extrabold text-[#14213D]">We clocked you out</p>
+        <p className="text-sm text-gray-700">You did not clock out, so the app did it for you at the time of your last action at the shop. Tap OK if the time is right. If not, send the correct time and Grony or Joe will approve it.</p>
+        {st.autos.map(a => (
+          <div key={a.id} className="space-y-2 rounded-xl bg-gray-50 p-2">
+            <p className="text-sm font-bold text-gray-900">{a.date}: out at {a.out}</p>
+            <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'auto_ok', id: a.id }); if (d) void load() }} className="w-full rounded-lg bg-green-600 py-2 text-sm font-bold text-white">OK, that is right</button>
+            <input type="time" value={times[a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
+            <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
           </div>))}
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
