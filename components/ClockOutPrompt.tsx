@@ -51,60 +51,7 @@ export default function ClockOutPrompt() {
   )
   void tick
   if (!st) return null
-  if (st.previous.length && !isSnoozed('clockPrevSnooze')) return (
-    <div className="fixed inset-0 z-[96] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
-      <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
-        <p className="text-base font-extrabold text-red-700">You did not clock out</p>
-        <p className="text-sm text-gray-700">Enter the time you left on each day below before you carry on. Grony and Joe will approve it. Until then the app uses your last activity.</p>
-        {st.previous.map(p => (
-          <div key={p.date} className="space-y-1 rounded-xl bg-gray-50 p-2">
-            <p className="text-sm font-bold text-gray-900">{p.date} <span className="font-normal text-gray-600">(you clocked in at {p.in})</span></p>
-            <input type="time" value={times[p.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [p.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
-            <button type="button" disabled={!times[p.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: p.date, time: times[p.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send time out for {p.date}</button>
-          </div>))}
-        <LawLink name="Clock out when you leave" />
-        <SnoozeChips storageKey="clockPrevSnooze" title="Later: remind me in" onDone={() => setTick(t => t + 1)} />
-        {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
-      </div>
-    </div>
-  )
-  if (st.ins.length && !later) return (
-    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
-      <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
-        <p className="text-base font-extrabold text-[#14213D]">You were clocked in</p>
-        <p className="text-sm text-gray-700">Your supervisor clocked you in, as shown below. Tap OK if the time is right. If not, send the correct time and it will be approved by someone other than whoever clocked you in.</p>
-        {st.ins.map(a => (
-          <div key={a.id} className="space-y-2 rounded-xl bg-gray-50 p-2">
-            <p className="text-sm font-bold text-gray-900">{a.date}: in at {a.time}</p>
-            {a.basis && <p className="text-xs text-gray-700">{a.basis}</p>}
-            <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'in_ok', id: a.id }); if (d) void load() }} className="w-full rounded-lg bg-green-600 py-2 text-sm font-bold text-white">OK, that is right</button>
-            <input type="time" value={times['in' + a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, ['in' + a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
-            <button type="button" disabled={!times['in' + a.date] || busy} onClick={async () => { const d = await post({ action: 'enter_in', date: a.date, time: times['in' + a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
-          </div>))}
-        <SnoozeChips storageKey="clockAutoSnooze" title="Remind me later in" onDone={() => setLater(true)} />
-        {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
-      </div>
-    </div>
-  )
-  if (st.autos.length && !later) return (
-    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
-      <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
-        <p className="text-base font-extrabold text-[#14213D]">We clocked you out</p>
-        <p className="text-sm text-gray-700">You were not clocked out, so a clock-out was set for you (by the app from your last action at the shop, or by your supervisor, as shown below). Tap OK if the time is right. If not, send the correct time and it will be approved by someone other than whoever clocked you out.</p>
-        {st.autos.map(a => (
-          <div key={a.id} className="space-y-2 rounded-xl bg-gray-50 p-2">
-            <p className="text-sm font-bold text-gray-900">{a.date}: out at {a.out}</p>
-            {a.basis && a.basis !== 'your last action at the shop in the app' && <p className="text-xs text-gray-700">{a.basis}</p>}
-            <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'auto_ok', id: a.id }); if (d) void load() }} className="w-full rounded-lg bg-green-600 py-2 text-sm font-bold text-white">OK, that is right</button>
-            <input type="time" value={times[a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
-            <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
-          </div>))}
-        <LawLink name="Clock out when you leave" />
-        <SnoozeChips storageKey="clockAutoSnooze" title="Remind me later in" onDone={() => setLater(true)} />
-        {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
-      </div>
-    </div>
-  )
+  // The earlier-day, set-for-you and clocked-in notices are cards on "Waiting for me" now (components/ClockNotices.tsx), not pop-ups.
   if (st.askNow && !isSnoozed('clockAskSnooze')) return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 sm:items-center print:hidden">
       <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">

@@ -6,7 +6,6 @@ import DynamicCategoryPage from './DynamicCategoryPage'
 import PropertiesPage from './PropertiesPage'
 import OpenerView from './OpenerView'
 import CloserView from './CloserView'
-import GronyChecksGrid from './GronyChecksGrid'
 import type { Violation } from './useViolations'
 import AdvertVideos from './AdvertVideos'
 import ItemPhotoFinder from './ItemPhotoFinder'
@@ -128,21 +127,10 @@ export default function GronyManageContent({
           </Fragment>
         ))}
       </div>
-      {selectedGronyCheckItem === 'grony_checks' && <GronyChecksGrid />}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
       {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}
       {selectedGronyCheckItem === 'customer_display' && <ManageLogPanel category="customer_display" label="Customer Display" icon="🖼️" />}
       {selectedGronyCheckItem === 'repair_works' && <ManageLogPanel category="repair_works" label="Repair Works" icon="🔧" />}
-      {selectedGronyCheckItem === 'grony_1' && <ManageLogPanel category="grony_1" label="Grony 1" icon="1️⃣" />}
-      {selectedGronyCheckItem === 'grony_2' && <ManageLogPanel category="grony_2" label="Grony 2" icon="2️⃣" />}
-      {selectedGronyCheckItem === 'grony_3' && <ManageLogPanel category="grony_3" label="Grony 3" icon="3️⃣" />}
-      {selectedGronyCheckItem === 'grony_4' && <ManageLogPanel category="grony_4" label="Grony 4" icon="4️⃣" />}
-      {selectedGronyCheckItem === 'grony_5' && <ManageLogPanel category="grony_5" label="Grony 5" icon="5️⃣" />}
-      {selectedGronyCheckItem === 'grony_6' && <ManageLogPanel category="grony_6" label="Grony 6" icon="6️⃣" />}
-      {selectedGronyCheckItem === 'grony_7' && <ManageLogPanel category="grony_7" label="Grony 7" icon="7️⃣" />}
-      {selectedGronyCheckItem === 'grony_8' && <ManageLogPanel category="grony_8" label="Grony 8" icon="8️⃣" />}
-      {selectedGronyCheckItem === 'grony_9' && <ManageLogPanel category="grony_9" label="Grony 9" icon="9️⃣" />}
-      {selectedGronyCheckItem === 'grony_10' && <ManageLogPanel category="grony_10" label="Grony 10" icon="🔟" />}
       {selectedGronyCheckItem === 'security_chk' && <ManageLogPanel category="security_chk" label="Security chk" icon="🔒" />}
     </>)}
     {logCategory && <ManageLogPanel category={logCategory.key} label={logCategory.label} icon={logCategory.icon} />}

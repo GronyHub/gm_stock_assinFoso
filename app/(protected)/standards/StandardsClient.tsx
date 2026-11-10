@@ -17,13 +17,12 @@ type Item = {
 }
 
 const FREQ_LABEL: Record<string, string> = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly', once: 'One-off' }
-const STATION_ORDER = ['Shop', 'Grony 1', 'Grony 2', 'Grony 3', 'Grony 4', 'Grony 5', 'Grony 6', 'Grony 7', 'Grony 8']
+// The shop is one unit now (no numbered Grony stations, since the shop is moving): every line is shown under "Shop".
+const STATION_ORDER = ['Shop']
 
-function matches(item: Item, sel: string) {
-  if (sel === 'All') return true
-  if (sel === 'Shop') return item.station === 'Shop'
-  if (item.station === sel || item.station === 'All stations') return true
-  return item.station === 'Grony 1 & 2' && (sel === 'Grony 1' || sel === 'Grony 2')
+function matches(_item: Item, _sel: string) {
+  void _item; void _sel
+  return true // one unit: any station label on an old line counts as the shop
 }
 
 export default function StandardsClient({ canEdit }: { canEdit: boolean }) {

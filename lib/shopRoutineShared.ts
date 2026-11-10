@@ -1,5 +1,5 @@
 // Client-safe constants and types for the shop routine.
-export const ROUTINE_SECTIONS = ['Opening', 'Daytime', 'Closing', 'Grony 1', 'Grony 2', 'Grony 3', 'Grony 4', 'Grony 5', 'Grony 6', 'Grony 7', 'Grony 8'] as const
+export const ROUTINE_SECTIONS = ['Opening', 'Daytime', 'Closing'] as const
 
 export type ShopTile = { id: number; section: string; time: string | null; title: string; position: number }
 export type ShopEvent = {

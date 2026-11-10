@@ -30,16 +30,6 @@ export const LOG_CATEGORIES: { key: ManageView; label: string; icon: string }[] 
   { key: 'customer_display', label: 'Customer Display',  icon: '🖼️' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
   { key: 'quality_assurance', label: 'Quality Assurance', icon: '✅' },
-  { key: 'grony_1',  label: 'Grony 1',  icon: '1️⃣' },
-  { key: 'grony_2',  label: 'Grony 2',  icon: '2️⃣' },
-  { key: 'grony_3',  label: 'Grony 3',  icon: '3️⃣' },
-  { key: 'grony_4',  label: 'Grony 4',  icon: '4️⃣' },
-  { key: 'grony_5',  label: 'Grony 5',  icon: '5️⃣' },
-  { key: 'grony_6',  label: 'Grony 6',  icon: '6️⃣' },
-  { key: 'grony_7',  label: 'Grony 7',  icon: '7️⃣' },
-  { key: 'grony_8',  label: 'Grony 8',  icon: '8️⃣' },
-  { key: 'grony_9',  label: 'Grony 9',  icon: '9️⃣' },
-  { key: 'grony_10', label: 'Grony 10', icon: '🔟' },
 ]
 
 // Group -> sub-header label for whichever of MANAGE_LIST_ITEMS' rows below
@@ -57,24 +47,13 @@ export const MANAGE_GROUP_ICONS: Record<string, string> = {
   Manage: '⚙️',
 }
 
-// Nested sub-items shown only when viewing 'grony_checks' -- these include
-// the grid itself plus the individual check categories and grony 1-10 items
+// Shop checks: the shop is one unit now (no numbered Grony stations, since the shop is moving), so these are the shop-wide check logs.
+// Old numbered-station logs (grony_1..grony_10) are kept in the database as history but are no longer listed.
 export const GRONY_CHECKS_ITEMS: { key: ManageView; label: string; icon: string }[] = [
-  { key: 'grony_checks',     label: 'Grony Checks Grid', icon: '📊' },
   { key: 'arrangement',      label: 'Arrangement',       icon: '🪑' },
   { key: 'cleanliness',      label: 'Cleanliness',       icon: '🧹' },
   { key: 'customer_display', label: 'Customer Display',  icon: '🖼️' },
   { key: 'repair_works',     label: 'Repair Works',      icon: '🔧' },
-  { key: 'grony_1',  label: 'Grony 1',  icon: '1️⃣' },
-  { key: 'grony_2',  label: 'Grony 2',  icon: '2️⃣' },
-  { key: 'grony_3',  label: 'Grony 3',  icon: '3️⃣' },
-  { key: 'grony_4',  label: 'Grony 4',  icon: '4️⃣' },
-  { key: 'grony_5',  label: 'Grony 5',  icon: '5️⃣' },
-  { key: 'grony_6',  label: 'Grony 6',  icon: '6️⃣' },
-  { key: 'grony_7',  label: 'Grony 7',  icon: '7️⃣' },
-  { key: 'grony_8',  label: 'Grony 8',  icon: '8️⃣' },
-  { key: 'grony_9',  label: 'Grony 9',  icon: '9️⃣' },
-  { key: 'grony_10', label: 'Grony 10', icon: '🔟' },
   { key: 'security_chk', label: 'Security chk', icon: '🔒' },
 ]
 

@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import type { MyDayItem } from '@/lib/myDay'
+import ClockNotices from '@/components/ClockNotices'
+
+// These are answered right here on cards (see components/ClockNotices.tsx), so they are not repeated in the list below.
+const INLINE = new Set(['clock-prev', 'clock-auto', 'queries'])
 
 const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber-50', later: 'border-gray-200 bg-white' } as const
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
@@ -18,9 +22,10 @@ export default function MyDayClient() {
         <button type="button" onClick={() => void load()} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">Refresh</button>
       </div>
       <p className="text-sm text-gray-700">Everything you owe or must decide, from every part of the app, most urgent first.</p>
+      <ClockNotices onChange={() => void load()} />
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
-      {items && !items.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ Nothing is waiting for you.</p>}
-      {items?.map(i => (
+      {items && !items.filter(i => !INLINE.has(i.key)).length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ Nothing is waiting for you.</p>}
+      {items?.filter(i => !INLINE.has(i.key)).map(i => (
         <div key={i.key} className={`flex items-center gap-3 rounded-2xl border-2 p-3 ${TONE[i.urgency]}`}>
           <span className="text-2xl">{i.icon}</span>
           <div className="min-w-0 flex-1">

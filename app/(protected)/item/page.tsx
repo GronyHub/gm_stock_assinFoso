@@ -1633,10 +1633,10 @@ function ItemHubPageInner() {
     if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
     const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') setEmbedUrl(null); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
-    window.addEventListener('message', msg); window.addEventListener('open-staff-member', own)
-    return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own) }
+    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; setPersonal(null); setEmbedUrl(d.path) }
+    window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
+    return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own); window.removeEventListener('hub-open', hubOpen) }
   }, [])
-  useEffect(() => { window.dispatchEvent(new CustomEvent('embed-changed', { detail: embedUrl })) }, [embedUrl])
 
   function pickLossView(view: LossView) {
     setOuterTab('loss')
@@ -5549,7 +5549,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <button type="button" onClick={() => pickItemsMode('advert')} title="Advert" className={btnCls(onItemsGrid && itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
         )}
         {isOwnerOrJoe && canSeeManage && (
-          <button type="button" onClick={() => pickItemsMode('gronyChecks')} title="Grony 1-10 checks" className={btnCls(onItemsGrid && itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
+          <button type="button" onClick={() => pickItemsMode('gronyChecks')} title="Shop checks" className={btnCls(onItemsGrid && itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
         )}
       </div>
     )
@@ -6948,7 +6948,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
               )}
               {!isDesktop && isOwnerOrJoe && canSeeManage && (
-                <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
+                <SidePaneButton icon="✔" label="Shop checks" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
             </div>
@@ -7114,7 +7114,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
               )}
               {canSeeManage && (
-                <SidePaneButton icon="✔" label="Grony 1-10 checks" mode={cashDisplayMode} divider
+                <SidePaneButton icon="✔" label="Shop checks" mode={cashDisplayMode} divider
                   active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
             </div>

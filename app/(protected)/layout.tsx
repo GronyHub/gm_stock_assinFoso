@@ -8,10 +8,9 @@ import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
 import ServiceStrip from '@/components/ServiceStrip'
-import LawSignPrompt from '@/components/LawSignPrompt'
+import WaitingBar from '@/components/WaitingBar'
 import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
-import CctvGate from '@/components/CctvGate'
 import FrameFlag, { NoFrame } from '@/components/FrameFlag'
 import AutoMic from '@/components/AutoMic'
 
@@ -56,10 +55,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <PushSubscriber />
         <CaretakerGuard />
         <PhotoReminder />
-        <LawSignPrompt />
+        <WaitingBar />
         <LawReminder />
         <ClockOutPrompt />
-        <CctvGate />
       </NoFrame>
     </div>
   )

@@ -7,7 +7,7 @@ export type Check = { key: string; title: string; count: number; status: 'ok' | 
 const safe = async <T,>(f: () => Promise<T>, d: T): Promise<T> => { try { return await f() } catch { return d } }
 const lvl = (n: number, bad = 1): 'ok' | 'warn' | 'bad' => n === 0 ? 'ok' : n >= bad * 5 ? 'bad' : 'warn'
 
-export async function runChecks(): Promise<Check[]> {
+export async function runChecks(flags?: Record<string, unknown>): Promise<Check[]> {
   const out: Check[] = []
   const add = (c: Omit<Check, 'status'> & { status?: Check['status'] }) => out.push({ status: lvl(c.count), ...c })
 
@@ -49,5 +49,31 @@ export async function runChecks(): Promise<Check[]> {
   add({ key: 'no-barcode', title: 'Sellable items without a barcode', count: Number(noBarcode[0].n), examples: [], href: '/barcode-labels', hint: 'Scan once to link a printed barcode, or print your own labels.', status: Number(noBarcode[0].n) ? 'warn' : 'ok' })
   const noPrice = await safe(() => sql`SELECT canonical_name AS n FROM active_items WHERE COALESCE(sellable, true) AND (selling_rate IS NULL OR selling_rate <= 0) LIMIT 50`, [] as { n: string }[])
   add({ key: 'no-price', title: 'Sellable items with no selling price', count: noPrice.length, examples: noPrice.slice(0, 5).map(r => String(r.n)), href: '/item?view=items', hint: 'A sale tap at ₵0 is refused, so staff cannot sell them.' })
+  // Flags: what the app itself reports as wrong, and how long it has been there.
+  if (flags) {
+    const week = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+    const open: string[] = [], stale: string[] = []
+    let openN = 0, staleN = 0
+    for (const [k, v] of Object.entries(flags)) {
+      if (!Array.isArray(v) || !v.length) continue
+      openN += v.length; open.push(`${k} (${v.length})`)
+      const dates: string[] = []
+      for (const row of v) if (row && typeof row === 'object') for (const [f, val] of Object.entries(row as Record<string, unknown>)) if (/date|day/i.test(f) && typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) dates.push(val.slice(0, 10))
+      const old = dates.filter(d => d < week).length
+      if (old) { staleN += old; stale.push(`${k} (${old})`) }
+    }
+    add({ key: 'flags-open', title: 'Open flags (the app reports something wrong)', count: openN, examples: open.slice(0, 6), href: '/item?view=flags', hint: 'Flags are fixed by managers only. Each one names its page; the Flags page groups them.', status: openN === 0 ? 'ok' : openN > 25 ? 'bad' : 'warn' })
+    add({ key: 'flags-stale', title: 'Flags that have been open more than a week', count: staleN, examples: stale.slice(0, 6), href: '/item?view=flags', hint: 'An old flag is either a real fault nobody fixed, or a flag that no longer matters and should be cleared.' })
+  }
+
+  // Sales: items sold in a way that does not agree with the rules.
+  const atLoss = await safe(() => sql`SELECT i.canonical_name AS n FROM live_sale_taps t JOIN items i ON i.id = t.item_id
+    WHERE NOT t.undone AND t.tapped_at > now() - interval '30 days' AND COALESCE(i.adjusted_cost_price, i.purchase_rate, 0) > 0 AND t.price <= COALESCE(i.adjusted_cost_price, i.purchase_rate, 0)`, [] as { n: string }[])
+  add({ key: 'sold-at-loss', title: 'Items sold at or below cost (last 30 days)', count: atLoss.length, examples: Array.from(new Set(atLoss.map(r => String(r.n)))).slice(0, 5), href: '/item?view=sales', hint: 'The sale screen refuses these, so they were recorded before the cost changed, or by another route. Check the price or the cost.' })
+  const noWho = await safe(() => sql`SELECT t.id FROM live_sale_taps t WHERE NOT t.undone AND t.tapped_at > now() - interval '7 days' AND t.customer_id_code IS NULL
+    AND NOT EXISTS (SELECT 1 FROM sale_buyers b WHERE b.tap_id = t.id)`, [] as { id: number }[])
+  add({ key: 'sold-no-who', title: 'Sales with no customer or label (last 7 days)', count: noWho.length, examples: [], href: '/item?view=sales', hint: 'Every sale must say who it is for (a customer, or a label such as "man in red").' })
+  const negStock = await safe(() => sql`SELECT i.canonical_name AS n FROM active_items i JOIN item_stock_summary s ON s.item_id = i.id WHERE s.calculated_soh < 0 LIMIT 100`, [] as { n: string }[])
+  add({ key: 'negative-stock', title: 'Items with negative stock', count: negStock.length, examples: negStock.slice(0, 5).map(r => String(r.n)), href: '/item?view=flags', hint: 'Stock cannot be below zero. A sale was recorded before the stock was, or a count is missing: count the shelf.' })
   return out
 }
