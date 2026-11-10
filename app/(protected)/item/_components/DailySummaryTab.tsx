@@ -1,18 +1,8 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { fmtOrdinalDate } from '@/lib/fmtDate'
+import { parseTimeMins } from '@/lib/staffTimes'
 
-function parseTimeMins(t: string | null) {
-  if (!t) return null
-  const m = t.match(/^(\d+):(\d+)(am|pm)$/i)
-  if (!m) return null
-  let h = parseInt(m[1])
-  const min = parseInt(m[2])
-  const ap = m[3].toLowerCase()
-  if (ap === 'pm' && h !== 12) h += 12
-  if (ap === 'am' && h === 12) h = 0
-  return h * 60 + min
-}
 function minsToHrs(mins: number) {
   return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
 }

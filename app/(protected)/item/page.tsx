@@ -92,7 +92,6 @@ const AliasPicker     = dynamic(() => import('./_components/LossTab').then(m => 
 const MatchPicker     = dynamic(() => import('./_components/LossTab').then(m => m.MatchPicker),     { ssr: false })
 const MergeItemPicker = dynamic(() => import('./_components/LossTab').then(m => m.MergeItemPicker), { ssr: false })
 // Opened on demand only -- no reason to ship them with the first load.
-const LawsTasksViewer    = dynamic(() => import('./_components/LawsTasksViewer'), { ssr: false })
 const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { ssr: false, loading: () => loading('Loading…') })
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
@@ -942,7 +941,6 @@ function ItemHubPageInner() {
   const [liveGroupFilter, setLiveGroupFilter] = useState<string | null>(rawLiveGroup ?? null)
   const rawLiveGmcType = searchParams.get('liveGmcType')
   const [liveGmcTypeFilter, setLiveGmcTypeFilter] = useState<string | null>(rawLiveGmcType ?? null)
-  const [lawsTasksViewerOpen, setLawsTasksViewerOpen] = useState(false)
   // Priority order the Sale-mode grid arranges items in -- shared across
   // every staff member via /api/item-sort-order (any staff can change it,
   // not just owner), so a reorder here changes what everyone else's app
@@ -10105,7 +10103,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           </>)}
 
           <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-          {lawsTasksViewerOpen && <LawsTasksViewer isOpen={lawsTasksViewerOpen} onClose={() => setLawsTasksViewerOpen(false)} />}
             
           </div>
           {/* Global Search's own permanent floating trigger -- mirrors Laws &

@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { TOPICS } from '../item/_components/TrainingGuideModal'
+import { TOPICS } from '../item/_components/trainingTopics'
 import { MOVED_TOPIC_IDS } from '@/lib/lawAreas'
 
 const OWNER_GROUPS = new Set(['Development Setup', 'Troubleshooting', 'Hosting & Infrastructure', 'Design with Claude AI'])

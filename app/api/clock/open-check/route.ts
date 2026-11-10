@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { actorKey } from '@/lib/clockState'
@@ -8,7 +9,6 @@ import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
 const today = () => new Date().toISOString().slice(0, 10)
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // GET -- do I owe an answer? { askNow } after 19:00 while I am still clocked in and have not answered; { previous } earlier days I never clocked out of.
 export async function GET() {

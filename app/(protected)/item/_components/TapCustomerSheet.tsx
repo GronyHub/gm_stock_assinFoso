@@ -1,4 +1,5 @@
 'use client'
+import { money } from '@/lib/money'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import CustomerBox from './CustomerBox'
 
@@ -9,7 +10,6 @@ export type SaleTap = {
   invoice_id?: number | null; invoice_number?: string | null
 }
 const json = { 'Content-Type': 'application/json' }
-const money = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const dayOf = (iso: string) => new Date(iso).toISOString().slice(0, 10)
 const dayLabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 

@@ -1,4 +1,5 @@
 'use client'
+import { cap } from '@/lib/strings'
 import { useEffect, useState } from 'react'
 import WithMic from '@/components/WithMic'
 
@@ -6,7 +7,6 @@ type Sale = { time: string; item: string; qty: number; price: number; staff: str
 type Review = { day: string; status: string; staff: string[]; windows: { from: string; to: string }[]; sales: Sale[]; reviewed_by?: string; sales_ok?: boolean; laws_ok?: boolean; note?: string }
 type Law = { id: number; code: string | null; title: string | null; text: string; violations: string }
 type V = { text: string; points: number }
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 export default function CctvClient() {
   const [reviews, setReviews] = useState<Review[]>([])

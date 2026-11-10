@@ -1,4 +1,5 @@
 'use client'
+import { cap } from '@/lib/strings'
 import WithMic from '@/components/WithMic'
 import ClosingReportCard from '@/components/ClosingReportCard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -449,7 +450,6 @@ const shrinkPhoto = async (file: File): Promise<File> => {
     return blob ? new File([blob], 'photo.jpg', { type: 'image/jpeg' }) : file
   } catch { return file }
 }
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // What a question / person / entry tile recorded, shown once it is done.
 function AnswerSummary({ ev }: { ev: CheckEvent }) {

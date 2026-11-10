@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import crypto from 'crypto'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
@@ -31,7 +32,6 @@ export async function getRatingInfo(token: string) {
   return r ? { staff: String(r.staff), rated: r.stars != null, stars: r.stars as number | null } : null
 }
 
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 export async function recordRating(token: string, stars: number, comment: string | null) {
   await ensureRatings()
   const [r] = await sql`UPDATE service_ratings SET stars = ${stars}, comment = ${comment}, rated_at = now() WHERE token = ${token} AND stars IS NULL RETURNING staff, customer`

@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
@@ -10,7 +11,6 @@ import { metaTick } from '@/lib/metaLaws'
 export const to12h = (mins: number) => { const h = Math.floor(mins / 60) % 24, m = mins % 60; const ap = h >= 12 ? 'pm' : 'am'; const hh = h === 0 ? 12 : h > 12 ? h - 12 : h; return `${hh}:${String(m).padStart(2, '0')}${ap}` }
 export const hhmmTo12h = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return to12h(h * 60 + m) }
 const today = () => new Date().toISOString().slice(0, 10)
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 export const CLOSING_MINS = 19 * 60
 
 export const ensureAttendance = once(async () => {

@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { notifyOwners, pushToUsers, pushToShop } from '@/lib/checklistAlerts'
@@ -16,7 +17,6 @@ export { TIERS, WARN_AT, FADE_POINTS, FADE_DAYS, MISSED_DAILY_CAP, LEARNING_DAYS
 export const canDecideFor = (decider: string, subject: string) => decider !== subject.toLowerCase() && (decider === 'grony' || decider === 'joe')
 export const notifyDeciders = (subject: string, title: string, body: string) => subject.toLowerCase() === 'joe' ? pushToUsers(['grony'], title, body) : notifyOwners(title, body)
 
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10)
 const addDays = (day: string, n: number) => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return dayKey(d) }
 

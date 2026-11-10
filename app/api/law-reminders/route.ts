@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
@@ -7,7 +8,6 @@ import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { parseViolations } from '@/lib/lawViolations'
 import { NextRequest } from 'next/server'
 import { notifyOwners } from '@/lib/checklistAlerts'
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_reminder_confirms (day TEXT NOT NULL, staff TEXT NOT NULL, law_id INTEGER NOT NULL, confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (day, staff, law_id))`.catch(() => {})

@@ -1,10 +1,10 @@
 'use client'
+import { money } from '@/lib/money'
 import { useRef, useState } from 'react'
 import CustomerBox from './CustomerBox'
 import type { SaleTap } from './TapCustomerSheet'
 
 const json = { 'Content-Type': 'application/json' }
-const money = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 
 // Sales Log: receipt for sales that are already recorded. The chosen rows go on ONE receipt for ONE customer

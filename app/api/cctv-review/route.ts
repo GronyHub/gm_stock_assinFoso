@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
@@ -7,7 +8,6 @@ import { SIGNERS } from '@/lib/signers'
 import { actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
 
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const canReview = (u: unknown) => isOwnerLevel(u as never)
 
 // GET -- days when staff worked and Joe had not clocked in: the windows, who was there, the sales tapped in those windows, and the review status.

@@ -1,8 +1,8 @@
 'use client'
+import { cap } from '@/lib/strings'
 import { useEffect, useState } from 'react'
 
 type P = { id: number; staff: string; work_date: string; proposed_out: string; actual_in: string | null; estimated: string | null }
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 // For Grony and Joe only: clock-out times staff entered after forgetting, waiting for approval. Not a tile on the Daily Checklist.
 export default function ClockApprovals() {
   const [list, setList] = useState<P[]>([])

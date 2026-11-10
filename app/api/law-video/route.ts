@@ -1,3 +1,4 @@
+import { cap } from '@/lib/strings'
 import { getAuthUser, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
@@ -9,7 +10,6 @@ import { NextRequest } from 'next/server'
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_video_views (day TEXT NOT NULL, staff TEXT NOT NULL, area TEXT NOT NULL, watched_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (day, staff, area))`.catch(() => {})
 })
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // POST { area, label } -- a staff member watched a tile's video to the end. The owners get one notification per person, tile and day.
 export async function POST(req: NextRequest) {

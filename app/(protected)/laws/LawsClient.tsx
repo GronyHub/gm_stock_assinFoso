@@ -11,7 +11,7 @@ import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { parseViolations, type Violation } from '@/lib/lawViolations'
 import { isManagerName } from '@/lib/signers'
-import { TOPICS } from '../item/_components/TrainingGuideModal'
+import { TOPICS } from '../item/_components/trainingTopics'
 
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string

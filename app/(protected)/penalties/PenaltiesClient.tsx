@@ -1,4 +1,5 @@
 'use client'
+import { cap } from '@/lib/strings'
 import { useCallback, useEffect, useState } from 'react'
 import { tierLabel } from '@/lib/penaltyRules'
 
@@ -10,7 +11,6 @@ type Data = { settings: { launch: string; startCounting: string }; people: Perso
 type Rating = { staff: string; n: number; avg: number; low: number }
 type Ratings = { month: Rating[]; week: Rating[]; star: string | null; recent: { staff: string; stars: number; comment: string | null; customer: string | null; rated_at: string }[] }
 const json = { 'Content-Type': 'application/json' }
-const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 const bandCls = (p: number) => p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'
 
