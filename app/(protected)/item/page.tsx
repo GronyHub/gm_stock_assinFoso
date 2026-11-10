@@ -2312,7 +2312,9 @@ function ItemHubPageInner() {
   // Settings' own highlight (the previous fix), which left OTHER rows lit
   // up at the same time as Settings -- still two things selected at once,
   // just the wrong two.
-  const paneActive = (cond: boolean) => cond && !settingsOpen
+  // While a page or a person's page is open in the right pane, only that page's button is lit.
+  const paneActive = (cond: boolean) => cond && !settingsOpen && !embedUrl && !personal
+  const embedActive = (path: string) => !!embedUrl && (embedUrl === path || embedUrl.startsWith(path + '/') || embedUrl.startsWith(path + '?'))
   const paneAccent = PANE_ACCENT[outerTab]
   // Hide the side pane -- toggled from the small button floating over
   // SidePaneToggle's own label row (onHide) and, while hidden, from the
@@ -6734,10 +6736,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} />
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
-            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false} shared={isOwnerOrJoe}
+            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={embedActive('/laws')} shared={isOwnerOrJoe}
               href="/laws" onClick={() => openEmbed('/laws')} />
             {/* The Daily Checklist is the second button in the sidebar, on every tab. */}
-            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false} divider shared={isOwnerOrJoe}
+            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={embedActive('/standards')} divider shared={isOwnerOrJoe}
               href="/standards" onClick={() => openEmbed('/standards')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
@@ -6828,7 +6830,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={false}
+              <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={embedActive('/how-to')}
                 href="/how-to" onClick={() => openEmbed('/how-to')} />
             </div>
             )}
@@ -6848,9 +6850,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={false}
+              <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={embedActive('/owner-guide')}
                 href="/owner-guide" onClick={() => openEmbed('/owner-guide')} />
-              <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={false}
+              <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={embedActive('/handbook-announcements')}
                 href="/handbook-announcements" onClick={() => openEmbed('/handbook-announcements')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
@@ -6987,10 +6989,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
-              {isOwnerOrJoe && <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
+              {isOwnerOrJoe && <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={embedActive('/routine')} divider={canOpenUkSettings}
                 href="/routine" onClick={() => openEmbed('/routine')} />}
               {isOwnerLevel(session?.user as any) && (
-                <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={false} divider
+                <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={embedActive('/notifications')} divider
                   href="/notifications" onClick={() => openEmbed('/notifications')} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
