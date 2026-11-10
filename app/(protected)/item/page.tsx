@@ -235,7 +235,7 @@ const CH_VIEW_KEYS = new Set<LossView>(CH_ITEMS.map(i => i.key))
 // area's own former default view, since both folded into this same tab.
 const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
   pl: 'pl', cab: 'cab', dailySummary: 'dailySummary', data: 'items',
-  manage: 'audio', staff: 'staffPayslips',
+  manage: 'audio', staff: 'home',
 }
 
 // Self-contained submenus -- either their own dashboard, or a standalone
@@ -1655,6 +1655,12 @@ function ItemHubPageInner() {
   // Payslips, which still renders the newly-viewed person's own payslip
   // history even though its own pane row is hidden while viewing someone
   // else.
+  // Opens my own page (the one behind my photo) on a tab; falls back to the old full-page view when the staff bar is not on screen.
+  function openMyPage(tab: string, fallback: LossView) {
+    const d = { name: username, tab, handled: false }
+    window.dispatchEvent(new CustomEvent('open-staff-member', { detail: d }))
+    if (!d.handled) pickLossView(fallback)
+  }
   function pickViewing(name: string) {
     setViewingNameOverride(name)
     const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips'
@@ -2123,9 +2129,9 @@ function ItemHubPageInner() {
     if (!permsLoaded || outerTab !== 'loss') return
     if (!canSeeCash && CASH_VIEW_KEYS.has(lossView)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : (myStaffName ? 'staffPayslips' : 'home'))
+      pickLossView(canSeeManage ? MANAGE_LIST_ITEMS[0].key : 'home')
     } else if (!canSeeManage && MANAGE_VIEW_KEYS.has(lossView)) {
-      pickLossView(canSeeCash ? 'items' : (myStaffName ? 'staffPayslips' : 'home'))
+      pickLossView(canSeeCash ? 'items' : 'home')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permsLoaded, canSeeCash, canSeeManage, lossView, outerTab])
@@ -2254,9 +2260,8 @@ function ItemHubPageInner() {
     ] : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })) : []),
     ...(myStaffName ? [
-      ...STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
-        .map(t => ({ label: t.label, action: () => pickLossView(t.key) })),
-      { label: 'Profile', action: () => pickLossView('staffProfile') },
+      { label: 'Payslips', action: () => openMyPage('payslips', 'staffPayslips') },
+      { label: 'Profile', action: () => openMyPage('profile', 'staffProfile') },
     ] : []),
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
     ...(canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ label: t.label, action: () => pickLossView(t.key) })) : []),
@@ -6824,26 +6829,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 the lossView-driven render blocks lower in this file are
                 left intact. */}
 
-            {myStaffName && (
-              <div className="mt-1 pt-1 border-t border-white/30">
-                {(() => {
-                  const personalItems = STAFF_PERSONAL_ITEMS.filter(t => viewingSelf || t.key !== 'staffPayslips')
-                  let itemIndex = 0
-                  return (<>
-                    {personalItems.map((t) => (
-                      <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={cashDisplayMode} divider={itemIndex++ > 0} shared={isOwnerOrJoe}
-                        active={paneActive(lossView === t.key)}
-                        onClick={() => pickLossView(t.key)} />
-                    ))}
-                    {viewingName.toLowerCase() === username.toLowerCase() && (
-                      <SidePaneButton icon="👤" label="Profile" mode={cashDisplayMode} shared={isOwnerOrJoe} active={paneActive(lossView === 'staffProfile')}
-                        divider={personalItems.length > 0}
-                        onClick={() => pickLossView('staffProfile')} />
-                    )}
-                  </>)
-                })()}
-              </div>
-            )}
+            {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
               <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={false}

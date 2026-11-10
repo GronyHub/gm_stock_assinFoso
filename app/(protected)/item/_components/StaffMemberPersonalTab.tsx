@@ -7,11 +7,15 @@ import ClosingReportLogView from './ClosingReportLogView'
 import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
 import StaffTimesView from './StaffTimesView'
+import ProfileTab from './ProfileTab'
+import { PayslipsTab } from '../../staff/StaffClient'
 
-type TabKey = 'times' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
+export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'times', icon: '🕐', label: 'Times' },
+  { key: 'payslips', icon: '💵', label: 'Payslips' },
+  { key: 'profile', icon: '👤', label: 'Profile' },
   { key: 'tasks', icon: '✅', label: 'Tasks' },
   { key: 'mentions', icon: '🔍', label: 'Mentions' },
   { key: 'dressCode', icon: '👕', label: 'Dress Code' },
@@ -37,6 +41,8 @@ export default function StaffMemberPersonalTab({
   // instead, since that's specifically what tapping a name there is for.
   initialTab?: TabKey
 }) {
+  // Payslips and Profile belong to one person: only their own page shows them.
+  const isSelf = staffName.toLowerCase() === username.toLowerCase()
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'tasks')
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
@@ -136,7 +142,7 @@ export default function StaffMemberPersonalTab({
   return (
     <div className="px-2 pt-2 space-y-2">
       <div className="flex gap-1 overflow-x-auto pb-0.5">
-        {TABS.map(t => (
+        {TABS.filter(t => isSelf || (t.key !== 'payslips' && t.key !== 'profile')).map(t => (
           <button key={t.key} type="button" onClick={() => setActiveTab(t.key)}
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -148,6 +154,8 @@ export default function StaffMemberPersonalTab({
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
         {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} username={username} /></div>}
+        {activeTab === 'payslips' && isSelf && <div className="p-2"><PayslipsTab role={role} username={username} viewingStaff={staffName} /></div>}
+        {activeTab === 'profile' && isSelf && <div className="p-2"><ProfileTab /></div>}
         {activeTab === 'tasks' && <div className="p-3"><TasksView /></div>}
         {activeTab === 'mentions' && <div className="p-3"><MentionsView /></div>}
         {activeTab === 'dressCode' && (<>

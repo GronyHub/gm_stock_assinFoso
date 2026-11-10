@@ -68,9 +68,10 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
   const [now, setNow] = useState(() => new Date())
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
   const [homeModalOpen, setHomeModalOpen] = useState(false)
+  const [selectedTab, setSelectedTab] = useState<string>('times')
   // The sidebar's own chip (MySelfChip) asks this bar to open the signed-in person's page.
   useEffect(() => {
-    const h = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; handled: boolean }; d.handled = true; setSelectedStaff(d.name) }
+    const h = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setSelectedTab(d.tab ?? 'times'); setSelectedStaff(d.name) }
     window.addEventListener('open-staff-member', h)
     return () => window.removeEventListener('open-staff-member', h)
   }, [])
@@ -155,7 +156,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
         ? 'flex items-stretch gap-1 flex-nowrap shrink-0'
         : 'px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0'}>
         {computed.filter(s => s.staff_name.toLowerCase() !== String(staffMemberModalProps.username ?? '').toLowerCase()).map(s => (
-          <button key={s.staff_name} type="button" onClick={() => setSelectedStaff(s.staff_name)}
+          <button key={s.staff_name} type="button" onClick={() => { setSelectedTab('times'); setSelectedStaff(s.staff_name) }}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
             className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
@@ -180,7 +181,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
         )}
       </div>
       {selectedStaff && (
-        <StaffMemberModal staffName={selectedStaff} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
+        <StaffMemberModal staffName={selectedStaff} initialTab={selectedTab as never} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
       )}
       {homeModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setHomeModalOpen(false)}>

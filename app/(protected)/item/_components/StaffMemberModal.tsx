@@ -1,5 +1,5 @@
 'use client'
-import StaffMemberPersonalTab from './StaffMemberPersonalTab'
+import StaffMemberPersonalTab, { type TabKey } from './StaffMemberPersonalTab'
 
 type StaffMemberModalProps = {
   username: string
@@ -20,8 +20,8 @@ type StaffMemberModalProps = {
 // -- this is that exact component, just in an overlay instead of a lossView.
 export type { StaffMemberModalProps }
 export default function StaffMemberModal({
-  staffName, onClose, ...rest
-}: StaffMemberModalProps & { staffName: string; onClose: () => void }) {
+  staffName, onClose, initialTab, ...rest
+}: StaffMemberModalProps & { staffName: string; onClose: () => void; initialTab?: TabKey }) {
   return (
     <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
@@ -30,7 +30,7 @@ export default function StaffMemberModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <StaffMemberPersonalTab staffName={staffName} initialTab="times" {...rest} />
+          <StaffMemberPersonalTab staffName={staffName} initialTab={initialTab ?? 'times'} {...rest} />
         </div>
       </div>
     </div>
