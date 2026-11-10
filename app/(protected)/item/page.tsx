@@ -49,6 +49,7 @@ import LogDayPhotos from './_components/LogDayPhotos'
 import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
+import MySelfChip from './_components/MySelfChip'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
@@ -7064,14 +7065,11 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             bottom, not the top, so it doesn't cover PresentStaffBar/the tab
             switcher's own top-left content on a narrow (mobile) screen. */}
         {sidePaneHidden && (
-          <button
-            type="button"
-            onClick={() => setSidePaneHidden(false)}
-            title="Show sidebar"
-            className="absolute bottom-1.5 left-1.5 z-20 w-5 h-5 rounded-full bg-gray-800/80 hover:bg-gray-800 text-white text-[10px] flex items-center justify-center shadow transition"
-          >
-            ▶
-          </button>
+          <div style={{ '--pane-accent': paneAccent } as React.CSSProperties} className="relative w-14 shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col items-center gap-1 p-1">
+            <MySelfChip name={String(session?.user?.name ?? username)} username={username} />
+            <button type="button" onClick={() => setSidePaneHidden(false)} title="Show sidebar"
+              className="mt-auto mb-0.5 w-5 h-5 rounded-full bg-white/15 hover:bg-white/30 text-white text-[10px] flex items-center justify-center transition">▶</button>
+          </div>
         )}
 
         {/* UK's own Settings (add a menu / add a column) is a content-area

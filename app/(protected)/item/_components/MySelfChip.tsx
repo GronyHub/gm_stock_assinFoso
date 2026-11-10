@@ -23,14 +23,13 @@ export default function MySelfChip({ name, username }: { name: string; username?
   const inM = row ? parseTimeMins(row.actual_in) : null
   const outM = row?.actual_out ? parseTimeMins(row.actual_out) : null
   const total = row && inM != null ? (outM != null ? outM - inM : Math.max(0, nowMins - inM)) : null
-  const here = !!row && !row.actual_out && !row.on_break
+  const here = !!row && !row.actual_out
   const open = () => { const d = { name: username ?? name, handled: false }; window.dispatchEvent(new CustomEvent('open-staff-member', { detail: d })); if (!d.handled) window.location.href = '/profile' }
   return (
     <button type="button" onClick={open} title="You are signed in as this person. Tap for your times and tasks."
       className="flex w-full min-w-0 flex-col items-start gap-px rounded-lg bg-white/10 px-1 py-1 text-left hover:bg-white/20">
       <span className="flex w-full min-w-0 items-center gap-1">
-        <MyAvatar size={18} />
-        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${here ? 'bg-green-400' : 'bg-red-500'}`} />
+        <span className={`shrink-0 rounded-full border-[3px] ${here ? 'border-green-500' : 'border-red-600'}`} title={here ? 'Clocked in' : 'Clocked out'}><MyAvatar size={20} /></span>
         <PenaltyChip />
       </span>
       <span className="w-full truncate text-[10px] font-extrabold leading-tight text-white">{name.charAt(0).toUpperCase() + name.slice(1)}</span>
