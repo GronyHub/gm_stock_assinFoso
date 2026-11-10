@@ -29,7 +29,7 @@ export const ensureAttendance = once(async () => {
 })
 
 // The last thing a staff member did that can only be done AT the shop: a Live Sale tap, a Daily Checklist tick (photos, cleaning, closing) or a
-// shop routine tick. Looking at pages or reading laws does not count, because that can be done from anywhere. Never before clock-in, never after closing.
+// shop routine tick. Looking at pages or reading laws does not count, because that can be done from anywhere. Never before clock-in; after 7pm counts too.
 export async function lastActivityMins(staff: string, day: string, clockInMins: number): Promise<number> { return (await lastActivity(staff, day, clockInMins)).mins }
 export async function lastActivity(staff: string, day: string, clockInMins: number): Promise<{ mins: number; found: boolean }> {
   let best = clockInMins, found = false
@@ -41,7 +41,7 @@ export async function lastActivity(staff: string, day: string, clockInMins: numb
     async () => take((await sql`SELECT MAX(created_at) AS m FROM sale_buyers WHERE LOWER(created_by) = ${staff} AND created_at::date = ${day}::date`)[0]?.m),
   ]
   for (const f of sources) { try { await f() } catch { /* a missing table is skipped */ } }
-  return { mins: Math.min(Math.max(best, clockInMins), CLOSING_MINS), found }
+  return { mins: Math.max(best, clockInMins), found }
 }
 
 // An open record: clocked in on a day, never clocked out.
