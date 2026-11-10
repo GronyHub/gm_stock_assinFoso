@@ -171,7 +171,8 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide 
 // instead; `noNewTab` (toggles, sign out) gets no menu at all.
 declare global { interface Window { __gmNewTab?: { prev: string } | null } }
 
-export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder, href, noNewTab, shared }: {
+export function SidePaneButton({ icon, label, active, mode, onClick, badge, taskBadge, className = 'w-full', tint, divider, chipLabel, chipBorder, href, noNewTab, shared, keepEmbed }: {
+  keepEmbed?: boolean
   icon?: string | React.ReactNode; label: string; active: boolean; mode: DisplayMode; onClick: () => void; badge?: number; taskBadge?: number; className?: string; tint?: string; divider?: boolean; chipLabel?: boolean; chipBorder?: boolean; href?: string; noNewTab?: boolean; shared?: boolean
 }) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
@@ -192,12 +193,12 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
 
   return (
     <>
-    <button onClick={e => { if (!noNewTab && (e.ctrlKey || e.metaKey)) openNewTab(); else onClick() }} title={label} aria-label={label}
-      onContextMenu={noNewTab ? undefined : e => { e.preventDefault(); setMenu({ x: Math.min(e.clientX, window.innerWidth - 170), y: Math.min(e.clientY, window.innerHeight - 90) }) }}
+    <button data-keep-embed={keepEmbed ? '' : undefined} onClick={e => { if (!noNewTab && (e.ctrlKey || e.metaKey)) openNewTab(); else onClick() }} title={label} aria-label={label}
+      onContextMenu={noNewTab ? undefined : e => { if (!window.matchMedia('(pointer: fine)').matches) return /* touch: a long press must not pop a menu in the way of the tap */; e.preventDefault(); setMenu({ x: Math.min(e.clientX, window.innerWidth - 170), y: Math.min(e.clientY, window.innerHeight - 90) }) }}
       onMouseDown={noNewTab ? undefined : e => { if (e.button === 1) e.preventDefault() }}
       onAuxClick={noNewTab ? undefined : e => { if (e.button === 1) { e.preventDefault(); openNewTab() } }}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 text-[10px] font-medium leading-tight text-left transition
+      className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 [@media(pointer:coarse)]:min-h-[40px] touch-manipulation text-[10px] font-medium leading-tight text-left transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : shared ? 'text-yellow-300 hover:bg-white/10' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
@@ -245,11 +246,15 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
 // reached through `footer`) can pick it up via `var(--pane-accent)` without
 // each of their ~18 call sites needing their own accent prop threaded
 // through individually.
-export function SidePaneContainer({ mode, footer, children, accent = '#00072d' }: {
+export function SidePaneContainer({ mode, footer, children, accent = '#00072d', onAnyClick }: {
   mode: DisplayMode; footer?: React.ReactNode; children: React.ReactNode; accent?: string
+  // Called (before the button's own action) when any button in the pane is tapped, unless it carries data-keep-embed: the hub uses it to close the page
+  // shown in the right pane, so a tap on a sidebar button always shows what that button opens.
+  onAnyClick?: () => void
 }) {
   return (
     <div style={{ '--pane-accent': accent } as React.CSSProperties}
+      onClickCapture={onAnyClick ? (e => { if ((e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('[data-keep-embed]')) onAnyClick() }) : undefined}
       className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0`}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {children}

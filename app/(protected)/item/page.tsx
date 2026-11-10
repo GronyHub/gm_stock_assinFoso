@@ -6771,12 +6771,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           the moment you leave Grony Cash. */}
       <div className="relative flex-1 min-h-0 flex overflow-hidden">
         {!sidePaneHidden && (
-        <SidePaneContainer mode={cashDisplayMode} accent={paneAccent}
+        <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null) }}
             footer={<>
               <PaneDaily mode={cashDisplayMode}
                 onDaily={() => setLossView('dailySummary')}
                 dailyActive={paneActive(lossView === 'dailySummary')} />
-              <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode} divider active={false} noNewTab onClick={() => setGlobalSearchOpen(true)} />
+              <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode} divider active={false} noNewTab keepEmbed onClick={() => setGlobalSearchOpen(true)} />
               {/* Biz/UK/C&H/Search all moved out of this footer -- they now
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}

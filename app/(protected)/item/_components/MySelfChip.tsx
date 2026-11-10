@@ -26,7 +26,7 @@ export default function MySelfChip({ name, username, sales = 0 }: { name: string
   const here = !!row && !row.actual_out
   const open = () => { const d = { name: username ?? name, handled: false }; window.dispatchEvent(new CustomEvent('open-staff-member', { detail: d })); if (!d.handled) window.location.href = '/profile' }
   return (
-    <button type="button" onClick={open} title="You are signed in as this person. Tap for your times and tasks."
+    <button type="button" data-keep-embed onClick={open} title="You are signed in as this person. Tap for your times and tasks."
       className="flex w-full min-w-0 flex-col items-start gap-px rounded-lg bg-white/10 px-1 py-1 text-left hover:bg-white/20">
       <span className="flex w-full min-w-0 items-center gap-1">
         <span className={`shrink-0 rounded-full border-[3px] ${here ? 'border-green-500' : 'border-red-600'}`} title={here ? 'Clocked in' : 'Clocked out'}><MyAvatar size={20} /></span>
