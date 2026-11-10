@@ -51,44 +51,8 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
             <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[11px] font-bold text-white">Save</button></span>}
         </div>
 
-        {d.sanctions.filter(s => s.status === 'proposed').length > 0 && (
-          <div className="mb-3 space-y-2">
-            <p className="text-xs font-extrabold uppercase text-red-700">Sanctions waiting for your decision</p>
-            {d.sanctions.filter(s => s.status === 'proposed').map(s => (
-              <div key={s.id} className="rounded-xl border-2 border-red-300 bg-red-50 p-3">
-                <p className="text-sm font-bold text-gray-900">{cap(s.staff)} · {s.points_at} points</p>
-                <p className="text-xs text-gray-700">Recommended: {tierLabel(s.tier)}</p>
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => { if (confirm(s.tier >= 50 ? 'Approve the dismissal? Carry it out in Users.' : `Approve the suspension for ${cap(s.staff)}? It starts tomorrow, blocks clock-in and ticking, and their points drop to ${s.tier / 2}.`)) void call(`/api/penalties/sanctions/${s.id}`, { method: 'POST', headers: json, body: JSON.stringify({ action: 'approve' }) }, 'Approved') }} className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-bold text-white">Approve</button>
-                  <button type="button" onClick={() => void call(`/api/penalties/sanctions/${s.id}`, { method: 'POST', headers: json, body: JSON.stringify({ action: 'reject' }) }, 'Not applied')} className="flex-1 rounded-lg bg-gray-200 py-2 text-sm font-bold text-gray-800">Do not apply</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {d.pending.length > 0 && (
-          <div className="mb-3 space-y-2">
-            <p className="text-xs font-extrabold uppercase text-amber-700">Waiting for you: reports to confirm and disputed violations ({d.pending.length})</p>
-            {d.pending.map(p => (
-              <div key={p.id} className="rounded-xl border border-amber-300 bg-amber-50 p-3">
-                <p className="text-sm font-bold text-gray-900">{cap(p.staff)} · {p.points} point</p>
-                <p className="text-xs text-gray-700">{p.reason}</p><p className="text-[10px] text-gray-500">{dlabel(p.day)} · reported by {cap(p.created_by ?? '')}</p>
-                {p.status === 'disputed' && <p className="mt-1 rounded-lg bg-white p-2 text-xs text-red-800"><b>Disputed by {cap(p.staff)}:</b> {p.dispute_note}</p>}
-                {p.status === 'disputed' ? (
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'uphold' }) }, 'Violation upheld')} className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white">Uphold: it counts</button>
-                  <button type="button" onClick={() => { const reason = prompt('Why is it withdrawn? (kept on record)'); if (reason) void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'withdraw', reason }) }, 'Violation withdrawn') }} className="flex-1 rounded-lg bg-gray-200 py-1.5 text-xs font-bold text-gray-800">Withdraw</button>
-                </div>
-                ) : (
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'confirm' }) }, 'Point confirmed')} className="flex-1 rounded-lg bg-red-600 py-1.5 text-xs font-bold text-white">Confirm the point</button>
-                  <button type="button" onClick={() => void call(`/api/penalties/${p.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'dismiss' }) }, 'Dismissed')} className="flex-1 rounded-lg bg-gray-200 py-1.5 text-xs font-bold text-gray-800">Dismiss</button>
-                </div>
-                )}
-              </div>
-            ))}
-          </div>
+        {(d.sanctions.some(s => s.status === 'proposed') || d.pending.length > 0) && (
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-900">⚖ {d.sanctions.filter(s => s.status === 'proposed').length} sanction(s) and {d.pending.length} violation(s) are waiting for a decision. They are decided on <b>Waiting for me</b>, in one place. <a href="/my-day" className="ml-1 underline">Open Waiting for me</a></p>
         )}
 
         <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Staff</p>

@@ -26,7 +26,7 @@ export async function GET() {
     const sanctions = await sql`SELECT id, staff, tier, points_at, status, days, hours, start_date, end_date, created_at FROM penalty_sanctions WHERE status IN ('proposed', 'approved') ORDER BY id DESC LIMIT 30`
     const recent = await sql`SELECT id, staff, points, kind, reason, source, day, counted, status, created_by FROM staff_penalties ORDER BY id DESC LIMIT 60`
     const laws = await sql`SELECT id, text, category, points FROM page_laws WHERE status = 'live' AND category IS NOT NULL ORDER BY category, id`.catch(() => [])
-    return success({ settings: st, people: rows, pending, sanctions, recent, laws })
+    return success({ me: actorKey(session.user as any), settings: st, people: rows, pending, sanctions, recent, laws })
   } catch (e) { return handleError('penalties GET', e) }
 }
 
