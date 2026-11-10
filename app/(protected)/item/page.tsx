@@ -10105,7 +10105,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               </div>
             </div>
           )}
-          {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && (
+          {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal && (
             <VoiceSale onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
           )}
           {gmcOverageGate && (

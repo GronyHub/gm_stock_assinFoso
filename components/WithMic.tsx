@@ -35,7 +35,7 @@ export default function WithMic({ onText, mode = 'text', children }: { onText: (
     rec.current = r; setOn(true); try { r.start() } catch { setOn(false) }
   }
   return (
-    <div className="relative flex-1 min-w-0 [&>input]:pr-9 [&>textarea]:pr-9">
+    <div data-withmic className="relative flex-1 min-w-0 [&>input]:pr-9 [&>textarea]:pr-9">
       {children}
       {ok && <button type="button" onClick={go} title="Speak instead of typing" aria-label="Speak instead of typing"
         className={`absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full text-sm ${on ? 'animate-pulse bg-red-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>🎤</button>}

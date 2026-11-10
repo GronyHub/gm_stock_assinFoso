@@ -72,7 +72,7 @@ export default function VoiceSale({ onRecorded }: { onRecorded: (tap: unknown) =
   const pick = p?.items.find(i => i.id === itemId)
   return (<>
     <button type="button" onClick={listen} title="Record a sale with your voice" aria-label="Record a sale with your voice"
-      className="fixed bottom-28 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-2xl text-white shadow-lg active:bg-red-700 print:hidden">🎤</button>
+      className="fixed bottom-28 right-4 z-40 flex h-11 items-center gap-1.5 rounded-full bg-red-600 px-3.5 text-sm font-extrabold text-white shadow-lg active:bg-red-700 print:hidden"><span className="text-lg">🎤</span>Voice sale</button>
     {open && (
       <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 sm:items-center print:hidden" onClick={close}>
         <div onClick={e => e.stopPropagation()} className="max-h-[92vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-6 sm:rounded-3xl">

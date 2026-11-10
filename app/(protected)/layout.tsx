@@ -14,6 +14,7 @@ import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
 import CctvGate from '@/components/CctvGate'
 import FrameFlag, { NoFrame } from '@/components/FrameFlag'
+import AutoMic from '@/components/AutoMic'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -51,6 +52,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       </div>
       <MainContainer>{children}</MainContainer>
       <FrameFlag />
+      <AutoMic />
       <NoFrame>
         <PushSubscriber />
         <CaretakerGuard />
