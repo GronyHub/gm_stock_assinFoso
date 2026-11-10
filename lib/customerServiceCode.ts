@@ -1,4 +1,4 @@
-// The Customer Service Code -- single source of truth. Shown in the Handbook (Laws & Tasks) and used by the
+// The Customer Service Code -- single source of truth. Shown in the strip at the top of every page and the start-of-day card, and used by the
 // staff acknowledgement. Raise CODE_VERSION when the rules change in a way staff must agree to again.
 export const CODE_VERSION = 1
 

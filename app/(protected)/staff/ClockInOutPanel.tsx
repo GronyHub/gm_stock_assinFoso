@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
-import BinoChecklist, { BinoChecklistAnswers } from '@/components/BinoChecklist'
 
 export type Mine = {
   actual_in: string | null; actual_out: string | null
@@ -100,9 +99,6 @@ export default function ClockInOutPanel({
   const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
-  const [binoChecklistOpen, setBinoChecklistOpen] = useState(false)
-  const [binoChecklistSaving, setBinoChecklistSaving] = useState(false)
-  const isBino = username.toLowerCase() === 'bino'
 
   async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
@@ -188,18 +184,6 @@ export default function ClockInOutPanel({
     }
   }
 
-  // Bino's Advert checklist is shown every time he clocks out -- saved
-  // first, then the actual clock-out proceeds as normal.
-  async function submitBinoChecklist(answers: BinoChecklistAnswers) {
-    setBinoChecklistSaving(true)
-    await fetch('/api/staff-times/bino-checklist', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(answers),
-    }).catch(() => {})
-    setBinoChecklistSaving(false)
-    setBinoChecklistOpen(false)
-    clock('out')
-  }
-
   return (
     <>
       {/* Closer questionnaire — shown when this user is the last to clock out */}
@@ -211,15 +195,6 @@ export default function ClockInOutPanel({
           onCancel={() => setCloserPrompt(null)}
         />
       )}
-      {/* Bino's Advert checklist — shown every time he clocks out */}
-      {binoChecklistOpen && (
-        <BinoChecklist
-          saving={binoChecklistSaving}
-          onSubmit={submitBinoChecklist}
-          onCancel={() => setBinoChecklistOpen(false)}
-        />
-      )}
-
       {roleBanner && (
         <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
           <p className="text-sm font-semibold text-blue-800">{roleBanner}</p>
@@ -291,7 +266,7 @@ export default function ClockInOutPanel({
             className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
             {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
           </button>
-          <button onClick={() => isBino ? setBinoChecklistOpen(true) : clock('out')} disabled={saving}
+          <button onClick={() => clock('out')} disabled={saving}
             className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
             {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
           </button>

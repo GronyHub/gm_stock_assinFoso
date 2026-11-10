@@ -94,7 +94,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const hits = searching ? (laws ?? []).filter(l => (l.text + ' ' + (l.subcategory ?? '') + ' ' + (l.dos ?? '') + ' ' + (l.donts ?? '')).toLowerCase().includes(q.trim().toLowerCase())) : []
 
   async function remove(l: Law) {
-    if (!confirm('Delete this law? It disappears from the Handbook and the page it was written on.')) return
+    if (!confirm('Delete this law? It disappears from Company Laws and the page it was written on.')) return
     const r = await fetch(`/api/page-laws/${l.id}`, { method: 'DELETE' })
     if (r.ok) { flash('Law deleted'); void load() } else flash('Could not delete')
   }

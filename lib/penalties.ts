@@ -9,16 +9,8 @@ import { appliesOn } from '@/lib/dailyChecksShared'
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
 // the owner or manager approves it. After a sanction the points drop to half the level. Points reduce by 5 after a clean
 // week. The first two weeks are a learning period: violations are recorded and warned about, but do not count.
-export const TIERS = [
-  { points: 20, days: 3, hours: 10, label: '3-day suspension' },
-  { points: 30, days: 7, hours: 20, label: '1-week suspension' },
-  { points: 50, days: 0, hours: 0, label: 'Dismissal' },
-] as const
-export const WARN_AT = [10, 15]
-export const FADE_POINTS = 5
-export const FADE_DAYS = 7
-export const MISSED_DAILY_CAP = 3
-export const LEARNING_DAYS = 14
+import { TIERS, WARN_AT, FADE_POINTS, FADE_DAYS, MISSED_DAILY_CAP, LEARNING_DAYS, tiersText, firstTier } from '@/lib/penaltyRules'
+export { TIERS, WARN_AT, FADE_POINTS, FADE_DAYS, MISSED_DAILY_CAP, LEARNING_DAYS }
 
 // Joe is the manager at the shop, so he decides for the other staff; Grony (in the UK) decides for Joe and may decide for anyone. Nobody decides their own.
 export const canDecideFor = (decider: string, subject: string) => decider !== subject.toLowerCase() && (decider === 'grony' || decider === 'joe')
@@ -83,8 +75,8 @@ export async function addPoint(a: Add) {
 export async function afterChange(staff: string, before: number, after: number) {
   for (const lvl of WARN_AT) {
     if (before < lvl && after >= lvl) {
-      void pushToUsers([staff], `You have ${after} penalty points`, `At 20 points the sanction is a 3-day suspension. Keep the laws and the checklist.`)
-      void notifyDeciders(staff, `${cap(staff)} reached ${after} penalty points`, `Early warning: 20 points means a 3-day suspension.`)
+      void pushToUsers([staff], `You have ${after} penalty points`, `At ${firstTier.points} points the sanction is a ${firstTier.label}. Keep the laws and the checklist.`)
+      void notifyDeciders(staff, `${cap(staff)} reached ${after} penalty points`, `Early warning: ${firstTier.points} points means a ${firstTier.label}.`)
     }
   }
   const tier = [...TIERS].reverse().find(t => after >= t.points)
@@ -193,9 +185,9 @@ export async function penaltiesTick(now = new Date()) {
       const st = await getSettings()
       if (day < st.startCounting) {
         const left = Math.max(0, Math.round((Date.parse(st.startCounting) - Date.parse(day)) / 86400000))
-        await pushToShop('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation will cost 1 point. 20 points = a 3-day suspension. Follow the laws and finish the checklist.`)
+        await pushToShop('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation will cost 1 point. ${firstTier.points} points = a ${firstTier.label}. Follow the laws and finish the checklist.`)
       } else if (day === st.startCounting || (Date.parse(day) - Date.parse(st.startCounting)) / 86400000 < 7) {
-        await pushToShop('Penalty points are now counting', 'Each violation costs 1 point. 20 = 3-day suspension, 30 = 1 week, 50 = dismissal. A clean week removes 5 points.')
+        await pushToShop('Penalty points are now counting', `Each violation costs 1 point. ${tiersText()}. A clean week removes ${FADE_POINTS} points.`)
       }
     }
   }

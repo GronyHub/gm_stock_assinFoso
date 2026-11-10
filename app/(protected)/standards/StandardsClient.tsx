@@ -83,6 +83,10 @@ export default function StandardsClient({ canEdit }: { canEdit: boolean }) {
   const done = visible.filter(i => i.ticked_at).length
 
   async function toggle(item: Item) {
+    // The Daily Checklist is the one place to tick tasks; this page is only the printable list.
+    setError('Tick tasks in the Daily Checklist. This page is the printable list.')
+    return
+    // eslint-disable-next-line no-unreachable
     const ticked = !item.ticked_at
     setItems(prev => prev.map(i => i.id === item.id
       ? { ...i, ticked_at: ticked ? new Date().toISOString() : null, ticked_by: ticked ? 'you' : null } : i))

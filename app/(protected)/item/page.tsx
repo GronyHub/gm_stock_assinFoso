@@ -7000,10 +7000,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
-              {isOwnerOrJoe && <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={embedActive('/routine')} divider={canOpenUkSettings}
-                href="/routine" onClick={() => openEmbed('/routine')} />}
               {isOwnerLevel(session?.user as any) && (
-                <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={embedActive('/notifications')} divider
+                <SidePaneButton icon="🔔" label="Push devices" mode={cashDisplayMode} active={embedActive('/notifications')} divider
                   href="/notifications" onClick={() => openEmbed('/notifications')} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider

@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
+import { tierLabel } from '@/lib/penaltyRules'
 
 type Person = { staff: string; display_name: string; role: string; points: number; warnings: number }
 type Pending = { id: number; staff: string; points: number; reason: string; day: string; created_by: string; status?: string; dispute_note?: string | null }
@@ -12,7 +13,6 @@ const json = { 'Content-Type': 'application/json' }
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 const bandCls = (p: number) => p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'
-const tierLabel = (t: number) => t >= 50 ? 'Dismissal' : t >= 30 ? '1-week suspension, 20 hours deducted' : '3-day suspension, 10 hours deducted'
 
 // Penalties for the owner and manager: everyone's points, reports to confirm, sanctions to approve, and a form to record a violation.
 export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {

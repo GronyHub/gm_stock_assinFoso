@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import WithMic from '@/components/WithMic'
+import { TIERS } from '@/lib/penaltyRules'
 
 export type PenaltyMe = {
   points: number; learning: boolean; countingFrom: string; warnings: number; fadeIn: number | null
@@ -65,7 +66,7 @@ export function PenaltyCard() {
         </div>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100"><div className={`h-full ${b.name === 'red' ? 'bg-red-500' : b.name === 'amber' ? 'bg-amber-400' : 'bg-green-500'}`} style={{ width: `${pct}%` }} /></div>
-      <p className="mt-1 text-[10px] text-gray-500">Levels: 20 = 3-day suspension (10 hours deducted) · 30 = 1 week (20 hours) · 50 = dismissal</p>
+      <p className="mt-1 text-[10px] text-gray-500">Levels: {TIERS.map(t => `${t.points} = ${t.label}${t.hours ? ` (${t.hours} hours deducted)` : ''}`).join(' · ')}</p>
       {p.learning && <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-800">Learning period until {dlabel(p.countingFrom)}. Violations are warnings for now and do not count. You have {p.warnings} warning{p.warnings === 1 ? '' : 's'}. After that date each violation costs 1 point.</p>}
       {!p.learning && p.points > 0 && p.fadeIn != null && <p className="mt-2 text-[11px] font-semibold text-green-700">Keep a clean record: 5 points come off in {p.fadeIn === 0 ? 'a day or less' : `${p.fadeIn} day${p.fadeIn === 1 ? '' : 's'}`}.</p>}
       {live && <p className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] font-bold text-red-700">Suspended from {live.start_date} to {live.end_date}, with {live.hours} hours deducted.</p>}

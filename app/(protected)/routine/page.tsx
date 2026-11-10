@@ -1,10 +1,6 @@
-import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import RoutineClient from './RoutineClient'
 
-export default async function RoutinePage() {
-  const session = await auth()
-  if (!session) redirect('/login')
-  const role = (session.user as { role?: string })?.role ?? 'staff'
-  return <RoutineClient canEdit={role !== 'staff'} />
+// The Shop Routine's Opening / Daytime / Closing lists are now the Daily Checklist (built from the Company Laws), so there is one list to follow.
+export default function Page() {
+  redirect('/standards')
 }

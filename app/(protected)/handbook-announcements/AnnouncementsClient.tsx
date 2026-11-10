@@ -24,7 +24,7 @@ export default function AnnouncementsClient() {
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="ml-2 mr-auto text-xl font-bold text-[#14213D]">Announcements</h1>
       </div>
-      <p className="mb-2 text-xs text-gray-500">Everything the old Handbook listed under Announcements: tasks and notices saved in the app, grouped by where they were written.</p>
+      <p className="mb-2 text-xs text-gray-500">Everything saved as an announcement: tasks and notices saved in the app, grouped by where they were written.</p>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search" className="min-w-0 flex-1 rounded-xl border border-gray-300 p-2 text-sm" />
         {(['open', 'done', 'all'] as const).map(k => <button key={k} type="button" onClick={() => setShow(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${show === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{k === 'open' ? 'Open' : k === 'done' ? 'Done' : 'All'}</button>)}

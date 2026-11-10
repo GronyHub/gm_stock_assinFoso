@@ -1850,12 +1850,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
               ))}
             </div>
             )}
-            {canManage && (
-              <button onClick={() => setShowForm(v => !v)}
-                className="shrink-0 ml-2 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
-                + Record
-              </button>
-            )}
+            {/* Old violation records are kept as history. New violations are logged in Company Laws (Penalty points), so there is no "+ Record" here any more. */}
           </div>
 
           {showForm && canManage && (
@@ -1925,9 +1920,6 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
                       </span>
                     )}
                   </div>
-                  {(role === 'owner' || username === 'joe') && (
-                    <button onClick={() => remove(v.id, v.staff_name, v.violation)} className="text-xs text-red-400 hover:text-red-600 font-semibold shrink-0">Delete</button>
-                  )}
                 </div>
                 <p className="text-sm font-semibold text-gray-900">{v.violation}</p>
                 {v.details && <p className="text-xs text-gray-500">{v.details}</p>}

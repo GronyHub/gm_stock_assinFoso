@@ -3,6 +3,7 @@ import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
 import { SIGNERS } from '@/lib/signers'
+import { CHECKLIST_START } from '@/lib/dailyChecksShared'
 import { metaTick } from '@/lib/metaLaws'
 
 // Ghana is on GMT, so UTC days and times are the shop's.
@@ -103,7 +104,7 @@ export async function unsupervisedFor(day: string): Promise<{ windows: Win[]; st
   return { windows, staff: present }
 }
 
-export const REVIEW_FROM = '2026-11-05' // the day the checklist and laws began; earlier days are not reviewed
+export const REVIEW_FROM = CHECKLIST_START // the day the checklist and laws began; earlier days are not reviewed
 
 export async function detectReviews(throughDay: string, includeToday: boolean) {
   await ensureAttendance()
