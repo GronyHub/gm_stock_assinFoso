@@ -10,6 +10,8 @@ const STRIP_H = 24
 export default function ServiceStrip({ mobile }: { mobile?: boolean }) {
   const [i, setI] = useState(0)
   const [fade, setFade] = useState(true)
+  const [laws, setLaws] = useState<{ code: string; text: string }[]>([])
+  useEffect(() => { fetch('/api/customer-service/strip').then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d?.laws) && d.laws.length) setLaws(d.laws) }).catch(() => {}) }, [])
   const today = new Date().toISOString().slice(0, 10)
 
   useEffect(() => {
@@ -28,10 +30,13 @@ export default function ServiceStrip({ mobile }: { mobile?: boolean }) {
     return () => { document.documentElement.style.removeProperty('--svc-strip-h') }
   }, [mobile])
 
-  const rod = ruleOfDay(today)
-  const line = i === 0
-    ? { code: rod.code, text: rod.text.length > 90 ? STRIP_LINES.find(l => l.code === rod.code)?.text ?? rod.text.slice(0, 87) + '…' : rod.text, tag: 'Rule of the day' }
-    : { ...STRIP_LINES[(i - 1) % STRIP_LINES.length], tag: 'Customer service' }
+  // The strip follows the live Customer service laws (one is the rule of the day, then the rest in turn). Until they load, or if there are none, the built-in list is used.
+  const dayNo = Math.floor(Date.parse(today + 'T00:00:00Z') / 86400000)
+  const line = laws.length
+    ? { ...laws[(((dayNo + i) % laws.length) + laws.length) % laws.length], tag: i === 0 ? 'Rule of the day' : 'Customer service' }
+    : (() => { const rod = ruleOfDay(today); return i === 0
+        ? { code: rod.code, text: rod.text.length > 90 ? STRIP_LINES.find(l => l.code === rod.code)?.text ?? rod.text.slice(0, 87) + '…' : rod.text, tag: 'Rule of the day' }
+        : { ...STRIP_LINES[(i - 1) % STRIP_LINES.length], tag: 'Customer service' } })()
 
   return (
     <div style={{ height: STRIP_H }} className={`${mobile ? 'md:hidden' : ''} print:hidden w-full overflow-hidden bg-[#010745] text-white flex items-center justify-center gap-2 px-3`}

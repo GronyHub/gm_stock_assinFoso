@@ -8,7 +8,7 @@ type Rec = { start: () => void; stop: () => void; onresult: ((e: any) => void) |
 // Live Sale by voice. The staff member taps the microphone and says what they sold ("two passport photos for GM 123", "print five pages for man on motor").
 // The phone turns it into text, the app finds the item, quantity, price and who it is for, and SHOWS them. Nothing is recorded until the staff
 // member checks the card and taps "Record sale". If the phone cannot listen, the same card works by typing (or the keyboard's own microphone).
-export default function VoiceSale({ onRecorded, openSignal, spoken }: { onRecorded: (tap: unknown) => void; openSignal?: number; spoken?: string }) {
+export default function VoiceSale({ onRecorded, openSignal, spoken, scanItem, scanSignal }: { onRecorded: (tap: unknown) => void; openSignal?: number; spoken?: string; scanItem?: Item | null; scanSignal?: number }) {
   const [open, setOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const [text, setText] = useState('')
@@ -72,6 +72,9 @@ export default function VoiceSale({ onRecorded, openSignal, spoken }: { onRecord
   const pick = p?.items.find(i => i.id === itemId)
   // The global microphone (bottom right) opens this card on Live Sale; every change of the signal opens it and starts listening.
   const first = useRef(true)
+  const firstScan = useRef(true)
+  // A scanned barcode opens the same card with that item already chosen: add the price (if it differs) and who it is for, then record.
+  useEffect(() => { if (firstScan.current) { firstScan.current = false; return } if (!scanSignal || !scanItem) return; setOpen(true); setText(''); setMsg(''); setP({ qty: 1, price: null, buyer: { kind: 'none', value: '' }, items: [scanItem] }); setItemId(scanItem.id); setQty('1'); setPrice(''); setWho('') }, [scanSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (first.current) { first.current = false; return } if (!openSignal) return; if (spoken) { setOpen(true); setText(spoken); void parse(spoken) } else listen() }, [openSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   return (<>
     {open && (

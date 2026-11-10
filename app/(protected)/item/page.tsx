@@ -52,6 +52,8 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import VoiceSale from '@/components/VoiceSale'
 import GlobalMic from '@/components/GlobalMic'
+import ScanButton from '@/components/ScanButton'
+import { fillSearchBox } from '@/lib/voiceCommands'
 import type { Dest } from '@/lib/voiceCommands'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
@@ -1609,6 +1611,8 @@ function ItemHubPageInner() {
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
   const [voiceSaleText, setVoiceSaleText] = useState('')
+  const [scanItem, setScanItem] = useState<{ id: number; name: string; selling_price: number; soh: number } | null>(null)
+  const [scanSignal, setScanSignal] = useState(0)
   const embedRef = useRef<HTMLIFrameElement>(null)
   const [embedUrl, setEmbedUrl] = useState<string | null>(null)
   const [personal, setPersonal] = useState<{ name: string; tab: string } | null>(null)
@@ -10116,6 +10120,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <GlobalMic frame={embedRef} dests={voiceDests}
             onVoiceSale={outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal ? (t: string) => { setVoiceSaleText(t); setVoiceSaleSignal(n => n + 1) } : undefined}
             className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'}`} />
+          {/* Scan a barcode: on Live Sale it opens the sale card with that item; on any other page the item's name goes into the page's search box. */}
+          <ScanButton className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} -translate-y-14`}
+            onItem={it => {
+              if (outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal) { setScanItem(it); setScanSignal(n => n + 1); return }
+              let doc: Document | null = null; try { doc = embedRef.current?.contentDocument ?? null } catch { /* ignore */ }
+              if (!fillSearchBox(doc ?? document, it.name)) showToast(`Scanned: ${it.name} (₵${it.selling_price})`, 'success')
+            }} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
           )}
@@ -10130,7 +10141,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
           {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal && (
-            <VoiceSale openSignal={voiceSaleSignal} spoken={voiceSaleText} onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
+            <VoiceSale openSignal={voiceSaleSignal} spoken={voiceSaleText} scanItem={scanItem} scanSignal={scanSignal} onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
           )}
           {gmcOverageGate && (
             <GmcOverageGateModal

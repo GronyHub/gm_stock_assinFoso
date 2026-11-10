@@ -8,7 +8,6 @@ import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
 import ServiceStrip from '@/components/ServiceStrip'
-import ServiceDailyCard from '@/components/ServiceDailyCard'
 import LawSignPrompt from '@/components/LawSignPrompt'
 import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
@@ -56,7 +55,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <NoFrame>
         <PushSubscriber />
         <CaretakerGuard />
-        <ServiceDailyCard />
         <PhotoReminder />
         <LawSignPrompt />
         <LawReminder />
