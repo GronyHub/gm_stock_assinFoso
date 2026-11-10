@@ -1,7 +1,8 @@
 'use client'
+import SnoozeChips from '@/components/SnoozeChips'
 import { useEffect, useState } from 'react'
 import LawLink from '@/components/LawLink'
-import { isSnoozed, snooze } from '@/lib/snooze'
+import { isSnoozed } from '@/lib/snooze'
 
 type Prev = { date: string; in: string }
 type Auto = { id: number; date: string; out: string; basis: string }
@@ -18,7 +19,7 @@ export default function ClockOutPrompt() {
   const [fixTime, setFixTime] = useState('')
   const [later, setLater] = useState(false)
   const [tick, setTick] = useState(0) // re-reads the put-off times
-  useEffect(() => { try { setLater(Date.now() < Number(localStorage.getItem('clockAutoSnooze') ?? 0)) } catch { /* ignore */ } }, [])
+  useEffect(() => { const f = () => { try { setLater(Date.now() < Number(localStorage.getItem('clockAutoSnooze') ?? 0)); setTick(t => t + 1) } catch { /* ignore */ } }; f(); const t = setInterval(f, 60000); return () => clearInterval(t) }, [])
   const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [], autos: d.autos ?? [] }) }).catch(() => {})
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
@@ -61,7 +62,7 @@ export default function ClockOutPrompt() {
             <button type="button" disabled={!times[p.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: p.date, time: times[p.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send time out for {p.date}</button>
           </div>))}
         <LawLink name="Clock out when you leave" />
-        <button type="button" onClick={() => { snooze('clockPrevSnooze', 30); setTick(t => t + 1) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Later: remind me in 30 minutes</button>
+        <SnoozeChips storageKey="clockPrevSnooze" title="Later: remind me in" onDone={() => setTick(t => t + 1)} />
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
     </div>
@@ -79,7 +80,7 @@ export default function ClockOutPrompt() {
             <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
           </div>))}
         <LawLink name="Clock out when you leave" />
-        <button type="button" onClick={() => { try { localStorage.setItem('clockAutoSnooze', String(Date.now() + 2 * 60 * 60 * 1000)) } catch { /* ignore */ } setLater(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me later (2 hours)</button>
+        <SnoozeChips storageKey="clockAutoSnooze" title="Remind me later in" onDone={() => setLater(true)} />
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
     </div>
@@ -91,7 +92,7 @@ export default function ClockOutPrompt() {
         <p className="text-sm text-gray-700">It is past 7pm and you have not clocked out.</p>
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
         <LawLink name="Clock out when you leave" />
-        <button type="button" onClick={() => { snooze('clockAskSnooze', 20); setTick(t => t + 1) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Ask me later (20 minutes)</button>
+        <SnoozeChips storageKey="clockAskSnooze" title="Ask me later in" onDone={() => setTick(t => t + 1)} />
         <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'still_here' }); if (d) void load() }} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">Yes, I am still here</button>
         <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'left' }); if (d) { setFix({ date: new Date().toISOString().slice(0, 10), out: d.out }); setFixTime('') } }} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">No, I have left</button>
       </div>

@@ -1,4 +1,5 @@
 'use client'
+import SnoozeChips from '@/components/SnoozeChips'
 import { useEffect, useState } from 'react'
 
 type Item = { id: number; code: string | null; title: string | null; violation: string }
@@ -30,7 +31,6 @@ export default function LawReminder() {
     await fetch('/api/law-reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: data.laws.map(l => l.id), stage: data.stage }) }).catch(() => {})
     setBusy(false); setData(null); setAgree(false)
   }
-  function later() { try { localStorage.setItem(SNOOZE, String(Date.now() + 10 * 60 * 1000)) } catch { /* ignore */ } setData(null) }
   return (
     <div className="fixed inset-0 z-[85] flex items-end justify-center bg-black/50 sm:items-center print:hidden">
       <div className="max-h-[92vh] w-full max-w-lg space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-6 sm:rounded-3xl">
@@ -44,7 +44,7 @@ export default function LawReminder() {
         </label>
         <p className="text-[11px] text-gray-600">{data.stage === 'login' ? <>Then open your <a href="/standards" className="font-bold text-blue-700 underline">Daily Checklist</a> to see what to do and when. Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</> : <>Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</>}</p>
         <button type="button" disabled={!agree || busy} onClick={() => void confirm()} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">I confirm and agree to follow these</button>
-        <button type="button" onClick={later} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me in 10 minutes</button>
+        <SnoozeChips storageKey={SNOOZE} title="Remind me in" onDone={() => setData(null)} />
       </div>
     </div>
   )

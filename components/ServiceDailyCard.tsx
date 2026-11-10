@@ -1,8 +1,9 @@
 'use client'
+import SnoozeChips from '@/components/SnoozeChips'
 import { useEffect, useState } from 'react'
 import { quizOfDay } from '@/lib/serviceQuiz'
 import { ruleOfDay } from '@/lib/customerServiceCode'
-import { isSnoozed, snooze } from '@/lib/snooze'
+import { isSnoozed } from '@/lib/snooze'
 
 // Start-of-day customer service card: today's rule, "is your tag on?", and one scenario question.
 // Shown once per day per person on the first page they open; after it is answered it does not come back until tomorrow.
@@ -84,7 +85,7 @@ export default function ServiceDailyCard() {
               {busy ? 'Saving…' : 'Submit answer'}
             </button>
           )}
-          {!res && <button type="button" onClick={() => { snooze('serviceCardSnooze', 30); setClosed(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Later: remind me in 30 minutes</button>}
+          {!res && <SnoozeChips storageKey="serviceCardSnooze" title="Later: remind me in" onDone={() => setClosed(true)} />}
         </div>
       </div>
     </div>

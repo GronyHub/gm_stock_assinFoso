@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 
+import SnoozeChips from '@/components/SnoozeChips'
 const SNOOZE_KEY = 'lawSignSnoozeUntil'
 // A reminder, repeated through the day, while a staff member still has Company Laws to sign.
 export default function LawSignPrompt() {
+  const [choose, setChoose] = useState(false)
   const [n, setN] = useState(0)
   const [hidden, setHidden] = useState(false)
   useEffect(() => {
@@ -20,7 +22,6 @@ export default function LawSignPrompt() {
     return () => { live = false; clearInterval(t) }
   }, [])
   if (hidden || n <= 0) return null
-  function later() { try { localStorage.setItem(SNOOZE_KEY, String(Date.now() + 2 * 60 * 60 * 1000)) } catch { /* ignore */ } setHidden(true) }
   return (
     <div className="fixed inset-x-0 bottom-3 z-[60] flex justify-center px-3 print:hidden">
       <div className="w-full max-w-sm rounded-xl border border-amber-300 bg-white p-3 shadow-xl">
@@ -28,8 +29,9 @@ export default function LawSignPrompt() {
         <p className="mt-0.5 text-xs text-gray-600">Read each law and sign to show you understand it and will follow it.</p>
         <div className="mt-2 flex gap-2">
           <a href="/laws?sign=1" className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Read and sign</a>
-          <button type="button" onClick={later} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700">Remind me later</button>
+          <button type="button" onClick={() => setChoose(c => !c)} className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700">Remind me later</button>
         </div>
+        {choose && <div className="mt-2"><SnoozeChips storageKey={SNOOZE_KEY} title="Remind me in" onDone={() => setHidden(true)} /></div>}
       </div>
     </div>
   )
