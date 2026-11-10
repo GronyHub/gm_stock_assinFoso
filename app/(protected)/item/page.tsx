@@ -1604,6 +1604,25 @@ function ItemHubPageInner() {
   // this jumps straight to a specific row regardless of which outer tab is
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
+  // Pages that are not part of the hub (Company Laws, the Daily Checklist, How To...) and a person's own page open INSIDE the right pane, so the left
+  // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null)
+  const [personal, setPersonal] = useState<{ name: string; tab: string } | null>(null)
+  const [barH, setBarH] = useState(0)
+  const barRef = useRef<HTMLDivElement>(null)
+  const openEmbed = (path: string) => { setPersonal(null); setEmbedUrl(path) }
+  const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setPersonal({ name, tab }) }
+  useEffect(() => { setEmbedUrl(null); setPersonal(null) }, [lossView, outerTab])
+  useEffect(() => {
+    const open = new URLSearchParams(window.location.search).get('open')
+    if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
+    const msg = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data?.type === 'close-embed') setEmbedUrl(null) }
+    const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
+    window.addEventListener('message', msg); window.addEventListener('open-staff-member', own)
+    return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own) }
+  }, [])
+  useEffect(() => { window.dispatchEvent(new CustomEvent('embed-changed', { detail: embedUrl })) }, [embedUrl])
+
   function pickLossView(view: LossView) {
     setOuterTab('loss')
     setLossView(view)
@@ -1656,11 +1675,7 @@ function ItemHubPageInner() {
   // history even though its own pane row is hidden while viewing someone
   // else.
   // Opens my own page (the one behind my photo) on a tab; falls back to the old full-page view when the staff bar is not on screen.
-  function openMyPage(tab: string, fallback: LossView) {
-    const d = { name: username, tab, handled: false }
-    window.dispatchEvent(new CustomEvent('open-staff-member', { detail: d }))
-    if (!d.handled) pickLossView(fallback)
-  }
+  function openMyPage(tab: string, _fallback: LossView) { void _fallback; openPersonal(username, tab) }
   function pickViewing(name: string) {
     setViewingNameOverride(name)
     const staysOnSelfOnly = lossView === 'staffProfile' || lossView === 'staffPayslips'
@@ -1977,6 +1992,7 @@ function ItemHubPageInner() {
   // renders -- not just whether the slot happens to exist.
   const navSlotEl = useNavSlotEl()
   const isDesktop = useIsDesktop()
+  useEffect(() => { setBarH(barRef.current?.offsetHeight ?? 0) }, [embedUrl, personal, isDesktop, outerTab])
   // Nav's real rendered height (see lib/navHeight.ts) -- used below to size
   // this page's own content area to "the rest of the viewport", instead of
   // a hardcoded assumption that goes stale the moment Nav grows a second
@@ -5647,7 +5663,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           if (v === 'analytics') { setLiveExpensesShowAnalytics(a => !a); return }
           if (v === 'accounts') { setLiveExpensesShowAccountsManager(true); return }
           if (v === 'columns') { setLiveExpensesColumnsOpen(true); return }
-          if (v === 'help:guide') { window.location.href = '/how-to'; return }
+          if (v === 'help:guide') { openEmbed('/how-to'); return }
           selectLiveExpensesRadio(v || 'all')
         }}
         className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white w-16 shrink-0"
@@ -6719,10 +6735,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false} shared={isOwnerOrJoe}
-              href="/laws" onClick={() => { window.location.href = '/laws' }} />
+              href="/laws" onClick={() => openEmbed('/laws')} />
             {/* The Daily Checklist is the second button in the sidebar, on every tab. */}
             <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={false} divider shared={isOwnerOrJoe}
-              href="/standards" onClick={() => { window.location.href = '/standards' }} />
+              href="/standards" onClick={() => openEmbed('/standards')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
@@ -6813,7 +6829,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
               <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={false}
-                href="/how-to" onClick={() => { window.location.href = '/how-to' }} />
+                href="/how-to" onClick={() => openEmbed('/how-to')} />
             </div>
             )}
 
@@ -6833,9 +6849,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
               <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={false}
-                href="/owner-guide" onClick={() => { window.location.href = '/owner-guide' }} />
+                href="/owner-guide" onClick={() => openEmbed('/owner-guide')} />
               <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={false}
-                href="/handbook-announcements" onClick={() => { window.location.href = '/handbook-announcements' }} />
+                href="/handbook-announcements" onClick={() => openEmbed('/handbook-announcements')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
@@ -6972,10 +6988,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
               {isOwnerOrJoe && <SidePaneButton icon="🕘" label="Shop Routine" mode={cashDisplayMode} active={false} divider={canOpenUkSettings}
-                href="/routine" onClick={() => { window.location.href = '/routine' }} />}
+                href="/routine" onClick={() => openEmbed('/routine')} />}
               {isOwnerLevel(session?.user as any) && (
                 <SidePaneButton icon="🔔" label="Notifications" mode={cashDisplayMode} active={false} divider
-                  href="/notifications" onClick={() => { window.location.href = '/notifications' }} />
+                  href="/notifications" onClick={() => openEmbed('/notifications')} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
                 noNewTab onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
@@ -7068,8 +7084,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <PresentStaffBar roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
-                staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+              <div ref={barRef}><PresentStaffBar roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+                selfName={username} onOpenStaff={openPersonal} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
@@ -7083,8 +7099,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <span className="shrink-0 font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
                 {liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
               </span>
-              <PresentStaffBar embedded roster={activeStaff}
-                staffMemberModalProps={{ username, role, canManage, staffRoster: STAFF_ROSTER, routablePages, categoryIds: fixedCategoryIds }} />
+              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
@@ -7092,6 +7107,22 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div ref={setPageToolbarEl} className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 empty:hidden" />
             </div>,
             navSlotEl
+          )}
+
+          {(embedUrl || personal) && (
+            <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
+              {personal ? (<>
+                <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-3 py-1.5">
+                  <p className="text-sm font-bold capitalize text-gray-900">{personal.name}</p>
+                  <button type="button" onClick={() => setPersonal(null)} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <StaffMemberPersonalTab key={personal.name + personal.tab} staffName={personal.name} initialTab={personal.tab as never} username={username} role={role} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
+                </div>
+              </>) : (
+                <iframe key={embedUrl} src={embedUrl ?? ''} title="Page" className="min-h-0 w-full flex-1 border-0" />
+              )}
+            </div>
           )}
 
           {renderSectionFlags()}
@@ -7214,7 +7245,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         setLiveGmcTypeFilter(v.slice('gmc:'.length))
                       } else if (v === 'help:help') {
                         // Opens the Help Guide modal
-                        window.location.href = '/how-to'
+                        openEmbed('/how-to')
                         selectEl.value = ''
                       } else if (v === 'settings:sortorder') {
                         setLiveSortOrderModalOpen(true)
@@ -8634,7 +8665,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           if (viewKey === 'lossByItem') setLiveCurrentView({ kind: 'lossByItem' as const })
                           else if (viewKey === 'dailySummary') setLiveCurrentView({ kind: 'dailySummary' as const })
                         } else if (v === 'help:help') {
-                          window.location.href = '/how-to'
+                          openEmbed('/how-to')
                           selectEl.value = ''
                         } else if (v === 'settings:sortorder') {
                           setLiveSortOrderModalOpen(true)

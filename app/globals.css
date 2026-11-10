@@ -60,3 +60,6 @@ body {
   color: #dc2626 !important;
   text-decoration: none !important;
 }
+
+/* A page shown inside the hub's right pane (see components/FrameFlag.tsx) has no navigation bar of its own. */
+html.framed .no-frame { display: none !important; }

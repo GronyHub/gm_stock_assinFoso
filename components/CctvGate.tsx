@@ -20,7 +20,9 @@ export default function CctvGate() {
   useEffect(() => { check(); const t = setInterval(check, 5 * 60 * 1000); return () => clearInterval(t) }, [])
   const [snoozed, setSnoozed] = useState(false)
   useEffect(() => { try { setSnoozed(Date.now() < Number(localStorage.getItem(SNOOZE) ?? 0)) } catch { /* ignore */ } }, [pending])
-  const onPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/cctv-review')
+  const [embed, setEmbed] = useState<string | null>(null)
+  useEffect(() => { const f = (e: Event) => setEmbed((e as CustomEvent).detail ?? null); window.addEventListener('embed-changed', f); return () => window.removeEventListener('embed-changed', f) }, [])
+  const onPage = (typeof window !== 'undefined' && window.location.pathname.startsWith('/cctv-review')) || !!embed?.startsWith('/cctv-review')
   const ageDays = oldest ? Math.floor((Date.now() - new Date(oldest).getTime()) / 86400000) : 0
   if (qs.length) {
     const q = qs[0]

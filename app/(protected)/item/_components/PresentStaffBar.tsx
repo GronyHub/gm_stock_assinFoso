@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
 import StaffAvatar from '@/components/StaffAvatar'
-import StaffMemberModal, { type StaffMemberModalProps } from './StaffMemberModal'
 
 const TodayContent = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-gray-400 text-xs">Loading…</p> })
 
@@ -47,9 +46,12 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, staffMemberModalProps, embedded, salesTotal }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedded, salesTotal }: {
   roster: RosterEntry[]
-  staffMemberModalProps: StaffMemberModalProps
+  // The signed-in person (their button is the one at the top of the sidebar, so it is left out here) and what to do when a chip is tapped:
+  // the hub opens that person's page in its right pane.
+  selfName: string
+  onOpenStaff: (name: string, tab?: string) => void
   // True when portaled into Nav's own top bar (desktop only -- see
   // lib/navSlot.ts and item/page.tsx) instead of rendered as this
   // component's usual standalone full-width row: drops the border/
@@ -66,16 +68,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
-  const [selectedStaff, setSelectedStaff] = useState<string | null>(null)
   const [homeModalOpen, setHomeModalOpen] = useState(false)
-  const [selectedTab, setSelectedTab] = useState<string>('times')
-  // The sidebar's own chip (MySelfChip) asks this bar to open the signed-in person's page.
-  useEffect(() => {
-    const h = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setSelectedTab(d.tab ?? 'times'); setSelectedStaff(d.name) }
-    window.addEventListener('open-staff-member', h)
-    return () => window.removeEventListener('open-staff-member', h)
-  }, [])
-
   useEffect(() => {
     let cancelled = false
     function load() {
@@ -155,8 +148,8 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
       <div className={embedded
         ? 'flex items-stretch gap-1 flex-nowrap shrink-0'
         : 'px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-stretch gap-1 flex-nowrap overflow-x-auto shrink-0'}>
-        {computed.filter(s => s.staff_name.toLowerCase() !== String(staffMemberModalProps.username ?? '').toLowerCase()).map(s => (
-          <button key={s.staff_name} type="button" onClick={() => { setSelectedTab('times'); setSelectedStaff(s.staff_name) }}
+        {computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase()).map(s => (
+          <button key={s.staff_name} type="button" onClick={() => onOpenStaff(s.staff_name, 'times')}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
             className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
@@ -180,9 +173,6 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
           </span>
         )}
       </div>
-      {selectedStaff && (
-        <StaffMemberModal staffName={selectedStaff} initialTab={selectedTab as never} onClose={() => setSelectedStaff(null)} {...staffMemberModalProps} />
-      )}
       {homeModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setHomeModalOpen(false)}>
           <div onClick={e => e.stopPropagation()} className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">

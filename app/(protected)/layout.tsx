@@ -13,6 +13,7 @@ import LawSignPrompt from '@/components/LawSignPrompt'
 import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
 import CctvGate from '@/components/CctvGate'
+import FrameFlag, { NoFrame } from '@/components/FrameFlag'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -43,20 +44,23 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="print:hidden">
+      <div className="print:hidden no-frame">
         <ImpersonationBar />
         <ServiceStrip mobile />
         <Nav />
       </div>
       <MainContainer>{children}</MainContainer>
-      <PushSubscriber />
-      <CaretakerGuard />
-      <ServiceDailyCard />
-      <PhotoReminder />
-      <LawSignPrompt />
-      <LawReminder />
-      <ClockOutPrompt />
-      <CctvGate />
+      <FrameFlag />
+      <NoFrame>
+        <PushSubscriber />
+        <CaretakerGuard />
+        <ServiceDailyCard />
+        <PhotoReminder />
+        <LawSignPrompt />
+        <LawReminder />
+        <ClockOutPrompt />
+        <CctvGate />
+      </NoFrame>
     </div>
   )
 }
