@@ -21,7 +21,7 @@ export async function GET() {
 
   // Map username → staff_name in payslips table
   const nameMap: Record<string, string> = {
-    joe: 'Joe', bino: 'Bino', james: 'James', rawlings: 'Rawlings',
+    joe: 'Joe', bino: 'Bino', james: 'James', rawlings: 'Rawlings', // Rawlings has left; his payslips stay as records
   }
 
   await ensureSchema()

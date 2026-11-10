@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { ADMIN_STAFF } from '@/lib/staffList'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,7 +18,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const u = session.user as any
   const username = (u?.username ?? u?.name ?? '').toLowerCase()
-  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings' && username !== 'grony' && username !== 'joe') {
+  if (u?.role !== 'owner' && u?.role !== 'admin' && !ADMIN_STAFF.includes(username)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -47,7 +48,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const u = session.user as any
   const username = (u?.username ?? u?.name ?? '').toLowerCase()
-  if (u?.role !== 'owner' && u?.role !== 'admin' && username !== 'rawlings' && username !== 'grony' && username !== 'joe') {
+  if (u?.role !== 'owner' && u?.role !== 'admin' && !ADMIN_STAFF.includes(username)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

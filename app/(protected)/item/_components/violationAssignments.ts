@@ -1,3 +1,4 @@
+import { ACTIVE_STAFF_ORDERED } from '@/lib/staffList'
 // The 9 recurring data-integrity violation types that can be assigned to a
 // staff member (with an optional deadline) -- moved out of the old
 // standalone Assignments screen (see StaffClient.tsx) so each one's
@@ -18,4 +19,4 @@ export const ASSIGNABLE_VIOLATIONS: { type: string; label: string; auto: boolean
   { type: 'flags', label: 'Daily Flags (item counting) progress', auto: false },
 ]
 
-export const ASSIGNABLE_STAFF = ['joe', 'bino', 'james', 'rawlings', 'grony']
+export const ASSIGNABLE_STAFF = ACTIVE_STAFF_ORDERED // active staff only (lib/staffList.ts)

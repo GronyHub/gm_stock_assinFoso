@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, Fragment, Suspense, useCallback } from 'react'
+import { EVER_STAFF, ACTIVE_STAFF, ADMIN_STAFF, STAFF_HEX, STAFF_BADGE, STAFF_BADGE_BORDER, staffLabel, isActiveStaff } from '@/lib/staffList'
 import Link from 'next/link'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
@@ -10,7 +11,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
 
-const STAFF = ['joe', 'bino', 'james', 'rawlings', 'grony']
+// History views (times, payslips) show everyone who ever worked here, so Rawlings's records stay visible; the "add" lists use the active staff only.
+const STAFF = EVER_STAFF
+const ACTIVE = ACTIVE_STAFF
 
 // Ghana runs on UTC year-round with no DST, so "now in Ghana" is just UTC
 // now -- using getUTCHours/getUTCMinutes here (instead of the device's own
@@ -60,9 +63,7 @@ function monthsBetween(from: string, to: string): number {
   return Math.max(0, (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth()))
 }
 
-const STAFF_CHART_COLORS: Record<string, string> = {
-  joe: '#3b82f6', bino: '#a855f7', james: '#22c55e', rawlings: '#f97316', grony: '#ec4899',
-}
+const STAFF_CHART_COLORS = STAFF_HEX
 
 function to12hToHHMM(t: string | null | undefined): string {
   if (!t) return ''
@@ -79,13 +80,7 @@ function to12hToHHMM(t: string | null | undefined): string {
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2.5 text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-400'
 const labelCls = 'text-xs text-gray-400 font-medium mb-1 block'
 
-const STAFF_COLORS: Record<string, string> = {
-  Joe: 'bg-blue-100 text-blue-700',
-  Bino: 'bg-purple-100 text-purple-700',
-  James: 'bg-green-100 text-green-700',
-  Rawlings: 'bg-orange-100 text-orange-700',
-  Grony: 'bg-pink-100 text-pink-700',
-}
+const STAFF_COLORS: Record<string, string> = Object.fromEntries(EVER_STAFF.map(n => [staffLabel(n), STAFF_BADGE[n]]))
 
 const SEVERITY_COLORS: Record<string, string> = {
   minor: 'bg-yellow-100 text-yellow-700',
@@ -211,7 +206,7 @@ function groupByDate(rows: RecentRow[]) {
 }
 
 export function TimesTab({ username, role, openAddSignal, viewingStaff }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string }) {
-  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
+  const isAdmin = role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username)
   // A per-person page (viewingStaff set) narrows every staff-keyed list/table
   // down to just this one name, and hides the "My Time Today" clock panel
   // unless you're looking at your own page -- clocking someone else in from
@@ -277,7 +272,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
   // STAFF (and every staff_name this writes) is lowercase -- normalize here
   // so a caller can pass either casing without silently forking a person's
   // records into two different-cased staff_name values.
-  const [addStaff, setAddStaff] = useState(viewName ?? STAFF[0])
+  const [addStaff, setAddStaff] = useState(viewName ?? ACTIVE[0])
   const [addDate, setAddDate] = useState('')
   const [addIn, setAddIn] = useState('')
   const [addOut, setAddOut] = useState('')
@@ -599,7 +594,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                 <p className={inputCls + ' capitalize'}>{viewingStaff}</p>
               ) : (
                 <select value={addStaff} onChange={e => setAddStaff(e.target.value)} className={inputCls}>
-                  {STAFF.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+                  {ACTIVE.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
                 </select>
               )}
             </div>
@@ -796,7 +791,7 @@ const PAY_COLS = [
   { key: 'total_salary',        label: 'TOTAL',      fmt: fmtC },
 ] as const
 
-export const ALL_STAFF_NAMES = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
+export const ALL_STAFF_NAMES = EVER_STAFF.map(staffLabel) // everyone with records (history); see lib/staffList.ts
 
 type PayView = 'monthly' | 'staff' | 'build'
 
@@ -1459,7 +1454,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
   const [saved, setSaved] = useState(false)
   const prefilledMonth = useRef<string | null>(null)
 
-  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set(ALL_STAFF_NAMES))
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set(ALL_STAFF_NAMES.filter(n => isActiveStaff(n))))
   const [bulkValues, setBulkValues] = useState<Partial<BuildRow>>({})
 
   // Staff left out of THIS build run entirely -- no payslip row gets
@@ -1727,7 +1722,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
   const [violations, setViolations] = useState<Violation[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
+  const [form, setForm] = useState({ staff_name: viewName ?? ACTIVE[0], violation: '', details: '', severity: 'minor', points: '5' })
   const [saving, setSaving] = useState(false)
   const [staffFilter, setStaffFilter] = useState(viewName ?? 'All')
   // Auto-Penalty Settings used to live on the old standalone Assignments
@@ -1766,7 +1761,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
     if (res.ok) {
       const row = await res.json()
       setViolations(prev => [row, ...prev])
-      setForm({ staff_name: viewName ?? STAFF[0], violation: '', details: '', severity: 'minor', points: '5' })
+      setForm({ staff_name: viewName ?? ACTIVE[0], violation: '', details: '', severity: 'minor', points: '5' })
       setShowForm(false)
     }
   }
@@ -1970,7 +1965,7 @@ function FixRow({ label, sub, children }: { label: string; sub?: string; childre
 // Shared between the Staff → Violations → Times view and the Errors tab's
 // "No Team Times" violation, so both stay in sync with one implementation.
 export function NoStaffTimesList({ dates, role, username, onFixed }: { dates: string[]; role: string; username: string; onFixed: (d: string) => void }) {
-  const isAdmin = role === 'owner' || role === 'admin' || username === 'rawlings' || username === 'grony' || username === 'joe'
+  const isAdmin = role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username)
   if (dates.length === 0) return <p className="py-10 text-center text-gray-400 text-sm">All sales days have team times recorded.</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
@@ -1979,7 +1974,7 @@ export function NoStaffTimesList({ dates, role, username, onFixed }: { dates: st
           {isAdmin ? (
             <NoTimesFix date={date} onFixed={onFixed} />
           ) : (
-            <p className="text-xs text-gray-400 py-1">Only Rawlings or the owner can add times.</p>
+            <p className="text-xs text-gray-400 py-1">Only Joe or the owner can add times.</p>
           )}
         </FixRow>
       ))}
@@ -2177,16 +2172,12 @@ type Absence = {
   absence_type: string
 }
 
-const ROTA_STAFF = ['Joe', 'James', 'Rawlings', 'Bino']
+const ROTA_STAFF = ['joe', 'james', 'rawlings', 'bino'].map(staffLabel) // rows shown in the rota history: Rawlings's past rota stays visible
+const ROTA_PLAN_STAFF = ROTA_STAFF.filter(s => isActiveStaff(s)) // who can be planned or added now
 const ABSENCE_TYPES = ['travel', 'leave', 'sick', 'other']
 const ROTA_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
-const ROTA_STAFF_COLORS: Record<string, string> = {
-  Joe: 'bg-blue-100 text-blue-700 border-blue-200',
-  James: 'bg-green-100 text-green-700 border-green-200',
-  Rawlings: 'bg-orange-100 text-orange-700 border-orange-200',
-  Bino: 'bg-purple-100 text-purple-700 border-purple-200',
-}
+const ROTA_STAFF_COLORS: Record<string, string> = Object.fromEntries(ROTA_STAFF.map(n => [n, STAFF_BADGE_BORDER(n)]))
 
 function hoursFromShift(entry: RotaEntry): number {
   if (entry.is_off || !entry.sched_in || !entry.sched_out) return 0
@@ -2460,7 +2451,7 @@ export function RotaTab({ canManage }: { canManage: boolean }) {
                 <div>
                   <label className={labelCls}>Staff</label>
                   <select value={absForm.staff_name} onChange={e => setAbsForm(f => ({...f, staff_name: e.target.value}))} className={inputCls}>
-                    {ROTA_STAFF.map(s => <option key={s}>{s}</option>)}
+                    {ROTA_PLAN_STAFF.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>

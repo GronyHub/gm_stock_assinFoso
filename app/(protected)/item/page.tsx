@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo, Component, Suspense, Fragment, type ReactNode, type CSSProperties } from 'react'
+import { ACTIVE_STAFF_ORDERED, staffLabel } from '@/lib/staffList'
 import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNavSlotEl } from '@/lib/navSlot'
@@ -144,7 +145,7 @@ const LeastPurchasedChart = dynamic(() => import('./_components/LeastPurchasedCh
 // whichever one of these matches the logged-in username, and that person's
 // own page is built from this same roster (see StaffClient.tsx's own STAFF/
 // ALL_STAFF_NAMES constants, which this must stay in sync with).
-const STAFF_ROSTER = ['Joe', 'Bino', 'James', 'Rawlings', 'Grony']
+const STAFF_ROSTER = ACTIVE_STAFF_ORDERED.map(staffLabel) // the active staff (lib/staffList.ts); Rawlings has left, his records stay in the history views
 
 // 'uk' is Grony's own private top-level tab; 'ch' is Grony/Joe's -- both
 // tabs' own components re-check the session themselves too, so this is

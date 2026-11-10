@@ -3,8 +3,9 @@ import sql from '@/lib/db'
 import { NextRequest } from 'next/server'
 
 // ── Staff config ────────────────────────────────────────────────────────────
-const FULL_TIME = ['Joe', 'James', 'Rawlings']
-const ALL_STAFF = ['Joe', 'James', 'Rawlings', 'Bino']
+// Rawlings has resigned: the rota is planned for the active staff only. His past rota records are kept.
+const FULL_TIME = ['Joe', 'James']
+const ALL_STAFF = ['Joe', 'James', 'Bino']
 const MONTHLY_TARGET = 210  // hours, full-time
 const LEAVE_TARGET   = 170  // hours on a leave month
 const BINO_TARGET    = 100
@@ -23,11 +24,10 @@ const BINO_WKDAY = { in: '3:45pm', out: '6:45pm', hours: 3 }
 const BINO_SAT   = { in: '10:00am', out: '6:30pm', hours: 8.5 }
 
 // Off-day rotation: week index (0-3) → preferred off day (1=Mon…6=Sat)
-// Joe and James never share same off day; Rawlings avoids Monday (shop needs closer from start)
+// Joe and James never share the same off day
 const OFF_ROTATION: Record<string, number[]> = {
   Joe:      [2, 3, 4, 6],  // Tue, Wed, Thu, Sat
   James:    [4, 6, 2, 3],  // Thu, Sat, Tue, Wed
-  Rawlings: [6, 4, 3, 2],  // Sat, Thu, Wed, Tue
 }
 
 function isoDate(y: number, m: number, d: number) {
@@ -165,9 +165,8 @@ export async function POST(req: NextRequest) {
 
       // Opener: Joe first, else James
       const openerStaff = workingFT.find(s => s === 'Joe') ?? workingFT.find(s => s === 'James')
-      // Closer: Rawlings first, else James (if not opener)
-      const closerStaff = workingFT.find(s => s === 'Rawlings') ??
-                          workingFT.find(s => s !== openerStaff && s === 'James')
+      // Closer: James (if not the opener)
+      const closerStaff = workingFT.find(s => s !== openerStaff && s === 'James')
 
       if (staff === openerStaff) {
         // If only 1-2 working full-time, opener covers a longer shift
