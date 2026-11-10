@@ -14,6 +14,8 @@ export default function ClockOutPrompt() {
   const [busy, setBusy] = useState(false)
   const [fix, setFix] = useState<{ date: string; out: string } | null>(null)
   const [fixTime, setFixTime] = useState('')
+  const [later, setLater] = useState(false)
+  useEffect(() => { try { setLater(Date.now() < Number(localStorage.getItem('clockAutoSnooze') ?? 0)) } catch { /* ignore */ } }, [])
   const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [], autos: d.autos ?? [] }) }).catch(() => {})
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
@@ -57,7 +59,7 @@ export default function ClockOutPrompt() {
       </div>
     </div>
   )
-  if (st.autos.length) return (
+  if (st.autos.length && !later) return (
     <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
       <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
         <p className="text-base font-extrabold text-[#14213D]">We clocked you out</p>
@@ -69,6 +71,7 @@ export default function ClockOutPrompt() {
             <input type="time" value={times[a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
             <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
           </div>))}
+        <button type="button" onClick={() => { try { localStorage.setItem('clockAutoSnooze', String(Date.now() + 2 * 60 * 60 * 1000)) } catch { /* ignore */ } setLater(true) }} className="w-full rounded-xl bg-gray-100 py-2 text-xs font-bold text-gray-600">Remind me later (2 hours)</button>
         {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
       </div>
     </div>
