@@ -49,7 +49,6 @@ import LogDayPhotos from './_components/LogDayPhotos'
 import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
-import MySelfChip from './_components/MySelfChip'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
@@ -1051,9 +1050,8 @@ function ItemHubPageInner() {
   const [liveEditingItemIntervalId, setLiveEditingItemIntervalId] = useState<number | null>(null)
   const [liveEditingItemIntervalDays, setLiveEditingItemIntervalDays] = useState<string>('')
   const [liveEditingItemIntervalSaving, setLiveEditingItemIntervalSaving] = useState(false)
-  const rawSidePaneHidden = searchParams.get('sidebarHidden')
-  const initialSidePaneHidden = rawSidePaneHidden === '1'
-  const [sidePaneHidden, setSidePaneHidden] = useState(initialSidePaneHidden)
+  const initialSidePaneHidden = false // the left sidebar is never hidden any more (the signed-in person's button lives at its top)
+  const sidePaneHidden = initialSidePaneHidden
   // Deep links into a specific Live Sale tab (Sale/Sales/Bills/Count/Loss by
   // Tgt/Log) -- the "Sale Log" search result, a "Fix now: Counts" button, a
   // Daily/7-Day/15-Day Counts violation pill, a Sales/Bills/gains violation
@@ -6712,7 +6710,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
             </>}>
-            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} onHide={() => setSidePaneHidden(true)} />
+            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} />
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={false} shared={isOwnerOrJoe}
@@ -7064,14 +7062,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             button above (no extra border/column either way). Sits at the
             bottom, not the top, so it doesn't cover PresentStaffBar/the tab
             switcher's own top-left content on a narrow (mobile) screen. */}
-        {sidePaneHidden && (
-          <div style={{ '--pane-accent': paneAccent } as React.CSSProperties} className="relative w-14 shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col items-center gap-1 p-1">
-            <MySelfChip name={String(session?.user?.name ?? username)} username={username} />
-            <button type="button" onClick={() => setSidePaneHidden(false)} title="Show sidebar"
-              className="mt-auto mb-0.5 w-5 h-5 rounded-full bg-white/15 hover:bg-white/30 text-white text-[10px] flex items-center justify-center transition">▶</button>
-          </div>
-        )}
-
         {/* UK's own Settings (add a menu / add a column) is a content-area
             panel, unlike Biz/C&H's Settings rows (now inline in the pane
             above, see SettingsPane.tsx) -- gated to isGrony specifically,
