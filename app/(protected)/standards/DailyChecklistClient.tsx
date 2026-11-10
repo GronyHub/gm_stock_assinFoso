@@ -1,4 +1,5 @@
 'use client'
+import WithMic from '@/components/WithMic'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import {
@@ -274,7 +275,7 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
             <input type="time" value={doneAt} onChange={e => setDoneAt(e.target.value)} className="rounded-xl border border-gray-300 p-2 text-sm" />
             {doneAt && <button type="button" onClick={() => setDoneAt('')} className="text-xs font-semibold text-gray-500">Clear</button>}
           </div>
-          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+          <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
         </>)}
         {err && <p className="text-sm text-red-600">{err}</p>}
         {t.kind === 'tap' && isToday && !ev && (
@@ -507,7 +508,7 @@ function AnswerForm({ t, present, onSaved, onClose }: { t: CheckTile; present: s
             <input list="cl-present" value={about} onChange={e => setAbout(e.target.value)} placeholder="Which staff member?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
             <datalist id="cl-present">{present.map(n => <option key={n} value={cap(n)} />)}</datalist>
           </>)}
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What happened?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+          <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What happened?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
           {photoBtn}
           <button type="button" disabled={busy || up || !note.trim() || (behaviour && !about.trim())} onClick={() => void send({ answer: 'issue', note, about_staff: about, photo_url: photo })} className="w-full rounded-xl bg-red-600 py-3 text-base font-bold text-white disabled:opacity-40">Save report</button>
         </>)}
@@ -522,12 +523,12 @@ function AnswerForm({ t, present, onSaved, onClose }: { t: CheckTile; present: s
             <button type="button" onClick={() => setPersons(p => ({ ...p, [n]: 'not' }))} className={`rounded-lg px-3 py-2 text-xs font-bold ${persons[n] === 'not' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700'}`}>✗ No</button>
           </div>
         ))}
-        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
         <button type="button" disabled={busy || present.length === 0 || present.some(n => !persons[n])} onClick={() => void send({ persons, note })} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{present.some(n => !persons[n]) ? `${present.filter(n => !persons[n]).length} still to mark` : 'Save'}</button>
       </>)}
 
       {t.kind === 'entry' && (<>
-        <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Write what you saw or did" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Write what you saw or did" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
         {photoBtn}
         <button type="button" disabled={busy || up || (!note.trim() && !photo) || (t.needs_photo && !photo)} onClick={() => void send({ note, photo_url: photo })} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save</button>
       </>)}
@@ -562,7 +563,7 @@ function AdhocForm({ onClose, onSaved }: { onClose: () => void; onSaved: (m: str
         <div className="flex flex-wrap gap-1.5">
           {LAW_CATEGORIES.map(c => <button key={c.key} type="button" onClick={() => setCategory(c.key)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === c.key ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{c.icon} {c.key}</button>)}
         </div>
-        <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What did you do?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
+        <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="What did you do?" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
         <label className="flex items-center gap-2 text-sm font-semibold">About how many minutes
           <input type="number" min={1} max={60} value={mins} onChange={e => setMins(e.target.value)} className="w-20 rounded-xl border border-gray-300 p-2 text-sm" /></label>
         <div className="flex items-center gap-2">

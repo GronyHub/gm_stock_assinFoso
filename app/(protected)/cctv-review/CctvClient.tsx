@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import WithMic from '@/components/WithMic'
 
 type Sale = { time: string; item: string; qty: number; price: number; staff: string; undone: boolean }
 type Review = { day: string; status: string; staff: string[]; windows: { from: string; to: string }[]; sales: Sale[]; reviewed_by?: string; sales_ok?: boolean; laws_ok?: boolean; note?: string }
@@ -63,7 +64,7 @@ function Day({ r, laws, open, toggle, done }: { r: Review; laws: Law[]; open: bo
             <Choice label="Were all company laws observed as expected?" v={lawsOk} set={setLawsOk} />
             {(sales === false || lawsOk === false) && (
               <div className="space-y-2 rounded-xl bg-amber-50 p-2">
-                <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="What was wrong? (time, what you saw)" className="w-full rounded-lg border p-2 text-sm" rows={2} />
+                <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><textarea value={note} onChange={e => setNote(e.target.value)} placeholder="What was wrong? (time, what you saw)" className="w-full rounded-lg border p-2 text-sm" rows={2} /></WithMic>
                 <p className="text-xs font-bold text-gray-700">Log a violation</p>
                 <select value={who} onChange={e => setWho(e.target.value)} className="w-full rounded-lg border p-2 text-sm">{r.staff.map(s => <option key={s} value={s}>{cap(s)}</option>)}</select>
                 <select value={lawId} onChange={e => { setLawId(e.target.value); setVi(0) }} className="w-full rounded-lg border p-2 text-sm"><option value="">Choose the law…</option>{lawList.map(l => <option key={l.id} value={l.id}>{l.code} {l.title ?? l.text.slice(0, 50)}</option>)}</select>

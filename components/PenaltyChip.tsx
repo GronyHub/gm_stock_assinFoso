@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import WithMic from '@/components/WithMic'
 
 export type PenaltyMe = {
   points: number; learning: boolean; countingFrom: string; warnings: number; fadeIn: number | null
@@ -42,6 +43,8 @@ const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-
 // The full picture, at the top of the profile page.
 export function PenaltyCard() {
   const p = usePenalty()
+  const [disputing, setDisputing] = useState<number | null>(null)
+  const [dnote, setDnote] = useState('')
   async function act(id: number, action: 'acknowledge' | 'dispute', note?: string) {
     const r = await fetch(`/api/penalties/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, note }) })
     if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.error ?? 'Could not save'); return }
@@ -80,7 +83,16 @@ export function PenaltyCard() {
                 {e.source === 'manual' && ['active', 'pending'].includes(e.status) && (
                   <span className="mt-1 flex gap-2">
                     {e.ack_at ? <span className="font-semibold text-gray-500">Acknowledged</span> : <button type="button" onClick={() => void act(e.id, 'acknowledge')} className="rounded-lg bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-800">Acknowledge</button>}
-                    <button type="button" onClick={() => { const note = prompt('Why do you dispute this? Write what happened.'); if (note) void act(e.id, 'dispute', note) }} className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Dispute</button>
+                    <button type="button" onClick={() => { setDisputing(e.id); setDnote('') }} className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Dispute</button>
+                  </span>
+                )}
+                {disputing === e.id && (
+                  <span className="mt-1 block space-y-1">
+                    <WithMic onText={t => setDnote(x => (x ? x + ' ' : '') + t)}><textarea value={dnote} onChange={ev => setDnote(ev.target.value)} rows={3} placeholder="Why do you dispute this? Write or speak what happened." className="w-full rounded-lg border border-gray-300 p-2 text-xs" /></WithMic>
+                    <span className="flex gap-2">
+                      <button type="button" disabled={dnote.trim().length < 4} onClick={() => { void act(e.id, 'dispute', dnote.trim()); setDisputing(null) }} className="rounded-lg bg-amber-500 px-2 py-1 text-[11px] font-bold text-white disabled:opacity-40">Send dispute</button>
+                      <button type="button" onClick={() => setDisputing(null)} className="rounded-lg bg-gray-200 px-2 py-1 text-[11px] font-bold text-gray-800">Cancel</button>
+                    </span>
                   </span>
                 )}
               </div>

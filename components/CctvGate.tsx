@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import LawLink from '@/components/LawLink'
+import WithMic from '@/components/WithMic'
 
 // Joe (and the owner) must review the CCTV for days staff worked without Joe clocked in. The reminder can be put off for an hour, but not once a day is 2+ days old.
 // Also: staff questions raised by those reviews appear here for the person asked to answer.
@@ -31,7 +32,7 @@ export default function CctvGate() {
         <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
           <p className="text-base font-extrabold text-[#14213D]">A question about {q.work_date}</p>
           <p className="text-sm text-gray-800"><b>{q.from_user}</b> asks: {q.about}</p>
-          <textarea value={ans} onChange={e => setAns(e.target.value)} rows={3} placeholder="Your answer" className="w-full rounded-xl border-2 border-gray-300 p-2 text-sm" />
+          <WithMic onText={t => setAns(x => (x ? x + ' ' : '') + t)}><textarea value={ans} onChange={e => setAns(e.target.value)} rows={3} placeholder="Your answer" className="w-full rounded-xl border-2 border-gray-300 p-2 text-sm" /></WithMic>
           {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
           <LawLink name="Review the CCTV when staff work without the manager" />
           <button type="button" disabled={ans.trim().length < 3} onClick={async () => { const r = await fetch('/api/staff-queries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: q.id, answer: ans }) }); if (r.ok) { setAns(''); setMsg(''); check() } else setMsg('Could not send. Try again.') }} className="w-full rounded-xl bg-[#14213D] py-2.5 text-sm font-bold text-white disabled:opacity-40">Send my answer</button>

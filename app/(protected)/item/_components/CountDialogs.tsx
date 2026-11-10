@@ -1,4 +1,5 @@
 'use client'
+import WithMic from '@/components/WithMic'
 import { useState } from 'react'
 
 // LossDialog and PairingDialog used to live only inside CountsTab.tsx --
@@ -245,9 +246,11 @@ export function PairingDialog({ prompt: pp, onClose }: { prompt: PairingPrompt; 
         )}
         <div>
           <p className="text-xs text-gray-500 mb-1">Pack qty counted</p>
+          <WithMic mode="number" onText={t => t && setQty(t)}>
           <input type="number" min="0" step="any" value={qty} onChange={e => setQty(e.target.value)}
             inputMode="decimal" autoFocus
             className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-300" />
+          </WithMic>
         </div>
         {err && <p className="text-xs text-red-600">{err}</p>}
         <div className="flex gap-2">

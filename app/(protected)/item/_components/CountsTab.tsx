@@ -1,4 +1,5 @@
 'use client'
+import WithMic from '@/components/WithMic'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import React, { useState, useEffect, useMemo, memo, ReactNode } from 'react'
@@ -239,10 +240,12 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing }: {
             <button onClick={() => { setSel(null); setQty('') }} className="text-[9px] text-blue-600 font-semibold">change</button>
           </div>
           <div className="flex gap-1.5">
+            <div className="w-28 shrink-0"><WithMic mode="number" onText={t => t && setQty(t)}>
             <input type="number" min="0" step="any" value={qty} onChange={e => setQty(e.target.value)}
-              placeholder="Qty counted" inputMode="decimal" autoFocus className={inputCls + ' w-24'} />
+              placeholder="Qty counted" inputMode="decimal" autoFocus className={inputCls + ' w-full'} /></WithMic></div>
+            <WithMic onText={t => setNotes(x => (x ? x + ' ' : '') + t)}>
             <input value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="Notes (optional)" className={inputCls + ' flex-1'} />
+              placeholder="Notes (optional)" className={inputCls + ' w-full'} /></WithMic>
             <button onClick={() => save()} disabled={qty === '' || saving}
               className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[10px] font-semibold rounded px-3 py-1 transition">
               {saving ? '…' : 'Save'}

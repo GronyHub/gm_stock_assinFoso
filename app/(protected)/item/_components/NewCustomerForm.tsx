@@ -1,4 +1,5 @@
 'use client'
+import WithMic from '@/components/WithMic'
 import { useState, useEffect } from 'react'
 import LocationField from '@/components/LocationField'
 import ServiceGoodsPicker from '@/components/ServiceGoodsPicker'
@@ -175,8 +176,10 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
 
       <div>
         <label className={labelCls}>Customer Name</label>
+        <WithMic onText={t => setDisplayName(x => (x ? x + ' ' : '') + t)}>
         <input value={displayName} onChange={e => setDisplayName(e.target.value)}
           placeholder="e.g. Kwame Mensah" className={inputCls} />
+        </WithMic>
       </div>
       <div>
         <label className={labelCls}>Company (optional)</label>
@@ -185,7 +188,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className={labelCls}>Phone *</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" required className={inputCls} />
+          <WithMic mode="digits" onText={t => setPhone(t)}><input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" required className={inputCls} /></WithMic>
           {duplicatePhone && (
             <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5 mt-1">
               ⚠️ Phone already registered: <span className="font-semibold">{duplicatePhone.display_name}</span>
@@ -249,7 +252,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
       </label>
       <div>
         <label className={labelCls}>Notes (optional)</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} />
+        <WithMic onText={t => setNotes(x => (x ? x + ' ' : '') + t)}><textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className={inputCls} /></WithMic>
       </div>
 
       {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5">{error}</p>}
