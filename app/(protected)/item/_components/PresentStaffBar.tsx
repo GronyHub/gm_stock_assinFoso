@@ -159,8 +159,7 @@ export default function PresentStaffBar({ roster, staffMemberModalProps, embedde
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
             className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
-              <StaffAvatar name={s.staff_name} url={s.photo_url} size={16} />
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.status === 'present' ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
               <span className={`hidden sm:inline ${s.status === 'absent' ? 'line-through' : ''}`}>{s.staff_name}</span>
               {pts[s.staff_name.toLowerCase()] !== undefined && <span title={`${s.staff_name}: penalty points so far`} className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${pts[s.staff_name.toLowerCase()] >= 20 ? 'bg-red-600 text-white' : pts[s.staff_name.toLowerCase()] >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{pts[s.staff_name.toLowerCase()]}</span>}
             </span>
