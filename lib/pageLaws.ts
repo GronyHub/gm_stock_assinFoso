@@ -1,3 +1,4 @@
+import { mergeCustomerServiceCode } from '@/lib/csMerge'
 import { seedMetaLaws, seedMetaJoe, seedRules } from '@/lib/metaLaws'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
@@ -90,6 +91,7 @@ async function ensureCompanyLawsImpl() {
   await seedMetaLaws()
   await seedMetaJoe()
   await seedRules()
+  await mergeCustomerServiceCode()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')

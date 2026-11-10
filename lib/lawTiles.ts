@@ -1,3 +1,4 @@
+import { retireCsUmbrella } from '@/lib/csMerge'
 import sql from '@/lib/db'
 import { ensureDailyChecks, pickIcon } from '@/lib/dailyChecks'
 
@@ -95,6 +96,7 @@ export async function approveSeed(seed: string) {
 }
 
 async function retireForSeed(seed: string) {
+  if (seed === 'cs-merge-v1') await retireCsUmbrella()
   const r = RETIRE_BY_SEED[seed]
   if (!r) return
   for (const lg of r.logs ?? []) await sql`UPDATE daily_check_tiles SET active = false WHERE created_by = 'manage-tiles-v1' AND log_category = ${lg} AND law_id IS NULL AND active`

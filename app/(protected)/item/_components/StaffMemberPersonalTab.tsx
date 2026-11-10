@@ -20,7 +20,6 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'mentions', icon: '🔍', label: 'Mentions' },
   { key: 'dressCode', icon: '👕', label: 'Dress Code' },
   { key: 'behaviour', icon: '🚦', label: 'Behaviour' },
-  { key: 'assessment', icon: '📝', label: 'Assessment' },
   { key: 'meeting', icon: '🗣️', label: 'Meeting' },
   { key: 'display', icon: '📌', label: 'Display' },
   { key: 'laws', icon: '⚖️', label: 'Laws' },

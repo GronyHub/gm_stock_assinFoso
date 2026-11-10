@@ -60,7 +60,6 @@ export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[]
   { key: 'staff_display', label: 'Team Display', icon: '📌' },
   { key: 'staff_meeting', label: 'Team Meeting', icon: '🗣️' },
   { key: 'training_laws', label: 'Team Company Laws Agreement', icon: '⚖️' },
-  { key: 'assessment', label: 'Team Assessment', icon: '📝' },
   { key: 'rota', label: 'Team Rota', icon: '🗓️' },
   { key: 'logs', label: 'Team Logs', icon: '📜' },
 ]
