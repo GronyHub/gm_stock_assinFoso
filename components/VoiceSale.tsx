@@ -8,7 +8,7 @@ type Rec = { start: () => void; stop: () => void; onresult: ((e: any) => void) |
 // Live Sale by voice. The staff member taps the microphone and says what they sold ("two passport photos for GM 123", "print five pages for man on motor").
 // The phone turns it into text, the app finds the item, quantity, price and who it is for, and SHOWS them. Nothing is recorded until the staff
 // member checks the card and taps "Record sale". If the phone cannot listen, the same card works by typing (or the keyboard's own microphone).
-export default function VoiceSale({ onRecorded }: { onRecorded: (tap: unknown) => void }) {
+export default function VoiceSale({ onRecorded, openSignal }: { onRecorded: (tap: unknown) => void; openSignal?: number }) {
   const [open, setOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const [text, setText] = useState('')
@@ -70,9 +70,10 @@ export default function VoiceSale({ onRecorded }: { onRecorded: (tap: unknown) =
   }
 
   const pick = p?.items.find(i => i.id === itemId)
+  // The global microphone (bottom right) opens this card on Live Sale; every change of the signal opens it and starts listening.
+  const first = useRef(true)
+  useEffect(() => { if (first.current) { first.current = false; return } if (openSignal) listen() }, [openSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   return (<>
-    <button type="button" onClick={listen} title="Record a sale with your voice" aria-label="Record a sale with your voice"
-      className="fixed bottom-28 right-4 z-40 flex h-11 items-center gap-1.5 rounded-full bg-red-600 px-3.5 text-sm font-extrabold text-white shadow-lg active:bg-red-700 print:hidden"><span className="text-lg">🎤</span>Voice sale</button>
     {open && (
       <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 sm:items-center print:hidden" onClick={close}>
         <div onClick={e => e.stopPropagation()} className="max-h-[92vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-6 sm:rounded-3xl">

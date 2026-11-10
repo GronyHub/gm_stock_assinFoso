@@ -50,6 +50,7 @@ import type { Attachment } from './_components/attachmentsShared'
 import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import VoiceSale from '@/components/VoiceSale'
+import GlobalMic from '@/components/GlobalMic'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
@@ -1607,6 +1608,8 @@ function ItemHubPageInner() {
   // override two-step any more.
   // Pages that are not part of the hub (Company Laws, the Daily Checklist, How To...) and a person's own page open INSIDE the right pane, so the left
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
+  const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
+  const embedRef = useRef<HTMLIFrameElement>(null)
   const [embedUrl, setEmbedUrl] = useState<string | null>(null)
   const [personal, setPersonal] = useState<{ name: string; tab: string } | null>(null)
   const [barH, setBarH] = useState(0)
@@ -6736,6 +6739,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <PaneDaily mode={cashDisplayMode}
                 onDaily={() => setLossView('dailySummary')}
                 dailyActive={paneActive(lossView === 'dailySummary')} />
+              <SidePaneButton icon="🔍" label="Search" mode={cashDisplayMode} divider active={false} noNewTab onClick={() => setGlobalSearchOpen(true)} />
               {/* Biz/UK/C&H/Search all moved out of this footer -- they now
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
@@ -7129,7 +7133,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   <StaffMemberPersonalTab key={personal.name + personal.tab} staffName={personal.name} initialTab={personal.tab as never} username={username} role={role} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
                 </div>
               </>) : (
-                <iframe key={embedUrl} src={embedUrl ?? ''} title="Page" className="min-h-0 w-full flex-1 border-0" />
+                <iframe ref={embedRef} key={embedUrl} src={embedUrl ?? ''} title="Page" className="min-h-0 w-full flex-1 border-0" />
               )}
             </div>
           )}
@@ -10088,10 +10092,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               showed at all while browsing via Items). Offset above the
               sidebar-restore ▶ button's own bottom-left spot (only shown
               while the sidebar is hidden) so the two never overlap. */}
-          <button type="button" onClick={() => setGlobalSearchOpen(true)} title="Global Search" aria-label="Global Search"
-            className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} z-40 w-11 h-11 rounded-full bg-gray-700 hover:bg-gray-800 text-white text-lg shadow-lg flex items-center justify-center transition`}>
-            🔍
-          </button>
+          <GlobalMic frame={embedRef} onVoiceSale={outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal ? () => setVoiceSaleSignal(n => n + 1) : undefined}
+            className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'}`} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
           )}
@@ -10106,7 +10108,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
           {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal && (
-            <VoiceSale onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
+            <VoiceSale openSignal={voiceSaleSignal} onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
           )}
           {gmcOverageGate && (
             <GmcOverageGateModal
