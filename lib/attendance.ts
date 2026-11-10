@@ -47,7 +47,7 @@ export async function lastActivity(staff: string, day: string, clockInMins: numb
 // An open record: clocked in on a day, never clocked out.
 export async function openRecords(staff: string, onlyBefore?: string) {
   const rows = await sql`SELECT work_date::text AS d, actual_in FROM staff_times WHERE LOWER(staff_name) = ${staff} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'
-    AND work_date >= (${today()}::date - 60) ORDER BY work_date` as unknown as { d: string; actual_in: string }[]
+    AND work_date >= ${REVIEW_FROM} ORDER BY work_date` as unknown as { d: string; actual_in: string }[]
   return onlyBefore ? rows.filter(r => r.d < onlyBefore) : rows
 }
 
@@ -55,7 +55,7 @@ export async function openRecords(staff: string, onlyBefore?: string) {
 // With no such action at all there is nothing to base a time on, so nothing is set and the person is asked to enter their time (the next-day gate).
 export async function autoClockOut(day: string, includeToday = false) {
   await ensureAttendance()
-  const rows = await sql`SELECT LOWER(staff_name) AS n, work_date::text AS d, actual_in FROM staff_times WHERE actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__' AND work_date <= ${includeToday ? day : new Date(Date.parse(day) - 86400000).toISOString().slice(0, 10)} AND work_date >= (${day}::date - 60)` as unknown as { n: string; d: string; actual_in: string }[]
+  const rows = await sql`SELECT LOWER(staff_name) AS n, work_date::text AS d, actual_in FROM staff_times WHERE actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__' AND work_date <= ${includeToday ? day : new Date(Date.parse(day) - 86400000).toISOString().slice(0, 10)} AND work_date >= ${REVIEW_FROM}` as unknown as { n: string; d: string; actual_in: string }[]
   let n = 0
   for (const r of rows) {
     if (!SIGNERS.includes(r.n) || r.n === 'grony') continue
