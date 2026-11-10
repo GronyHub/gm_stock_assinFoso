@@ -13,6 +13,10 @@ export const META = [
   { title: 'Watch each tile video to the end within 7 days', violation: 'The video of a tile is not watched to the end within 7 days of its laws going live', how: 'Open the tile in Company Laws and play its video to the end' },
   { title: 'Confirm the laws shown before work', violation: 'The login reminder of laws is not confirmed before work starts on a day you are clocked in', how: 'After you log in the reminder appears\nRead it, tick once to agree, and confirm' },
 ]
+export const META_JOE = [
+  { title: 'Complete each CCTV review within 48 hours', violation: 'A CCTV review of a day staff worked without the manager clocked in is still not done 48 hours after it was raised', how: 'Open the CCTV review from the pop-up or the Daily Checklist\nWatch the times shown, confirm sales and laws, and complete it' },
+  { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open Penalties and the Daily Checklist\nApprove or reject each one, or ask the staff member a question' },
+]
 const SEED = 'meta-v1', REMIND_FRACTION = 5 // quiz and video: reminder on day 5 of 7
 
 export async function seedMetaLaws() {
@@ -28,6 +32,34 @@ export async function seedMetaLaws() {
         VALUES ('Staff management', ${d.title}, false, 'law', 'Staff management', 'Company laws', 'app', 'live', ${SEED}, 'tick', 1, ${JSON.stringify(v)}, ${d.title}, now())`
     }
   } catch (e) { console.error('meta laws seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+export async function seedMetaJoe() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('meta-laws-joe-v1') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    for (const d of META_JOE) {
+      const v = [{ text: d.violation, points: 1, by: 'app', how: d.how, record: 'The app checks every evening and adds the point itself' }]
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, live_at, audience)
+        VALUES ('Staff management', ${d.title}, false, 'law', 'Staff management', 'Company laws', 'app', 'live', 'meta-v2', 'tick', 1, ${JSON.stringify(v)}, ${d.title}, now(), 'managers')`
+    }
+  } catch (e) { console.error('meta joe seed failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Joe's app-enforced points: reviews and decisions left waiting more than 48 hours. One point per item.
+export async function metaTickJoe(day: string) {
+  const rows = await sql`SELECT id, code FROM page_laws WHERE seed = 'meta-v2' ORDER BY id` as unknown as { id: number; code: string | null }[]
+  if (rows.length < 2) return
+  const [cctv, dec] = rows
+  const reviews = await sql`SELECT work_date::text AS d FROM cctv_reviews WHERE status = 'pending' AND created_at < now() - interval '48 hours'` as unknown as { d: string }[]
+  for (const r of reviews) await addPoint({ staff: 'joe', reason: `${cctv.code ?? ''}: the CCTV review of ${r.d} was not done within 48 hours`, source: 'meta', ref: `cctv:${r.d}`, lawId: cctv.id, lawCode: cctv.code, violation: 'CCTV review not done within 48 hours', by: 'system', day })
+  const waiting = [
+    ...(await sql`SELECT 'clock:' || id AS k, 'a clock-out time' AS w FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND requested_at < now() - interval '48 hours'`),
+    ...(await sql`SELECT 'sanction:' || id AS k, 'a sanction' AS w FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe' AND created_at < now() - interval '48 hours'`),
+    ...(await sql`SELECT 'viol:' || id AS k, 'a violation' AS w FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe' AND created_at < now() - interval '48 hours'`),
+  ] as unknown as { k: string; w: string }[]
+  let n = 0
+  for (const x of waiting) { if (n >= 3) break; if (await addPoint({ staff: 'joe', reason: `${dec.code ?? ''}: ${x.w} was left waiting for more than 48 hours`, source: 'meta', ref: x.k, lawId: dec.id, lawCode: dec.code, violation: 'Approval left waiting 48 hours', by: 'system', day })) n++ }
 }
 
 const claim = async (key: string) => (await sql`INSERT INTO penalty_claims (key) VALUES (${key}) ON CONFLICT DO NOTHING RETURNING key`).length > 0
@@ -49,6 +81,7 @@ export async function metaTick(day: string) {
   const [cSign, cQuiz, cVid, cLogin] = [await metaCode(0), await metaCode(1), await metaCode(2), await metaCode(3)]
   const metaId = async (i: number) => Number((await sql`SELECT id FROM page_laws WHERE seed = ${SEED} ORDER BY id OFFSET ${i} LIMIT 1`)[0]?.id) || null
   const ids = [await metaId(0), await metaId(1), await metaId(2), await metaId(3)]
+  await metaTickJoe(day).catch(e => console.error('meta joe failed:', e instanceof Error ? e.message : String(e)))
   for (const s of staff) {
     const clocked = (await sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${s} AND work_date = ${day} AND actual_in IS NOT NULL`).length > 0
     if (!clocked) continue

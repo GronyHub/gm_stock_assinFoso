@@ -1,3 +1,4 @@
+import { actorKey } from '@/lib/clockState'
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensurePenalties, getSettings, totalPoints, addPoint } from '@/lib/penalties'
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
       const row = await addPoint({ staff, points, reason, source: 'manual', lawId, by, violation, lawCode, day, status: confirm ? 'pending' : 'active' })
       if (row) {
         rows.push(row)
+        if (actorKey(session.user as any) === 'joe') void pushToUsers(['grony'], `Joe logged a violation against ${staff}`, reason)
         void pushToUsers([staff], 'A violation was logged', `${reason}. Open your profile to acknowledge or dispute it.`)
         if (confirm) void notifyOwners(`Violation to confirm: ${staff}`, `${by} logged: ${reason}`)
       }

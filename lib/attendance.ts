@@ -117,6 +117,9 @@ export async function attendanceTick(now = new Date()) {
     if (who.length) await pushToUsers(who, 'Are you still at the shop?', 'It is 7pm and you have not clocked out. Open the app and tell us.')
   }
   if (hm === '19:40' && await claim(`cctv:${day}`)) { await detectReviews(day, true) }
+  if (hm === '08:15' && await claim(`joeheads:${day}`)) {
+    await pushToUsers(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
+  }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:00' && await claim(`cctvcatch:${day}`)) { await detectReviews(day, false) }
   if (min === 0 && hr >= 8 && hr <= 20 && hr % 2 === 0) {
