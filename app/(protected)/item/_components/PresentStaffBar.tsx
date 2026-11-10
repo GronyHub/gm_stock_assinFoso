@@ -46,7 +46,9 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedded, salesTotal }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedded, salesTotal, salesBy }: {
+  // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
+  salesBy?: Record<string, number>
   roster: RosterEntry[]
   // The signed-in person (their button is the one at the top of the sidebar, so it is left out here) and what to do when a chip is tapped:
   // the hub opens that person's page in its right pane.
@@ -157,6 +159,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedde
               <span className={`hidden sm:inline ${s.status === 'absent' ? 'line-through' : ''}`}>{s.staff_name}</span>
               {pts[s.staff_name.toLowerCase()] !== undefined && <span title={`${s.staff_name}: penalty points so far`} className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${pts[s.staff_name.toLowerCase()] >= 20 ? 'bg-red-600 text-white' : pts[s.staff_name.toLowerCase()] >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{pts[s.staff_name.toLowerCase()]}</span>}
             </span>
+            <span title="Sales this person has recorded today" className="text-[9px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">₵{((salesBy ?? {})[s.staff_name.toLowerCase()] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             {s.status !== 'absent' && s.totalMins != null && (
               <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
             )}

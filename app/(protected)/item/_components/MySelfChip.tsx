@@ -9,7 +9,7 @@ const fmt = (m: number) => { const x = Math.max(0, Math.round(m)), h = Math.floo
 
 // The signed-in person's own staff button, at the top of the left sidebar: photo, status dot, NAME, penalty points, worked/total time.
 // (It replaces their chip in the top staff bar on phones.) Tapping it opens their personal page, the same one the top-bar chip opened.
-export default function MySelfChip({ name, username }: { name: string; username?: string }) {
+export default function MySelfChip({ name, username, sales = 0 }: { name: string; username?: string; sales?: number }) {
   const key = (username ?? name).toLowerCase()
   const [row, setRow] = useState<Row | null>(null)
   const [now, setNow] = useState(() => new Date())
@@ -33,6 +33,7 @@ export default function MySelfChip({ name, username }: { name: string; username?
         <PenaltyChip />
       </span>
       <span className="w-full truncate text-[10px] font-extrabold leading-tight text-white">{name.charAt(0).toUpperCase() + name.slice(1)}</span>
+      <span title="Sales you have recorded today" className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">₵{sales.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
       {row && total != null && <span className="text-[8px] leading-tight text-blue-200">{fmt(row.worked_seconds / 60)}/{fmt(total)}</span>}
     </button>
   )

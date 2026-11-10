@@ -3545,6 +3545,12 @@ function ItemHubPageInner() {
       .filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveToday))
       .reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
   }, [liveTaps, liveToday])
+  // What each person has actually recorded today (not-undone Live Sale taps), shown in their button.
+  const salesByStaff = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const t of (liveTaps || [])) if (t && !t.undone && t.tapped_at.startsWith(liveToday)) { const k = String(t.staff_name ?? '').toLowerCase(); m[k] = (m[k] ?? 0) + Number(t.price) * t.quantity }
+    return m
+  }, [liveTaps, liveToday])
   const liveSalesCounts = useMemo(() => {
     const counts = new Map<number, number>()
     for (const tap of (liveTaps || [])) {
@@ -6733,7 +6739,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
             </>}>
-            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} />
+            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={embedActive('/laws')} shared={isOwnerOrJoe}
@@ -7087,7 +7093,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {outerTab === 'loss' && !isDesktop && (
             <>
               <div ref={barRef}><PresentStaffBar roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
-                selfName={username} onOpenStaff={openPersonal} /></div>
+                selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
@@ -7101,7 +7107,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <span className="shrink-0 font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
                 {liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
               </span>
-              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} />
+              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
