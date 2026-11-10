@@ -100,7 +100,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Daily Checklist</h1>
         <a href="/standards/reference" className="text-xs font-semibold text-blue-700 underline">Printable list</a>
         <a href="/standards/plan" className="text-xs font-semibold text-blue-700 underline">Plan to 31 Dec</a>
-        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}
+        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
         {canManage && <a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a>}
         {canManage && <a href="/standards/manage" className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">Manage tiles</a>}
       </div>

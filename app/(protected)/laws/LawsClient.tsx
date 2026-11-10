@@ -241,7 +241,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Company Laws</h1>
-        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}
+        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
         <a href="/standards" className="text-xs font-semibold text-blue-700 underline">Daily Checklist</a>
       </div>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />

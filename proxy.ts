@@ -20,7 +20,7 @@ const CARETAKER_BLOCKED = [
 // Staff (everyone except the owner and Joe) only use Items / Live Sale / Sales Log, Counts, Item 360, Losses,
 // Analytics, Company Laws, the Daily Checklist, their payslips and profile. These pages are not for them: a typed
 // address quietly lands on Items. The data behind them is refused too.
-const STAFF_BLOCKED_PAGES = ['/expenses', '/cash-at-bank', '/purchase-orders', '/vendors', '/personal', '/roles', '/users', '/penalties', '/routine', '/notifications', '/owner-guide', '/handbook-announcements']
+const STAFF_BLOCKED_PAGES = ['/expenses', '/cash-at-bank', '/purchase-orders', '/vendors', '/personal', '/roles', '/users', '/penalties', '/cctv-review', '/routine', '/notifications', '/owner-guide', '/handbook-announcements']
 const STAFF_BLOCKED_API = ['/api/cash-at-bank', '/api/personal', '/api/properties', '/api/uk', '/api/impersonate', '/api/expense-orders']
 const under = (path: string, list: string[]) => list.some(p => path === p || path.startsWith(p + '/'))
 

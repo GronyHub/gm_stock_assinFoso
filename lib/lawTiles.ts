@@ -64,8 +64,8 @@ const RETIRE_BY_SEED: Record<string, { logs?: string[]; titles?: string[] }> = {
 const RETIRE_ON_APPROVE: Record<string, string[]> = { 'Adverts & marketing': ['Social media'] }
 export async function approveDrafts(where: { id?: number; category?: string }) {
   const ids = (where.id
-    ? await sql`UPDATE page_laws SET status = 'live' WHERE id = ${where.id} AND status = 'draft' RETURNING id, category, seed`
-    : await sql`UPDATE page_laws SET status = 'live' WHERE category = ${where.category ?? ''} AND status = 'draft' RETURNING id, category, seed`) as unknown as { id: number; category: string; seed: string | null }[]
+    ? await sql`UPDATE page_laws SET status = 'live', live_at = now() WHERE id = ${where.id} AND status = 'draft' RETURNING id, category, seed`
+    : await sql`UPDATE page_laws SET status = 'live', live_at = now() WHERE category = ${where.category ?? ''} AND status = 'draft' RETURNING id, category, seed`) as unknown as { id: number; category: string; seed: string | null }[]
   for (const seed of Array.from(new Set(ids.map(r => r.seed).filter(Boolean) as string[]))) await retireForSeed(seed)
   for (const r of ids) await syncLawTile(r.id)
   // Live recurring laws in this category that have a full schedule but no tile yet (the existing ones) get theirs too.
@@ -81,7 +81,7 @@ export async function approveDrafts(where: { id?: number; category?: string }) {
 
 // Approves every draft of one seeded set (any category), creates their tiles, and stops the old tiles they replace.
 export async function approveSeed(seed: string) {
-  const ids = await sql`UPDATE page_laws SET status = 'live' WHERE seed = ${seed} AND status = 'draft' RETURNING id, category` as unknown as { id: number; category: string }[]
+  const ids = await sql`UPDATE page_laws SET status = 'live', live_at = now() WHERE seed = ${seed} AND status = 'draft' RETURNING id, category` as unknown as { id: number; category: string }[]
   for (const r of ids) await syncLawTile(r.id)
   const cats = Array.from(new Set(ids.map(r => r.category)))
   for (const cat of cats) {

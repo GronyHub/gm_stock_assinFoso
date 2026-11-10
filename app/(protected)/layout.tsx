@@ -11,6 +11,8 @@ import ServiceStrip from '@/components/ServiceStrip'
 import ServiceDailyCard from '@/components/ServiceDailyCard'
 import LawSignPrompt from '@/components/LawSignPrompt'
 import LawReminder from '@/components/LawReminder'
+import ClockOutPrompt from '@/components/ClockOutPrompt'
+import CctvGate from '@/components/CctvGate'
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   let session
@@ -53,6 +55,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <PhotoReminder />
       <LawSignPrompt />
       <LawReminder />
+      <ClockOutPrompt />
+      <CctvGate />
     </div>
   )
 }

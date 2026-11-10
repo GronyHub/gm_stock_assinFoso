@@ -54,4 +54,9 @@ export async function register() {
   setInterval(() => {
     void import('./lib/penalties').then(m => m.penaltiesTick()).catch(e => console.error('penalties tick failed:', e instanceof Error ? e.message : String(e)))
   }, 60000).unref()
+
+  // Attendance: the 7pm "are you still at the shop?" push, the CCTV-review detection (19:40 and 07:00), and reminders to approve (2-hourly). Turn off with ATTENDANCE=off.
+  setInterval(() => {
+    void import('./lib/attendance').then(m => m.attendanceTick()).catch(e => console.error('attendance tick failed:', e instanceof Error ? e.message : String(e)))
+  }, 60000).unref()
 }
