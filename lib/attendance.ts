@@ -43,7 +43,7 @@ export async function lastActivityMins(staff: string, day: string, clockInMins: 
 // An open record: clocked in on a day, never clocked out.
 export async function openRecords(staff: string, onlyBefore?: string) {
   const rows = await sql`SELECT work_date::text AS d, actual_in FROM staff_times WHERE LOWER(staff_name) = ${staff} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'
-    AND work_date >= (${today()}::date - 7) ORDER BY work_date` as unknown as { d: string; actual_in: string }[]
+    AND work_date >= (${today()}::date - 60) ORDER BY work_date` as unknown as { d: string; actual_in: string }[]
   return onlyBefore ? rows.filter(r => r.d < onlyBefore) : rows
 }
 
@@ -122,6 +122,14 @@ export async function attendanceTick(now = new Date()) {
   }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:00' && await claim(`cctvcatch:${day}`)) { await detectReviews(day, false) }
+  // Every morning: anyone with an earlier day still open is asked to enter their time out (they cannot go on in the app until they do).
+  if (hm === '07:30' && await claim(`openprev:${day}`)) {
+    await ensureAttendance()
+    for (const n of SIGNERS.filter(x => x !== 'grony')) {
+      const open = (await openRecords(n)).filter(r => r.d < day)
+      if (open.length) await pushToUsers([n], 'You did not clock out', `${open.length} day${open.length === 1 ? '' : 's'} without a time out (${open.slice(0, 3).map(o => o.d).join(', ')}). Open the app and enter your time out.`)
+    }
+  }
   if (min === 0 && hr >= 8 && hr <= 20 && hr % 2 === 0) {
     await ensureAttendance()
     if (await claim(`remind:${day}:${hr}`)) {
