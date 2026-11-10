@@ -24,7 +24,7 @@ all writes (edits, merges, status changes) should keep using the raw `items`
 table, since they often need to operate on an item regardless of its current
 status.
 
-# Neon Free Tier (10 GB Storage Limit + Compute Cost Control)
+# Neon cost control (now about $7/month; the app was first tuned for the free tier's 10 GB limit)
 
 **Automatic optimizations in place (see `.claude/NEON_COST_OPTIMIZATION_LOG.md`
 for the full record of what changed, when, and why):**
@@ -58,7 +58,7 @@ curl -X POST http://localhost:3000/api/maintenance/optimize-db \
 - `training_attempts`: 6 months
 - Core data (items, receipts, POs): Indefinite
 
-**If you exceed 10 GB:** Upgrade to Neon Pro ($15/month, 500 GB) or archive old data to S3.
+**Storage and cost:** the database now costs about $7/month. Keep the optimisations above; if storage or compute grows, check the Neon plan limits before adding heavy polling or large tables, or archive old data to S3.
 
 # Hosting
 

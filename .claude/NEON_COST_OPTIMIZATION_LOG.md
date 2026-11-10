@@ -18,8 +18,8 @@ update?") for the staff-facing explanation of the resulting trade-offs.
   completed sale taps at 6 months, activity logs at 1 year, password reset
   tokens at 24 hours, training attempts at 6 months) and runs `ANALYZE` on
   the busiest tables.
-- **Schedule:** Sundays at 2:00 AM UTC, via `vercel.json` → `crons`.
-- **Requires:** `MAINTENANCE_SECRET` environment variable set in Vercel
+- **Schedule:** Sundays at 2:00 AM UTC, via a system cron job on the droplet (`/etc/cron.d/grony-maintenance`; it used to be `vercel.json` before the move off Vercel).
+- **Requires:** `MAINTENANCE_SECRET` environment variable set on the droplet
   (Production). The endpoint rejects any request without the matching
   `Authorization: Bearer <secret>` header.
 - **Fix along the way:** the endpoint originally failed to build because it
@@ -120,7 +120,7 @@ always.
 ## 5. Removed the daily violations/auto-check cron job
 
 - **Removed:** `/api/violations/auto-check`, previously scheduled daily at
-  6:00 AM UTC in `vercel.json`.
+  6:00 AM UTC (moved from `vercel.json` to the droplet's cron).
 - **Remaining cron:** only the weekly `/api/maintenance/optimize-db` job.
 - **Known trade-off:** whatever automatic violation-flagging that daily job
   did (duplicates, unlinked sales, service violations, etc.) no longer runs

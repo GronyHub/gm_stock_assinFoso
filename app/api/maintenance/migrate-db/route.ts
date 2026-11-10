@@ -18,7 +18,7 @@ import { ensureSalesAttachmentsColumn } from '@/lib/salesAttachments'
 import { ensureUkTables } from '@/lib/ukTables'
 
 // Database schema migrations - run once at deployment
-// This endpoint is called by Vercel cron or manual curl, NOT by API routes
+// This endpoint is called by a manual curl (or the droplet's cron), NOT by API routes
 export async function POST() {
   try {
     console.log('🚀 Starting database migrations...')

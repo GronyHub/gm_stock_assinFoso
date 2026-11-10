@@ -660,7 +660,7 @@ export const TOPICS: Topic[] = [
     keywords: 'hosting deploy digitalocean droplet caddy pm2 github actions vercel vps deploy pipeline',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">The app moved off Vercel to a self-hosted <strong>DigitalOcean Droplet</strong> (a small always-on server, based in London) to cut recurring hosting cost. It's live at <strong>app.gronymultimedia.com</strong>.</p>
+        <p className="text-sm text-gray-700">The app moved off Vercel to a self-hosted <strong>DigitalOcean Droplet</strong> (a small always-on server, based in New York) to cut recurring hosting cost. It's live at <strong>app.gronymultimedia.com</strong>.</p>
         <div className="space-y-1.5 text-sm text-gray-700">
           <p><strong>How the pieces fit together:</strong></p>
           <ul className="space-y-1 list-disc list-inside">
