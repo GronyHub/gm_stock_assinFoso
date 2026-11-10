@@ -4,13 +4,12 @@ import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
-import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
 import StaffTimesView from './StaffTimesView'
 import ProfileTab from './ProfileTab'
 import { PayslipsTab } from '../../staff/StaffClient'
 
-export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'assessment' | 'meeting' | 'display' | 'laws'
+export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'meeting' | 'display' | 'laws'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'times', icon: '🕐', label: 'Times' },
@@ -165,9 +164,6 @@ export default function StaffMemberPersonalTab({
         </>)}
         {activeTab === 'behaviour' && (
           <div className="p-3"><ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} /></div>
-        )}
-        {activeTab === 'assessment' && (
-          <div className="p-3"><AssessmentPanel staffName={staffName} /></div>
         )}
         {activeTab === 'meeting' && (
           <div className="p-3"><StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} filterStaff={staffName} /></div>

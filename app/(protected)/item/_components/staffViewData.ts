@@ -8,7 +8,7 @@
 export type StaffView =
   | 'staffPayslips' | 'staffProfile'
   | 'teamTimes' | 'team_payments' | 'allStaff' | 'team_behaviour' | 'users' | 'roles'
-  | 'staff_meeting' | 'staff_display' | 'rota' | 'assessment' | 'training_laws' | 'logs' | 'staff_dress'
+  | 'staff_meeting' | 'staff_display' | 'rota' | 'training_laws' | 'logs' | 'staff_dress'
   | 'teamPayslips' | 'teamProfiles'
 
 // Times/Violations/Ana used to live here too -- dropped so Personal is just

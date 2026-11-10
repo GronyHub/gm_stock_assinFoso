@@ -33,13 +33,6 @@ export async function POST(request: NextRequest) {
       RETURNING id
     `.then(r => r?.length || 0).catch(() => 'N/A')
 
-    // 4. Clean up training attempts older than 6 months
-    results.deletedTraining = await sql`
-      DELETE FROM training_attempts
-      WHERE created_at < now() - interval '6 months'
-      RETURNING id
-    `.then(r => r?.length || 0).catch(() => 'N/A')
-
     // 5. Remove duplicate indexes (if any)
     results.indexOptimization = 'Indexes optimized'
 

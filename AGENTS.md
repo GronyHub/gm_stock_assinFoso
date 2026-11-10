@@ -55,7 +55,6 @@ curl -X POST http://localhost:3000/api/maintenance/optimize-db \
 - `live_sale_taps`: 6 months (completed only)
 - `manage_logs`: 1 year max
 - `password_reset_tokens`: 24 hours
-- `training_attempts`: 6 months
 - Core data (items, receipts, POs): Indefinite
 
 **Storage and cost:** the database now costs about $7/month. Keep the optimisations above; if storage or compute grows, check the Neon plan limits before adding heavy polling or large tables, or archive old data to S3.

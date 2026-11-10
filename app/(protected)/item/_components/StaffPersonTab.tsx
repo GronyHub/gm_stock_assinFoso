@@ -8,7 +8,6 @@ import ManageLogPanel from './ManageLogPanel'
 import ContentPage from './ContentPage'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
 import ClosingReportLogView from './ClosingReportLogView'
-import AssessmentPanel from './AssessmentPanel'
 import StaffMeetingPanel from './StaffMeetingPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
 import { FIXED_CATEGORY_LABELS } from './manageViewData'
@@ -131,7 +130,6 @@ export default function StaffContent({
     {canSeeTeam && view === 'staff_display' && <ManageLogPanel category="staff_display" label="Team Display" icon="📌" aboutStaffRoster={staffRoster} />}
     {canSeeTeam && view === 'staff_meeting' && <StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} />}
     {canSeeTeam && view === 'training_laws' && <ContentPage contentKey="training_laws" title="⚖️ Team Company Laws Agreement" submenu="Team Company Laws Agreement" />}
-    {canSeeTeam && view === 'assessment' && (<div className="px-2 pt-2"><AssessmentPanel /></div>)}
     {canSeeTeam && view === 'logs' && <div className="px-2 space-y-2 pt-2"><LogsPage /></div>}
     {(canSeeUsers || canSeeRoles) && (view === 'users' || view === 'roles') && (
       <AccessPage initialTab={view === 'roles' ? 'roles' : 'users'} canSeeUsers={canSeeUsers} canSeeRoles={canSeeRoles} />

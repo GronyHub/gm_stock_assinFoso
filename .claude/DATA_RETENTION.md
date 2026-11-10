@@ -11,7 +11,6 @@
 | `live_sale_taps` | 6 months (undone only) | Archive/Delete | Completed transactions, kept for audit trail only |
 | `manage_logs` | 1 year | Delete | Activity logs, older entries not needed |
 | `password_reset_tokens` | 24 hours | Delete | Security: expired tokens not needed |
-| `training_attempts` | 6 months | Delete | Training records, summarize if needed |
 | `stock_count_revisions` | 1 year | Archive | Keep for reconciliation, older can be archived |
 | `manage_content` | Review quarterly | Cleanup | Remove unused media/content |
 
