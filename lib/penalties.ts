@@ -20,6 +20,10 @@ export const FADE_DAYS = 7
 export const MISSED_DAILY_CAP = 3
 export const LEARNING_DAYS = 14
 
+// Joe is the manager at the shop, so he decides for the other staff; Grony (in the UK) decides for Joe and may decide for anyone. Nobody decides their own.
+export const canDecideFor = (decider: string, subject: string) => decider !== subject.toLowerCase() && (decider === 'grony' || decider === 'joe')
+export const notifyDeciders = (subject: string, title: string, body: string) => subject.toLowerCase() === 'joe' ? pushToUsers(['grony'], title, body) : notifyOwners(title, body)
+
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10)
 const addDays = (day: string, n: number) => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return dayKey(d) }
@@ -80,7 +84,7 @@ export async function afterChange(staff: string, before: number, after: number) 
   for (const lvl of WARN_AT) {
     if (before < lvl && after >= lvl) {
       void pushToUsers([staff], `You have ${after} penalty points`, `At 20 points the sanction is a 3-day suspension. Keep the laws and the checklist.`)
-      void notifyOwners(`${cap(staff)} reached ${after} penalty points`, `Early warning: 20 points means a 3-day suspension.`)
+      void notifyDeciders(staff, `${cap(staff)} reached ${after} penalty points`, `Early warning: 20 points means a 3-day suspension.`)
     }
   }
   const tier = [...TIERS].reverse().find(t => after >= t.points)
@@ -88,7 +92,7 @@ export async function afterChange(staff: string, before: number, after: number) 
   const [open] = await sql`SELECT id FROM penalty_sanctions WHERE staff = ${staff} AND tier = ${tier.points} AND (status = 'proposed' OR (status = 'rejected' AND points_at >= ${after}))`
   if (open) return
   await sql`INSERT INTO penalty_sanctions (staff, tier, points_at, status, days, hours) VALUES (${staff}, ${tier.points}, ${after}, 'proposed', ${tier.days}, ${tier.hours})`
-  void notifyOwners(`Sanction to approve: ${cap(staff)}`, `${cap(staff)} has ${after} penalty points. Recommended: ${tier.label}${tier.hours ? ` (${tier.hours} hours deducted)` : ''}. Open Penalties to approve.`)
+  void notifyDeciders(staff, `Sanction to approve: ${cap(staff)}`, `${cap(staff)} has ${after} penalty points. Recommended: ${tier.label}${tier.hours ? ` (${tier.hours} hours deducted)` : ''}. Open Penalties to approve.`)
 }
 
 export async function approveSanction(id: number, by: string, startDate?: string) {

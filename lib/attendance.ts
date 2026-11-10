@@ -126,6 +126,9 @@ export async function attendanceTick(now = new Date()) {
       if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open the Daily Checklist.`)
       const [{ j }] = await sql`SELECT COUNT(*)::int AS j FROM clock_corrections WHERE status = 'pending' AND staff = 'joe'`
       if (Number(j) > 0) await pushToUsers(['grony'], 'Joe\'s clock-out time to approve', 'Open the Daily Checklist.')
+      const [{ sn }] = await sql`SELECT COUNT(*)::int AS sn FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe'`.catch(() => [{ sn: 0 }])
+      const [{ dp }] = await sql`SELECT COUNT(*)::int AS dp FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe'`.catch(() => [{ dp: 0 }])
+      if (Number(sn) + Number(dp) > 0) await pushToUsers(['joe'], 'Decisions waiting for you', `${Number(sn) ? sn + ' sanction(s) to approve. ' : ''}${Number(dp) ? dp + ' violation(s) to confirm or review.' : ''} Open Penalties.`)
       const [{ r }] = await sql`SELECT COUNT(*)::int AS r FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`
       if (Number(r) > 0) await pushToUsers(['joe'], 'CCTV review still due', `${r} day${Number(r) === 1 ? '' : 's'} waiting for your review.`)
     }

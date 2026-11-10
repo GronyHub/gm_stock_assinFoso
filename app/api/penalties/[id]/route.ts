@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
-import { confirmPending, reversePoint, ensurePenalties, afterChange, isCounting, totalPoints } from '@/lib/penalties'
+import { canDecideFor, notifyDeciders, confirmPending, reversePoint, ensurePenalties, afterChange, isCounting, totalPoints } from '@/lib/penalties'
 import { actorKey } from '@/lib/clockState'
-import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
+import { pushToUsers } from '@/lib/checklistAlerts'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -25,10 +25,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const note = String(b.note ?? '').trim().slice(0, 300)
       if (note.length < 4) return badRequest('Write why you dispute it.')
       await sql`UPDATE staff_penalties SET status = 'disputed', dispute_note = ${note} WHERE id = ${id}`
-      void notifyOwners(`Violation disputed by ${me}`, `${String(p.reason).slice(0, 120)}. Their note: ${note}`)
+      void notifyDeciders(me, `Violation disputed by ${me}`, `${String(p.reason).slice(0, 120)}. Their note: ${note}`)
       return success({ ok: true })
     }
     if (!isOwnerLevel(session.user as any)) return badRequest('Only the owner and manager can do this.')
+    const [subj] = await sql`SELECT staff FROM staff_penalties WHERE id = ${id}`
+    if (subj && !canDecideFor(actorKey(session.user as any), String(subj.staff))) return badRequest(String(subj.staff) === actorKey(session.user as any) ? 'You cannot decide your own entry.' : 'Only Joe and Grony decide this.')
     if (action === 'confirm') return success({ ok: await confirmPending(id, who) })
     if (action === 'dismiss') { await sql`UPDATE staff_penalties SET status = 'dismissed', note = ${'Dismissed by ' + who} WHERE id = ${id} AND status = 'pending'`; return success({ ok: true }) }
     if (action === 'reverse') return success({ ok: await reversePoint(id, who) })
