@@ -7141,15 +7141,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
-              {/* Today's running sales total (see liveTodaySalesTotal) --
-                  first in the slot so it's never scrolled out of view by
-                  overflow-x-auto once the staff bar/tab switcher get long,
-                  and bold since this is meant to be glanceable while
-                  staff are actively working, not tucked into a report. */}
-              <span className="shrink-0 font-extrabold text-sm text-green-700 whitespace-nowrap tabular-nums" title="Today's total sales so far">
-                {liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
-              </span>
-              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} />
+              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages

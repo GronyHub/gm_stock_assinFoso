@@ -168,13 +168,10 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedde
         <button type="button" onClick={() => setHomeModalOpen(true)} title="Open Home"
           className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition">
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
+          {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}
+          {salesTotal && <span title="Today's total sales so far" className="text-[10px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">{salesTotal}</span>}
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
         </button>
-        {salesTotal && (
-          <span className="shrink-0 self-center font-extrabold text-xs text-green-700 whitespace-nowrap tabular-nums pl-1" title="Today's total sales so far">
-            {salesTotal}
-          </span>
-        )}
       </div>
       {homeModalOpen && (
         <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setHomeModalOpen(false)}>
