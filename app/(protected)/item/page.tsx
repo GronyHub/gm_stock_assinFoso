@@ -52,6 +52,7 @@ import { MyAssignmentsSummary } from './_components/MyAssignmentsSummary'
 import PresentStaffBar from './_components/PresentStaffBar'
 import VoiceSale from '@/components/VoiceSale'
 import GlobalMic from '@/components/GlobalMic'
+import type { Dest } from '@/lib/voiceCommands'
 import PageToolbar, { setPageToolbarEl } from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
 import StaffAvatar from '@/components/StaffAvatar'
@@ -1609,6 +1610,7 @@ function ItemHubPageInner() {
   // Pages that are not part of the hub (Company Laws, the Daily Checklist, How To...) and a person's own page open INSIDE the right pane, so the left
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
+  const [voiceSaleText, setVoiceSaleText] = useState('')
   const embedRef = useRef<HTMLIFrameElement>(null)
   const [embedUrl, setEmbedUrl] = useState<string | null>(null)
   const [personal, setPersonal] = useState<{ name: string; tab: string } | null>(null)
@@ -1678,6 +1680,30 @@ function ItemHubPageInner() {
   // Payslips, which still renders the newly-viewed person's own payslip
   // history even though its own pane row is hidden while viewing someone
   // else.
+  // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
+  const voiceDests: Dest[] = [
+    { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
+    { label: 'Daily Checklist', names: ['daily checklist', 'checklist'], run: () => openEmbed('/standards') },
+    { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
+    { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },
+    { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },
+    { label: 'Penalties', names: ['penalties', 'penalty points'], run: () => openEmbed('/penalties') },
+    { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
+    { label: 'Live Sale', names: ['live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
+    { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },
+    { label: 'Customers', names: ['customers'], run: () => jumpToCustomersTab() },
+    { label: 'Counts', names: ['counts', 'counting'], run: () => goCountMode() },
+    { label: 'Team Times', names: ['team times', 'times'], run: () => pickLossView('teamTimes') },
+    { label: 'Flags', names: ['flags'], run: () => pickLossView('flags') },
+    { label: 'Item 360', names: ['item 360', 'item three sixty'], run: () => pickLossView('item360') },
+    { label: 'Bills', names: ['bills'], run: () => goItemsMode('bills') },
+    { label: 'Expenses', names: ['expenses'], run: () => goItemsMode('expenses') },
+    { label: 'Purchase Orders', names: ['purchase orders', 'orders'], run: () => pickLossView('purchaseOrders') },
+    { label: 'Vendors', names: ['vendors', 'suppliers'], run: () => pickLossView('vendors') },
+    { label: 'Home', names: ['home', 'today'], run: () => pickLossView('home') },
+    { label: 'my page', names: ['my profile', 'profile', 'my times'], run: () => openPersonal(username, 'times') },
+    { label: 'my payslips', names: ['payslips', 'my payslips', 'payslip'], run: () => openPersonal(username, 'payslips') },
+  ]
   // Opens my own page (the one behind my photo) on a tab; falls back to the old full-page view when the staff bar is not on screen.
   function openMyPage(tab: string, _fallback: LossView) { void _fallback; openPersonal(username, tab) }
   function pickViewing(name: string) {
@@ -10090,7 +10116,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               showed at all while browsing via Items). Offset above the
               sidebar-restore ▶ button's own bottom-left spot (only shown
               while the sidebar is hidden) so the two never overlap. */}
-          <GlobalMic frame={embedRef} onVoiceSale={outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal ? () => setVoiceSaleSignal(n => n + 1) : undefined}
+          <GlobalMic frame={embedRef} dests={voiceDests}
+            onVoiceSale={outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal ? (t: string) => { setVoiceSaleText(t); setVoiceSaleSignal(n => n + 1) } : undefined}
             className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'}`} />
           {clockGateOpen && (
             <ClockInGateModal onClockedIn={() => resolveClockGate(true)} onSkip={() => resolveClockGate(false)} />
@@ -10106,7 +10133,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
           )}
           {outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal && (
-            <VoiceSale openSignal={voiceSaleSignal} onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
+            <VoiceSale openSignal={voiceSaleSignal} spoken={voiceSaleText} onRecorded={tap => { setLiveTaps(prev => [tap as Tap, ...prev]); showToast('Sale recorded by voice', 'success') }} />
           )}
           {gmcOverageGate && (
             <GmcOverageGateModal

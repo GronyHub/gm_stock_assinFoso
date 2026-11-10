@@ -92,6 +92,7 @@ async function ensureCompanyLawsImpl() {
   await seedMetaJoe()
   await seedRules()
   await mergeCustomerServiceCode()
+  await approveAllDraftsOnce()
   await assignLawCodes()
   // The owner approved the remaining sets in conversation.
   for (const seed of ['clean-v1', 'service-v1', 'customers-v1', 'display-v1', 'equipment-v1', 'stock-v1', 'staff-v1', 'security-v1', 'finance-v1']) await approveOnce(seed, 'The owner approved this set')
@@ -190,6 +191,22 @@ async function approveOnce(seed: string, _why: string) {
     const { approveSeed } = await import('./lawTiles')
     await approveSeed(seed)
   } catch (e) { console.error('approve once failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The owner approved every draft law in conversation (2026-11-10). Done once, through the normal approval path (checklist tiles are made, old tiles retired).
+// The newly live laws start their signing clock 3 days from now, so nobody is penalised for not signing dozens of laws overnight.
+async function approveAllDraftsOnce() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('approve-all-drafts-2026-11-10') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { approveDrafts } = await import('./lawTiles')
+    const drafts = await sql`SELECT id, category FROM page_laws WHERE status = 'draft'` as unknown as { id: number; category: string | null }[]
+    for (const cat of Array.from(new Set(drafts.map(d => d.category).filter(Boolean) as string[]))) await approveDrafts({ category: cat })
+    for (const d of drafts.filter(x => !x.category)) await approveDrafts({ id: d.id })
+    const ids = drafts.map(d => d.id)
+    if (ids.length) await sql`UPDATE page_laws SET live_at = now() + interval '3 days' WHERE id = ANY(${ids}) AND status = 'live'`
+  } catch (e) { console.error('approve all drafts failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 async function seedSanctionsLaw() {

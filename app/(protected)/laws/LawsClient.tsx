@@ -1,4 +1,5 @@
 'use client'
+import { matchDest, type Dest } from '@/lib/voiceCommands'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIES, LAW_TYPES, PROOFS, UNCATEGORISED, scheduleText } from '@/lib/lawCategories'
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
@@ -80,6 +81,22 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const unc = (laws ?? []).some(l => !l.category)
     return canManage && unc ? [...list, { key: UNCATEGORISED, group: 'Grony Manage' as const, label: UNCATEGORISED, icon: '❓', blurb: 'Laws added the old way. Give each a category.', match: [] }] : list
   }, [canManage, laws])
+  // Voice (the microphone in the hub): a spoken sentence is matched to a tile name first, then to a law's name or code, which opens the search for it.
+  useEffect(() => {
+    const h = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.data?.type !== 'page-voice') return
+      const text = String(e.data.text ?? '')
+      const dests: Dest[] = areas.map(a => ({ label: a.label, names: [a.label, ...a.label.split('/').map(x => x.trim())], run: () => setCat(a.key) }))
+      const tile = matchDest(text, dests)
+      if (tile) { tile.run(); window.parent.postMessage({ type: 'page-voice-result', handled: true, message: `Opened ${tile.label}` }, window.location.origin); return }
+      const said = text.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(w => w.length > 2)
+      const hit = said.length ? (laws ?? []).some(l => said.every(w => `${l.code ?? ''} ${l.title ?? ''} ${l.text}`.toLowerCase().includes(w))) : false
+      if (hit) { setCat(null); setQ(text); window.parent.postMessage({ type: 'page-voice-result', handled: true, message: `Searching laws for "${text}"` }, window.location.origin); return }
+      window.parent.postMessage({ type: 'page-voice-result', handled: false }, window.location.origin)
+    }
+    window.addEventListener('message', h)
+    return () => window.removeEventListener('message', h)
+  }, [areas, laws])
   const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l))
   const unsignedIn = (a: LawArea) => areaLaws(a).filter(l => l.status !== 'draft' && !(sig?.signed ?? {})[l.id])
   useEffect(() => {

@@ -8,7 +8,7 @@ type Rec = { start: () => void; stop: () => void; onresult: ((e: any) => void) |
 // Live Sale by voice. The staff member taps the microphone and says what they sold ("two passport photos for GM 123", "print five pages for man on motor").
 // The phone turns it into text, the app finds the item, quantity, price and who it is for, and SHOWS them. Nothing is recorded until the staff
 // member checks the card and taps "Record sale". If the phone cannot listen, the same card works by typing (or the keyboard's own microphone).
-export default function VoiceSale({ onRecorded, openSignal }: { onRecorded: (tap: unknown) => void; openSignal?: number }) {
+export default function VoiceSale({ onRecorded, openSignal, spoken }: { onRecorded: (tap: unknown) => void; openSignal?: number; spoken?: string }) {
   const [open, setOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const [text, setText] = useState('')
@@ -72,7 +72,7 @@ export default function VoiceSale({ onRecorded, openSignal }: { onRecorded: (tap
   const pick = p?.items.find(i => i.id === itemId)
   // The global microphone (bottom right) opens this card on Live Sale; every change of the signal opens it and starts listening.
   const first = useRef(true)
-  useEffect(() => { if (first.current) { first.current = false; return } if (openSignal) listen() }, [openSignal]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (first.current) { first.current = false; return } if (!openSignal) return; if (spoken) { setOpen(true); setText(spoken); void parse(spoken) } else listen() }, [openSignal]) // eslint-disable-line react-hooks/exhaustive-deps
   return (<>
     {open && (
       <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 sm:items-center print:hidden" onClick={close}>
@@ -81,7 +81,7 @@ export default function VoiceSale({ onRecorded, openSignal }: { onRecorded: (tap
             <p className="text-base font-extrabold text-[#14213D]">🎤 Say what you sold</p>
             <button type="button" onClick={close} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕</button>
           </div>
-          <p className="text-xs text-gray-600">For example: “two passport photos for GM 123”, “print five pages for man on motor”. Check the card below before you record it.</p>
+          <p className="text-xs text-gray-600">Say it in this order: item, quantity, price, who. For example: “ghana card, 2 pieces, 40 cedis, man in red” or “passport photos, 2 pieces, GM 123”. Check the card below before you record it.</p>
           <div className="flex gap-2">
             <button type="button" onClick={listen} disabled={listening || !supported} className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white ${listening ? 'animate-pulse bg-red-600' : 'bg-[#14213D]'} disabled:opacity-60`}>{listening ? 'Listening…' : supported ? 'Tap and speak' : 'Mic not available'}</button>
           </div>
