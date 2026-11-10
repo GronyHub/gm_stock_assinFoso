@@ -12,8 +12,9 @@ export default function ClockApprovals() {
     fetch('/api/cctv-review?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPendingReviews((d?.pending || d?.all || 0))).catch(() => {})
   }
   useEffect(() => { load() }, [])
+  const [pick, setPick] = useState<Record<number, string>>({})
   async function act(id: number, action: 'approve' | 'reject') {
-    await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action }) })
+    await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action, time: action === 'approve' ? pick[id] : undefined }) })
     load()
   }
   const [me, setMe] = useState('')
@@ -31,6 +32,7 @@ export default function ClockApprovals() {
           {list.map(p => (
             <div key={p.id} className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-900">
               <span className="min-w-0 flex-1"><b>{cap(p.staff)}</b> · {p.work_date} · in {p.actual_in ?? '?'} · says out <b>{p.proposed_out}</b>{p.estimated ? <span className="text-gray-600"> (app estimate {p.estimated})</span> : null}</span>
+              <input type="time" value={pick[p.id] ?? ''} onChange={e => setPick(x => ({ ...x, [p.id]: e.target.value }))} title="Optional: approve an earlier time instead" className="w-24 rounded-lg border p-1 text-xs" />
               <button type="button" onClick={() => void act(p.id, 'approve')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button>
               <button type="button" onClick={() => void act(p.id, 'reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800">Reject</button>
             </div>))}
