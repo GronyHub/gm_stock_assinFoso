@@ -6,6 +6,7 @@ import ClosingReportLogView from './ClosingReportLogView'
 import StaffMeetingPanel from './StaffMeetingPanel'
 import StaffTimesView from './StaffTimesView'
 import ProfileTab from './ProfileTab'
+import SupervisorClockOut from './SupervisorClockOut'
 import { PayslipsTab } from '../../staff/StaffClient'
 
 export type TabKey = 'times' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'meeting' | 'display'
@@ -149,6 +150,7 @@ export default function StaffMemberPersonalTab({
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        {activeTab === 'times' && !isSelf && <SupervisorClockOut staffName={staffName} />}
         {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} username={username} /></div>}
         {activeTab === 'payslips' && isSelf && <div className="p-2"><PayslipsTab role={role} username={username} viewingStaff={staffName} /></div>}
         {activeTab === 'profile' && isSelf && <div className="p-2"><ProfileTab /></div>}

@@ -24,6 +24,12 @@ export const ensureAttendance = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS clock_autos (
     id SERIAL PRIMARY KEY, staff TEXT NOT NULL, work_date TEXT NOT NULL, out_time TEXT NOT NULL, basis TEXT, status TEXT NOT NULL DEFAULT 'notified',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (staff, work_date))`.catch(() => {})
+  await sql`CREATE TABLE IF NOT EXISTS clock_in_autos (
+    id SERIAL PRIMARY KEY, staff TEXT NOT NULL, work_date TEXT NOT NULL, in_time TEXT NOT NULL, basis TEXT, by_user TEXT, status TEXT NOT NULL DEFAULT 'notified',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (staff, work_date))`.catch(() => {})
+  await sql`ALTER TABLE clock_corrections ADD COLUMN IF NOT EXISTS field TEXT NOT NULL DEFAULT 'out'`.catch(() => {})
+  await sql`ALTER TABLE clock_autos ADD COLUMN IF NOT EXISTS by_user TEXT`.catch(() => {})
+  await sql`ALTER TABLE clock_corrections ADD COLUMN IF NOT EXISTS against TEXT`.catch(() => {})
   await sql`CREATE TABLE IF NOT EXISTS cctv_reviews (
     work_date TEXT PRIMARY KEY, windows TEXT NOT NULL, staff TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     reviewed_by TEXT, reviewed_at TIMESTAMPTZ, sales_ok BOOLEAN, laws_ok BOOLEAN, note TEXT)`.catch(() => {})
@@ -43,6 +49,20 @@ export async function lastActivity(staff: string, day: string, clockInMins: numb
   ]
   for (const f of sources) { try { await f() } catch { /* a missing table is skipped */ } }
   return { mins: Math.max(best, clockInMins), found }
+}
+
+// The FIRST thing a staff member did that can only be done at the shop on a day (used when a supervisor clocks someone in without knowing the time).
+export async function firstActivityMins(staff: string, day: string): Promise<number | null> {
+  let best: number | null = null
+  const take = (m: unknown) => { if (m) { const d = new Date(m as string); if (d.toISOString().slice(0, 10) === day) { const v = d.getUTCHours() * 60 + d.getUTCMinutes(); best = best == null ? v : Math.min(best, v) } } }
+  const sources: (() => Promise<unknown>)[] = [
+    async () => take((await sql`SELECT MIN(tapped_at) AS m FROM live_sale_taps WHERE LOWER(staff_name) = ${staff} AND tapped_at::date = ${day}::date AND NOT undone`)[0]?.m),
+    async () => take((await sql`SELECT MIN(recorded_at) AS m FROM daily_check_events WHERE LOWER(recorded_by) = ${staff} AND day = ${day}`)[0]?.m),
+    async () => take((await sql`SELECT MIN(recorded_at) AS m FROM shop_routine_events WHERE LOWER(recorded_by) = ${staff} AND recorded_at::date = ${day}::date`)[0]?.m),
+    async () => take((await sql`SELECT MIN(created_at) AS m FROM sale_buyers WHERE LOWER(created_by) = ${staff} AND created_at::date = ${day}::date`)[0]?.m),
+  ]
+  for (const f of sources) { try { await f() } catch { /* a missing table is skipped */ } }
+  return best
 }
 
 // An open record: clocked in on a day, never clocked out.
@@ -79,9 +99,15 @@ export async function setClockOut(staff: string, day: string, out12: string, sou
 
 export async function applyApproval(id: number, by: string, overrideHHMM?: string) {
   await ensureAttendance()
-  const [c] = await sql`SELECT id, staff, work_date, proposed_out, status FROM clock_corrections WHERE id = ${id}`
+  const [c] = await sql`SELECT id, staff, work_date, proposed_out, status, field FROM clock_corrections WHERE id = ${id}`
   if (!c || c.status !== 'pending') return null
   const out = overrideHHMM && /^\d{1,2}:\d{2}$/.test(overrideHHMM) ? hhmmTo12h(overrideHHMM) : String(c.proposed_out)
+  if (c.field === 'in') {
+    await sql`UPDATE staff_times SET actual_in = ${out}, in_source = 'approved', entered_by = ${by} WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`.catch(() => {})
+    await sql`UPDATE clock_corrections SET status = 'approved', decided_by = ${by}, decided_at = now(), proposed_out = ${out} WHERE id = ${id}`
+    void pushToUsers([String(c.staff)], 'Clock-in time approved', `Your time in for ${c.work_date} is ${out}.`)
+    return out
+  }
   await setClockOut(String(c.staff), String(c.work_date), out, 'approved', by)
   await sql`UPDATE clock_corrections SET status = 'approved', decided_by = ${by}, decided_at = now(), proposed_out = ${out} WHERE id = ${id}`
   void pushToUsers([String(c.staff)], 'Clock-out time approved', `Your time out for ${c.work_date} is ${out}.`)

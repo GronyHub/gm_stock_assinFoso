@@ -18,14 +18,15 @@ export async function GET() {
     await ensureAttendance()
     const me = actorKey(user as any)
     // Grony is the owner in the UK and is never at the shop: no clock-out checks for him.
-    if (!SIGNERS.includes(me) || me === 'grony') return success({ askNow: false, previous: [], autos: [] })
+    if (!SIGNERS.includes(me) || me === 'grony') return success({ askNow: false, previous: [], autos: [], ins: [] })
     const day = today(), now = new Date()
     const open = await openRecords(me)
     const todays = open.find(r => r.d === day)
     const [ans] = await sql`SELECT answer FROM clock_prompts WHERE day = ${day} AND staff = ${me}`
     const askNow = !!todays && now.getUTCHours() * 60 + now.getUTCMinutes() >= CLOSING_MINS && !ans
     const autos = await sql`SELECT id, work_date AS date, out_time AS out, basis FROM clock_autos WHERE staff = ${me} AND status = 'notified' ORDER BY work_date`
-    return success({ askNow, previous: open.filter(r => r.d < day).map(r => ({ date: r.d, in: r.actual_in })), autos })
+    const ins = await sql`SELECT id, work_date AS date, in_time AS time, basis FROM clock_in_autos WHERE staff = ${me} AND status = 'notified' ORDER BY work_date`
+    return success({ askNow, previous: open.filter(r => r.d < day).map(r => ({ date: r.d, in: r.actual_in })), autos, ins })
   } catch (e) { return handleError('clock open-check GET', e) }
 }
 
@@ -39,6 +40,21 @@ export async function POST(req: NextRequest) {
     if (!SIGNERS.includes(me) || me === 'grony') return badRequest('Not on the shop staff list.')
     const b = await req.json().catch(() => ({}))
     const day = today()
+    if (b.action === 'in_ok') { await sql`UPDATE clock_in_autos SET status = 'ok' WHERE id = ${Number(b.id)} AND staff = ${me}`; return success({ ok: true }) }
+    if (b.action === 'enter_in') {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date ?? '')) ? String(b.date) : day
+      const m = String(b.time ?? '').match(/^(\d{1,2}):(\d{2})$/)
+      if (!m) return badRequest('Enter the time you arrived.')
+      const t12 = hhmmTo12h(String(b.time))
+      const [auto] = await sql`SELECT by_user FROM clock_in_autos WHERE staff = ${me} AND work_date = ${date}`.catch(() => [])
+      const against = auto?.by_user ? String(auto.by_user) : null
+      await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND field = 'in' AND status = 'pending'`
+      await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, against, field) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Clock-in time entered by ' + cap(me)}, ${against}, 'in')`
+      await sql`UPDATE clock_in_autos SET status = 'submitted' WHERE staff = ${me} AND work_date = ${date} AND status = 'notified'`
+      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], `${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      else void notifyOwners(`${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      return success({ in: t12, pending: true })
+    }
     if (b.action === 'auto_ok') { await sql`UPDATE clock_autos SET status = 'ok' WHERE id = ${Number(b.id)} AND staff = ${me}`; return success({ ok: true }) }
     if (b.action === 'still_here') { await sql`INSERT INTO clock_prompts (day, staff, answer) VALUES (${day}, ${me}, 'still_here') ON CONFLICT DO NOTHING`; return success({ ok: true }) }
 
@@ -66,10 +82,12 @@ export async function POST(req: NextRequest) {
       // Until an owner approves, the app's own last-activity time stands in, so the day is never left open.
       if (!rec.actual_out) await setClockOut(me, date, to12h(await lastActivityMins(me, date, inMins)), 'estimated', 'system')
       await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND status = 'pending'`
-      await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Entered by ' + cap(me)})`
+      const [auto] = await sql`SELECT by_user FROM clock_autos WHERE staff = ${me} AND work_date = ${date}`.catch(() => [])
+      const against = auto?.by_user ? String(auto.by_user) : null // a supervisor clocked this person out: they cannot approve the claim against their own action
+      await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, against) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Entered by ' + cap(me)}, ${against})`
       await sql`UPDATE clock_autos SET status = 'submitted' WHERE staff = ${me} AND work_date = ${date} AND status = 'notified'`
       // Joe's own times are approved by Grony only; everyone else's by Grony or Joe.
-      if (me === 'joe') void pushToUsers(['grony'], 'Joe sent a clock-out time to approve', `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], 'Joe sent a clock-out time to approve', `${date}: ${t12}. Open the Daily Checklist to approve it.`)
       else void notifyOwners(`${cap(me)} sent a clock-out time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
       return success({ out: t12, pending: true })
     }

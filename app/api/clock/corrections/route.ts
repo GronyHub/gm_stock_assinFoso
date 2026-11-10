@@ -14,9 +14,9 @@ export async function GET() {
   try {
     await ensureAttendance()
     const me = actorKey(session.user as any)
-    const pending = await sql`SELECT c.id, c.staff, c.work_date, c.proposed_out, c.requested_at, t.actual_in, t.actual_out AS estimated
+    const pending = await sql`SELECT c.id, c.staff, c.work_date, c.field, c.proposed_out, c.requested_at, t.actual_in, t.actual_out AS estimated
       FROM clock_corrections c LEFT JOIN staff_times t ON LOWER(t.staff_name) = c.staff AND t.work_date = c.work_date
-      WHERE c.status = 'pending' AND c.staff <> ${me} ORDER BY c.requested_at`
+      WHERE c.status = 'pending' AND c.staff <> ${me} AND COALESCE(c.against, '') <> ${me} ORDER BY c.requested_at`
     return success({ pending })
   } catch (e) { return handleError('clock corrections GET', e) }
 }
@@ -30,7 +30,8 @@ export async function PATCH(req: NextRequest) {
     await ensureAttendance()
     const b = await req.json().catch(() => ({}))
     const id = Number(b.id), by = getActorName(session), me = actorKey(session.user as any)
-    const [own] = await sql`SELECT staff FROM clock_corrections WHERE id = ${id}`
+    const [own] = await sql`SELECT staff, against FROM clock_corrections WHERE id = ${id}`
+    if (own?.against && String(own.against) === me) return badRequest('You clocked this person out, so someone else decides their correction.')
     if (own && String(own.staff) === me) return badRequest('You cannot approve your own time. Grony approves Joe, and Joe approves the others.')
     if (b.action === 'approve') { const out = await applyApproval(id, by, b.time ? String(b.time) : undefined); return success({ ok: !!out, out }) }
     if (b.action === 'reject') {

@@ -6,7 +6,8 @@ import { isSnoozed } from '@/lib/snooze'
 
 type Prev = { date: string; in: string }
 type Auto = { id: number; date: string; out: string; basis: string }
-type State = { askNow: boolean; previous: Prev[]; autos: Auto[] }
+type InN = { id: number; date: string; time: string; basis: string }
+type State = { askNow: boolean; previous: Prev[]; autos: Auto[]; ins: InN[] }
 
 // 1) Before work the next day: every earlier day left open must have its time out entered (non-owners' entries go to Grony and Joe to approve).
 // 2) From 7pm: "Are you still at the shop?" -- no logs them out at the time of their last activity and lets them send the correct time.
@@ -20,7 +21,7 @@ export default function ClockOutPrompt() {
   const [later, setLater] = useState(false)
   const [tick, setTick] = useState(0) // re-reads the put-off times
   useEffect(() => { const f = () => { try { setLater(Date.now() < Number(localStorage.getItem('clockAutoSnooze') ?? 0)); setTick(t => t + 1) } catch { /* ignore */ } }; f(); const t = setInterval(f, 60000); return () => clearInterval(t) }, [])
-  const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [], autos: d.autos ?? [] }) }).catch(() => {})
+  const load = () => fetch('/api/clock/open-check', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setSt({ askNow: !!d.askNow, previous: d.previous ?? [], autos: d.autos ?? [], ins: d.ins ?? [] }) }).catch(() => {})
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
     void load()
@@ -67,14 +68,33 @@ export default function ClockOutPrompt() {
       </div>
     </div>
   )
+  if (st.ins.length && !later) return (
+    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
+      <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
+        <p className="text-base font-extrabold text-[#14213D]">You were clocked in</p>
+        <p className="text-sm text-gray-700">Your supervisor clocked you in, as shown below. Tap OK if the time is right. If not, send the correct time and it will be approved by someone other than whoever clocked you in.</p>
+        {st.ins.map(a => (
+          <div key={a.id} className="space-y-2 rounded-xl bg-gray-50 p-2">
+            <p className="text-sm font-bold text-gray-900">{a.date}: in at {a.time}</p>
+            {a.basis && <p className="text-xs text-gray-700">{a.basis}</p>}
+            <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'in_ok', id: a.id }); if (d) void load() }} className="w-full rounded-lg bg-green-600 py-2 text-sm font-bold text-white">OK, that is right</button>
+            <input type="time" value={times['in' + a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, ['in' + a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
+            <button type="button" disabled={!times['in' + a.date] || busy} onClick={async () => { const d = await post({ action: 'enter_in', date: a.date, time: times['in' + a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
+          </div>))}
+        <SnoozeChips storageKey="clockAutoSnooze" title="Remind me later in" onDone={() => setLater(true)} />
+        {msg && <p className="text-sm font-bold text-red-700">{msg}</p>}
+      </div>
+    </div>
+  )
   if (st.autos.length && !later) return (
     <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 sm:items-center print:hidden">
       <div className="max-h-[92vh] w-full max-w-md space-y-3 overflow-y-auto rounded-t-3xl bg-white p-5 sm:rounded-3xl">
         <p className="text-base font-extrabold text-[#14213D]">We clocked you out</p>
-        <p className="text-sm text-gray-700">You did not clock out, so the app did it for you at the time of your last action at the shop. Tap OK if the time is right. If not, send the correct time and Grony or Joe will approve it.</p>
+        <p className="text-sm text-gray-700">You were not clocked out, so a clock-out was set for you (by the app from your last action at the shop, or by your supervisor, as shown below). Tap OK if the time is right. If not, send the correct time and it will be approved by someone other than whoever clocked you out.</p>
         {st.autos.map(a => (
           <div key={a.id} className="space-y-2 rounded-xl bg-gray-50 p-2">
             <p className="text-sm font-bold text-gray-900">{a.date}: out at {a.out}</p>
+            {a.basis && a.basis !== 'your last action at the shop in the app' && <p className="text-xs text-gray-700">{a.basis}</p>}
             <button type="button" disabled={busy} onClick={async () => { const d = await post({ action: 'auto_ok', id: a.id }); if (d) void load() }} className="w-full rounded-lg bg-green-600 py-2 text-sm font-bold text-white">OK, that is right</button>
             <input type="time" value={times[a.date] ?? ''} onChange={e => setTimes(t => ({ ...t, [a.date]: e.target.value }))} className="w-full rounded-lg border-2 border-gray-300 p-2 text-lg" />
             <button type="button" disabled={!times[a.date] || busy} onClick={async () => { const d = await post({ action: 'enter', date: a.date, time: times[a.date] }); if (d) void load() }} className="w-full rounded-lg bg-[#14213D] py-2 text-sm font-bold text-white disabled:opacity-40">Send my correct time for approval</button>
