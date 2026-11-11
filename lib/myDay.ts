@@ -6,6 +6,8 @@ import { canDecideFor } from '@/lib/penalties'
 import { getClockState } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
+import { canLogAgainst } from '@/lib/violationLog'
+import { ACTIVE_STAFF } from '@/lib/staffList'
 
 // "Waiting for me": everything the signed-in person owes or must decide, from every part of the app, in one list.
 // urgency: 'now' (overdue or blocking), 'soon' (due today or within 24 hours), 'later'. `href` opens in the hub's right pane; `hub` asks the hub to open a view.
@@ -13,11 +15,18 @@ export type MyDayItem = { key: string; icon: string; title: string; detail: stri
 const today = () => new Date().toISOString().slice(0, 10)
 const safe = async <T,>(f: () => Promise<T>, d: T): Promise<T> => { try { return await f() } catch { return d } }
 
-export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
+// Whose list a supervisor may look at: the same people they may log violations against (the owner anyone; Joe anyone but the owner; Bino James).
+export function viewablePeople(user: { username?: string | null; name?: string | null; role?: string | null } | undefined): string[] {
+  const self = String(user?.username ?? user?.name ?? '').toLowerCase()
+  return ACTIVE_STAFF.filter(n => n !== self && canLogAgainst(user as never, n) && (n !== 'grony' || self === 'grony'))
+}
+
+// `viewing` = a supervisor is looking at someone else's list: only that person's own matters are shown, never the supervisor's decisions.
+export async function myDay(me: string, user: unknown, opts: { viewing?: boolean } = {}): Promise<MyDayItem[]> {
   await ensureAttendance()
   const items: MyDayItem[] = []
   const day = today()
-  const owner = isOwnerLevel(user as never), manager = isManagerName(me)
+  const owner = !opts.viewing && isOwnerLevel(user as never), manager = isManagerName(me)
   const isStaff = SIGNERS.includes(me)
   const add = (i: MyDayItem | null) => { if (i && i.count > 0) items.push(i) }
 
@@ -46,9 +55,13 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
       const due = effectiveDue(todays, clock.dayStart)
       const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
       if (!late.length) return
-      const worst = nowMin - due.get(late[0].id)!
-      const names = late.slice(0, 3).map(t => t.title.slice(0, 40)).join('; ') + (late.length > 3 ? ` and ${late.length - 3} more` : '')
-      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: `/laws?view=today&tile=${late[0].id}` })
+      const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+      // One row per task, so each can be opened and done from here. Beyond eight, one row says how many more.
+      for (const t of late.slice(0, 8)) {
+        const mins = nowMin - due.get(t.id)!
+        add({ key: `task-${t.id}`, icon: '✅', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/laws?view=today&tile=${t.id}` })
+      }
+      if (late.length > 8) add({ key: 'tasks-more', icon: '✅', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/laws?view=today' })
     }, undefined)
   }
 
@@ -81,7 +94,7 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(id) AS first FROM page_laws WHERE status = 'draft'`, [{ n: 0, first: null }])
     add({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: Number(drafts[0].n), urgency: 'later', href: drafts[0].first ? `/laws?law=${drafts[0].first}` : '/laws' })
   }
-  if (me === 'joe') {
+  if (me === 'joe' && !opts.viewing) {
     const r = await safe(() => sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`, [{ n: 0 }])
     add({ key: 'cctv', icon: '🎥', title: 'CCTV reviews to do', detail: 'Days staff worked while you were not clocked in. Due within 48 hours.', count: Number(r[0].n), urgency: 'now', href: '/cctv-review' })
   }

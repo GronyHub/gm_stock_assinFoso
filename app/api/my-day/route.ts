@@ -1,15 +1,21 @@
-import { requireAuth, success, handleError } from '@/lib/api'
+import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import { actorKey } from '@/lib/clockState'
-import { myDay } from '@/lib/myDay'
+import { myDay, viewablePeople } from '@/lib/myDay'
 import { NextRequest } from 'next/server'
 
-// GET -- everything waiting for the signed-in person. ?count=1 returns only the totals (for the sidebar badge).
+// GET -- everything waiting for the signed-in person. ?count=1 returns only the totals (for the badge and the bar).
+// ?people=1 lists whose list this person may look at; ?for=name returns that person's list (supervisors only, read-only).
 export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
   try {
-    const items = await myDay(actorKey(session.user as never), session.user)
-    if (req.nextUrl.searchParams.get('count')) return success({ total: items.reduce((n, i) => n + (i.urgency === 'later' ? 0 : i.count), 0), now: items.filter(i => i.urgency === 'now').length })
+    const user = session.user as { username?: string | null; name?: string | null; role?: string | null }
+    const q = req.nextUrl.searchParams
+    if (q.get('people')) return success({ people: viewablePeople(user) })
+    const forName = (q.get('for') ?? '').toLowerCase()
+    if (forName && !viewablePeople(user).includes(forName)) return badRequest('You cannot look at that list.')
+    const items = await myDay(forName || actorKey(user as never), user, { viewing: !!forName })
+    if (q.get('count')) return success({ total: items.reduce((n, i) => n + (i.urgency === 'later' ? 0 : i.count), 0), now: items.filter(i => i.urgency === 'now').reduce((n, i) => n + i.count, 0) })
     return success({ items })
   } catch (e) { return handleError('my-day GET', e) }
 }
