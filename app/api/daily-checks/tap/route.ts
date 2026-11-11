@@ -7,6 +7,7 @@ import { notifyOwners } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { addPoint, suspendedMessage } from '@/lib/penalties'
 import { NextRequest } from 'next/server'
+import { clearMyDayCache } from '@/lib/myDay'
 
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/
 
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
               ${JSON.stringify(extra)}::jsonb, ${actor})
       RETURNING id, tile_id, day, value, note, extra, recorded_by, recorded_at`
 
+    clearMyDayCache()
     void recordActivity(actor, b.value === 'Not done' ? 'marked a task not done' : 'did a task', `${String(t.title).slice(0, 120)}${note ? ' — ' + note.slice(0, 80) : ''}`)
 
     // Mirror into the Grony Manage log that matches this tile, so that page's history keeps filling.

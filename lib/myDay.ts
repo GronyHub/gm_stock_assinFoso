@@ -26,7 +26,23 @@ export function viewablePeople(user: { username?: string | null; name?: string |
 
 // `viewing` = a supervisor is looking at someone else's list: only that person's own matters are shown, never the supervisor's decisions.
 // lens: 'todo' = what is waiting except tasks already due; 'notdone' = only the tasks due or overdue today and not yet done (not yet a violation: the point is counted at day end); 'all' (default) = both, for the badge counts.
-export async function myDay(me: string, user: unknown, opts: { viewing?: boolean; lens?: 'all' | 'todo' | 'notdone' } = {}): Promise<MyDayItem[]> {
+type DayOpts = { viewing?: boolean; lens?: 'all' | 'todo' | 'notdone' }
+// The list is built from ~15 queries and asked for by several badges, the team view and every open tab, so identical asks within 30 seconds share one answer
+// (and one in-flight build). Anything that ticks a task clears it so the person's own list never lags behind their tap.
+const g = globalThis as unknown as { __myDayCache?: Map<string, { at: number; p: Promise<MyDayItem[]> }> }
+export function clearMyDayCache() { g.__myDayCache?.clear() }
+export function myDay(me: string, user: unknown, opts: DayOpts = {}): Promise<MyDayItem[]> {
+  const cache = (g.__myDayCache ??= new Map())
+  const key = [me, opts.viewing ? 'v' : '', opts.lens ?? 'all', !opts.viewing && isOwnerLevel(user as never) ? 'o' : ''].join('|')
+  const hit = cache.get(key)
+  if (hit && Date.now() - hit.at < 30000) return hit.p
+  const p = myDayBuild(me, user, opts)
+  cache.set(key, { at: Date.now(), p })
+  p.catch(() => cache.delete(key))
+  if (cache.size > 200) cache.clear()
+  return p
+}
+async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promise<MyDayItem[]> {
   await ensureAttendance()
   const items: MyDayItem[] = []
   const day = today()

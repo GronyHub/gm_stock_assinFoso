@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { ensureDailyChecks, dayKey, creditWork, removeCredit } from '@/lib/dailyChecks'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
+import { clearMyDayCache } from '@/lib/myDay'
 
 async function mustBeClockedIn(user: unknown) {
   if ((user as { role?: string })?.role === 'owner') return null
@@ -28,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const extra = { ...((e.extra as object) ?? {}), ...(typeof b.done_at === 'string' ? (HM.test(b.done_at) ? { done_at: b.done_at } : {}) : {}) }
     if (b.done_at === null || b.done_at === '') delete (extra as { done_at?: string }).done_at
     const value = b.value === 'Done' || b.value === 'Not done' ? b.value : null
+    clearMyDayCache()
     await sql`UPDATE daily_check_events SET value = COALESCE(${value}, value), note = ${b.note ? String(b.note).slice(0, 500) : null}, extra = ${JSON.stringify(extra)}::jsonb WHERE id = ${id}`
     if (value && value !== e.value) {
       if (value === 'Not done') await removeCredit(id)
@@ -47,6 +49,7 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
     const id = Number((await params).id)
     const [e] = await sql`SELECT day FROM daily_check_events WHERE id = ${id}`
     if (e && e.day !== dayKey()) return badRequest('Only today\'s records can be removed.')
+    clearMyDayCache()
     await sql`DELETE FROM daily_check_events WHERE id = ${id}`
     await removeCredit(id)
     return success({ ok: true })
