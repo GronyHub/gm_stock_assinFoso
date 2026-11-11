@@ -119,7 +119,7 @@ export default function StaffMemberPersonalTab({
           }} />
         )}
         {activeTab === 'times' && !isSelf && <SupervisorClockOut staffName={staffName} />}
-        {activeTab === 'times' && <div className="p-3"><PersonUpcoming staff={staffName} /><StaffTimesView staffName={staffName} username={username} /></div>}
+        {activeTab === 'times' && <div className="p-3"><PersonUpcoming staff={staffName} /><StaffTimesView staffName={staffName} username={username} onOpenDone={() => setActiveTab('done')} /></div>}
         {activeTab === 'violations' && (
           <div className="space-y-3 p-2">
             <PenaltyCard staff={isSelf ? undefined : staffName} />

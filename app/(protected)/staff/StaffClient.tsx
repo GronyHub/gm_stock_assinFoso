@@ -237,6 +237,31 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   const activeDisplayStaff = viewName ? displayStaff : STAFF.filter(s => !inactiveStaff.has(s))
   const inactiveRosterStaff = viewName ? [] : STAFF.filter(s => inactiveStaff.has(s))
   const [showInactiveTimes, setShowInactiveTimes] = useState(false)
+  // Owner-level view options: what the whole team sees on this page (set here by the owner and Joe), the view filter everyone has, and absence reports.
+  const ownerLevel = role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username)
+  const [display, setDisplay] = useState<{ hidden: string[]; hideEmpty: boolean }>({ hidden: [], hideEmpty: false })
+  const [ownerSeeAll, setOwnerSeeAll] = useState(false)
+  const [viewMode, setViewMode] = useState<'all' | 'future' | 'past'>('all')
+  const [optsOpen, setOptsOpen] = useState(false)
+  const [absOpen, setAbsOpen] = useState(false)
+  const [absForm, setAbsForm] = useState({ from: '', to: '', reason: '' })
+  const [absMsg, setAbsMsg] = useState('')
+  const [absences, setAbsences] = useState<{ staff_name: string; start_date: string; end_date: string }[]>([])
+  useEffect(() => { fetch('/api/shop-settings').then(r => r.ok ? r.json() : null).then(d => d?.times && setDisplay(d.times)).catch(() => {}) }, [])
+  useEffect(() => { try { setOwnerSeeAll(localStorage.getItem('timesOwnerSeeAll') === '1') } catch { /* private window */ } }, [])
+  const loadAbsences = () => fetch('/api/rota/absences').then(r => r.ok ? r.json() : []).then(d => setAbsences(Array.isArray(d) ? d : [])).catch(() => {})
+  useEffect(() => { void loadAbsences() }, [])
+  async function saveDisplay(next: { hidden: string[]; hideEmpty: boolean }) {
+    setDisplay(next)
+    await fetch('/api/shop-settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ times: next }) }).catch(() => {})
+  }
+  async function reportAbsence() {
+    setAbsMsg('')
+    const r = await fetch('/api/rota/absences/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: absForm.from, to: absForm.to || absForm.from, reason: absForm.reason }) })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok) { setAbsMsg(j.error ?? 'Could not report it.'); return }
+    setAbsMsg('Reported. Joe and the owner have been told.'); setAbsForm({ from: '', to: '', reason: '' }); void loadAbsences(); load()
+  }
 
   const [mine, setMine] = useState<Mine>(null)
   const [recent, setRecent] = useState<RecentRow[]>([])
@@ -325,6 +350,13 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
     }).catch(() => {})
   }, [])
 
+  // The columns everyone sees: the active staff minus the people the owner and Joe have hidden (and, if asked, people with nothing in this period).
+  // The owner and Joe can switch that off for themselves; the others never receive hidden people's rows at all (see /api/staff-times/all).
+  const applyHide = !(ownerLevel && ownerSeeAll)
+  const sinceStr = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
+  const shownActive = viewName ? activeDisplayStaff : activeDisplayStaff.filter(n =>
+    !(applyHide && display.hidden.includes(n)) &&
+    !(applyHide && display.hideEmpty && !allRecords.some(r => r.staff_name === n && r.work_date >= sinceStr) && !upcomingRota.some(e => e.staff_name.toLowerCase() === n && !e.is_off)))
   const upcomingByDate = useMemo(() => {
     const map: Record<string, Record<string, RotaEntry>> = {}
     for (const e of upcomingRota) {
@@ -393,8 +425,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   // render twice -- once for the active roster, once for whichever staff
   // are deactivated (see the "Inactive Staff Times" section below).
   function historyTable(staffList: string[], withFuture = false) {
-    const historyGrouped = groupByDate(allRecords)
-    const futureDates = withFuture ? Array.from(new Set(upcomingRota.map(e => e.rota_date))).sort() : []
+    const historyGrouped = withFuture && viewMode === 'future' ? [] : groupByDate(allRecords)
+    const futureDates = withFuture && viewMode !== 'past' ? Array.from(new Set(upcomingRota.map(e => e.rota_date))).sort() : []
+    const absent = (n: string, d: string) => absences.some(a => a.staff_name.toLowerCase() === n.toLowerCase() && a.start_date <= d && a.end_date >= d)
     return (
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-[11px] table-fixed">
@@ -421,7 +454,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                   const e = upcomingRota.find(x => x.rota_date === d && x.staff_name.toLowerCase() === s.toLowerCase())
                   return (
                     <td key={s} className="px-0.5 py-0.5 text-center">
-                      {!e ? <span className="text-gray-300">—</span> : e.is_off ? <span className="text-gray-400">OFF</span> : (
+                      {absent(s, d) ? <span className="text-[10px] font-bold text-red-600">ABSENT</span> : !e ? <span className="text-gray-300">—</span> : e.is_off ? <span className="text-gray-400">OFF</span> : (
                         <div className="flex flex-col items-center leading-tight italic">
                           <span className="text-blue-700">{e.sched_in ?? '—'}</span>
                           <span className="text-blue-500">{e.sched_out ?? '—'}</span>
@@ -433,10 +466,10 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                 })}
               </tr>
             ))}
-            {futureDates.length > 0 && (
+            {futureDates.length > 0 && historyGrouped.length > 0 && (
               <tr className="bg-gray-100"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">Recorded times</td></tr>
             )}
-            {historyGrouped.length === 0 && (
+            {historyGrouped.length === 0 && !(withFuture && viewMode === 'future') && (
               <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
             )}
             {historyGrouped.map(([date, map], i) => {
@@ -554,11 +587,46 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
       {/* Analytics: a small icon (no text) so the times get the room. The Times Log is gone: nothing was kept in it. */}
       <div className="space-y-2">
         <div>
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center gap-1">
+            <div className="flex min-w-0 flex-1 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setViewMode(k)} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
             {extraToolbar}
+            <button onClick={() => { setAbsOpen(v => !v); setOptsOpen(false) }} title="Report an absence" aria-label="Report an absence"
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${absOpen ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>🙋</button>
+            {ownerLevel && <button onClick={() => { setOptsOpen(v => !v); setAbsOpen(false) }} title="Who the team sees on this page" aria-label="Who the team sees"
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${optsOpen ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>👁</button>}
             <button onClick={() => setShowAnalytics(v => !v)} title="Analytics" aria-label="Analytics"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${showAnalytics ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>📊</button>
           </div>
+          {absOpen && (
+            <div className="mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
+              <p className="text-xs font-bold text-gray-900">Report an absence</p>
+              <p className="text-[11px] text-gray-600">Staff report an absence at least a day before it. If something happens on the day itself, tell Joe straight away.</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[11px] font-semibold text-gray-700">From<input type="date" min={ownerLevel ? undefined : new Date(Date.now() + 86400000).toISOString().slice(0, 10)} value={absForm.from} onChange={e => setAbsForm(f => ({ ...f, from: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+                <label className="text-[11px] font-semibold text-gray-700">To (optional)<input type="date" min={absForm.from || undefined} value={absForm.to} onChange={e => setAbsForm(f => ({ ...f, to: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+              </div>
+              <input value={absForm.reason} onChange={e => setAbsForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
+              <button onClick={() => void reportAbsence()} disabled={!absForm.from} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Report it</button>
+              {absMsg && <p className="text-xs font-semibold text-gray-800">{absMsg}</p>}
+            </div>
+          )}
+          {optsOpen && ownerLevel && (
+            <div className="mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
+              <p className="text-xs font-bold text-gray-900">What the team sees on this page</p>
+              <p className="text-[11px] text-gray-600">Untick a person to hide their column from the team. Former staff are never shown to the team: only the owner and Joe see their times (under Inactive Team Times).</p>
+              {STAFF.map(n => {
+                const former = inactiveStaff.has(n)
+                return (
+                  <label key={n} className={`flex items-center gap-2 text-sm font-semibold capitalize ${former ? 'text-gray-400' : 'text-gray-900'}`}>
+                    <input type="checkbox" disabled={former} checked={!former && !display.hidden.includes(n)} onChange={e => void saveDisplay({ ...display, hidden: e.target.checked ? display.hidden.filter(x => x !== n) : [...display.hidden, n] })} />
+                    {n}{former ? ' (no longer works here: only you see this)' : ''}
+                  </label>)
+              })}
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" checked={display.hideEmpty} onChange={e => void saveDisplay({ ...display, hideEmpty: e.target.checked })} /> Hide people with no times in the last 60 days and none planned</label>
+              <label className="flex items-center gap-2 rounded-lg bg-blue-50 p-2 text-sm font-semibold text-blue-900"><input type="checkbox" checked={ownerSeeAll} onChange={e => { setOwnerSeeAll(e.target.checked); try { localStorage.setItem('timesOwnerSeeAll', e.target.checked ? '1' : '0') } catch { /* private window */ } }} /> Show me everyone, hidden or not (only I see this)</label>
+            </div>
+          )}
           {showAnalytics && (
             <div className="mt-2 space-y-3">
               {displayStaff.map(name => {
@@ -655,7 +723,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           Only the *interaction* differs by who's looking: admins can edit
           any cell (with delete), everyone else can only edit their own
           column, and the rest is read-only. */}
-      {historyTable(activeDisplayStaff, true)}
+      {historyTable(shownActive, true)}
 
       {/* Inactive Team Times -- deactivated staff (resigned/suspended/etc,
           see Users page) drop out of the grid above, but their clock
@@ -663,7 +731,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           same admin edit/delete rights, just its own collapsed section
           so the active roster's table isn't cluttered with someone who
           no longer works here. */}
-      {inactiveRosterStaff.length > 0 && (
+      {ownerLevel && inactiveRosterStaff.length > 0 && (
         <div>
           <button onClick={() => setShowInactiveTimes(v => !v)}
             className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">

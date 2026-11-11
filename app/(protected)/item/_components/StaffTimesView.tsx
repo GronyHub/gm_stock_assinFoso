@@ -60,11 +60,13 @@ function presentSeconds(detail: Detail, isToday: boolean): number | null {
 // everything about you (tasks, times, assessment, etc.) is meant to be
 // reachable from your own page. See ClockInOutPanel's own comment for why
 // this is the exact same shared component/rules rather than a second copy.
-export default function StaffTimesView({ staffName, username }: { staffName: string; username: string }) {
-  const [date, setDate] = useState(ghanaToday())
+export default function StaffTimesView({ staffName, username, onOpenDone }: { staffName: string; username: string; onOpenDone?: () => void }) {
+  // Today lives with the coming days (PersonUpcoming); this view is the recorded past, day by day, starting from yesterday.
+  const [date, setDate] = useState(shiftDate(ghanaToday(), -1))
   const [detail, setDetail] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
-  const isToday = date === ghanaToday()
+  const isToday = false
+  const newest = shiftDate(ghanaToday(), -1)
   const isOwnPage = staffName.toLowerCase() === username.toLowerCase()
 
   function loadDetail() {
@@ -111,8 +113,8 @@ export default function StaffTimesView({ staffName, username }: { staffName: str
       <div className="flex items-center justify-between px-1 py-1.5 border-b border-gray-100 shrink-0">
         <button onClick={() => setDate(d => shiftDate(d, -1))}
           className="text-gray-400 hover:text-gray-700 font-bold px-1.5 leading-none">‹</button>
-        <p className="text-[11px] font-semibold text-gray-700">{isToday ? 'Today' : fmtDate(date)}</p>
-        <button onClick={() => setDate(d => shiftDate(d, 1))} disabled={isToday}
+        <p className="text-[11px] font-semibold text-gray-700">{fmtDate(date)}</p>
+        <button onClick={() => setDate(d => shiftDate(d, 1))} disabled={date >= newest}
           className="text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:hover:text-gray-400 font-bold px-1.5 leading-none">›</button>
       </div>
       {loading ? (
@@ -134,32 +136,9 @@ export default function StaffTimesView({ staffName, username }: { staffName: str
               <span className="block font-semibold text-gray-700">Worked {formatDuration(detail.total_seconds)}</span>
             </span>
           </div>
-          <div className="overflow-y-auto overflow-x-auto">
-            {detail.activity.length === 0 ? (
-              <p className="text-[10px] text-gray-400 text-center py-6">No recorded activity {isToday ? 'today' : 'on this day'}.</p>
-            ) : (
-              <table className="w-full border-collapse">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="text-[7px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
-                    <th className="text-left pl-1 pr-1 py-1 whitespace-nowrap">Time</th>
-                    <th className="text-left px-1 py-1">Activity</th>
-                    <th className="text-left px-1 py-1 whitespace-nowrap">Dur</th>
-                    <th className="text-left px-1 pr-1 py-1 whitespace-nowrap">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.activity.map(a => (
-                    <tr key={a.id} className="hover:bg-gray-50">
-                      <td className="pl-1 pr-1 py-0.5 text-[8px] text-gray-400 whitespace-nowrap">{fmtClockTime(a.created_at)}</td>
-                      <td className="px-1 py-0.5 text-[8px] text-gray-800 whitespace-nowrap">{a.body}</td>
-                      <td className="px-1 py-0.5 text-[8px] text-gray-400 whitespace-nowrap">{a.duration_seconds > 0 ? formatDuration(a.duration_seconds) : '—'}</td>
-                      <td className="px-1 pr-1 py-0.5 text-[8px] text-gray-500 font-semibold whitespace-nowrap">{formatDuration(a.running_total_seconds)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <p className="px-1 py-3 text-[11px] text-gray-500">
+            What was done that day is in the <button type="button" onClick={onOpenDone} className="font-bold text-blue-700 underline">Done</button> tab.
+          </p>
         </>
       )}
     </div>

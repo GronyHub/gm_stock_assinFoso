@@ -2,6 +2,9 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { NextResponse, NextRequest } from 'next/server'
 import { once } from '@/lib/once'
+import { isOwnerLevel } from '@/lib/roles'
+import { FORMER_STAFF } from '@/lib/staffList'
+import { timesDisplay } from '@/lib/shopSettings'
 
 const ensureSchema = once(async () => {
   await sql`ALTER TABLE staff_times ADD COLUMN IF NOT EXISTS entered_by TEXT`.catch(() => {})
@@ -39,6 +42,11 @@ export async function GET(req: NextRequest) {
     `
     if (rows.length === limit) {
       console.warn(`staff-times/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
+    }
+    // Former staff and the people the owner has hidden are for the owner and Joe only: the others never receive those rows.
+    if (!isOwnerLevel(session.user as never)) {
+      const hide = new Set([...FORMER_STAFF, ...(await timesDisplay()).hidden])
+      return NextResponse.json(rows.filter((r: Record<string, any>) => !hide.has(String(r.staff_name).toLowerCase())))
     }
     return NextResponse.json(rows)
   } catch (e: any) {

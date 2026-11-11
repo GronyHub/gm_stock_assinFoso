@@ -76,6 +76,7 @@ async function ensureCompanyLawsImpl() {
   await mapRemainingTilesOnce()
   await rotaAndTodoLawsOnce()
   await pendingJobsLawsOnce()
+  await absenceLawOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -322,6 +323,18 @@ async function pendingJobsLawsOnce() {
               ${JSON.stringify([{ text: 'The pending jobs are not gone through on the day', points: 1, by: 'manager' }])}, 'Go through the pending jobs', 'all', now() + interval '3 days') RETURNING id`
     await syncLawTile(r.id as number).catch(() => {})
   } catch (e) { console.error('pending jobs laws failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Planned absences are reported in the app at least a day before (the rota and the Opener and Closer depend on it). Created once; the standing law
+// "Inform ... if you will not be at work or will not be at work on time" covers what happens on the day itself.
+async function absenceLawOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('absence-law-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, assignment, live_at)
+      VALUES ('Staff management', ${'Report a planned absence in the app (Times, the report absence icon) at least one day before it, with the reason. If something happens on the day itself, tell Joe straight away.'}, false, 'law', 'Staff management', 'Attendance', 'standing', 'live', 'absence-v1', 'tick', 1,
+              ${JSON.stringify([{ text: 'A planned absence is not reported in the app at least a day before', points: 1, by: 'manager' }])}, 'Report a planned absence a day before', 'all', now() + interval '3 days')`
+  } catch (e) { console.error('absence law failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
