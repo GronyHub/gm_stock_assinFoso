@@ -24,7 +24,7 @@ type Adhoc = { id: number; category: string; note: string; photo_url: string | n
 
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 
-export default function DailyChecklistClient({ canManage }: { canManage: boolean }) {
+export default function DailyChecklistClient({ canManage, embedded = false }: { canManage: boolean; embedded?: boolean }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -106,16 +106,14 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
   const total = tiles.length, done = tiles.filter(t => latest(t)?.value === 'Done').length
 
   return (
-    <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
+    <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'}>
       <ClosingReportCard />
+      {!embedded && (
       <div className="mb-1 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
-        <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Daily Checklist</h1>
-        <a href="/standards/plan" className="text-xs font-semibold text-blue-700 underline">Plan to 31 Dec</a>
-        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
-        {canManage && <a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a>}
-        {canManage && <a href="/standards/manage" className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm">Manage tiles</a>}
-      </div>
+        <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Today</h1>
+      </div>)}
+      {embedded && canManage && <div className="mb-1 flex justify-end"><a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a></div>}
       <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#14213D] px-3 py-2 text-white">
         <button type="button" disabled={!day || day <= CHECKLIST_START} onClick={() => day && void load(addDays(day, -1))} className="rounded-lg bg-white/15 px-3 py-1 text-lg font-bold disabled:opacity-30">‹</button>
         <div className="flex-1 text-center">
@@ -172,7 +170,7 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
         ))}
       </div>
       <p className="mb-2 text-[11px] text-gray-500">{isToday ? 'Tiles are small so the whole day fits. Tap one to read what it means first, then mark it done there. Switch to Names to read every task as a list. Red = late, amber = due now. Use the Done buttons in the NOW box to tick quickly. Each task you finish adds its minutes to your work time.' : 'This is a past day. You can look but not change it.'}</p>
-      {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canManage ? ' Use Manage tiles to add some.' : ''}</p>}
+      {shown.length === 0 && <p className="text-sm text-gray-400">Nothing here yet.{canManage ? ' Tasks come from the laws: add a recurring law with a time.' : ''}</p>}
       {names ? (
         <div className="space-y-1">
           {shown.map(t => {
@@ -302,7 +300,7 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
           <button type="button" disabled={busy} onClick={() => void patch({ value: ev!.value === 'Not done' ? 'Done' : 'Not done' }, 'Changed')} className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {ev!.value === 'Not done' ? 'Done' : 'Not done'}</button>
           <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>
         </>)}
-        {canEdit && <a href={`/standards/manage?tile=${t.id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this tile in Tile Manager</a>}
+        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>
@@ -382,7 +380,7 @@ function PropsSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTil
             className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{unset > 0 ? `${unset} still to set` : 'Finished'}</button>
         )}
         {ev && isToday && <button type="button" disabled={busy} onClick={() => { if (confirm('Remove this record and put the tile back to waiting?')) void run(() => fetch(`/api/daily-checks/events/${ev.id}`, { method: 'DELETE' }), 'Reverted') }} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}
-        {canEdit && <a href={`/standards/manage?tile=${t.id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this tile in Tile Manager</a>}
+        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>

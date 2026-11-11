@@ -1626,11 +1626,16 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'checklist' | 'laws' | 'home' | 'manage' | 'people' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'laws' | 'home' | 'manage' | 'people' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
-  const shopRoute = (path: string): { tab: ShopTab; src: string } | null => path.startsWith('/laws') ? { tab: 'laws', src: path } : (path === '/standards' || path.startsWith('/standards?')) ? { tab: 'checklist', src: path } : path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
+  const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
+    if (path.startsWith('/laws')) return { tab: 'laws', src: path }
+    // The Daily Checklist is the "Today" view of the Company Laws now; old links keep their ?tile= and ?closing=
+    if (path === '/standards' || path.startsWith('/standards?')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); q.set('view', 'today'); return { tab: 'laws', src: '/laws?' + q.toString() } }
+    return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
+  }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
-  const openShop = (tab: ShopTab = 'checklist') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
+  const openShop = (tab: ShopTab = 'laws') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
   const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
@@ -1697,7 +1702,7 @@ function ItemHubPageInner() {
   // else.
   // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
   const voiceDests: Dest[] = [
-    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('checklist') },
+    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('laws') },
     { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
     { label: 'Daily Checklist', names: ['daily checklist', 'checklist'], run: () => openEmbed('/standards') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
@@ -6805,7 +6810,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
             <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
-            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('checklist')} />
+            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('laws')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
@@ -7085,14 +7090,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <div ref={barRef}><PresentStaffBar onOpenShop={() => openShop('checklist')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+              <div ref={barRef}><PresentStaffBar onOpenShop={() => openShop('laws')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
-              <PresentStaffBar onOpenShop={() => openShop('checklist')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
+              <PresentStaffBar onOpenShop={() => openShop('laws')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
@@ -7107,15 +7112,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['checklist', '✅ Daily Checklist'], ['laws', '📜 Company Laws'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['people', '👥 People'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['people', '👥 People'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
                   <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  {shop.tab === 'checklist' && <iframe key={'c' + (shop.src ?? '')} src={shop.src ?? '/standards'} title="Daily Checklist" className="h-full w-full border-0" />}
-                  {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
+                  {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws?view=today'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}

@@ -42,7 +42,7 @@ export default function LawReminder() {
           <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5" />
           <span className="text-sm font-bold text-gray-900">I have read all of these laws and I agree to follow every one of them.</span>
         </label>
-        <p className="text-[11px] text-gray-600">{data.stage === 'login' ? <>Then open your <a href="/standards" className="font-bold text-blue-700 underline">Daily Checklist</a> to see what to do and when. Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</> : <>Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</>}</p>
+        <p className="text-[11px] text-gray-600">{data.stage === 'login' ? <>Then open your <a href="/laws?view=today" className="font-bold text-blue-700 underline">Today list</a> to see what to do and when. Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</> : <>Read the full laws, with the video, in <a href="/laws" className="font-bold text-blue-700 underline">Company Laws</a>.</>}</p>
         <button type="button" disabled={!agree || busy} onClick={() => void confirm()} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">I confirm and agree to follow these</button>
         <SnoozeChips storageKey={SNOOZE} title="Remind me in" onDone={() => setData(null)} />
       </div>

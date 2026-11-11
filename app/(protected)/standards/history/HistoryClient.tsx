@@ -45,7 +45,6 @@ export default function HistoryClient() {
       <div className="mb-2 flex items-center gap-2">
         <a href="/standards" className="text-sm text-gray-500">&larr; Checklist</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Checklist History</h1>
-        <a href="/standards/manage" className="text-xs font-semibold text-blue-700 underline">Manage tiles</a>
       </div>
       <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <label className="text-[10px] font-bold uppercase text-gray-500">From<input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} className={sel + ' block w-full'} /></label>

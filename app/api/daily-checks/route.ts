@@ -34,20 +34,9 @@ export async function GET(req: NextRequest) {
   } catch (e) { return handleError('daily-checks GET', e) }
 }
 
-// POST (owner and manager) -- add a tile. Body fields: see parseTileBody in lib/dailyChecks.ts.
-export async function POST(req: NextRequest) {
-  const { session, error } = await requireAuth()
+// POST -- tasks are no longer made here. Every task rests on a law (the owner's rule): a task is added by giving a recurring law a time, in the Company Laws.
+export async function POST() {
+  const { error } = await requireAuth()
   if (error) return error
-  if (!isOwnerLevel(session.user as any)) return badRequest('Only the owner and manager can change the checklist.')
-  try {
-    await ensureDailyChecks()
-    const t = parseTileBody(await req.json().catch(() => ({})))
-    if (!t.title || !t.section) return badRequest('Need a group and a title.')
-    const [row] = await sql`INSERT INTO daily_check_tiles
-      (section, time, title, icon, how, kind, prop_filter, frequency, weekday, days, position, created_by, minutes, ask, ok_label, issue_label, log_category, needs_photo)
-      VALUES (${t.section}, ${t.time}, ${t.title}, ${t.icon}, ${t.how}, ${t.kind}, ${t.prop_filter}, ${t.frequency}, ${t.weekday}, ${t.days},
-              (SELECT COALESCE(MAX(position), 0) + 1 FROM daily_check_tiles), ${getActorName(session)}, ${t.minutes}, ${t.ask}, ${t.ok_label}, ${t.issue_label}, ${t.log_category}, ${t.needs_photo})
-      RETURNING id`
-    return success({ id: row.id }, 201)
-  } catch (e) { return handleError('daily-checks POST', e) }
+  return badRequest('Tasks come from the laws. Add or edit a recurring law in the Company Laws and give it a time.')
 }

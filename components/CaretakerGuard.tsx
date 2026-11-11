@@ -7,7 +7,7 @@ import { useSession } from 'next-auth/react'
 // (where C&H lives) and her own profile. Any other page she opens by typing
 // its address sends her back. Server-side, proxy.ts also refuses her the shop
 // data APIs, so this is a convenience on top of a real block.
-const ALLOWED = ['/item', '/profile', '/standards']
+const ALLOWED = ['/item', '/profile', '/standards', '/laws']
 
 export default function CaretakerGuard() {
   const { data: session } = useSession()

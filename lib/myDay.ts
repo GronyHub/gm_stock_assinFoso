@@ -31,7 +31,7 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     // closing report
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
-    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/standards?closing=1' })
+    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/laws?view=today&closing=1' })
     // checklist tasks the shop owes now: tiles past their due time and not yet done today (the same list the day-end point is counted from)
     await safe(async () => {
       const now = new Date()
@@ -48,7 +48,7 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
       if (!late.length) return
       const worst = nowMin - due.get(late[0].id)!
       const names = late.slice(0, 3).map(t => t.title.slice(0, 40)).join('; ') + (late.length > 3 ? ` and ${late.length - 3} more` : '')
-      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: `/standards?tile=${late[0].id}` })
+      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: `/laws?view=today&tile=${late[0].id}` })
     }, undefined)
   }
 

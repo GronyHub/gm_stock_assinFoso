@@ -12,6 +12,7 @@ import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { parseViolations, type Violation } from '@/lib/lawViolations'
 import { isManagerName } from '@/lib/signers'
+import DailyChecklistClient from '../standards/DailyChecklistClient'
 import { TOPICS } from '../item/_components/trainingTopics'
 
 type Law = {
@@ -55,6 +56,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => { void load() }, [load])
   const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; manager?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
+  // Three lenses on the same laws: by topic, Today (the recurring laws by day and time, with their ticks) and by type and when.
+  const [view, setView] = useState<'topic' | 'today' | 'type'>('topic')
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
@@ -72,7 +75,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     const t = q.get('tile'), c = q.get('cat')
-    if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
+    if (q.get('view') === 'today') setView('today'); else if (q.get('view') === 'type') setView('type')
+    if (t && q.get('view') !== 'today') setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
 
@@ -85,7 +89,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (!id) return
     const l = laws.find(x => x.id === id); if (!l) return
     const a = l.category ? areaForCategory(l.category) : null
-    setCat(a ? a.key : (l.category || UNCATEGORISED))
+    setView('topic'); setCat(a ? a.key : (l.category || UNCATEGORISED))
     if (q.get('quiz') && (l.quiz_n ?? 0) > 0) setQuizFor(l)
   }, [laws])
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
@@ -273,20 +277,48 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Company Laws</h1>
         {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
-        <a href="/standards" className="text-xs font-semibold text-blue-700 underline">Daily Checklist</a>
       </div>
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />
+      <div className="mb-2 grid grid-cols-3 gap-1">
+        {([['today', '✅ Today'], ['topic', '📚 By topic'], ['type', '🕐 By type and when']] as const).map(([k, label]) => (
+          <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
+        ))}
+      </div>
+      {view === 'today' && <DailyChecklistClient canManage={canManage} embedded />}
+      {view === 'type' && laws && (() => {
+        const all = laws.filter(l => l.status !== 'draft' || canManage)
+        const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')
+        const groups: [string, Law[]][] = [
+          ['Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
+          ['Weekly: by day, then time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly').sort((a, b) => DAY_CODES.indexOf(dayKey(a) as never) - DAY_CODES.indexOf(dayKey(b) as never) || (a.law_time ?? '99').localeCompare(b.law_time ?? '99'))],
+          ['Monthly and yearly', all.filter(l => l.law_type === 'recurring' && l.frequency !== 'daily' && l.frequency !== 'weekly').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
+          ['Standing rules: always', all.filter(l => l.law_type === 'standing')],
+          ['App rules: the app checks these itself', all.filter(l => l.law_type === 'app')],
+        ]
+        return (
+          <div className="space-y-4">
+            <p className="text-[11px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Today.</p>
+            {groups.filter(([, list]) => list.length).map(([title, list]) => (
+              <div key={title}>
+                <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
+                <div className="space-y-2 overflow-x-auto">
+                  <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+                  {list.map(l => <LawCard key={l.id} l={l} />)}
+                </div>
+              </div>))}
+          </div>)
+      })()}
+      {view === 'topic' && <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!laws && !error && <p className="text-sm text-gray-400">Loading…</p>}
 
-      {laws && searching && (
+      {laws && view === 'topic' && searching && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-500">{hits.length} law{hits.length === 1 ? '' : 's'} found</p>
           {hits.map(l => (<div key={l.id}><button type="button" onClick={() => { setQ(''); setCat((tiles.find(a => lawInArea(a, l)) ?? { key: UNCATEGORISED }).key) }} className="mb-0.5 text-[11px] font-bold text-blue-700 underline">{l.category ?? UNCATEGORISED}{l.subcategory ? ` › ${l.subcategory}` : ''}</button><LawCard l={l} /></div>))}
         </div>
       )}
 
-      {laws && !searching && !cat && (
+      {laws && view === 'topic' && !searching && !cat && (
         <div className="space-y-4">
           {sig?.signer && (sig?.unsigned ?? 0) > 0 && <div className="rounded-xl border border-amber-300 bg-amber-50 p-2 text-sm font-semibold text-amber-900">✍ You have {sig?.unsigned} law{sig?.unsigned === 1 ? '' : 's'} to sign. Open a tile marked to sign and sign each law.</div>}
           {(['Grony Cash', 'Grony Manage'] as const).map(group => (
@@ -317,7 +349,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         </div>
       )}
 
-      {laws && !searching && cat && area && (
+      {laws && view === 'topic' && !searching && cat && area && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All laws</button>
