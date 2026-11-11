@@ -77,6 +77,7 @@ async function ensureCompanyLawsImpl() {
   await rotaAndTodoLawsOnce()
   await pendingJobsLawsOnce()
   await absenceLawOnce()
+  await dedupeLawsOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -335,6 +336,28 @@ async function absenceLawOnce() {
       VALUES ('Staff management', ${'Report a planned absence in the app (Times, the report absence icon) at least one day before it, with the reason. If something happens on the day itself, tell Joe straight away.'}, false, 'law', 'Staff management', 'Attendance', 'standing', 'live', 'absence-v1', 'tick', 1,
               ${JSON.stringify([{ text: 'A planned absence is not reported in the app at least a day before', points: 1, by: 'manager' }])}, 'Report a planned absence a day before', 'all', now() + interval '3 days')`
   } catch (e) { console.error('absence law failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The owner asked (2026-11-13) for the duplicate laws and tasks found in the audit to be fixed. A duplicate law is removed with its signatures; its task is switched off (kept for history).
+async function dedupeLawsOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('dedupe-laws-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const drop = async (title: string) => {
+      const rows = await sql`SELECT id FROM page_laws WHERE title = ${title}` as unknown as { id: number }[]
+      for (const r of rows) {
+        await sql`UPDATE daily_check_tiles SET active = FALSE, law_id = NULL WHERE law_id = ${r.id}`.catch(() => {})
+        await sql`DELETE FROM law_signatures WHERE law_id = ${r.id}`.catch(() => {})
+        await sql`DELETE FROM page_laws WHERE id = ${r.id}`
+      }
+    }
+    await drop("Every printer's letter sticker matches its name on the screen")   // same rule as "Every printer stays on power and USB, and its letter matches its name on screen"
+    await drop('Team behaviour')                                                   // the end-of-day check is the one that counts
+    await drop('Sales Log checked')                                                // merged into "Check the Sales Log at closing"
+    await sql`UPDATE daily_check_tiles SET title = title || ' Every row shows its customer; missing ones are added.' WHERE title LIKE 'Check the Sales Log at closing:%' AND title NOT LIKE '%shows its customer%'`.catch(() => {})
+    // "Mark printers" is one item of the weekly property marking, not a separate timed task.
+    await sql`UPDATE daily_check_tiles SET time = NULL WHERE title = 'Mark printers' AND law_id IN (SELECT id FROM page_laws WHERE title = 'Mark the shop properties every week')`.catch(() => {})
+  } catch (e) { console.error('dedupe laws failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
