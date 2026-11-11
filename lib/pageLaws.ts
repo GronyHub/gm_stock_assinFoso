@@ -72,6 +72,7 @@ async function ensureCompanyLawsImpl() {
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
   await assignmentFromAudienceOnce()
   await mapOpeningClosingOnce()
+  await mapRemainingTilesOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -241,6 +242,47 @@ async function mapOpeningClosingOnce() {
     await sql`UPDATE page_laws SET text = text || ' Laptop wallpapers are solid black.', live_at = now()
       WHERE id = 145 AND text NOT ILIKE '%wallpapers are solid black%'`
   } catch (e) { console.error('opening/closing mapping failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The rest of the old Standards-list tiles (Daytime, Stations, Grony 2, Weekly, Equipment, Monthly) were checked against the laws on 2026-11-12:
+// none had ever been ticked, and each one either repeated a law that already exists (and often already has its own tile) or was a one-time
+// setup step. They are switched off (their history is kept). Three new laws take what had no home: station supplies, the monthly inventory
+// (its 57 lines stay as its steps) and the weekly property marking. The approved-apps lists move into law 143. The owner approved this in
+// conversation. Done once.
+async function mapRemainingTilesOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('map-remaining-tiles-2026-11-12') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { syncLawTile } = await import('./lawTiles')
+    const mk = async (o: { title: string; text: string; sub: string; cat: string; type: 'standing' | 'recurring'; freq?: string; time?: string; mins?: number; assignment: string; violation: string }) => {
+      const [r] = await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, status, seed, proof, points, violations, title, assignment, live_at)
+        VALUES (${o.cat}, ${o.text}, false, 'law', ${o.cat}, ${o.sub}, ${o.type}, ${o.freq ?? null}, ${o.time ?? null}, ${o.mins ?? null}, 'live', 'map-remaining-v1', 'tick', 1,
+                ${JSON.stringify([{ text: o.violation, points: 1, by: 'manager' }])}, ${o.title}, ${o.assignment}, now() + interval '3 days') RETURNING id`
+      if (o.type === 'recurring') await syncLawTile(r.id as number).catch(() => {})
+      return r.id as number
+    }
+    await mk({ cat: 'Cleanliness & safety', sub: 'Work stations', type: 'standing', assignment: 'all', title: 'Keep each work station stocked and tidy',
+      text: 'Keep each work station stocked and tidy. A permanent marker is present and chargers are wrapped with rubber bands. Staplers, cutters, tapes, pens and scissors go back in their place after use. Nothing rests on printer lids or tops. Everything needed for printing is within reach, and anything missing is reported to Joe. The showcase list is complete. A faulty machine or item goes on the lower shelf of the Boys\' showcase with a note (item, fault, date, name). The shop\'s WhatsApp QR sticker is on the back of the monitor, flat, clean and facing customers, and a customer who asks where to send work is shown it. Any setting or location you might forget is labelled, and any new procedure that works is written down.',
+      violation: 'A work station is left without its supplies in place, or untidy' })
+    const inv = await mk({ cat: 'Stock & records', sub: 'Monthly inventory', type: 'recurring', freq: 'monthly', time: '16:00', mins: 60, assignment: 'managers', title: 'Monthly shop inventory',
+      text: 'Once a month, check the shop inventory: every item on the inventory list is present, in its place and in the quantity written. Missing or damaged items are reported to the owner.',
+      violation: 'The monthly inventory is not completed on its day' })
+    const prop = await mk({ cat: 'Equipment, power & repairs', sub: 'Properties', type: 'recurring', freq: 'weekly', time: '15:30', mins: 15, assignment: 'all', title: 'Mark the shop properties every week',
+      text: 'Once a week, mark every property at the shop (printers, computers and screens, cameras and lights, sound equipment) as present and working, in the app.',
+      violation: 'The weekly property marking is not done on its day' })
+    // the old tiles that are steps of the new laws
+    await sql`UPDATE daily_check_tiles SET law_id = ${inv} WHERE law_id IS NULL AND active AND section = 'Monthly' AND id BETWEEN 139 AND 195`
+    await sql`UPDATE daily_check_tiles SET law_id = ${prop} WHERE active AND id IN (1, 2, 3, 4) AND kind = 'properties'`
+    // the approved-apps lists move into law 143, so the list is not lost
+    const apps = await sql`SELECT title FROM daily_check_tiles WHERE id BETWEEN 107 AND 118 AND law_id IS NULL ORDER BY id` as unknown as { title: string }[]
+    if (apps.length) await sql`UPDATE page_laws SET dos = COALESCE(dos, '') || ${'\n\nApproved apps:\n' + apps.map(a => a.title).join('\n')} WHERE id = 143 AND COALESCE(dos, '') NOT LIKE '%Approved apps:%'`
+    const ids: number[] = [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 34, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 56]
+    for (let i = 57; i <= 64; i++) ids.push(i)
+    for (let i = 84; i <= 127; i++) ids.push(i)
+    for (let i = 128; i <= 138; i++) ids.push(i)
+    for (let i = 196; i <= 254; i++) ids.push(i)
+    await sql`UPDATE daily_check_tiles SET active = false WHERE law_id IS NULL AND active AND kind = 'tap' AND id = ANY(${ids})`
+  } catch (e) { console.error('remaining tiles mapping failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
