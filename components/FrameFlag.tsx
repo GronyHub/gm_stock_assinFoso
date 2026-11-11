@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useState } from 'react'
 // The hub (/item) keeps its left sidebar and top staff bar on screen at all times, so every other page is shown INSIDE its right pane (in a frame).
 // - Inside the frame: mark the page (the navigation bar and prompts are hidden: the hub already has them) and turn "back to the app" links into a close.
 // - Opened on its own (a push notification, a typed address): send it into the hub so the sidebar and staff bar are there.
-export const EMBED_PATHS = ['/laws', '/standards', '/how-to', '/owner-guide', '/handbook-announcements', '/notifications', '/penalties', '/cctv-review', '/barcode-labels', '/my-day', '/integrity']
+export const EMBED_PATHS = ['/laws', '/standards', '/todo', '/how-to', '/owner-guide', '/handbook-announcements', '/notifications', '/penalties', '/cctv-review', '/barcode-labels', '/my-day', '/integrity']
 const embeddable = (p: string) => EMBED_PATHS.some(e => p === e || p.startsWith(e + '/'))
 const inFrame = () => { try { return window.self !== window.top } catch { return true } }
 

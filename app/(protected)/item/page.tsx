@@ -1634,17 +1634,18 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
-    if (path.startsWith('/laws')) return { tab: 'laws', src: path }
-    // The Daily Checklist is the "Today" view of the Company Laws now; old links keep their ?tile= and ?closing=
-    if (path === '/standards' || path.startsWith('/standards?')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); q.set('view', 'today'); return { tab: 'laws', src: '/laws?' + q.toString() } }
+    // The Daily Checklist is the Shop's "To do" tab (/todo); old links keep their ?tile= and ?closing=
+    if (path === '/todo' || path.startsWith('/todo?')) return { tab: 'todo', src: path }
+    if (path === '/standards' || path.startsWith('/standards?')) { const q = path.split('?')[1]; return { tab: 'todo', src: '/todo' + (q ? '?' + q : '') } }
+    if (path.startsWith('/laws')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); if (q.get('view') === 'today') { q.delete('view'); return { tab: 'todo', src: '/todo' + (q.toString() ? '?' + q.toString() : '') } } return { tab: 'laws', src: path } }
     if (path === '/penalties') return { tab: 'violations', src: path }
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
-  const openShop = (tab: ShopTab = 'laws') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
+  const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
   const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
@@ -1711,7 +1712,7 @@ function ItemHubPageInner() {
   // else.
   // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
   const voiceDests: Dest[] = [
-    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('laws') },
+    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('todo') },
     { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
     { label: 'Daily Checklist', names: ['daily checklist', 'checklist'], run: () => openEmbed('/standards') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
@@ -6819,7 +6820,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             )}
             <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
-            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('laws')} />
+            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('todo')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
@@ -7097,14 +7098,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <div ref={barRef}><PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('laws')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+              <div ref={barRef}><PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('todo')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
-              <PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('laws')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
+              <PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('todo')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
@@ -7119,14 +7120,15 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['todo', '✅ To do'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
                   <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws?view=today'} title="Company Laws" className="h-full w-full border-0" />}
+                  {shop.tab === 'todo' && <iframe key={'t' + (shop.src ?? '')} src={shop.src ?? '/todo'} title="To do" className="h-full w-full border-0" />}
+                  {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} /></div>}
                   {shop.tab === 'violations' && <iframe key="v" src="/penalties" title="Violations" className="h-full w-full border-0" />}

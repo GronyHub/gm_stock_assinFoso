@@ -205,15 +205,16 @@ function groupByDate(rows: RecentRow[]) {
   return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]))
 }
 
-export function TimesTab({ username, role, openAddSignal, viewingStaff }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string }) {
-  const isAdmin = role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username)
+// readOnly: the Shop's team view. Staff clock in and out from the Times tab on their own profile, so here nothing can be clocked, added or edited.
+export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly = false }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string; readOnly?: boolean }) {
+  const isAdmin = !readOnly && (role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username))
   // A per-person page (viewingStaff set) narrows every staff-keyed list/table
   // down to just this one name, and hides the "My Time Today" clock panel
   // unless you're looking at your own page -- clocking someone else in from
   // their page would be wrong, and the panel is otherwise meaningless there.
   const viewName = viewingStaff?.toLowerCase()
   const displayStaff = viewName ? [viewName] : STAFF
-  const isOwnPage = !viewingStaff || viewName === username.toLowerCase()
+  const isOwnPage = !readOnly && (!viewingStaff || viewName === username.toLowerCase())
 
   // Deactivated (resigned/suspended/etc, see Users page) staff drop out of
   // the shared history grid below -- their times aren't deleted, just moved
@@ -484,7 +485,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff }: { user
                               className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
                               {cellContent}
                             </button>
-                          ) : !isAdmin && isMine ? (
+                          ) : !readOnly && !isAdmin && isMine ? (
                             <button onClick={() => openEdit(date, map)}
                               className="w-full rounded-lg hover:bg-blue-50 py-0.5 transition">
                               {cellContent}

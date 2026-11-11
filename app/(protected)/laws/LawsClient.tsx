@@ -12,7 +12,6 @@ import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { parseViolations, type Violation } from '@/lib/lawViolations'
 import { isManagerName } from '@/lib/signers'
-import DailyChecklistClient from '../standards/DailyChecklistClient'
 import { TOPICS } from '../item/_components/trainingTopics'
 
 type Law = {
@@ -56,8 +55,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => { void load() }, [load])
   const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; manager?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
-  // Three lenses on the same laws: by topic, Today (the recurring laws by day and time, with their ticks) and by type and when.
-  const [view, setView] = useState<'topic' | 'today' | 'type'>('topic')
+  // Two lenses on the same laws: by topic, and by type and when. (Today, the laws due today, is the Shop's To do tab.)
+  const [view, setView] = useState<'topic' | 'type'>('topic')
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
@@ -75,8 +74,9 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     const t = q.get('tile'), c = q.get('cat')
-    if (q.get('view') === 'today') setView('today'); else if (q.get('view') === 'type') setView('type')
-    if (t && q.get('view') !== 'today') setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
+    if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
+    if (q.get('view') === 'type') setView('type')
+    if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
 
@@ -278,12 +278,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Company Laws</h1>
         {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
       </div>
-      <div className="mb-2 grid grid-cols-3 gap-1">
-        {([['today', '✅ Today'], ['topic', '📚 By topic'], ['type', '🕐 By type and when']] as const).map(([k, label]) => (
+      <div className="mb-2 grid grid-cols-2 gap-1">
+        {([['topic', '📚 By topic'], ['type', '🕐 By type and when']] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
         ))}
       </div>
-      {view === 'today' && <DailyChecklistClient canManage={canManage} embedded />}
       {view === 'type' && laws && (() => {
         const all = laws.filter(l => l.status !== 'draft' || canManage)
         const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')

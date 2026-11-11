@@ -40,7 +40,7 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
     // closing report
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
-    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/laws?view=today&closing=1' })
+    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/todo?closing=1' })
     // checklist tasks the shop owes now: tiles past their due time and not yet done today (the same list the day-end point is counted from)
     await safe(async () => {
       const now = new Date()
@@ -59,9 +59,9 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
       // One row per task, so each can be opened and done from here. Beyond eight, one row says how many more.
       for (const t of late.slice(0, 8)) {
         const mins = nowMin - due.get(t.id)!
-        add({ key: `task-${t.id}`, icon: '✅', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/laws?view=today&tile=${t.id}` })
+        add({ key: `task-${t.id}`, icon: '✅', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${t.id}` })
       }
-      if (late.length > 8) add({ key: 'tasks-more', icon: '✅', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/laws?view=today' })
+      if (late.length > 8) add({ key: 'tasks-more', icon: '✅', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/todo' })
     }, undefined)
   }
 
