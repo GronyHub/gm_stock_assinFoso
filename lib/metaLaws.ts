@@ -1,6 +1,6 @@
 import sql from '@/lib/db'
 import { addPoint } from '@/lib/penalties'
-import { pushToUsers, notifyOwners } from '@/lib/checklistAlerts'
+import { notifyOwners, reminder } from '@/lib/checklistAlerts'
 import { SIGNERS, OWNER_SIGNERS } from '@/lib/signers'
 import { LAW_AREAS, lawInArea } from '@/lib/lawAreas'
 import { AREA_VIDEO } from '@/lib/lawVideo'
@@ -116,7 +116,7 @@ export async function metaTick(day: string) {
       if (signed.has(l.id)) continue
       const h = hours(l.live_at)
       if (h >= 24) await award(0, cSign, `sign:${l.id}`, `${l.code ?? 'A law'} was not signed within 24 hours of going live`)
-      else if (h >= 16 && await claim(`signrem:${l.id}:${s}`)) void pushToUsers([s], 'Sign the new law', `${l.code ?? ''} ${l.title ?? ''} must be signed within 24 hours. Open Company Laws.`)
+      else if (h >= 16 && await claim(`signrem:${l.id}:${s}`)) void reminder([s], 'Sign the new law', `${l.code ?? ''} ${l.title ?? ''} must be signed within 24 hours. Open Company Laws.`)
     }
     // 2 + 3. quiz and video per tile, 7 days after the tile's first law went live
     for (const a of LAW_AREAS) {
@@ -126,11 +126,11 @@ export async function metaTick(day: string) {
       if (d < REMIND_FRACTION - 1) continue
       if (a.training) {
         const [p] = await sql`SELECT 1 FROM law_quiz_results WHERE staff = ${s} AND category = ${a.training} AND passed LIMIT 1`
-        if (!p) { if (d >= 7) await award(1, cQuiz, `quiz:${a.key}`, `The ${a.label} quiz was not passed within 7 days`); else if (await claim(`quizrem:${a.key}:${s}`)) void pushToUsers([s], 'Quiz due tomorrow', `Pass the ${a.label} quiz in Company Laws.`) }
+        if (!p) { if (d >= 7) await award(1, cQuiz, `quiz:${a.key}`, `The ${a.label} quiz was not passed within 7 days`); else if (await claim(`quizrem:${a.key}:${s}`)) void reminder([s], 'Quiz due tomorrow', `Pass the ${a.label} quiz in Company Laws.`) }
       }
       if (AREA_VIDEO[a.key] || a.video || a.training) {
         const [w] = await sql`SELECT 1 FROM law_video_views WHERE staff = ${s} AND area = ${a.key} LIMIT 1`
-        if (!w) { if (d >= 7) await award(2, cVid, `video:${a.key}`, `The ${a.label} video was not watched to the end within 7 days`); else if (await claim(`videorem:${a.key}:${s}`)) void pushToUsers([s], 'Video due tomorrow', `Watch the ${a.label} video to the end in Company Laws.`) }
+        if (!w) { if (d >= 7) await award(2, cVid, `video:${a.key}`, `The ${a.label} video was not watched to the end within 7 days`); else if (await claim(`videorem:${a.key}:${s}`)) void reminder([s], 'Video due tomorrow', `Watch the ${a.label} video to the end in Company Laws.`) }
       }
     }
     // 4. login reminders on a day worked

@@ -47,6 +47,10 @@ const names = (titles: string[]) => {
   return short.join(' · ') + (titles.length > 3 ? ` · +${titles.length - 3} more` : '')
 }
 
+// A reminder is shown inside the app (the Now box, the Waiting for me list and its bar), never pushed to the phone: a push is only for something a person did.
+// The system's own timed nudges call this and do nothing here.
+export function reminder(..._args: unknown[]): void {}
+
 // Push to specific logins (never throws).
 export async function pushToUsers(usernames: string[], title: string, body: string) {
   try {
@@ -71,6 +75,8 @@ export async function notifyOwners(title: string, body: string) {
 }
 
 export async function checklistAlertsTick(now = new Date()) {
+  // Due / late / end-of-day summaries are reminders: shown in the app, not pushed. Set CHECKLIST_PUSH=on to bring the pushes back.
+  if (process.env.CHECKLIST_PUSH !== 'on') return
   if (process.env.CHECKLIST_ALERTS === 'off') return
   if (!(await isShopDay(now.toISOString().slice(0, 10)))) return // Sunday is a shop day only when the rota has someone working it
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()

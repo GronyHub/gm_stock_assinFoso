@@ -4,7 +4,7 @@ import { recordActivity } from '@/lib/logger'
 import { isShopDay } from '@/lib/rota'
 import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
-import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
+import { notifyOwners, pushToUsers, reminder } from '@/lib/checklistAlerts'
 import { SIGNERS } from '@/lib/signers'
 import { CHECKLIST_START } from '@/lib/dailyChecksShared'
 import { metaTick } from '@/lib/metaLaws'
@@ -90,7 +90,7 @@ export async function autoClockOut(day: string, includeToday = false) {
     await sql`INSERT INTO clock_autos (staff, work_date, out_time, basis) VALUES (${r.n}, ${r.d}, ${out}, 'your last action at the shop in the app') ON CONFLICT DO NOTHING`
     n++
     void recordActivity('app', 'clocked someone out automatically', `${cap(r.n)} on ${r.d} at ${out} (last action at the shop)`)
-    void pushToUsers([r.n], 'You were clocked out for you', `You did not clock out on ${r.d}. The app set your time out to ${out}, your last action at the shop. Open the app to tap OK or send the correct time.`)
+    void reminder([r.n], 'You were clocked out for you', `You did not clock out on ${r.d}. The app set your time out to ${out}, your last action at the shop. Open the app to tap OK or send the correct time.`)
   }
   return n
 }
@@ -153,7 +153,7 @@ export async function detectReviews(throughDay: string, includeToday: boolean) {
       await sql`UPDATE cctv_reviews SET windows = ${JSON.stringify(u.windows)}, staff = ${JSON.stringify(u.staff)} WHERE work_date = ${d}`
     }
   }
-  if (created) void pushToUsers(['joe'], 'CCTV review due', `${created} day${created === 1 ? '' : 's'} with staff at work and you not clocked in. Open the CCTV review.`)
+  if (created) void reminder(['joe'], 'CCTV review due', `${created} day${created === 1 ? '' : 's'} with staff at work and you not clocked in. Open the CCTV review.`)
   return created
 }
 
@@ -170,11 +170,11 @@ export async function attendanceTick(now = new Date()) {
     await ensureAttendance()
     const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
     const who = rows.map(r => r.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
-    if (who.length) await pushToUsers(who, 'Are you still at the shop?', 'It is 7pm and you have not clocked out. Open the app and tell us.')
+    if (who.length) await reminder(who, 'Are you still at the shop?', 'It is 7pm and you have not clocked out. Open the app and tell us.')
   }
   if (hm === '19:40' && await claim(`cctv:${day}`)) { await detectReviews(day, true) }
   if (hm === '08:15' && await claim(`joeheads:${day}`)) {
-    await pushToUsers(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
+    await reminder(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
   }
   if (hm === '18:30' && await claim(`closingrem:${day}`)) {
     // Nudge whoever is at the shop if the closing report (Daily Checklist) is still not answered.
@@ -182,7 +182,7 @@ export async function attendanceTick(now = new Date()) {
     if (!r) {
       const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
       const who = rows.map(x => x.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
-      if (who.length) await pushToUsers(who, 'Closing report', 'The closing report is not answered yet. Open the Daily Checklist and tap Answer now.')
+      if (who.length) await reminder(who, 'Closing report', 'The closing report is not answered yet. Open the Daily Checklist and tap Answer now.')
     }
   }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
@@ -195,7 +195,7 @@ export async function attendanceTick(now = new Date()) {
     await ensureAttendance()
     for (const n of SIGNERS.filter(x => x !== 'grony')) {
       const open = (await openRecords(n)).filter(r => r.d < day)
-      if (open.length) await pushToUsers([n], 'You did not clock out', `${open.length} day${open.length === 1 ? '' : 's'} without a time out (${open.slice(0, 3).map(o => o.d).join(', ')}). Open the app and enter your time out.`)
+      if (open.length) await reminder([n], 'You did not clock out', `${open.length} day${open.length === 1 ? '' : 's'} without a time out (${open.slice(0, 3).map(o => o.d).join(', ')}). Open the app and enter your time out.`)
     }
   }
   if (min === 0 && hr >= 8 && hr <= 20 && hr % 2 === 0) {
@@ -204,12 +204,12 @@ export async function attendanceTick(now = new Date()) {
       const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe'`
       if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open the Daily Checklist.`)
       const [{ j }] = await sql`SELECT COUNT(*)::int AS j FROM clock_corrections WHERE status = 'pending' AND staff = 'joe'`
-      if (Number(j) > 0) await pushToUsers(['grony'], 'Joe\'s clock-out time to approve', 'Open the Daily Checklist.')
+      if (Number(j) > 0) await reminder(['grony'], 'Joe\'s clock-out time to approve', 'Open the Daily Checklist.')
       const [{ sn }] = await sql`SELECT COUNT(*)::int AS sn FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe'`.catch(() => [{ sn: 0 }])
       const [{ dp }] = await sql`SELECT COUNT(*)::int AS dp FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe'`.catch(() => [{ dp: 0 }])
-      if (Number(sn) + Number(dp) > 0) await pushToUsers(['joe'], 'Decisions waiting for you', `${Number(sn) ? sn + ' sanction(s) to approve. ' : ''}${Number(dp) ? dp + ' violation(s) to confirm or review.' : ''} Open Penalties.`)
+      if (Number(sn) + Number(dp) > 0) await reminder(['joe'], 'Decisions waiting for you', `${Number(sn) ? sn + ' sanction(s) to approve. ' : ''}${Number(dp) ? dp + ' violation(s) to confirm or review.' : ''} Open Penalties.`)
       const [{ r }] = await sql`SELECT COUNT(*)::int AS r FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`
-      if (Number(r) > 0) await pushToUsers(['joe'], 'CCTV review still due', `${r} day${Number(r) === 1 ? '' : 's'} waiting for your review.`)
+      if (Number(r) > 0) await reminder(['joe'], 'CCTV review still due', `${r} day${Number(r) === 1 ? '' : 's'} waiting for your review.`)
     }
   }
 }

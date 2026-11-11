@@ -1,7 +1,7 @@
 import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
-import { notifyOwners, pushToUsers, pushToShop } from '@/lib/checklistAlerts'
+import { notifyOwners, pushToUsers, reminder } from '@/lib/checklistAlerts'
 import { isManagerName } from '@/lib/signers'
 import { getClockState, onShift } from '@/lib/clockState'
 import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
@@ -156,7 +156,7 @@ export async function fadeTick(day = dayKey()) {
     if (last && day >= addDays(last, FADE_DAYS)) {
       const cut = Math.min(FADE_POINTS, t)
       await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, day, counted, status, created_by) VALUES (${s}, ${-cut}, 'fade', ${'Clean record for a week: minus ' + cut}, 'fade', ${day}, TRUE, 'active', 'system')`
-      void pushToUsers([s], 'Penalty points reduced', `A clean week: ${cut} points removed. You now have ${t - cut}.`)
+      void reminder([s], 'Penalty points reduced', `A clean week: ${cut} points removed. You now have ${t - cut}.`)
     }
   }
 }
@@ -199,9 +199,9 @@ export async function penaltiesTick(now = new Date()) {
       const st = await getSettings()
       if (day < st.startCounting) {
         const left = Math.max(0, Math.round((Date.parse(st.startCounting) - Date.parse(day)) / 86400000))
-        await pushToShop('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation will cost 1 point. ${firstTier.points} points = a ${firstTier.label}. Follow the laws and finish the checklist.`)
+        await reminder('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation will cost 1 point. ${firstTier.points} points = a ${firstTier.label}. Follow the laws and finish the checklist.`)
       } else if (day === st.startCounting || (Date.parse(day) - Date.parse(st.startCounting)) / 86400000 < 7) {
-        await pushToShop('Penalty points are now counting', `Each violation costs 1 point. ${tiersText()}. A clean week removes ${FADE_POINTS} points.`)
+        await reminder('Penalty points are now counting', `Each violation costs 1 point. ${tiersText()}. A clean week removes ${FADE_POINTS} points.`)
       }
     }
   }
