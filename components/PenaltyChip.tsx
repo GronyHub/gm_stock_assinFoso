@@ -42,8 +42,11 @@ export function PenaltyChip({ className = '' }: { className?: string }) {
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 // The full picture, at the top of the profile page.
-export function PenaltyCard() {
-  const p = usePenalty()
+export function PenaltyCard({ staff }: { staff?: string } = {}) {
+  const mine = usePenalty()
+  const [other, setOther] = useState<PenaltyMe | null>(null)
+  useEffect(() => { if (staff) fetch(`/api/penalties/me?staff=${encodeURIComponent(staff)}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setOther(d)).catch(() => {}) }, [staff])
+  const p = staff ? other : mine
   const [disputing, setDisputing] = useState<number | null>(null)
   const [dnote, setDnote] = useState('')
   async function act(id: number, action: 'acknowledge' | 'dispute', note?: string) {
@@ -73,7 +76,7 @@ export function PenaltyCard() {
       {p.sanctions.some(s => s.status === 'proposed') && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] font-bold text-amber-800">A sanction has been recommended and is waiting for the owner&apos;s decision.</p>}
       {p.entries.length > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-xs font-bold text-blue-700">Why I have these points ({p.entries.length})</summary>
+          <summary className="cursor-pointer text-xs font-bold text-blue-700">Why {staff ? 'these' : 'I have these'} points ({p.entries.length})</summary>
           <div className="mt-1 space-y-1">
             {p.entries.map(e => (
               <div key={e.id} className={`rounded-lg px-2 py-1 text-[11px] ${e.status === 'pending' ? 'bg-amber-50' : e.points < 0 ? 'bg-green-50' : e.counted ? 'bg-red-50' : 'bg-gray-50'}`}>
@@ -81,7 +84,7 @@ export function PenaltyCard() {
                 {e.status === 'pending' ? ' (waiting for the owner to confirm)' : e.points > 0 && !e.counted && e.status === 'active' ? ' (warning, did not count)' : ''}
                 {e.status === 'disputed' && <span className="block font-semibold text-amber-800">You disputed this: {e.dispute_note}. It does not count until the owner decides.</span>}
                 {e.status === 'withdrawn' && <span className="block font-semibold text-green-800">Withdrawn: {e.withdraw_reason}</span>}
-                {e.source === 'manual' && ['active', 'pending'].includes(e.status) && (
+                {!staff && e.source === 'manual' && ['active', 'pending'].includes(e.status) && (
                   <span className="mt-1 flex gap-2">
                     {e.ack_at ? <span className="font-semibold text-gray-500">Acknowledged</span> : <button type="button" onClick={() => void act(e.id, 'acknowledge')} className="rounded-lg bg-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-800">Acknowledge</button>}
                     <button type="button" onClick={() => { setDisputing(e.id); setDnote('') }} className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Dispute</button>

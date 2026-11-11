@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import StaffAvatar, { announcePhotoChange } from '@/components/StaffAvatar'
-import { PenaltyCard } from '@/components/PenaltyChip'
 import RatingsCard from '@/components/RatingsCard'
 
 type Profile = {
@@ -194,7 +193,6 @@ export default function ProfileTab() {
 
   return (
     <div className="max-w-md mx-auto space-y-4">
-      <PenaltyCard />
       <RatingsCard />
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="flex items-center gap-4">

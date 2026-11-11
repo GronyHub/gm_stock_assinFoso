@@ -2,17 +2,21 @@ import { getAuthUser, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { ensurePenalties, getSettings, totalPoints, TIERS, FADE_DAYS } from '@/lib/penalties'
 import { actorKey } from '@/lib/clockState'
+import { isOwnerLevel } from '@/lib/roles'
+import { NextRequest } from 'next/server'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 
 // GET -- the signed-in person's penalty points: total, band, next level, when the next clean-week reduction comes, and recent entries.
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { user, error } = await getAuthUser()
   if (error) return error
   try {
     await ensurePenalties()
-    const me = actorKey(user as any)
+    // The owner and manager may look at one staff member's record with ?staff=name; everyone else sees only their own.
+    const asked = (req.nextUrl.searchParams.get('staff') ?? '').toLowerCase().trim()
+    const me = asked && isOwnerLevel(user as any) ? asked : actorKey(user as any)
     const st = await getSettings()
     const points = await totalPoints(me)
     const entries = await sql`
