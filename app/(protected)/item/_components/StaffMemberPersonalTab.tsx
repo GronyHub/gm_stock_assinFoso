@@ -41,6 +41,9 @@ export default function StaffMemberPersonalTab({
   // Payslips and Profile belong to one person: only their own page shows them.
   const isSelf = staffName.toLowerCase() === username.toLowerCase()
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'tasks')
+  // Supervisors see a team member's Waiting for me here (read-only), if they may look at that person.
+  const [mayView, setMayView] = useState(false)
+  useEffect(() => { if (isSelf) return; fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setMayView(Array.isArray(d?.people) && d.people.includes(staffName.toLowerCase()))).catch(() => {}) }, [isSelf, staffName])
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
 
@@ -89,7 +92,7 @@ export default function StaffMemberPersonalTab({
   return (
     <div className="px-2 pt-2 space-y-2">
       <div className="flex gap-1 overflow-x-auto pb-0.5">
-        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf)).map(t => (
+        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView)).map(t => (
           <button key={t.key} type="button" ref={el => { if (el && activeTab === t.key) el.scrollIntoView({ inline: 'center', block: 'nearest' }) }} onClick={() => setActiveTab(t.key)}
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -100,6 +103,7 @@ export default function StaffMemberPersonalTab({
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        {activeTab === 'waiting' && !isSelf && mayView && <MyDayClient forName={staffName.toLowerCase()} />}
         {activeTab === 'waiting' && isSelf && (
           <MyDayClient onNavigate={i => {
             if (i.hub) setActiveTab(i.hub as TabKey)

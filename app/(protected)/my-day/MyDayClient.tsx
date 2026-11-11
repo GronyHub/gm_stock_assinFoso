@@ -12,16 +12,13 @@ const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
-export default function MyDayClient({ onNavigate }: { onNavigate?: (i: MyDayItem) => void } = {}) {
+export default function MyDayClient({ onNavigate, forName = '' }: { onNavigate?: (i: MyDayItem) => void; forName?: string } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
-  // Supervisors can look at a team member's list (read-only) and send a reminder. `who` is empty for my own list.
-  const [people, setPeople] = useState<string[]>([])
-  const [who, setWho] = useState('')
+  // A supervisor looking at a team member's list gets it from that person's own page (forName): read-only, with a reminder button.
+  const who = forName
   const [msg, setMsg] = useState('')
   const load = (w = who) => fetch('/api/my-day' + (w ? `?for=${encodeURIComponent(w)}` : ''), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setItems(d?.items ?? [])).catch(() => setItems([]))
-  useEffect(() => { void load() }, [])
-  useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPeople(d?.people ?? [])).catch(() => {}) }, [])
-  const pick = (w: string) => { setWho(w); setItems(null); setMsg(''); void load(w) }
+  useEffect(() => { setItems(null); void load(forName) }, [forName])
   async function remind() {
     const r = await fetch('/api/my-day/remind', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: who }) })
     const j = await r.json().catch(() => ({}))
@@ -39,11 +36,6 @@ export default function MyDayClient({ onNavigate }: { onNavigate?: (i: MyDayItem
         <h1 className="text-xl font-extrabold text-[#14213D]">{who ? `${name}'s list` : 'Waiting for me'}</h1>
         <button type="button" onClick={() => void load()} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">Refresh</button>
       </div>
-      {people.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {['', ...people].map(p => <button key={p || 'me'} type="button" onClick={() => pick(p)} className={`rounded-full px-3 py-1 text-xs font-bold ${who === p ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{p ? p.charAt(0).toUpperCase() + p.slice(1) : 'Me'}</button>)}
-        </div>
-      )}
       {who ? (
         <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-2 text-xs font-semibold text-blue-900">
           <span className="min-w-0 flex-1">You are looking at {name}'s list. You can see it but not act on it. {items ? `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.` : ''}</span>

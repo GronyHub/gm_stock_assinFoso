@@ -46,11 +46,13 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy, waitingBy }: {
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
   salesBy?: Record<string, number>
   // Tapping the Shop box (was Total) opens the hub's Shop page: Daily Checklist, Company Laws, Home, Manage.
   onOpenShop?: () => void
+  // For supervisors: how many things wait for each person (lowercase name), shown as a red count on their avatar.
+  waitingBy?: Record<string, { total: number; now: number }>
   roster: RosterEntry[]
   // The signed-in person (their button is the one at the top of the sidebar, so it is left out here) and what to do when a chip is tapped:
   // the hub opens that person's page in its right pane.
@@ -155,7 +157,8 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
         {computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase()).map(s => (
           <button key={s.staff_name} type="button" onClick={() => onOpenStaff(s.staff_name, 'times')}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
-            className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
+            className={`relative shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
+            {(waitingBy?.[s.staff_name.toLowerCase()]?.total ?? 0) > 0 && <span title={`${waitingBy![s.staff_name.toLowerCase()].total} waiting for ${s.staff_name}${waitingBy![s.staff_name.toLowerCase()].now ? `, ${waitingBy![s.staff_name.toLowerCase()].now} overdue` : ''}`} className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[9px] font-extrabold leading-4 text-white ${waitingBy![s.staff_name.toLowerCase()].now ? 'bg-red-600' : 'bg-amber-500'}`}>{waitingBy![s.staff_name.toLowerCase()].total > 99 ? '99+' : waitingBy![s.staff_name.toLowerCase()].total}</span>}
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
               <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
               <span className={`hidden sm:inline ${s.status === 'absent' ? 'line-through' : ''}`}>{s.staff_name}</span>

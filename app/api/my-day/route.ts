@@ -12,6 +12,15 @@ export async function GET(req: NextRequest) {
     const user = session.user as { username?: string | null; name?: string | null; role?: string | null }
     const q = req.nextUrl.searchParams
     if (q.get('people')) return success({ people: viewablePeople(user) })
+    // ?counts=1: for a supervisor, how many things wait for each person they may look at (shown as a count on their avatar)
+    if (q.get('counts')) {
+      const out: Record<string, { total: number; now: number }> = {}
+      for (const n of viewablePeople(user)) {
+        const its = await myDay(n, user, { viewing: true })
+        out[n] = { total: its.filter(i => i.urgency !== 'later').reduce((a, i) => a + i.count, 0), now: its.filter(i => i.urgency === 'now').reduce((a, i) => a + i.count, 0) }
+      }
+      return success({ counts: out })
+    }
     const forName = (q.get('for') ?? '').toLowerCase()
     if (forName && !viewablePeople(user).includes(forName)) return badRequest('You cannot look at that list.')
     const items = await myDay(forName || actorKey(user as never), user, { viewing: !!forName })

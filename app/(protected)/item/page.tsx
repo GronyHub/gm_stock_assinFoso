@@ -1611,6 +1611,13 @@ function ItemHubPageInner() {
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
   const [myDayBadge, setMyDayBadge] = useState(0)
+  const [waitingBy, setWaitingBy] = useState<Record<string, { total: number; now: number }>>({})
+  useEffect(() => {
+    let live = true
+    const load = () => fetch('/api/my-day?counts=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && d?.counts) setWaitingBy(d.counts) }).catch(() => {})
+    void load(); const t = setInterval(load, 5 * 60 * 1000)
+    return () => { live = false; clearInterval(t) }
+  }, [])
   useEffect(() => {
     let live = true
     const load = () => fetch('/api/my-day?count=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && d) setMyDayBadge(Number(d.total ?? 0)) }).catch(() => {})
@@ -7090,14 +7097,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <div ref={barRef}><PresentStaffBar onOpenShop={() => openShop('laws')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+              <div ref={barRef}><PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('laws')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
-              <PresentStaffBar onOpenShop={() => openShop('laws')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
+              <PresentStaffBar waitingBy={waitingBy} onOpenShop={() => openShop('laws')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
