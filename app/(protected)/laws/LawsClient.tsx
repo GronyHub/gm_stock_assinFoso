@@ -5,6 +5,7 @@ import { CATEGORY_KEYWORDS, DAY_CODES, DAY_NAMES, LAW_CATEGORIES, LAW_FREQUENCIE
 import CustomerServiceCode from '../item/_components/CustomerServiceCode'
 import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
 import GuideVideo from '@/components/GuideVideo'
+import { ASSIGNMENTS } from '@/lib/assignment'
 import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
 import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
 import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
@@ -16,9 +17,9 @@ import { TOPICS } from '../item/_components/trainingTopics'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; kept?: { done: number; of: number; last: string | null; missed_last: boolean }; tile_id?: number | null; proof?: string; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; quiz_n?: number; violations?: string | null; not_violation?: string | null
+  status?: string; kept?: { done: number; of: number; last: string | null; missed_last: boolean }; tile_id?: number | null; proof?: string; assignment?: string; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; quiz_n?: number; violations?: string | null; not_violation?: string | null
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; assignment: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
@@ -31,8 +32,8 @@ const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
 const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{15,90}?)[.:!?](\s|$)/); return m ? m[1] : one.slice(0, 80) }
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '', audience: l.audience ?? 'staff', reminder: l.reminder ?? 'none' })
-const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', points: '1', violations: [], not_violation: '', title: '', audience: 'staff', reminder: 'none' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', assignment: l.assignment ?? 'all', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '', audience: l.audience ?? 'staff', reminder: l.reminder ?? 'none' })
+const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', assignment: 'all', points: '1', violations: [], not_violation: '', title: '', audience: 'staff', reminder: 'none' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 export default function LawsClient({ canManage }: { canManage: boolean }) {
@@ -180,7 +181,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
             {l.law_type === 'recurring' ? (<>
               <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}><b>🗓 When:</b> {sched || 'not set yet'}</p>
-              <p className="text-[10px] leading-snug text-gray-800"><b>✅ Daily Checklist:</b> {l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
+              <p className="text-[10px] leading-snug text-gray-800"><b>✅ Daily Checklist:</b> {l.assignment && l.assignment !== 'all' ? `done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}. ` : l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
               {l.tile_id && l.kept && <p className="text-[10px] font-semibold leading-snug text-gray-800">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
             </>) : l.law_type === 'app' ? (
               <p className="text-[10px] leading-snug text-gray-800"><b>⚙ In the app:</b> the app enforces it itself.</p>
@@ -434,6 +435,8 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <div><label className={lab}>Time</label><input type="time" value={d.law_time} onChange={e => set('law_time', e.target.value)} className={inp} /></div>
               <div><label className={lab}>Minutes</label><input type="number" min={1} max={240} value={d.minutes} onChange={e => set('minutes', e.target.value)} className={inp} /></div>
             </div>
+            <div><label className={lab}>Who does it</label><select value={d.assignment} onChange={e => set('assignment', e.target.value)} className={inp}>{ASSIGNMENTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
+              <p className="mt-0.5 text-[10px] text-gray-500">If it is left undone at day end, the point goes to these people only.</p></div>
             <div><label className={lab}>How staff prove it</label><select value={d.proof} onChange={e => set('proof', e.target.value)} className={inp}>{PROOFS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
           </div>
         )}

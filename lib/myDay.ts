@@ -5,6 +5,7 @@ import { ensureAttendance, openRecords, REVIEW_FROM } from '@/lib/attendance'
 import { canDecideFor } from '@/lib/penalties'
 import { getClockState } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
+import { owes } from '@/lib/assignment'
 
 // "Waiting for me": everything the signed-in person owes or must decide, from every part of the app, in one list.
 // urgency: 'now' (overdue or blocking), 'soon' (due today or within 24 hours), 'later'. `href` opens in the hub's right pane; `hub` asks the hub to open a view.
@@ -38,9 +39,9 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
       const clock = await getClockState(day)
       if (clock.dayStart == null || !clock.present.includes(me)) return
       const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
-      const tiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, (law_id IS NOT NULL AND law_id IN (SELECT id FROM page_laws WHERE audience = 'managers')) AS mgr FROM daily_check_tiles
-        WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; mgr: boolean }[]
-      const todays = tiles.filter(t => appliesOn(t, day) && (!t.mgr || manager))
+      const tiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment FROM daily_check_tiles
+        WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string }[]
+      const todays = tiles.filter(t => appliesOn(t, day) && owes(t.assignment, me, clock))
       const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number }[]).map(r => r.tile_id))
       const due = effectiveDue(todays, clock.dayStart)
       const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin).sort((a, b) => due.get(a.id)! - due.get(b.id)!)

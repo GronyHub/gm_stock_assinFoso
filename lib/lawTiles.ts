@@ -13,7 +13,7 @@ const firstSentence = (t: string) => {
 // law) has its tile stopped. The tile carries the law's category so the checklist and History group by it.
 export async function syncLawTile(lawId: number) {
   await ensureDailyChecks()
-  const [l] = await sql`SELECT id, text, category, subcategory, law_type, days, law_time, frequency, minutes, dos, status, tile_id, proof FROM page_laws WHERE id = ${lawId}`
+  const [l] = await sql`SELECT id, text, category, subcategory, law_type, days, law_time, frequency, minutes, dos, status, tile_id, proof, assignment FROM page_laws WHERE id = ${lawId}`
   if (!l) { await sql`UPDATE daily_check_tiles SET active = false WHERE law_id = ${lawId}`; return }
   const wants = l.status === 'live' && l.law_type === 'recurring' && l.frequency && l.minutes && l.category
   if (!wants) {
@@ -36,11 +36,12 @@ export async function syncLawTile(lawId: number) {
   if (l.tile_id) {
     await sql`UPDATE daily_check_tiles SET active = true, title = ${title}, how = ${how}, section = ${l.category}, category = ${l.category}, subcategory = ${l.subcategory},
       time = ${time}, frequency = ${l.frequency}, days = ${days}, weekday = ${weekday}, minutes = ${l.minutes}, icon = ${icon}, law_id = ${lawId},
-      kind = ${kind}, needs_photo = ${photo}, log_category = ${logCat}, ask = ${ask}, ok_label = ${okLabel}, issue_label = ${issueLabel} WHERE id = ${l.tile_id}`
+      kind = ${kind}, needs_photo = ${photo}, log_category = ${logCat}, ask = ${ask}, ok_label = ${okLabel}, issue_label = ${issueLabel}, assignment = ${l.assignment ?? 'all'} WHERE id = ${l.tile_id}`
   } else {
     const [t] = await sql`INSERT INTO daily_check_tiles (section, category, subcategory, time, title, icon, how, kind, frequency, days, weekday, minutes, law_id, position, created_by, needs_photo, log_category, ask, ok_label, issue_label)
       VALUES (${l.category}, ${l.category}, ${l.subcategory}, ${time}, ${title}, ${icon}, ${how}, ${kind}, ${l.frequency}, ${days}, ${weekday}, ${l.minutes}, ${lawId},
               (SELECT COALESCE(MAX(position), 0) + 1 FROM daily_check_tiles), 'law', ${photo}, ${logCat}, ${ask}, ${okLabel}, ${issueLabel}) RETURNING id`
+    await sql`UPDATE daily_check_tiles SET assignment = ${l.assignment ?? 'all'} WHERE id = ${t.id}`
     await sql`UPDATE page_laws SET tile_id = ${t.id} WHERE id = ${lawId}`
   }
 }

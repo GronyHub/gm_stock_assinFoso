@@ -4,6 +4,7 @@ import { fillQuizzesOnce } from '@/lib/lawQuizGen'
 import { betterQuizzesOnce } from '@/lib/lawQuizKey'
 import { seedMetaLaws, seedMetaJoe, seedRules } from '@/lib/metaLaws'
 import sql from '@/lib/db'
+import { cleanAssignment } from '@/lib/assignment'
 import { once } from '@/lib/once'
 import { parseViolations } from '@/lib/lawViolations'
 
@@ -68,6 +69,8 @@ async function ensureCompanyLawsImpl() {
     ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
+  await assignmentFromAudienceOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -157,6 +160,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
     violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff', reminder: ['login', 'first_sale'].includes(b.reminder) ? String(b.reminder) : 'none',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
+    assignment: cleanAssignment(b.assignment),
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
 }
@@ -213,6 +217,17 @@ async function approveAllDraftsOnce() {
     const ids = drafts.map(d => d.id)
     if (ids.length) await sql`UPDATE page_laws SET live_at = now() + interval '3 days' WHERE id = ANY(${ids}) AND status = 'live'`
   } catch (e) { console.error('approve all drafts failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
+async function assignmentFromAudienceOnce() {
+  try {
+    await sql`CREATE TABLE IF NOT EXISTS law_migrations (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('assignment-from-audience-2026-11-12') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`UPDATE page_laws SET assignment = 'managers' WHERE audience = 'managers' AND assignment = 'all'`
+    await sql`UPDATE daily_check_tiles SET assignment = 'managers' WHERE law_id IN (SELECT id FROM page_laws WHERE assignment = 'managers')`.catch(() => {})
+  } catch (e) { console.error('assignment migration failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 async function seedSanctionsLaw() {

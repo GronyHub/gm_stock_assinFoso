@@ -63,7 +63,8 @@ async function migrateKinds() {
       ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS ask TEXT, ADD COLUMN IF NOT EXISTS ok_label TEXT,
       ADD COLUMN IF NOT EXISTS issue_label TEXT, ADD COLUMN IF NOT EXISTS log_category TEXT,
       ADD COLUMN IF NOT EXISTS needs_photo BOOLEAN NOT NULL DEFAULT FALSE,
-      ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_id INTEGER`
+      ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_id INTEGER,
+      ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`
     const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM daily_check_tiles WHERE created_by = 'manage-tiles-v1'`
     if (n > 0) return
     type T = { section: string; time: string; title: string; icon: string; kind: string; ask?: string; ok?: string; issue?: string; log?: string; photo?: boolean; minutes: number; how?: string }
