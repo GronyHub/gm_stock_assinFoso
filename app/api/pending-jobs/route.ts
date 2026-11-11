@@ -3,41 +3,52 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { actorKey } from '@/lib/clockState'
 import { recordActivity } from '@/lib/logger'
-import { ensurePendingJobs, pendingJobCounts, JOB_STATUSES } from '@/lib/pendingJobs'
+import { ensurePendingJobs, pendingJobCounts, selectJobs, JOB_STATUSES, type JobLine } from '@/lib/pendingJobs'
 import { NextRequest } from 'next/server'
 
-// GET -- the pending jobs (?status=open|ready|done|all; ?count=1 for just the numbers). Any logged-in staff member.
+const cleanLines = (raw: unknown): JobLine[] => (Array.isArray(raw) ? raw : []).map(l => ({
+  item_id: Number((l as JobLine).item_id) || null, name: String((l as JobLine).name ?? '').trim().slice(0, 120),
+  qty: Math.max(0, Number((l as JobLine).qty) || 0), price: Math.max(0, Number((l as JobLine).price) || 0),
+})).filter(l => l.name && l.qty > 0).slice(0, 30)
+
+// GET -- the pending jobs (?status=open|ready|done|all|debt; ?count=1 for just the numbers). Any logged-in staff member.
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth()
   if (error) return error
   try {
     if (req.nextUrl.searchParams.get('count')) return success(await pendingJobCounts())
-    await ensurePendingJobs()
-    const st = req.nextUrl.searchParams.get('status') ?? 'open'
-    const rows = await sql`SELECT id, customer, phone, job, left_on::text AS left_on, due_on::text AS due_on, status, note, created_by, updated_by, done_at
-      FROM pending_jobs
-      WHERE (${st} = 'all' OR (${st} = 'open' AND status <> 'done') OR status = ${st})
-        AND (status <> 'done' OR done_at > now() - interval '30 days')
-      ORDER BY (status = 'done'), due_on NULLS LAST, left_on, id LIMIT 300`
-    return success({ jobs: rows })
+    const st = (req.nextUrl.searchParams.get('status') ?? 'open') as 'open' | 'ready' | 'done' | 'all' | 'debt'
+    return success({ jobs: await selectJobs(st) })
   } catch (e) { return handleError('pending-jobs GET', e) }
 }
 
-// POST { customer, phone?, job, due_on?, note? } -- a customer has left a job.
+// POST { customer, phone, customer_id?, job?, lines?, due_on?, note?, deposit?: { amount, method }, prepaid?, receipt_id? }
+// A customer has left a job. The full amount (the lines) is recorded on the job; only what is paid counts in the Sales Log total; what is left is the
+// customer's balance (the debtors list). A job made from a sale already paid in full in the Sales Log (prepaid) owes nothing and adds no money.
 export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
   try {
     await ensurePendingJobs()
     const b = await req.json().catch(() => ({}))
-    const customer = String(b.customer ?? '').trim().slice(0, 120), job = String(b.job ?? '').trim().slice(0, 500)
-    if (!customer || !job) return badRequest('Write the customer and what they left.')
+    const lines = cleanLines(b.lines)
+    const customer = String(b.customer ?? '').trim().slice(0, 120), phone = String(b.phone ?? '').trim().slice(0, 30)
+    const job = (String(b.job ?? '').trim() || lines.map(l => `${l.qty} x ${l.name}`).join(', ')).slice(0, 500)
+    if (!customer || !phone) return badRequest('A pending job needs the customer and their phone number, so they can be messaged.')
+    if (!job) return badRequest('Say what the customer left.')
+    const total = lines.reduce((s, l) => s + l.qty * l.price, 0)
+    const prepaid = b.prepaid === true
+    const dep = Math.max(0, Number(b.deposit?.amount) || 0)
+    if (!prepaid && dep > total + 0.005 && total > 0) return badRequest('The deposit is more than the total.')
     const due = /^\d{4}-\d{2}-\d{2}$/.test(String(b.due_on ?? '')) ? String(b.due_on) : null
     const by = actorKey(session.user as never)
-    const [row] = await sql`INSERT INTO pending_jobs (customer, phone, job, due_on, note, created_by, updated_by)
-      VALUES (${customer}, ${String(b.phone ?? '').trim().slice(0, 30) || null}, ${job}, ${due}, ${String(b.note ?? '').trim().slice(0, 500) || null}, ${by}, ${by}) RETURNING id`
-    void recordActivity(by, 'left a pending job', `${customer}: ${job.slice(0, 100)}`)
-    return success({ id: row.id }, 201)
+    const [row] = await sql`INSERT INTO pending_jobs (customer, customer_id, phone, job, lines, total, prepaid, source, receipt_id, due_on, note, created_by, updated_by)
+      VALUES (${customer}, ${String(b.customer_id ?? '').trim().slice(0, 20) || null}, ${phone}, ${job}, ${JSON.stringify(lines)}::jsonb, ${total}, ${prepaid}, ${prepaid ? 'sale' : 'job'}, ${Number(b.receipt_id) || null},
+              ${due}, ${String(b.note ?? '').trim().slice(0, 500) || null}, ${by}, ${by}) RETURNING id`
+    if (!prepaid && dep > 0) await sql`INSERT INTO pending_job_payments (job_id, amount, method, kind, by_staff) VALUES (${row.id}, ${dep}, ${String(b.deposit?.method ?? 'cash').slice(0, 20)}, 'deposit', ${by})`
+    void recordActivity(by, prepaid ? 'made a pending job from a paid sale' : 'left a pending job', `${customer}: ${job.slice(0, 80)}${prepaid ? '' : ` (total ${total}, deposit ${dep})`}`)
+    const [made] = await selectJobs(row.id as number)
+    return success({ id: row.id, job: made }, 201)
   } catch (e) { return handleError('pending-jobs POST', e) }
 }
 
@@ -67,7 +78,7 @@ export async function PATCH(req: NextRequest) {
   } catch (e) { return handleError('pending-jobs PATCH', e) }
 }
 
-// DELETE { id } -- remove a job entered by mistake (the owner and Joe).
+// DELETE { id } -- remove a job entered by mistake (the owner and Joe). Its payments go with it.
 export async function DELETE(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
@@ -75,6 +86,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await ensurePendingJobs()
     const b = await req.json().catch(() => ({}))
+    await sql`DELETE FROM pending_job_payments WHERE job_id = ${Number(b.id)}`
     await sql`DELETE FROM pending_jobs WHERE id = ${Number(b.id)}`
     return success({ ok: true })
   } catch (e) { return handleError('pending-jobs DELETE', e) }

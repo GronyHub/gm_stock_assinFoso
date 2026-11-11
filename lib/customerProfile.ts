@@ -50,13 +50,13 @@ export async function customerLifetimeTotal(code: string | null | undefined): Pr
 }
 
 type WaItem = { name: string; qty: number; price: number }
-const cedi = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+export const cedi = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 // WhatsApp click-to-chat links, opened by staff on their own phone (no SMS cost):
 // the message is pre-filled, they just press send. Same style as the shop's WhatsApp
 // greeting: what was done and the amount first, then who we are and where to find us.
 // "Hello Kofi (GM45)": the customer ID rides in the greeting, never as a sentence of its own.
-const hello = (name?: string | null, customerId?: string | null) =>
+export const hello = (name?: string | null, customerId?: string | null) =>
   `Hello${name?.trim() ? ` ${name.trim()}` : ''}${customerId ? ` (${customerId})` : ''}`
 // Total work with us so far, and the prize chance: only for saved customers (their total is known).
 const LOYALTY = (lifetime?: number | null) => {
@@ -68,7 +68,7 @@ const LOYALTY = (lifetime?: number | null) => {
       : `You have passed ${cedi(PRIZE_TARGET)} with us, so you stand a chance to win an amazing prize from us! Thank you for your trust.\n\n`)
 }
 const RATE_BLOCK = (rateUrl?: string | null) => rateUrl ? `*How was our service today?* Tap to rate us 1 to 5 stars:\n${rateUrl}\n\n` : ''
-const CONTACT_BLOCK = (_customerId?: string | null) =>
+export const CONTACT_BLOCK = (_customerId?: string | null) =>
   `Send all work and payments in this chat only.\n` +
   `Call / WhatsApp / Mobile Money: 053 432 8977\n\n` +
   `Join our community group for offers, new products and tips:\nhttps://chat.whatsapp.com/LOOxCVhHFlC8SjpfnoWI7p\n\n` +
@@ -91,4 +91,20 @@ export function receiptWhatsAppUrl(phone: string, receiptNo: string, items: WaIt
   const text = `${hello(name, customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\n` +
     `Receipt ${receiptNo}:\n${lines}\n*Total: ${cedi(total)}* (paid)\n\n${LOYALTY(lifetime)}${RATE_BLOCK(rateUrl)}${CONTACT_BLOCK(customerId)}`
   return `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`
+}
+
+// WhatsApp messages for a pending job: what was left, the agreed total, what was paid and what is left to pay.
+export type JobMsgInput = { jobNo: string; customer: string; customerId?: string | null; phone: string; lines: { name: string; qty: number; price: number }[]; total: number; paid: number; due_on?: string | null; prepaid?: boolean; job?: string }
+export function pendingJobWhatsAppUrl(kind: 'received' | 'ready' | 'reminder', j: JobMsgInput): string {
+  const balance = j.prepaid ? 0 : Math.max(0, j.total - j.paid)
+  const items = j.lines.length ? j.lines.map(i => `- ${i.qty} x ${i.name} @ ${cedi(i.price)} = ${cedi(i.qty * i.price)}`).join('\n') : `- ${j.job ?? 'Your job'}`
+  const when = j.due_on ? `Promised for: *${new Date(j.due_on + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}*\n` : ''
+  const money = `*Total: ${cedi(j.total)}*\n` + (j.prepaid ? `Paid in full: ${cedi(j.total)}\n` : `Paid so far: ${cedi(j.paid)}\n*Balance to pay: ${cedi(balance)}*\n`)
+  const head = kind === 'received'
+    ? `${hello(j.customer, j.customerId)} and thank you for choosing *Grony Multimedia*, Assin Foso (near GCB Bank)!\n\nWe have received your job *${j.jobNo}*:\n`
+    : kind === 'ready'
+      ? `${hello(j.customer, j.customerId)}, good news from *Grony Multimedia*: your job *${j.jobNo}* is ready for collection.\n\n`
+      : `${hello(j.customer, j.customerId)}, a reminder from *Grony Multimedia* about your job *${j.jobNo}*:\n`
+  const text = `${head}${items}\n${money}${when}${balance > 0 ? (kind === 'received' ? 'The balance is paid when you collect.\n' : 'Please bring the balance when you collect.\n') : ''}\n${CONTACT_BLOCK(j.customerId)}`
+  return `https://wa.me/${waNumber(j.phone)}?text=${encodeURIComponent(text)}`
 }

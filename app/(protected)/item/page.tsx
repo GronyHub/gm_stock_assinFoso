@@ -3620,17 +3620,27 @@ function ItemHubPageInner() {
   // always-visible consumer of the same figure. liveTaps is fetched
   // unconditionally on mount, so this stays accurate regardless of which tab
   // is open.
+  // Money taken for pending jobs (deposits, later payments, refunds as negatives): only what was actually taken counts in the sales total.
+  const [jobPayments, setJobPayments] = useState<{ day: string; staff: string; amount: number }[]>([])
+  useEffect(() => {
+    let live = true
+    const load = () => fetch('/api/pending-jobs/payments?days=60', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && Array.isArray(d?.payments)) setJobPayments(d.payments) }).catch(() => {})
+    void load(); const t = setInterval(load, 5 * 60 * 1000)
+    return () => { live = false; clearInterval(t) }
+  }, [])
+  const jobMoneyOn = (day: string) => jobPayments.filter(p => p.day === day).reduce((a, p) => a + Number(p.amount), 0)
   const liveTodaySalesTotal = useMemo(() => {
     return (liveTaps || [])
       .filter((t): t is Tap => t != null && !t.undone && t.tapped_at.startsWith(liveToday))
-      .reduce((sum, t) => sum + Number(t.price) * t.quantity, 0)
-  }, [liveTaps, liveToday])
+      .reduce((sum, t) => sum + Number(t.price) * t.quantity, 0) + jobPayments.filter(p => p.day === liveToday).reduce((a, p) => a + Number(p.amount), 0)
+  }, [liveTaps, liveToday, jobPayments])
   // What each person has actually recorded today (not-undone Live Sale taps), shown in their button.
   const salesByStaff = useMemo(() => {
     const m: Record<string, number> = {}
     for (const t of (liveTaps || [])) if (t && !t.undone && t.tapped_at.startsWith(liveToday)) { const k = String(t.staff_name ?? '').toLowerCase(); m[k] = (m[k] ?? 0) + Number(t.price) * t.quantity }
+    for (const p of jobPayments) if (p.day === liveToday && p.staff) m[p.staff] = (m[p.staff] ?? 0) + Number(p.amount)
     return m
-  }, [liveTaps, liveToday])
+  }, [liveTaps, liveToday, jobPayments])
   const liveSalesCounts = useMemo(() => {
     const counts = new Map<number, number>()
     for (const tap of (liveTaps || [])) {
@@ -6695,6 +6705,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </button>
         <button
           type="button"
+          onClick={() => openEmbed('/pending-jobs?new=1')}
+          title="Pending job: a customer leaves a job (a deposit, or nothing paid yet)"
+          className={`font-bold transition shrink-0 bg-amber-100 text-amber-900 hover:bg-amber-200 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-3 py-1.5 text-sm rounded'}`}
+        >
+          🧾 Job
+        </button>
+        <button
+          type="button"
           onClick={() => setSaleModeShowAnalytics(a => !a)}
           title="Analytics"
           className={`shrink-0 font-bold transition ${compact ? 'px-2 py-1 text-sm rounded-md' : 'px-2.5 py-1 text-xs rounded-lg'} ${
@@ -7575,7 +7593,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                         const cp = l.item_id ? liveCostPriceByItemId.get(l.item_id) : undefined
                         return s2 + (cp !== undefined && l.quantity != null ? Number(l.item_total ?? 0) - cp * Number(l.quantity) : 0)
                       }, 0)
-                      const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0) + recTotal
+                      const dateTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0) + recTotal + jobMoneyOn(date)
                       const dateProfitTotal = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone)
                         .reduce((s, t) => s + (Number(t.price) - (liveCostPriceByItemId.get(t.item_id) ?? 0)) * t.quantity, 0) + recProfit
                       const wicRec = logDay.receipts.find(r => !r.is_gmc) ?? null
@@ -7784,6 +7802,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                         className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0 border-0"
                                       >
                                         🕐
+                                      </button>
+                                      <button
+                                        onClick={() => openEmbed(`/pending-jobs?fromTap=${tap.id}`)}
+                                        title="Make this sale (paid in full) a pending job: the customer left work to be done or collected"
+                                        className="text-[10px] font-bold text-amber-700 hover:bg-amber-100 rounded leading-none p-0 border-0"
+                                      >
+                                        🧾
                                       </button>
                                       <button
                                         onClick={() => undoTap(tap.id)}
