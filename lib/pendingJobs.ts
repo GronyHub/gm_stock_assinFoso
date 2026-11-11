@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
+import { ensureStockOuts } from '@/lib/stockOuts'
 
 // Pending jobs: jobs customers leave behind (to be done, or done and waiting to be collected). Written by any staff member.
 //   pending = left with us, to be done   ready = done, waiting for the customer   done = collected or delivered
@@ -22,6 +23,7 @@ export const ensurePendingJobs = once(async () => {
     id SERIAL PRIMARY KEY, job_id INTEGER NOT NULL, amount NUMERIC NOT NULL, method TEXT, kind TEXT NOT NULL DEFAULT 'deposit', note TEXT,
     paid_at TIMESTAMPTZ NOT NULL DEFAULT now(), day DATE NOT NULL DEFAULT CURRENT_DATE, by_staff TEXT)`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS pending_job_payments_day ON pending_job_payments (day, job_id)`.catch(() => {})
+  await ensureStockOuts()
 })
 
 // How many are open, ready to collect, and overdue (due before today and not done).

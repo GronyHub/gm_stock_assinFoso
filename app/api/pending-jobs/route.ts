@@ -1,3 +1,4 @@
+import { recordJobStockOut, clearJobStockOut } from '@/lib/stockOuts'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
@@ -73,6 +74,9 @@ export async function PATCH(req: NextRequest) {
         customer = COALESCE(${typeof b.customer === 'string' && b.customer.trim() ? b.customer.trim().slice(0, 120) : null}, customer),
         phone = CASE WHEN ${b.phone === undefined} THEN phone ELSE ${String(b.phone ?? '').trim().slice(0, 30) || null} END
       WHERE id = ${id}`
+    // Collected: its goods leave stock (no sales receipt exists for them). Reopened: they come back.
+    if (status === 'done' && cur.status !== 'done') await recordJobStockOut(id, by)
+    else if (cur.status === 'done' && status !== 'done') await clearJobStockOut(id)
     if (status !== cur.status) void recordActivity(by, status === 'done' ? 'handed over a pending job' : status === 'ready' ? 'finished a pending job' : 'reopened a pending job', `${cur.customer}: ${String(cur.job).slice(0, 100)}`)
     return success({ ok: true })
   } catch (e) { return handleError('pending-jobs PATCH', e) }
@@ -86,6 +90,7 @@ export async function DELETE(req: NextRequest) {
   try {
     await ensurePendingJobs()
     const b = await req.json().catch(() => ({}))
+    await clearJobStockOut(Number(b.id))
     await sql`DELETE FROM pending_job_payments WHERE job_id = ${Number(b.id)}`
     await sql`DELETE FROM pending_jobs WHERE id = ${Number(b.id)}`
     return success({ ok: true })
