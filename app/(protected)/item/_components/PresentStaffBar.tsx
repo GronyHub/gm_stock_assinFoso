@@ -46,7 +46,9 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy, waitingBy }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy, waitingBy, activeStaff, shopActive }: {
+  activeStaff?: string | null   // the person whose profile is open: their button is highlighted like the selected item in the left sidebar
+  shopActive?: boolean          // the Shop is open
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
   salesBy?: Record<string, number>
   // Tapping the Shop box (was Total) opens the hub's Shop page: Daily Checklist, Company Laws, Home, Manage.
@@ -157,7 +159,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
         {computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase()).map(s => (
           <button key={s.staff_name} type="button" onClick={() => onOpenStaff(s.staff_name, 'times')}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
-            className={`relative shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-white shadow-sm hover:bg-gray-100 active:bg-gray-200 transition ${s.status === 'absent' ? 'opacity-60' : ''}`}>
+            className={`relative shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${activeStaff && activeStaff.toLowerCase() === s.staff_name.toLowerCase() ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-white hover:bg-gray-100 active:bg-gray-200'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
             {(waitingBy?.[s.staff_name.toLowerCase()]?.total ?? 0) > 0 && <span title={`${waitingBy![s.staff_name.toLowerCase()].total} waiting for ${s.staff_name}${waitingBy![s.staff_name.toLowerCase()].now ? `, ${waitingBy![s.staff_name.toLowerCase()].now} overdue` : ''}`} className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[9px] font-extrabold leading-4 text-white ${waitingBy![s.staff_name.toLowerCase()].now ? 'bg-red-600' : 'bg-amber-500'}`}>{waitingBy![s.staff_name.toLowerCase()].total > 99 ? '99+' : waitingBy![s.staff_name.toLowerCase()].total}</span>}
             <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
               <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
@@ -171,7 +173,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
           </button>
         ))}
         <button type="button" onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title="Open the Shop: Daily Checklist, Company Laws, Home"
-          className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition">
+          className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${shopActive ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-gray-100 hover:bg-gray-200 active:bg-gray-300'}`}>
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
           {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}
           {salesTotal && <span title="Today's total sales so far" className="text-[10px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">{salesTotal}</span>}
