@@ -58,6 +58,15 @@ export default function DailyChecklistClient({ canManage }: { canManage: boolean
     setError('Could not load the checklist. Pull down to try again.')
   }, [])
   useEffect(() => { void load(null) }, [load])
+  // Waiting for me opens the exact task: /standards?tile=ID
+  const deepTile = useRef(false)
+  useEffect(() => {
+    if (deepTile.current || !tiles.length) return
+    const id = Number(new URLSearchParams(window.location.search).get('tile'))
+    deepTile.current = true
+    if (!id) return
+    const t = tiles.find(x => x.id === id); if (t) setSheet(t)
+  }, [tiles])
   useEffect(() => {
     const t = setInterval(() => { if (document.visibilityState === 'visible' && day === today) void load(day) }, 90000)
     return () => clearInterval(t)

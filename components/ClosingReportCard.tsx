@@ -11,6 +11,7 @@ export default function ClosingReportCard() {
   const [err, setErr] = useState('')
   const load = () => fetch('/api/closing-report', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSt(d)).catch(() => {})
   useEffect(() => { void load() }, [])
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('closing') && st && !st.done) setOpen(true) }, [st])
   if (!st || (!st.done && st.present.length === 0)) return null
   const early = new Date().getUTCHours() < 17
   async function submit(a: ClosingAnswers) {

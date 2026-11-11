@@ -30,7 +30,7 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     // closing report
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
-    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/standards' })
+    if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early on the Daily Checklist.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/standards?closing=1' })
     // checklist tasks the shop owes now: tiles past their due time and not yet done today (the same list the day-end point is counted from)
     await safe(async () => {
       const now = new Date()
@@ -47,18 +47,18 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
       if (!late.length) return
       const worst = nowMin - due.get(late[0].id)!
       const names = late.slice(0, 3).map(t => t.title.slice(0, 40)).join('; ') + (late.length > 3 ? ` and ${late.length - 3} more` : '')
-      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: '/standards' })
+      add({ key: 'tasks', icon: '✅', title: 'Checklist tasks to do now', detail: `${names}. Each one still undone at day end costs everyone clocked in a point.`, count: late.length, urgency: worst >= 30 ? 'now' : 'soon', href: `/standards?tile=${late[0].id}` })
     }, undefined)
   }
 
   if (isStaff) {
     // laws to sign, quizzes, login reminders
-    const unsigned = await safe(() => sql`SELECT COUNT(*)::int AS n FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
+    const unsigned = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(l.id) AS first FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
       AND NOT EXISTS (SELECT 1 FROM law_signatures s WHERE s.law_id = l.id AND s.staff = ${me})`, [{ n: 0 }])
-    add({ key: 'sign', icon: '✍', title: 'Company Laws to sign', detail: 'Read each law and sign it. New laws are due within 24 hours of going live.', count: Number(unsigned[0].n), urgency: 'soon', href: '/laws?sign=1' })
-    const quiz = await safe(() => sql`SELECT COUNT(*)::int AS n FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
-      AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75)`, [{ n: 0 }])
-    add({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: 'Pass each quiz (75% or more) within 7 days of its laws going live.', count: Number(quiz[0].n), urgency: 'later', href: '/laws' })
+    add({ key: 'sign', icon: '✍', title: 'Company Laws to sign', detail: 'Read each law and sign it. New laws are due within 24 hours of going live.', count: Number(unsigned[0].n), urgency: 'soon', href: unsigned[0].first ? `/laws?law=${unsigned[0].first}&sign=1` : '/laws?sign=1' })
+    const quiz = await safe(() => sql`SELECT l.id FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
+      AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75) ORDER BY l.id`, [] as { id: number }[])
+    add({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: 'Pass each quiz (75% or more) within 7 days of its laws going live.', count: quiz.length, urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
     const q = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_queries WHERE staff = ${me} AND status = 'open'`, [{ n: 0 }])
     add({ key: 'queries', icon: '❓', title: 'Questions waiting for your answer', detail: 'A supervisor asked about a day you were at work.', count: Number(q[0].n), urgency: 'now' })
     const ack = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${me} AND status IN ('active', 'pending') AND source = 'manual' AND ack_at IS NULL AND created_at > now() - interval '30 days'`, [{ n: 0 }])
@@ -73,8 +73,8 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     add({ key: 'sanctions', icon: '⚖', title: 'Sanctions to approve', detail: 'A staff member reached a points level.', count: sanc.filter(s => canDecideFor(me, String(s.staff))).length, urgency: 'soon', href: '/penalties' })
     const viol = await safe(() => sql`SELECT staff FROM staff_penalties WHERE status IN ('pending', 'disputed')`, [] as { staff: string }[])
     add({ key: 'violations', icon: '⚖', title: 'Violations to confirm or review', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.', count: viol.filter(s => canDecideFor(me, String(s.staff))).length, urgency: 'soon', href: '/penalties' })
-    const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE status = 'draft'`, [{ n: 0 }])
-    add({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: Number(drafts[0].n), urgency: 'later', href: '/laws' })
+    const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(id) AS first FROM page_laws WHERE status = 'draft'`, [{ n: 0, first: null }])
+    add({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: Number(drafts[0].n), urgency: 'later', href: drafts[0].first ? `/laws?law=${drafts[0].first}` : '/laws' })
   }
   if (me === 'joe') {
     const r = await safe(() => sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`, [{ n: 0 }])

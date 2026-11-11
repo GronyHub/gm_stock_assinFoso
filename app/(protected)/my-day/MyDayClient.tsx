@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import type { MyDayItem } from '@/lib/myDay'
 import ClockNotices from '@/components/ClockNotices'
 import PenaltyDecisions from '@/components/PenaltyDecisions'
+import ClockApprovals from '@/components/ClockApprovals'
 
 // These are answered right here on cards (see components/ClockNotices.tsx), so they are not repeated in the list below.
-const INLINE = new Set(['clock-prev', 'clock-auto', 'queries', 'sanctions', 'violations'])
+const INLINE = new Set(['clock-prev', 'clock-auto', 'queries', 'sanctions', 'violations', 'claims', 'cctv'])
 
 const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber-50', later: 'border-gray-200 bg-white' } as const
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
@@ -24,6 +25,7 @@ export default function MyDayClient() {
       </div>
       <p className="text-sm text-gray-700">Everything you owe or must decide, from every part of the app, most urgent first.</p>
       <ClockNotices onChange={() => void load()} />
+      <ClockApprovals />
       <PenaltyDecisions onChange={() => void load()} />
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
       {items && !items.filter(i => !INLINE.has(i.key)).length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ Nothing is waiting for you.</p>}

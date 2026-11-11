@@ -75,6 +75,18 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (q.get('sign')) setSignOnly(true)
   }, [])
 
+  // Waiting for me opens the exact law: /laws?law=ID (&quiz=1 opens its quiz straight away)
+  const deepLaw = useRef(false)
+  useEffect(() => {
+    if (deepLaw.current || !laws) return
+    const q = new URLSearchParams(window.location.search); const id = Number(q.get('law'))
+    deepLaw.current = true
+    if (!id) return
+    const l = laws.find(x => x.id === id); if (!l) return
+    const a = l.category ? areaForCategory(l.category) : null
+    setCat(a ? a.key : (l.category || UNCATEGORISED))
+    if (q.get('quiz') && (l.quiz_n ?? 0) > 0) setQuizFor(l)
+  }, [laws])
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
   const areas: LawArea[] = useMemo(() => {
     const list = LAW_AREAS.filter(a => canManage || !a.ownerOnly)
