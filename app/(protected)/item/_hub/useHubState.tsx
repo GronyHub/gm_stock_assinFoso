@@ -868,6 +868,7 @@ export function useHubState() {
     if (path === '/standards' || path.startsWith('/standards?')) { const q = path.split('?')[1]; return { tab: 'todo', src: '/todo' + (q ? '?' + q : '') } }
     if (path.startsWith('/laws')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); if (q.get('view') === 'today') { q.delete('view'); return { tab: 'todo', src: '/todo' + (q.toString() ? '?' + q.toString() : '') } } return { tab: 'laws', src: path } }
     if (path === '/penalties') return { tab: 'violations', src: path }
+    if (path === '/staff-times') return { tab: 'times', src: path }
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
@@ -886,6 +887,8 @@ export function useHubState() {
   }, [])
 
   function pickLossView(view: LossView) {
+    // The team's times live in one place: the Shop's Times tab.
+    if (view === 'teamTimes') { openShop('times'); return }
     setOuterTab('loss')
     setLossView(view)
     setViolation(null)

@@ -111,7 +111,6 @@ export default function StaffContent({
   return (<>
     {view === 'staffPayslips' && <PayslipsTab role={role} username={username} viewingStaff={viewingName} />}
     {view === 'staffProfile' && isSelf && <ProfileTab />}
-    {canSeeTeam && view === 'teamTimes' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
     {canSeeTeam && view === 'team_payments' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.team_payments]} categoryLabel="Team Payments" canManage={canManage} />
     )}
