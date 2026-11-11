@@ -3,7 +3,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName, SIGNERS } from '@/lib/signers'
 import { ensureAttendance, openRecords, REVIEW_FROM } from '@/lib/attendance'
 import { canDecideFor } from '@/lib/penalties'
-import { getClockState } from '@/lib/clockState'
+import { getClockState, onShift } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
 import { isShopDay } from '@/lib/rota'
@@ -56,7 +56,8 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
       const todays = tiles.filter(t => appliesOn(t, day) && owes(t.assignment, me, clock))
       const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number }[]).map(r => r.tile_id))
       const due = effectiveDue(todays, clock.dayStart)
-      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
+      // A task that fell due before this person clocked in (or after they left) was never theirs.
+      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin && onShift(me, due.get(t.id)!, clock)).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
       if (!late.length) return
       const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
       // One row per task, so each can be opened and done from here. Beyond eight, one row says how many more.

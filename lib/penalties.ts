@@ -3,8 +3,8 @@ import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { notifyOwners, pushToUsers, pushToShop } from '@/lib/checklistAlerts'
 import { isManagerName } from '@/lib/signers'
-import { getClockState } from '@/lib/clockState'
-import { appliesOn } from '@/lib/dailyChecksShared'
+import { getClockState, onShift } from '@/lib/clockState'
+import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
 import { isShopDay } from '@/lib/rota'
@@ -166,14 +166,16 @@ export async function dayEndAssess(day = dayKey()) {
   const clock = await getClockState(day)
   if (!clock.everIn.length) return
   // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law). Who carries it is the law's "Who does it".
-  const tiles = await sql`SELECT id, title, days, assignment FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
+  const tiles = await sql`SELECT id, title, days, assignment, time, minutes, frequency, kind FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
   const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND value = 'Done'` as unknown as { tile_id: number }[]
   const doneSet = new Set(done.map(d => d.tile_id))
   const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id))
   if (!missed.length) return
+  const due = effectiveDue(tiles as never, clock.dayStart)
   // A task left undone costs the people it was assigned to (everyone clocked in, the managers, the Opener or the Closer).
   for (const name of Array.from(new Set(clock.everIn))) {
-    const mine = missed.filter(t => owes(t.assignment, name, clock))
+    // ...but only if it fell due while they were at work: someone who clocked in after a task was due is not charged for it.
+    const mine = missed.filter(t => owes(t.assignment, name, clock) && (!due.has(t.id) || onShift(name, due.get(t.id)!, clock)))
     if (!mine.length) continue
     const pts = Math.min(mine.length, MISSED_DAILY_CAP)
     const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
