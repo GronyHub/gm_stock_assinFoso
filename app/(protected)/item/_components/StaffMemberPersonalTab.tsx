@@ -104,7 +104,7 @@ export default function StaffMemberPersonalTab({
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}>
-            <span>{t.icon}</span>{t.key === 'waiting' && !isSelf ? 'To do' : t.label}
+            <span>{t.icon}</span>{t.label}
           </button>
         ))}
       </div>
