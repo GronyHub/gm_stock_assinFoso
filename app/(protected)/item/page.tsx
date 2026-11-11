@@ -98,6 +98,7 @@ const ItemsTab       = dynamic(() => import('./_components/ItemsTab'),        { 
 const ExpensesTab    = dynamic(() => import('./_components/ExpensesTab'),     { ssr: false, loading: () => loading('Loading…') })
 const CABTab         = dynamic(() => import('./_components/CABTab'),          { ssr: false, loading: () => loading('Loading…') })
 const TodayContent   = dynamic(() => import('./_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
+const MyDayClient     = dynamic(() => import('../my-day/MyDayClient'),                { ssr: false, loading: () => loading('Loading…') })
 const NewExpenseForm = dynamic(() => import('../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 const NewItemForm    = dynamic(() => import('./_components/NewItemForm'),     { ssr: false, loading: () => loading('Loading…') })
 const ItemsAnalyticsSection      = dynamic(() => import('./_components/ItemsAnalyticsSection'),      { ssr: false, loading: () => loading('Loading analytics…') })
@@ -1641,7 +1642,7 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'todo' | 'notdone' | 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
     // The Daily Checklist is the Shop's "To do" tab (/todo); old links keep their ?tile= and ?closing=
@@ -7147,7 +7148,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['todo', '✅ To do'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['todo', '✅ To do'], ['notdone', '⏳ Not done'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -7155,6 +7156,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {shop.tab === 'todo' && <iframe key={'t' + (shop.src ?? '')} src={shop.src ?? '/todo'} title="To do" className="h-full w-full border-0" />}
+                  {shop.tab === 'notdone' && <MyDayClient team />}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}

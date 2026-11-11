@@ -12,13 +12,14 @@ const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
-export default function MyDayClient({ onNavigate, forName = '' }: { onNavigate?: (i: MyDayItem) => void; forName?: string } = {}) {
+export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone'; team?: boolean } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
+  const [owners, setOwners] = useState<Record<string, string[]>>({})
   // A supervisor looking at a team member's list gets it from that person's own page (forName): read-only, with a reminder button.
   const who = forName
   const [msg, setMsg] = useState('')
-  const load = (w = who) => fetch('/api/my-day' + (w ? `?for=${encodeURIComponent(w)}` : ''), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setItems(d?.items ?? [])).catch(() => setItems([]))
-  useEffect(() => { setItems(null); void load(forName) }, [forName])
+  const load = (w = who) => fetch('/api/my-day?' + (team ? 'team=1' : `lens=${lens}` + (w ? `&for=${encodeURIComponent(w)}` : '')), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { setItems(d?.items ?? []); setOwners(d?.who ?? {}) }).catch(() => setItems([]))
+  useEffect(() => { setItems(null); void load(forName) }, [forName, lens, team])
   // Whatever gets done leaves the list (it is then in Done): refresh when the tab is shown again and every minute.
   useEffect(() => {
     const again = () => { if (document.visibilityState === 'visible') void load(forName) }
@@ -26,14 +27,14 @@ export default function MyDayClient({ onNavigate, forName = '' }: { onNavigate?:
     const t = setInterval(again, 60000)
     return () => { document.removeEventListener('visibilitychange', again); window.removeEventListener('focus', again); clearInterval(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forName])
+  }, [forName, lens, team])
   async function remind() {
     const r = await fetch('/api/my-day/remind', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: who }) })
     const j = await r.json().catch(() => ({}))
     setMsg(r.ok ? (j.message ?? 'Reminder sent.') : (j.error ?? 'Could not send.')); setTimeout(() => setMsg(''), 4000)
   }
   const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
-  const hidden = who ? new Set<string>() : INLINE
+  const hidden = who || lens === 'notdone' ? new Set<string>() : INLINE
   const shown = items?.filter(i => !hidden.has(i.key)) ?? []
   const waiting = shown.filter(i => i.urgency !== 'later').reduce((n, i) => n + i.count, 0)
   const overdue = shown.filter(i => i.urgency === 'now').reduce((n, i) => n + i.count, 0)
@@ -41,29 +42,31 @@ export default function MyDayClient({ onNavigate, forName = '' }: { onNavigate?:
   return (
     <div className="mx-auto max-w-2xl space-y-2 p-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold text-[#14213D]">{who ? `${name}'s list` : 'Waiting for me'}</h1>
+        <h1 className="text-xl font-extrabold text-[#14213D]">{team ? 'Not done today' : lens === 'notdone' ? (who ? `${name}: not done` : 'Not done') : who ? `${name}'s list` : 'Waiting for me'}</h1>
         <button type="button" onClick={() => void load()} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">Refresh</button>
       </div>
-      {who ? (
+      {team || lens === 'notdone' ? (
+        <p className="text-sm text-gray-700">{team ? 'Tasks that are due or overdue today and that nobody has done yet.' : who ? `Tasks ${name} owes that are due or overdue today and not yet done.` : 'Tasks you owe that are due or overdue today and not yet done.'} They are not violations yet: a point is counted only if they are still undone at day end.{items ? ` ${shown.reduce((n, i) => n + i.count, 0)} not done.` : ''}{who && shown.length > 0 && <button type="button" onClick={() => void remind()} className="ml-2 rounded-lg bg-[#14213D] px-2.5 py-1 text-xs font-bold text-white">Remind {name}</button>}</p>
+      ) : who ? (
         <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-2 text-xs font-semibold text-blue-900">
           <span className="min-w-0 flex-1">You are looking at {name}'s list. You can see it but not act on it. {items ? `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.` : ''}</span>
           <button type="button" onClick={() => void remind()} className="shrink-0 rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">Remind {name}</button>
         </div>
       ) : (<p className="text-sm text-gray-700">Everything you owe or must decide, from every part of the app, most urgent first.{items ? ` ${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.` : ''}</p>)}
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
-      {!who && <ClockNotices onChange={() => void load()} />}
-      {!who && <ClockApprovals />}
-      {!who && <PenaltyDecisions onChange={() => void load()} />}
+      {!who && !team && lens === 'todo' && <ClockNotices onChange={() => void load()} />}
+      {!who && !team && lens === 'todo' && <ClockApprovals />}
+      {!who && !team && lens === 'todo' && <PenaltyDecisions onChange={() => void load()} />}
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
-      {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ Nothing is waiting{who ? ` for ${name}` : ' for you'}.</p>}
+      {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ {team || lens === 'notdone' ? 'Nothing is overdue.' : `Nothing is waiting${who ? ` for ${name}` : ' for you'}.`}</p>}
       {shown.map(i => (
         <div key={i.key} className={`flex items-center gap-3 rounded-2xl border-2 p-3 ${TONE[i.urgency]}`}>
           <span className="text-2xl">{i.icon}</span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold text-gray-900">{i.title} {i.count > 1 && <span className="ml-1 rounded-full bg-[#14213D] px-2 py-0.5 text-[10px] font-bold text-white">{i.count}</span>} <span className="ml-1 text-[10px] font-bold uppercase text-gray-500">{TAG[i.urgency]}</span></p>
-            <p className="text-xs text-gray-700">{i.detail}</p>
+            <p className="text-xs text-gray-700">{i.detail}{team && owners[i.key] ? ` Falls on: ${owners[i.key].join(', ')}.` : ''}</p>
           </div>
-          {!who && (i.href || i.hub) && <button type="button" onClick={() => go(i)} className="shrink-0 rounded-xl bg-[#14213D] px-3 py-2 text-xs font-bold text-white">{i.key.startsWith('task-') ? 'Do it' : 'Open'}</button>}
+          {!who && !team && (i.href || i.hub) && <button type="button" onClick={() => go(i)} className="shrink-0 rounded-xl bg-[#14213D] px-3 py-2 text-xs font-bold text-white">{i.key.startsWith('task-') ? 'Do it' : 'Open'}</button>}
         </div>))}
     </div>
   )

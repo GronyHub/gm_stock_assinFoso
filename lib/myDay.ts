@@ -24,7 +24,8 @@ export function viewablePeople(user: { username?: string | null; name?: string |
 }
 
 // `viewing` = a supervisor is looking at someone else's list: only that person's own matters are shown, never the supervisor's decisions.
-export async function myDay(me: string, user: unknown, opts: { viewing?: boolean } = {}): Promise<MyDayItem[]> {
+// lens: 'todo' = what is waiting except tasks already due; 'notdone' = only the tasks due or overdue today and not yet done (not yet a violation: the point is counted at day end); 'all' (default) = both, for the badge counts.
+export async function myDay(me: string, user: unknown, opts: { viewing?: boolean; lens?: 'all' | 'todo' | 'notdone' } = {}): Promise<MyDayItem[]> {
   await ensureAttendance()
   const items: MyDayItem[] = []
   const day = today()
@@ -59,11 +60,12 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
       if (!late.length) return
       const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
       // One row per task, so each can be opened and done from here. Beyond eight, one row says how many more.
-      for (const t of late.slice(0, 8)) {
+      const cap = opts.lens === 'notdone' ? 500 : 8
+      for (const t of late.slice(0, cap)) {
         const mins = nowMin - due.get(t.id)!
         add({ key: `task-${t.id}`, icon: '⏳', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${t.id}` })
       }
-      if (late.length > 8) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/todo' })
+      if (late.length > cap) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - cap} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - cap, urgency: 'now', href: '/todo' })
     }, undefined)
   }
 
@@ -103,5 +105,20 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
     add({ key: 'cctv', icon: '🎥', title: 'CCTV reviews to do', detail: 'Days staff worked while you were not clocked in. Due within 48 hours.', count: Number(r[0].n), urgency: 'now', href: '/cctv-review' })
   }
   const order = { now: 0, soon: 1, later: 2 }
-  return items.sort((a, b) => order[a.urgency] - order[b.urgency])
+  const isTask = (i: MyDayItem) => i.key.startsWith('task-') || i.key === 'tasks-more'
+  const pick = opts.lens === 'notdone' ? items.filter(isTask) : opts.lens === 'todo' ? items.filter(i => !isTask(i)) : items
+  return pick.sort((a, b) => order[a.urgency] - order[b.urgency])
+}
+
+// Shop-wide "Not done": every task due or overdue today that nobody has done yet, with who it falls on.
+export async function teamNotDone(user: unknown): Promise<{ items: MyDayItem[]; who: Record<string, string[]> }> {
+  const byKey = new Map<string, MyDayItem>(), who: Record<string, string[]> = {}
+  for (const n of ACTIVE_STAFF) {
+    if (n === 'grony') continue
+    for (const i of await myDay(n, user, { viewing: true, lens: 'notdone' })) {
+      if (!byKey.has(i.key)) byKey.set(i.key, i)
+      ;(who[i.key] ??= []).push(n.charAt(0).toUpperCase() + n.slice(1))
+    }
+  }
+  return { items: [...byKey.values()].sort((a, b) => ({ now: 0, soon: 1, later: 2 }[a.urgency] - { now: 0, soon: 1, later: 2 }[b.urgency])), who }
 }
