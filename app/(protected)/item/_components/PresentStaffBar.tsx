@@ -46,9 +46,11 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedded, salesTotal, salesBy }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy }: {
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
   salesBy?: Record<string, number>
+  // Tapping the Shop box (was Total) opens the hub's Shop page: Daily Checklist, Company Laws, Home, Manage.
+  onOpenShop?: () => void
   roster: RosterEntry[]
   // The signed-in person (their button is the one at the top of the sidebar, so it is left out here) and what to do when a chip is tapped:
   // the hub opens that person's page in its right pane.
@@ -165,9 +167,9 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, embedde
             )}
           </button>
         ))}
-        <button type="button" onClick={() => setHomeModalOpen(true)} title="Open Home"
+        <button type="button" onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title="Open the Shop: Daily Checklist, Company Laws, Home"
           className="shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border border-gray-300 bg-gray-100 shadow-sm hover:bg-gray-200 active:bg-gray-300 transition">
-          <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Total</span>
+          <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
           {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}
           {salesTotal && <span title="Today's total sales so far" className="text-[10px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">{salesTotal}</span>}
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>

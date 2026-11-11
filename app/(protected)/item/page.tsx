@@ -1625,16 +1625,21 @@ function ItemHubPageInner() {
   const [personal, setPersonal] = useState<{ name: string; tab: string } | null>(null)
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
-  const openEmbed = (path: string) => { setPersonal(null); setEmbedUrl(path) }
-  const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setPersonal({ name, tab }) }
-  useEffect(() => { setEmbedUrl(null); setPersonal(null) }, [lossView, outerTab])
+  // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
+  type ShopTab = 'checklist' | 'laws' | 'home' | 'manage'
+  const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
+  const shopRoute = (path: string): { tab: ShopTab; src: string } | null => path.startsWith('/laws') ? { tab: 'laws', src: path } : (path === '/standards' || path.startsWith('/standards?')) ? { tab: 'checklist', src: path } : null
+  const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
+  const openShop = (tab: ShopTab = 'checklist') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
+  const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
+  useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
     if (open === '/my-day') setPersonal({ name: username, tab: 'waiting' })
-    else if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
-    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') setEmbedUrl(null); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
-    const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
-    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setPersonal({ name: username, tab: 'waiting' }) } else { setPersonal(null); setEmbedUrl(d.path) } }
+    else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
+    const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
+    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: 'waiting' }) } else { setPersonal(null); const r = shopRoute(d.path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(d.path) } } }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
     return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own); window.removeEventListener('hub-open', hubOpen) }
   }, [])
@@ -1692,6 +1697,7 @@ function ItemHubPageInner() {
   // else.
   // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
   const voiceDests: Dest[] = [
+    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('checklist') },
     { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
     { label: 'Daily Checklist', names: ['daily checklist', 'checklist'], run: () => openEmbed('/standards') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
@@ -6781,7 +6787,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           the moment you leave Grony Cash. */}
       <div className="relative flex-1 min-h-0 flex overflow-hidden">
         {!sidePaneHidden && (
-        <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null) }}
+        <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null); setShop(null) }}
             footer={<>
               <PaneDaily mode={cashDisplayMode}
                 onDaily={() => setLossView('dailySummary')}
@@ -6794,12 +6800,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
             <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
-            {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
-            <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={embedActive('/laws')} shared={isOwnerOrJoe}
-              href="/laws" onClick={() => openEmbed('/laws')} />
-            {/* The Daily Checklist is the second button in the sidebar, on every tab. */}
-            <SidePaneButton icon="✅" label="Daily Checklist" mode={cashDisplayMode} active={embedActive('/standards')} divider shared={isOwnerOrJoe}
-              href="/standards" onClick={() => openEmbed('/standards')} />
+            {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
+            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('checklist')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
@@ -6934,23 +6936,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
                   active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
-              )}
-              {!isDesktop && isOwnerOrJoe && (canSeeManage || canSeeTeam) && (<>
-                <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 border-t border-white/30 mt-1">🛠 Manage</div>
-                {manageSideOptions().map(o => (
-                  <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
-                    badge={o.badge > 0 ? o.badge : undefined}
-                    active={paneActive(modeActive('manage') && liveManageSection === o.key)}
-                    noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
-                ))}
-              </>)}
-              {!isDesktop && isOwnerOrJoe && canSeeManage && (
-                <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
-                  active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
-              )}
-              {!isDesktop && isOwnerOrJoe && canSeeManage && (
-                <SidePaneButton icon="✔" label="Shop checks" mode={cashDisplayMode} divider
-                  active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
               )}
             </div>
             )}
@@ -7097,30 +7082,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </div>
         </SidePaneContainer>
         )}
-        {/* Desktop only: a right sidebar holding the Grony Manage options (they stay in the left pane on phones,
-            where there is no room for a second pane). `order-last` puts it at the right end of this row. */}
-        {isDesktop && outerTab === 'loss' && isOwnerOrJoe && (canSeeManage || canSeeTeam) && (
-          <div style={{ '--pane-accent': paneAccent } as React.CSSProperties}
-            className={`order-last shrink-0 border-l border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 ${cashDisplayMode === 'icon' ? 'w-14' : 'w-36'}`}>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-300 border-b border-white/30">🛠 Grony Manage</div>
-              {manageSideOptions().map(o => (
-                <SidePaneButton key={o.key} icon="•" label={o.label} mode={cashDisplayMode} divider
-                  badge={o.badge > 0 ? o.badge : undefined}
-                  active={paneActive(modeActive('manage') && liveManageSection === o.key)}
-                  noNewTab onClick={() => { setLiveManageSection(o.key); goItemsMode('manage') }} />
-              ))}
-              {canSeeManage && (
-                <SidePaneButton icon="📣" label="Advert" mode={cashDisplayMode} divider
-                  active={paneActive(modeActive('advert'))} onClick={() => goItemsMode('advert')} />
-              )}
-              {canSeeManage && (
-                <SidePaneButton icon="✔" label="Shop checks" mode={cashDisplayMode} divider
-                  active={paneActive(modeActive('gronyChecks'))} onClick={() => goItemsMode('gronyChecks')} />
-              )}
-            </div>
-          </div>
-        )}
         {/* Restore button while the pane is hidden -- floats over the
             content area's own bottom-left corner rather than taking a
             layout slot of its own, same reasoning as SidePaneToggle's onHide
@@ -7147,14 +7108,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               before. */}
           {outerTab === 'loss' && !isDesktop && (
             <>
-              <div ref={barRef}><PresentStaffBar roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+              <div ref={barRef}><PresentStaffBar onOpenShop={() => openShop('checklist')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
-              <PresentStaffBar embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
+              <PresentStaffBar onOpenShop={() => openShop('checklist')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
@@ -7164,9 +7125,33 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             navSlotEl
           )}
 
-          {(embedUrl || personal) && (
+          {(embedUrl || personal || shop) && (
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
-              {personal ? (<>
+              {shop ? (<>
+                <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
+                  <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
+                    {([['checklist', '✅ Daily Checklist'], ['laws', '📜 Company Laws'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                      <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {shop.tab === 'checklist' && <iframe key={'c' + (shop.src ?? '')} src={shop.src ?? '/standards'} title="Daily Checklist" className="h-full w-full border-0" />}
+                  {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
+                  {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
+                  {shop.tab === 'manage' && (
+                    <div className="space-y-1 p-3">
+                      <p className="text-xs text-gray-500">Pick a section. It opens in the main area.</p>
+                      {manageSideOptions().map(o => (
+                        <button key={o.key} type="button" onClick={() => { setShop(null); setLiveManageSection(o.key); goItemsMode('manage') }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">
+                          <span>{o.label}</span>{o.badge > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{o.badge}</span>}
+                        </button>))}
+                      {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('advert') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">📣 Advert</button>}
+                      {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('gronyChecks') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">✔ Shop checks</button>}
+                    </div>)}
+                </div>
+              </>) : personal ? (<>
                 <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-3 py-1.5">
                   <p className="text-sm font-bold capitalize text-gray-900">{personal.name}</p>
                   <button type="button" onClick={() => setPersonal(null)} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
