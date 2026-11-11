@@ -48,6 +48,8 @@ export async function GET(req: NextRequest) {
     const category = req.nextUrl.searchParams.get('category')
     const from = req.nextUrl.searchParams.get('from')
     const to = req.nextUrl.searchParams.get('to')
+    // author=name: only that person's own record (a staff member's "Done" tab)
+    const author = req.nextUrl.searchParams.get('author')
 
     // Same Item/Qty/SP/SOH columns Live Sale's Log mode shows, joined back
     // in here via source_id rather than parsed out of the body text --
@@ -69,6 +71,7 @@ export async function GET(req: NextRequest) {
       WHERE (${before}::timestamptz IS NULL OR a.created_at < ${before}::timestamptz)
         AND (${q}::text IS NULL OR a.body ILIKE '%' || ${q} || '%' OR a.author ILIKE '%' || ${q} || '%')
         AND (${category}::text IS NULL OR a.category = ${category})
+        AND (${author}::text IS NULL OR LOWER(a.author) = LOWER(${author}))
         AND (${from}::date IS NULL OR a.created_at::date >= ${from}::date)
         AND (${to}::date IS NULL OR a.created_at::date <= ${to}::date)
       ORDER BY a.created_at DESC

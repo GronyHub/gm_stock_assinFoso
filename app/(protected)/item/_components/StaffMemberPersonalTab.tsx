@@ -8,12 +8,15 @@ import ProfileTab from './ProfileTab'
 import SupervisorClockOut from './SupervisorClockOut'
 import { PenaltyCard } from '@/components/PenaltyChip'
 import MyDayClient from '../../my-day/MyDayClient'
+import dynamic from 'next/dynamic'
+const PersonRecord = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-xs text-gray-400">Loading…</p> })
 import { PayslipsTab } from '../../staff/StaffClient'
 
-export type TabKey = 'waiting' | 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'dressCode' | 'meeting'
+export type TabKey = 'waiting' | 'done' | 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'dressCode' | 'meeting'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waiting', icon: '📋', label: 'Waiting for me' },
+  { key: 'done', icon: '✔', label: 'Done' },
   { key: 'times', icon: '🕐', label: 'Times' },
   { key: 'violations', icon: '⚖', label: 'Violations' },
   { key: 'payslips', icon: '💵', label: 'Payslips' },
@@ -92,17 +95,18 @@ export default function StaffMemberPersonalTab({
   return (
     <div className="px-2 pt-2 space-y-2">
       <div className="flex gap-1 overflow-x-auto pb-0.5">
-        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView)).map(t => (
+        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView) && (t.key !== 'done' || isSelf || mayView)).map(t => (
           <button key={t.key} type="button" ref={el => { if (el && activeTab === t.key) el.scrollIntoView({ inline: 'center', block: 'nearest' }) }} onClick={() => setActiveTab(t.key)}
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}>
-            <span>{t.icon}</span>{t.label}
+            <span>{t.icon}</span>{t.key === 'waiting' && !isSelf ? 'To do' : t.label}
           </button>
         ))}
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
+        {activeTab === 'done' && (isSelf || mayView) && <PersonRecord forStaff={staffName.toLowerCase()} />}
         {activeTab === 'waiting' && !isSelf && mayView && <MyDayClient forName={staffName.toLowerCase()} />}
         {activeTab === 'waiting' && isSelf && (
           <MyDayClient onNavigate={i => {

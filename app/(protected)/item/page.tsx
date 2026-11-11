@@ -1633,7 +1633,7 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'laws' | 'home' | 'manage' | 'people' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'laws' | 'home' | 'manage' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
     if (path.startsWith('/laws')) return { tab: 'laws', src: path }
@@ -7119,7 +7119,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['people', '👥 People'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -7131,14 +7131,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
                   {shop.tab === 'checks' && <iframe key="k" src="/integrity" title="System check" className="h-full w-full border-0" />}
-                  {shop.tab === 'people' && (
-                    <div className="space-y-1 p-3">
-                      <p className="text-xs text-gray-500">Everyone on the team, whether or not they are clocked in. Tap a person to open their page.</p>
-                      {activeStaff.map(st => (
-                        <button key={st.username} type="button" onClick={() => openPersonal(st.username, 'times')} className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-gray-900">
-                          <StaffAvatar name={st.username} url={st.photo_url} size={28} /><span className="capitalize">{st.username}</span>
-                        </button>))}
-                    </div>)}
                   {shop.tab === 'manage' && (
                     <div className="space-y-1 p-3">
                       <p className="text-xs text-gray-500">Pick a section. It opens in the main area.</p>

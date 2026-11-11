@@ -172,7 +172,7 @@ const KINDS: { key: string; label: string; test: (c: string) => boolean }[] = [
 ]
 const kindOf = (p: { category?: string | null }) => KINDS.find(k => k.test(String(p.category ?? '').toLowerCase()))?.key ?? 'other'
 
-function AnnouncementsPanel() {
+function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
   const canDelete = ['owner', 'manager'].includes(role)
@@ -182,7 +182,7 @@ function AnnouncementsPanel() {
   const [loadingMore, setLoadingMore] = useState(false)
 
   const PAGE_SIZE = 30
-  const [who, setWho] = useState('')
+  const authorQ = forStaff ? `author=${encodeURIComponent(forStaff)}` : ''
   const [kind, setKind] = useState('')
   const [find, setFind] = useState('')
 
@@ -230,7 +230,7 @@ function AnnouncementsPanel() {
   // latest page) -- that was why older announcements used to disappear.
   function load() {
     loadDailyTotal(new Date().toISOString().slice(0, 10))
-    fetch('/api/announcements')
+    fetch('/api/announcements' + (authorQ ? `?${authorQ}` : ''))
       .then(r => r.json())
       .then((d: Announcement[]) => {
         if (!Array.isArray(d)) return
@@ -253,7 +253,7 @@ function AnnouncementsPanel() {
     setLoadingMore(true)
     try {
       const oldest = posts[posts.length - 1]
-      const res = await fetch(`/api/announcements?before=${encodeURIComponent(oldest.created_at)}`)
+      const res = await fetch(`/api/announcements?before=${encodeURIComponent(oldest.created_at)}${authorQ ? `&${authorQ}` : ''}`)
       const d: Announcement[] = await res.json()
       if (Array.isArray(d) && d.length > 0) {
         setPosts(prev => {
@@ -304,13 +304,11 @@ function AnnouncementsPanel() {
     load()
   }
 
-  const people = Array.from(new Set(posts.map(p => String(p.author).toLowerCase()))).sort()
-  const shown = posts.filter(p => (!who || String(p.author).toLowerCase() === who) && (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
+  const shown = posts.filter(p => (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="space-y-1 border-b border-gray-200 p-2">
-        <div className="flex flex-wrap gap-1">{['', ...people].map(n => <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${who === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n || 'Everyone'}</button>)}</div>
         <div className="flex flex-wrap gap-1">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
         <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" className="w-full rounded-lg border border-gray-300 p-1.5 text-[11px]" />
       </div>
@@ -349,10 +347,11 @@ function AnnouncementsPanel() {
 // Flags moved to Grony Cash's and Grony Manage's own Tasks left-pane items
 // so this page stays announcement-focused and the feed never gets pushed
 // down.
-export default function TodayPage() {
+// forStaff: one person's own record (their profile's Done tab). Without it, the whole team's record (the Shop's Home).
+export default function TodayPage({ forStaff }: { forStaff?: string } = {}) {
   return (
     <div className="py-2">
-      <AnnouncementsPanel />
+      <AnnouncementsPanel forStaff={forStaff} />
     </div>
   )
 }
