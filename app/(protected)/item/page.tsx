@@ -106,6 +106,7 @@ const ExpensesAnalyticsSection   = dynamic(() => import('./_components/ExpensesA
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
+const ShopTeamTimes = dynamic(() => import('./_components/ShopTeamTimes'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
 const CustomersPage  = dynamic(() => import('../customers/page'),             { ssr: false, loading: () => loading('Loading…') })
@@ -1633,12 +1634,13 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'laws' | 'home' | 'manage' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
     if (path.startsWith('/laws')) return { tab: 'laws', src: path }
     // The Daily Checklist is the "Today" view of the Company Laws now; old links keep their ?tile= and ?closing=
     if (path === '/standards' || path.startsWith('/standards?')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); q.set('view', 'today'); return { tab: 'laws', src: '/laws?' + q.toString() } }
+    if (path === '/penalties') return { tab: 'violations', src: path }
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
@@ -6841,8 +6843,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 active={paneActive(modeActive('log'))} badge={fl(salesFlagsCount)} onClick={() => goItemsMode('log')} />
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'customers')} badge={fl(customersFlagsCount)} onClick={() => jumpToCustomersTab()} />
-              <SidePaneButton icon="🕐" label="Team Times" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(lossView === 'teamTimes')} onClick={() => pickLossView('teamTimes')} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
               {applyPaneOrder(combinedCashItems, paneOrder.cash).filter(v => v.key !== 'items' && (v.key !== 'pl' || canSeePL) && !paneHidden[v.key]).map((v, i) => (
                 <Fragment key={v.key}>
@@ -7119,7 +7119,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['laws', '📜 Laws and Today'], ['home', '🏠 Home'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -7128,6 +7128,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws?view=today'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
+                  {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} /></div>}
+                  {shop.tab === 'violations' && <iframe key="v" src="/penalties" title="Violations" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
                   {shop.tab === 'checks' && <iframe key="k" src="/integrity" title="System check" className="h-full w-full border-0" />}
