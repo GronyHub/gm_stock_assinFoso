@@ -18,7 +18,8 @@ const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getU
 const linkFor = (t: CheckTile): { href: string; label: string } | null =>
   /^count now/i.test(t.title) ? { href: '/item?view=counts', label: 'Open Counts' }
   : /^closing questions answered/i.test(t.title) ? { href: '/item?view=closer', label: 'Open Closer' }
-  : /^opening questions answered/i.test(t.title) ? { href: '/item?view=opener', label: 'Open Opener' } : null
+  : /^opening questions answered/i.test(t.title) ? { href: '/item?view=opener', label: 'Open Opener' }
+  : /^go through the pending jobs/i.test(t.title) ? { href: '/pending-jobs', label: 'Open pending jobs' } : null
 
 type Adhoc = { id: number; category: string; note: string; photo_url: string | null; minutes: number; credited: number; recorded_by: string; recorded_at: string }
 
@@ -117,7 +118,13 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
   const total = tiles.length, done = tiles.filter(t => latest(t)?.value === 'Done').length
 
   return (
-    <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'}>
+    <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'} onClick={e => {
+      // inside the Shop's frame, pages that belong in the Shop open there (not inside this frame)
+      const a = (e.target as HTMLElement).closest?.('a') as HTMLAnchorElement | null
+      if (!a || window.parent === window) return
+      const u = new URL(a.href, window.location.href)
+      if (u.origin === window.location.origin && (u.pathname.startsWith('/pending-jobs') || u.pathname.startsWith('/laws'))) { e.preventDefault(); window.parent.postMessage({ type: 'open-path', path: u.pathname + u.search }, window.location.origin) }
+    }}>
       <ClosingReportCard />
       {!embedded && (
       <div className="mb-1 flex items-center gap-2">

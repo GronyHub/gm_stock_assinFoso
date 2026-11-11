@@ -25,3 +25,9 @@ export async function rotaRolesBetween(from: string, to: string): Promise<Record
   } catch { return {} }
 }
 export async function rotaRolesFor(day: string): Promise<RotaRoles | null> { return (await rotaRolesBetween(day, day))[day] ?? null }
+
+// Sunday is a shop day only when the rota has someone working it (other days always are). Reminders, tasks and day-end points follow this.
+export async function isShopDay(day: string): Promise<boolean> {
+  if (new Date(day + 'T00:00:00Z').getUTCDay() !== 0) return true
+  return ((await rotaRolesFor(day))?.working.length ?? 0) > 0
+}

@@ -4,6 +4,7 @@ import { once } from './once'
 import { MANAGERS } from './signers'
 import { getClockState } from './clockState'
 import { effectiveDue, appliesOn } from './dailyChecksShared'
+import { isShopDay } from './rota'
 
 // Daily Checklist alerts, run from instrumentation.ts once a minute (GMT = Ghana, Monday to Saturday).
 //  - at a tile's time, and again 15 minutes later: staff who are clocked in get a push naming what is due/late
@@ -71,7 +72,7 @@ export async function notifyOwners(title: string, body: string) {
 
 export async function checklistAlertsTick(now = new Date()) {
   if (process.env.CHECKLIST_ALERTS === 'off') return
-  if (now.getUTCDay() === 0) return // Sunday: shop closed
+  if (!(await isShopDay(now.toISOString().slice(0, 10)))) return // Sunday is a shop day only when the rota has someone working it
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
   if (nowMin < 6 * 60 || nowMin > 21 * 60) return // nothing to do outside the shop's working day
   const day = now.toISOString().slice(0, 10)

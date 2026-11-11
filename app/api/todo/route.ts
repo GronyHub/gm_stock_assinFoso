@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       FROM daily_check_tiles t JOIN page_laws l ON l.id = t.law_id AND l.tile_id = t.id
       WHERE t.active AND l.status = 'live' AND t.kind <> 'properties' AND (${manager} OR l.audience <> 'managers')` as unknown as { id: number; title: string; time: string | null; minutes: number | null; frequency: string; days: string | null; weekday: string | null; assignment: string; law_id: number; month_day: number | null }[]
     const oneoff = await sql`SELECT id, title, notes, substr(due_date::text, 1, 10) AS d, assigned_to FROM custom_tasks WHERE submenu = 'To do' AND NOT COALESCE(done, false) AND substr(due_date::text, 1, 10) BETWEEN ${from} AND ${to}`.catch(() => []) as unknown as { id: number; title: string; notes: string | null; d: string; assigned_to: string | null }[]
+    const jobs = await sql`SELECT id, customer, job, status, due_on::text AS d FROM pending_jobs WHERE status <> 'done' AND due_on BETWEEN ${from}::date AND ${to}::date`.catch(() => []) as unknown as { id: number; customer: string; job: string; status: string; d: string }[]
     const rota = await rotaRolesBetween(from, to)
     const out: AheadDay[] = []
     for (let d = from; d <= to; d = addDays(d, 1)) {
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       const r = rota[d] ?? null
       for (const t of tiles) {
         let hit = false, note: string | null = null
-        if (t.frequency === 'daily') hit = w !== 'sun' && appliesOn(t, d)
+        if (t.frequency === 'daily') hit = (w !== 'sun' || (r?.working.length ?? 0) > 0) && appliesOn(t, d)
         else if (t.frequency === 'weekly') hit = w === (t.weekday ?? (t.days ? t.days.split(',')[0].trim() : 'mon'))
         else if (t.frequency === 'monthly') {
           if (t.month_day) hit = Number(d.slice(8)) === Math.min(t.month_day, daysIn(d))
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
         })
       }
       for (const o of oneoff.filter(x => x.d === d)) items.push({ key: `o${o.id}`, kind: 'oneoff', freq: 'once', time: null, title: o.title, minutes: null, law_id: null, note: o.notes, band: 'oneoff', role: null, who: o.assigned_to ? o.assigned_to.toLowerCase() : null })
+      for (const j of jobs.filter(x => x.d === d)) items.push({ key: `j${j.id}`, kind: 'oneoff', freq: 'once', time: null, title: `Pending job · ${j.customer}: ${j.job.slice(0, 90)}`, minutes: null, law_id: null, note: j.status === 'ready' ? 'Ready: waiting for the customer' : null, band: 'oneoff', role: null, who: null })
       items.sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
       out.push({ date: d, rota: r ? { opener: r.opener, closer: r.closer } : null, items })
     }

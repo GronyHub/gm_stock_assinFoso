@@ -75,6 +75,7 @@ async function ensureCompanyLawsImpl() {
   await mapOpeningClosingOnce()
   await mapRemainingTilesOnce()
   await rotaAndTodoLawsOnce()
+  await pendingJobsLawsOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -304,6 +305,23 @@ async function rotaAndTodoLawsOnce() {
     await mk('The Opener and the Closer come from the rota', 'Rota', 'The Opener and the Closer of the day are the people the rota names for it. If the rota does not name them, the Opener is the first to clock in and the Closer is the last to clock out. A task given to the Opener or the Closer is theirs, and if it is left undone at the end of the day the point is theirs.', 'A task given to the Opener or the Closer is left undone at the end of the day', 'app')
     await mk('Do the to-do items you are given by their date', 'To do', 'A to-do item added in To do for a date, to you or to everyone, is done by that date. Joe and the owner add them.', 'A to-do item given to you is not done by its date')
   } catch (e) { console.error('rota/to-do laws failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Pending jobs (the jobs customers leave behind) rest on two laws: one to write every job down, and a daily one that puts the list in front of
+// everyone in To do. Created once.
+async function pendingJobsLawsOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('pending-jobs-laws-2026-11-12') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { syncLawTile } = await import('./lawTiles')
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, assignment, live_at)
+      VALUES ('Customer service', ${'Every job a customer leaves with us is written in Pending jobs at once: the customer, their phone, what was left and the date promised. When the job is done, mark it ready and call the customer. When it is collected, mark it handed over.'}, false, 'law', 'Customer service', 'Pending jobs', 'standing', 'live', 'pending-jobs-v1', 'tick', 1,
+              ${JSON.stringify([{ text: 'A job a customer left is not written in Pending jobs', points: 1, by: 'manager' }])}, 'Write down every job a customer leaves', 'all', now() + interval '3 days')`
+    const [r] = await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, status, seed, proof, points, violations, title, assignment, live_at)
+      VALUES ('Customer service', ${'Go through the pending jobs: finish what is due, and call every customer whose job is ready or overdue.'}, false, 'law', 'Customer service', 'Pending jobs', 'recurring', 'daily', '11:00', 10, 'live', 'pending-jobs-v1', 'tick', 1,
+              ${JSON.stringify([{ text: 'The pending jobs are not gone through on the day', points: 1, by: 'manager' }])}, 'Go through the pending jobs', 'all', now() + interval '3 days') RETURNING id`
+    await syncLawTile(r.id as number).catch(() => {})
+  } catch (e) { console.error('pending jobs laws failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.

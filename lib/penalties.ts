@@ -7,6 +7,7 @@ import { getClockState } from '@/lib/clockState'
 import { appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
+import { isShopDay } from '@/lib/rota'
 
 // Penalty points. Every violation costs points (1 for now); points are recorded in a ledger. 20 points = a 3-day
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
@@ -187,7 +188,7 @@ export async function penaltiesTick(now = new Date()) {
   if (process.env.PENALTIES === 'off') return
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
   const day = dayKey(now)
-  if (now.getUTCDay() === 0) return
+  if (!(await isShopDay(day))) return
   if (hm === '08:20' && now.getUTCDay() === 1) {
     await ensurePenalties()
     if (await claim(`prompt:${day}`)) {

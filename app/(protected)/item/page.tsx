@@ -1613,6 +1613,13 @@ function ItemHubPageInner() {
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
   const [myDayBadge, setMyDayBadge] = useState(0)
+  const [pendingJobsBadge, setPendingJobsBadge] = useState(0)
+  useEffect(() => {
+    let live = true
+    const load = () => fetch('/api/pending-jobs?count=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live && d) setPendingJobsBadge(Number(d.open ?? 0)) }).catch(() => {})
+    void load(); const t = setInterval(load, 10 * 60 * 1000)
+    return () => { live = false; clearInterval(t) }
+  }, [])
   const [waitingBy, setWaitingBy] = useState<Record<string, { total: number; now: number }>>({})
   useEffect(() => {
     let live = true
@@ -6820,6 +6827,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
             )}
             <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
+            {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
+            <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
             <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('todo')} />
 

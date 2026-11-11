@@ -6,6 +6,8 @@ import { canDecideFor } from '@/lib/penalties'
 import { getClockState } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
+import { isShopDay } from '@/lib/rota'
+import { pendingJobCounts } from '@/lib/pendingJobs'
 import { canLogAgainst } from '@/lib/violationLog'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
@@ -44,7 +46,7 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
     // checklist tasks the shop owes now: tiles past their due time and not yet done today (the same list the day-end point is counted from)
     await safe(async () => {
       const now = new Date()
-      if (now.getUTCDay() === 0) return
+      if (!(await isShopDay(day))) return
       const clock = await getClockState(day)
       if (clock.dayStart == null || !clock.present.includes(me)) return
       const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
@@ -74,6 +76,8 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
     const quiz = await safe(() => sql`SELECT l.id FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
       AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75) ORDER BY l.id`, [] as { id: number }[])
     add({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: 'Pass each quiz (75% or more) within 7 days of its laws going live.', count: quiz.length, urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
+    const pj = await safe(() => pendingJobCounts(), { open: 0, ready: 0, overdue: 0 })
+    add({ key: 'pending-jobs', icon: '🧾', title: 'Pending jobs overdue', detail: `${pj.overdue} job${pj.overdue === 1 ? '' : 's'} customers left ${pj.overdue === 1 ? 'is' : 'are'} past the promised date. Finish it, or call the customer.`, count: pj.overdue, urgency: 'now', href: '/pending-jobs' })
     const mt = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(due_date) AS first_due FROM custom_tasks WHERE LOWER(assigned_to) = ${me} AND NOT done AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${day})`, [{ n: 0, first_due: null }])
     const overdue = mt[0].first_due && String(mt[0].first_due).slice(0, 10) < day
     add({ key: 'mytasks', icon: '📌', title: 'Tasks assigned to you', detail: overdue ? 'One or more are past their due date.' : 'Tasks a manager gave you. Open your page to see them.', count: Number(mt[0].n), urgency: overdue ? 'now' : 'soon', hub: 'tasks' })

@@ -1,6 +1,7 @@
 import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
 import { recordActivity } from '@/lib/logger'
+import { isShopDay } from '@/lib/rota'
 import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
@@ -161,8 +162,8 @@ const claim = async (key: string) => { await sql`CREATE TABLE IF NOT EXISTS pena
 // Once a minute (instrumentation.ts): 19:00 still-at-the-shop push; 19:40 review detection; reminders for the owners every 2 hours.
 export async function attendanceTick(now = new Date()) {
   if (process.env.ATTENDANCE === 'off') return
-  if (now.getUTCDay() === 0) return
   const day = now.toISOString().slice(0, 10)
+  if (!(await isShopDay(day))) return
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
   const min = now.getUTCMinutes(), hr = now.getUTCHours()
   if (hm === '19:00' && await claim(`stillhere:${day}`)) {
