@@ -1,13 +1,12 @@
 'use client'
 import { cap } from '@/lib/strings'
 import { useCallback, useEffect, useState } from 'react'
-import { addDays, dayKey } from '@/lib/dailyChecksShared'
+import { addDays, dayKey, hhmm } from '@/lib/dailyChecksShared'
 
 type Ev = { id: number; day: string; recorded_at: string; recorded_by: string; value: string; note: string | null; extra: { answer?: string; persons?: Record<string, string>; about_staff?: string; photo_url?: string; done_at?: string } | null; tile_id: number; title: string; icon: string; section: string; kind: string }
 type Sum = { tile_id: number; title: string; icon: string; section: string; kind: string; times_done: number; last_done: string | null; last_by: string | null }
 type Adhoc = { id: number; day: string; category: string; note: string; photo_url: string | null; minutes: number; credited: number; recorded_by: string; recorded_at: string }
 type Data = { from: string; to: string; events: Ev[]; adhoc: Adhoc[]; summary: Sum[]; sections: string[]; people: string[] }
-const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 const sel = 'rounded-lg border border-gray-300 bg-white p-1.5 text-xs'
 

@@ -7,6 +7,8 @@ import { usePresenceReporter } from '@/lib/usePresenceReporter'
 import AliasesTab, { type Tab as AliasTab } from './AliasesTab'
 import AssignWidget from './AssignWidget'
 import ItemDetailModal from './ItemDetailModal'
+import FixRow0 from '@/components/FixRow'
+const FixRow = (p: { label: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode }) => <FixRow0 {...p} truncate />
 
 // Each of these 6 checks is its own flag pill on the Items page, and each
 // opens AliasesTab straight onto its own dedicated page -- no tab bar to
@@ -100,25 +102,6 @@ const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 te
 function Badge({ n }: { n: number }) {
   if (!n) return null
   return <span className="ml-1 bg-red-100 text-red-600 text-[9px] font-bold px-1 py-0.5 rounded-full">{n}</span>
-}
-
-function FixRow({ label, sub, children }: { label: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div>
-      <div className="flex items-center justify-between px-2 py-1.5 gap-2">
-        <div className="min-w-0 flex-1 truncate">
-          <span className="text-[10px] text-gray-900 font-semibold">{label}</span>
-          {sub && <span className="ml-2 text-[9px] text-gray-400">{sub}</span>}
-        </div>
-        <button onClick={() => setOpen(o => !o)}
-          className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
-          {open ? 'Close' : 'Fix'}
-        </button>
-      </div>
-      {open && <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
-    </div>
-  )
 }
 
 function RecentMergeFix({ r, onUnmerged }: { r: any; onUnmerged: () => void }) {

@@ -7,9 +7,12 @@ import { fmtDate, fmtOrdinalDate } from '@/lib/fmtDate'
 import { usePolling } from '@/lib/usePolling'
 import ManageLogPanel from '../item/_components/ManageLogPanel'
 import ClockInOutPanel, { type Mine } from './ClockInOutPanel'
+import FixRow0 from '@/components/FixRow'
+import SourceDot from '@/components/SourceDot'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
+const FixRow = (p: { label: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode }) => <FixRow0 {...p} roomy />
 
 // History views (times, payslips) show everyone who ever worked here, so Rawlings's records stay visible; the "add" lists use the active staff only.
 const STAFF = EVER_STAFF
@@ -170,12 +173,6 @@ type RecentRow = {
 // manual adjustment (the "+ Add Entry"/edit forms, see /api/staff-times/entry
 // and entry-id). No dot for older rows recorded before this distinction
 // existed -- there's no way to know their origin, so guessing would mislead.
-function SourceDot({ source }: { source?: string | null }) {
-  if (source === 'clock') return <span title="Clocked with the button" className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-1 align-middle" />
-  if (source === 'manual') return <span title="Manually adjusted" className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 ml-1 align-middle" />
-  return null
-}
-
 type Payslip = {
   id: number; staff_name: string; pay_month: string; payment_period: string | null
   hours_worked: string | null; pay_for_hours: string | null; overtime_hours: string | null
@@ -1960,25 +1957,6 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
 }
 
 // ── NO TIMES FIX (used inside ViolationsTab) ──────────────────────────────────
-
-function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div>
-      <div className="flex items-center justify-between px-3 py-1.5 gap-2">
-        <div className="min-w-0 flex-1">
-          <span className="text-[11px] text-gray-900 font-semibold">{label}</span>
-          {sub && <span className="ml-2 text-[10px] text-gray-400">{sub}</span>}
-        </div>
-        <button onClick={() => setOpen(o => !o)}
-          className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
-          {open ? 'Close' : 'Fix'}
-        </button>
-      </div>
-      {open && <div className="px-3 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
-    </div>
-  )
-}
 
 // Shared between the Staff → Violations → Times view and the Errors tab's
 // "No Team Times" violation, so both stay in sync with one implementation.

@@ -4,6 +4,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
+import BaseStatCard from '@/components/StatCard'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -33,6 +34,7 @@ const TONE_CLS = {
   red:    'bg-red-50 text-red-600',
   green:  'bg-green-50 text-green-600',
 } as const
+const StatCard = ({ tone, ...p }: { label: string; value: string; sub?: string; tone: keyof typeof TONE_CLS }) => <BaseStatCard {...p} cls={TONE_CLS[tone]} />
 
 // Date stays fixed/first (never hideable); these six are pickable. The
 // original 2-row grouped header ("Cash Out" spanning Bills/Expenses/Total)
@@ -56,15 +58,6 @@ const PL_COLUMNS: PLColumn[] = [
 ]
 const PL_COL_BY_KEY = new Map(PL_COLUMNS.map(c => [c.key, c]))
 const PL_COL_DEFAULTS: Record<string, number> = { date: 100, cc: 90, bills: 90, expenses: 90, cashOut: 110, dailyLoss: 90, pl: 90 }
-
-function StatCard({ label, value, tone }: { label: string; value: string; tone: keyof typeof TONE_CLS }) {
-  return (
-    <div className={`rounded-xl p-3 ${TONE_CLS[tone]}`}>
-      <p className="text-[10px] font-semibold opacity-70">{label}</p>
-      <p className="text-lg font-bold">{value}</p>
-    </div>
-  )
-}
 
 export default function ProfitLossTab() {
   const [data, setData] = useState<Data | null>(null)

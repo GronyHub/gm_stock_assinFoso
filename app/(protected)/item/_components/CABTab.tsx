@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { fmtDate } from '@/lib/fmtDate'
 import AssignWidget from './AssignWidget'
+import BaseStatCard from '@/components/StatCard'
+import { addDays } from '@/lib/dailyChecksShared'
 
 type Row = {
   entry_date: string
@@ -39,27 +41,12 @@ function isoWeekStart(dateStr: string) {
   d.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1))
   return d.toISOString().slice(0, 10)
 }
-function addDays(dateStr: string, n: number) {
-  const d = new Date(`${dateStr}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
 const TONE_CLS = {
   blue:   'bg-blue-50 text-blue-700',
   green:  'bg-green-50 text-green-600',
   red:    'bg-red-50 text-red-600',
 } as const
-
-function StatCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: keyof typeof TONE_CLS }) {
-  return (
-    <div className={`rounded-xl p-3 ${TONE_CLS[tone]}`}>
-      <p className="text-[10px] font-semibold opacity-70">{label}</p>
-      <p className="text-lg font-bold">{value}</p>
-      {sub && <p className="text-[9px] opacity-60 mt-0.5">{sub}</p>}
-    </div>
-  )
-}
+const StatCard = ({ tone, ...p }: { label: string; value: string; sub?: string; tone: keyof typeof TONE_CLS }) => <BaseStatCard {...p} cls={TONE_CLS[tone]} />
 
 // Grony's personal spending used to have its own embedded "Personal"
 // checkbox/view right here (add/edit/delete/split against

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import CloserQuestionnaire, { ClosingAnswers } from '@/components/CloserQuestionnaire'
+import SourceDot from '@/components/SourceDot'
 
 export type Mine = {
   actual_in: string | null; actual_out: string | null
@@ -38,12 +39,6 @@ function nowAs12h(): string {
 // Add Entry"/edit forms, see /api/staff-times/entry and entry-id). No dot
 // for older rows recorded before this distinction existed -- there's no way
 // to know their origin, so guessing would mislead.
-function SourceDot({ source }: { source?: string | null }) {
-  if (source === 'clock') return <span title="Clocked with the button" className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 ml-1 align-middle" />
-  if (source === 'manual') return <span title="Manually adjusted" className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 ml-1 align-middle" />
-  return null
-}
-
 function getLocation(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {

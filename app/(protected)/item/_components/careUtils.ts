@@ -2,10 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CareEvent } from '@/lib/caretakerShared'
 
-export const hhmm = (iso: string) => {
-  const d = new Date(iso)
-  return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
-}
+export { hhmm } from '@/lib/dailyChecksShared'
 
 // Phone photos run to many MB -- downscale before upload (weak mobile data).
 export async function compressPhoto(file: File): Promise<File> {

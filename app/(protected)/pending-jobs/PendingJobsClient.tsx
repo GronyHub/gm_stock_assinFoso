@@ -2,11 +2,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PendingJob, JobLine } from '@/lib/pendingJobs'
 import { pendingJobWhatsAppUrl } from '@/lib/customerProfile'
+import { money } from '@/lib/money'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const days = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 const dlabel = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const money = (n: number) => `₵${n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const jobNo = (id: number) => `PJ-${String(id).padStart(4, '0')}`
 const TABS = [['open', 'Open'], ['ready', 'Ready to collect'], ['done', 'Collected'], ['debt', 'Debtors'], ['all', 'All']] as const
 type Cust = { id: number; customer_id_code: string | null; display_name: string | null; company_name: string | null; phone: string | null }

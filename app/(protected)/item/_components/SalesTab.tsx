@@ -11,6 +11,8 @@ import BulkAttachForms from './BulkAttachForms'
 import ItemDetailModal from './ItemDetailModal'
 import { type ColKey } from './salesTabColumns'
 import SalesBuyers, { type Buyer } from './SalesBuyers'
+import FixRow0 from '@/components/FixRow'
+const FixRow = (p: { label: React.ReactNode; sub?: React.ReactNode; children: React.ReactNode }) => <FixRow0 {...p} />
 
 type Item = { id: number; item_name: string; cf_group: string | null }
 
@@ -76,25 +78,6 @@ const NO_WORK_REASONS = [
   'No work — Easter Monday','No work — Independence Day','No work — Special Assignment',
   'No work — Shop Closed','No work — Staff Training','No work — Other',
 ]
-
-function FixRow({ label, sub, children }: { label: string; sub?: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div>
-      <div className="flex items-center justify-between px-2 py-1.5 gap-2">
-        <div className="min-w-0 flex-1">
-          <span className="text-[10px] text-gray-900 font-semibold">{label}</span>
-          {sub && <span className="ml-2 text-[9px] text-gray-400">{sub}</span>}
-        </div>
-        <button onClick={() => setOpen(o => !o)}
-          className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
-          {open ? 'Close' : 'Fix'}
-        </button>
-      </div>
-      {open && <div className="px-2 pb-2 border-t border-gray-50 space-y-1.5 pt-1.5">{children}</div>}
-    </div>
-  )
-}
 
 // Exported for the Sales Log's Flags → Missing days list (LogFlagLists.tsx).
 export function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: string) => void }) {

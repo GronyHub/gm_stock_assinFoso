@@ -6,11 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
-  addDays, appliesOn, dayLabel, effectiveDue, inPeriod, type CheckEvent, type CheckTile, type Frequency,
+  addDays, appliesOn, dayLabel, effectiveDue, hhmm, inPeriod, type CheckEvent, type CheckTile, type Frequency,
 } from '@/lib/dailyChecksShared'
 
 const json = { 'Content-Type': 'application/json' }
-const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
 const evTime = (e: CheckEvent) => e.extra?.done_at ?? hhmm(e.recorded_at)
 const nowHM = () => { const d = new Date(); return d.getUTCHours() * 60 + d.getUTCMinutes() }
 

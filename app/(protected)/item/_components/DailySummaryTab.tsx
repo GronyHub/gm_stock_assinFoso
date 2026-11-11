@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fmtOrdinalDate } from '@/lib/fmtDate'
 import { parseTimeMins } from '@/lib/staffTimes'
+import BaseStatCard from '@/components/StatCard'
 
 function minsToHrs(mins: number) {
   return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`
@@ -62,15 +63,7 @@ const TONE_CLS = {
   green:  'bg-green-50 text-green-600',
   amber:  'bg-amber-50 text-amber-700',
 } as const
-
-function StatCard({ label, value, tone }: { label: string; value: string; tone: keyof typeof TONE_CLS }) {
-  return (
-    <div className={`rounded-xl p-3 ${TONE_CLS[tone]}`}>
-      <p className="text-[10px] font-semibold opacity-70">{label}</p>
-      <p className="text-lg font-bold">{value}</p>
-    </div>
-  )
-}
+const StatCard = ({ tone, ...p }: { label: string; value: string; sub?: string; tone: keyof typeof TONE_CLS }) => <BaseStatCard {...p} cls={TONE_CLS[tone]} />
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

@@ -4,7 +4,7 @@ import { once } from '@/lib/once'
 import { notifyOwners, pushToUsers, reminder } from '@/lib/checklistAlerts'
 import { isManagerName } from '@/lib/signers'
 import { getClockState, onShift } from '@/lib/clockState'
-import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
+import { appliesOn, effectiveDue, addDays } from '@/lib/dailyChecksShared'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
@@ -22,7 +22,6 @@ export const canDecideFor = (decider: string, subject: string) => decider !== su
 export const notifyDeciders = (subject: string, title: string, body: string) => subject.toLowerCase() === 'joe' ? pushToUsers(['grony'], title, body) : notifyOwners(title, body)
 
 const dayKey = (d = new Date()) => d.toISOString().slice(0, 10)
-const addDays = (day: string, n: number) => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return dayKey(d) }
 
 export const ensurePenalties = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS staff_penalties (

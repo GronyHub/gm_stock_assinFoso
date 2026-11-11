@@ -94,3 +94,6 @@ export function appliesOn(t: { days?: string | null }, day: string): boolean {
   if (!t.days) return true
   return t.days.split(',').map(x => x.trim()).filter(Boolean).includes(WEEKDAYS[utc(day).getUTCDay()])
 }
+
+// UTC clock time (HH:MM) of an ISO timestamp.
+export const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
