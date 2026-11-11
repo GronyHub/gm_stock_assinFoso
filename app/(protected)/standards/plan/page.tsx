@@ -1,9 +1,4 @@
-import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import PlanClient from './PlanClient'
 
-export default async function ChecklistPlanPage() {
-  const session = await auth()
-  if (!session) redirect('/login')
-  return <PlanClient />
-}
+// The old year-long plan page: the To do tab's "Coming up" now shows the days ahead.
+export default function Page() { redirect('/todo') }

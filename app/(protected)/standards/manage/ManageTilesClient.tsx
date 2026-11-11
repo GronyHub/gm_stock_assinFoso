@@ -67,7 +67,6 @@ export default function ManageTilesClient() {
       <div className="mb-2 flex items-center gap-2">
         <a href="/standards" className="text-sm text-gray-500">&larr; Checklist</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Tile Manager</h1>
-        <a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a>
         <button type="button" onClick={() => setDraft(blank(group || 'Daytime'))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ New tile</button>
       </div>
       <p className="mb-2 text-[11px] text-gray-500">Add tiles, stop tiles that should no longer appear (they can be restored), and set the time, days, how often, the group and the work minutes. Past records are never deleted.</p>

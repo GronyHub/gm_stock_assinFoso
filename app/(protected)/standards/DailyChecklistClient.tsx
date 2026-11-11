@@ -144,7 +144,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             <p className="text-sm font-extrabold text-[#14213D]">NOW · {String(Math.floor(clock / 60)).padStart(2, '0')}:{String(clock % 60).padStart(2, '0')}</p>
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{late.length} late</span>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{dueNow.length} due now</span>
-            <span className="ml-auto flex items-center gap-3">{embedded && canManage && <a href="/standards/history" className="text-[11px] font-bold text-blue-700 underline">History</a>}{canEdit && <button type="button" onClick={() => setReporting(true)} className="text-[11px] font-bold text-blue-700 underline">Day report</button>}</span>
+            <span className="ml-auto flex items-center gap-3">{canEdit && <button type="button" onClick={() => setReporting(true)} className="text-[11px] font-bold text-blue-700 underline">Day report</button>}</span>
           </div>
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Waiting for the first staff member to clock in. The day&apos;s tasks start when they do.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}

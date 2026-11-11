@@ -48,6 +48,7 @@ type Data = {
   allVerified: boolean
   cashCounted: number
   wnwTotal: number
+  jobPayments?: number
   bills: { count: number; total: number }
   expenses: { count: number; total: number }
   profitLoss: number
@@ -198,6 +199,7 @@ export default function DailySummaryTab() {
         body: [
           ['Cash Counted', fcPdf(data.cashCounted)],
           ['Work Not Written', fcPdf(data.wnwTotal)],
+          ...((data.jobPayments ?? 0) !== 0 ? [['Pending-job payments (in cash counted)', fcPdf(data.jobPayments ?? 0)]] : []),
           [data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)', fcPdf(data.expenses.total)],
           ['Bills', fcPdf(data.bills.total)],
           [isProfit ? 'Net Profit (cash-basis)' : 'Net Loss (cash-basis)', fcPdf(Math.abs(data.profitLoss))],
@@ -309,6 +311,7 @@ export default function DailySummaryTab() {
           <div className="grid grid-cols-2 gap-2">
             <StatCard label="Cash Counted" value={fc(data.cashCounted)} tone="blue" />
             <StatCard label="Work Not Written" value={fc(data.wnwTotal)} tone="amber" />
+            {(data.jobPayments ?? 0) !== 0 && <StatCard label="Job payments taken" value={fc(data.jobPayments ?? 0)} tone="blue" />}
             <StatCard label={data.canSeeAmounts ? 'Expenses' : 'Expenses (excl. Salaries)'} value={fc(data.expenses.total)} tone="orange" />
             <StatCard label="Bills" value={fc(data.bills.total)} tone="red" />
           </div>

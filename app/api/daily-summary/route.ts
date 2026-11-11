@@ -1,3 +1,4 @@
+import { ensurePendingJobs } from '@/lib/pendingJobs'
 import { requireAuth, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
@@ -200,6 +201,11 @@ export async function GET(req: NextRequest) {
       const w = Number(r.wnw) || 0
       return s + (w > 0.001 ? w : 0)
     }, 0)
+    // Money taken for pending jobs that day (deposits, balances, refunds as negatives) is in the cash counted but not in any receipt, so it is not "work not written".
+    await ensurePendingJobs()
+    const [jp] = await sql`SELECT COALESCE(SUM(amount), 0)::float8 AS amount FROM pending_job_payments WHERE day = ${date}::date`.catch(() => [{ amount: 0 }])
+    const jobPayments = Number(jp?.amount ?? 0)
+    const wnwAdjusted = Math.max(0, wnwTotal - Math.max(0, jobPayments))
     const bills = billsAgg[0] ?? { count: 0, total: 0 }
     const expenses = expensesAgg[0] ?? { count: 0, total: 0 }
     const profitLoss = cashCounted - Number(expenses.total) - Number(bills.total)
@@ -232,7 +238,8 @@ export async function GET(req: NextRequest) {
       itemsGMC: itemsGMCChecked,
       allVerified,
       cashCounted,
-      wnwTotal,
+      wnwTotal: wnwAdjusted,
+      jobPayments,
       bills: { count: Number(bills.count), total: Number(bills.total) },
       expenses: { count: Number(expenses.count), total: Number(expenses.total) },
       profitLoss,

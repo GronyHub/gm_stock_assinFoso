@@ -16,6 +16,8 @@ const bandCls = (p: number) => p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg
 
 // Penalties for the owner and manager: everyone's points, reports to confirm, sanctions to approve, and a form to record a violation.
 export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
+  const [inShop, setInShop] = useState(false)
+  useEffect(() => { setInShop(window.parent !== window) }, [])
   const [d, setD] = useState<Data | null>(null)
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
@@ -37,11 +39,12 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
-      <div className="mb-2 flex items-center gap-2">
+      {/* Inside the Shop's Violations tab the tab already names the page, so the header goes. */}
+      {!inShop && <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Penalty points</h1>
         <a href="/laws" className="text-xs font-semibold text-blue-700 underline">Company Laws</a>
-      </div>
+      </div>}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {!d && !err && <p className="text-sm text-gray-400">Loading…</p>}
       {d && (<>
