@@ -41,18 +41,16 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
   const name = who ? who.charAt(0).toUpperCase() + who.slice(1) : ''
   return (
     <div className="mx-auto max-w-2xl space-y-2 p-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold text-[#14213D]">{team ? 'Not done today' : lens === 'notdone' ? (who ? `${name}: not done` : 'Not done') : who ? `${name}'s list` : 'Waiting for me'}</h1>
-        <button type="button" onClick={() => void load()} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">Refresh</button>
+      {/* One compact row: counts on the left, refresh and remind as icons on phones (words from sm up). The tab already names the list. */}
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 text-xs font-semibold text-gray-700">
+          {!(who || team || lens === 'notdone' || onNavigate) && <span className="mr-2 text-base font-extrabold text-[#14213D]">Waiting for me</span>}
+          {items ? (team || lens === 'notdone' ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.`) : ''}
+          {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
+        </p>
+        {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-1.5 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
+        <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
       </div>
-      {team || lens === 'notdone' ? (
-        <p className="text-sm text-gray-700">{team ? 'Tasks that are due or overdue today and that nobody has done yet.' : who ? `Tasks ${name} owes that are due or overdue today and not yet done.` : 'Tasks you owe that are due or overdue today and not yet done.'} They are not violations yet: a point is counted only if they are still undone at day end.{items ? ` ${shown.reduce((n, i) => n + i.count, 0)} not done.` : ''}{who && shown.length > 0 && <button type="button" onClick={() => void remind()} className="ml-2 rounded-lg bg-[#14213D] px-2.5 py-1 text-xs font-bold text-white">Remind {name}</button>}</p>
-      ) : who ? (
-        <div className="flex items-center gap-2 rounded-xl bg-blue-50 p-2 text-xs font-semibold text-blue-900">
-          <span className="min-w-0 flex-1">You are looking at {name}'s list. You can see it but not act on it. {items ? `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.` : ''}</span>
-          <button type="button" onClick={() => void remind()} className="shrink-0 rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">Remind {name}</button>
-        </div>
-      ) : (<p className="text-sm text-gray-700">Everything you owe or must decide, from every part of the app, most urgent first.{items ? ` ${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.` : ''}</p>)}
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {!who && !team && lens === 'todo' && <ClockNotices onChange={() => void load()} />}
       {!who && !team && lens === 'todo' && <ClockApprovals />}
