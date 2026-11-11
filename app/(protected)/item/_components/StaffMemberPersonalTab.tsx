@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import ManageLogPanel from './ManageLogPanel'
 import DressCodeFlagsPanel from './DressCodeFlagsPanel'
-import ClosingReportLogView from './ClosingReportLogView'
 import StaffMeetingPanel from './StaffMeetingPanel'
 import StaffTimesView from './StaffTimesView'
 import ProfileTab from './ProfileTab'
@@ -10,7 +9,7 @@ import SupervisorClockOut from './SupervisorClockOut'
 import { PenaltyCard } from '@/components/PenaltyChip'
 import { PayslipsTab } from '../../staff/StaffClient'
 
-export type TabKey = 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'mentions' | 'dressCode' | 'behaviour' | 'meeting' | 'display'
+export type TabKey = 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'dressCode' | 'meeting'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'times', icon: '🕐', label: 'Times' },
@@ -18,11 +17,8 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'payslips', icon: '💵', label: 'Payslips' },
   { key: 'profile', icon: '👤', label: 'Profile' },
   { key: 'tasks', icon: '✅', label: 'Tasks' },
-  { key: 'mentions', icon: '🔍', label: 'Mentions' },
   { key: 'dressCode', icon: '👕', label: 'Dress Code' },
-  { key: 'behaviour', icon: '🚦', label: 'Behaviour' },
   { key: 'meeting', icon: '🗣️', label: 'Meeting' },
-  { key: 'display', icon: '📌', label: 'Display' },
 ]
 
 export default function StaffMemberPersonalTab({
@@ -45,8 +41,6 @@ export default function StaffMemberPersonalTab({
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'tasks')
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
-  const [searchResults, setSearchResults] = useState<any>(null)
-  const [searchLoading, setSearchLoading] = useState(false)
 
   // Fetch tasks assigned to this staff member
   useEffect(() => {
@@ -59,19 +53,6 @@ export default function StaffMemberPersonalTab({
         setTasksLoading(false)
       })
       .catch(() => setTasksLoading(false))
-  }, [staffName, activeTab])
-
-  // Search for mentions of this staff member
-  useEffect(() => {
-    if (activeTab !== 'mentions') return
-    setSearchLoading(true)
-    fetch(`/api/search?q=${encodeURIComponent(staffName)}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        setSearchResults(d)
-        setSearchLoading(false)
-      })
-      .catch(() => setSearchLoading(false))
   }, [staffName, activeTab])
 
   function TasksView() {
@@ -89,49 +70,14 @@ export default function StaffMemberPersonalTab({
                 {task.notes && <div className="text-sm text-gray-600 mt-1">{task.notes}</div>}
                 {task.due_date && <div className="text-xs text-gray-500 mt-1">Due: {task.due_date}</div>}
                 <div className="flex items-center gap-2 mt-2">
-                  <input type="checkbox" checked={task.done} disabled className="w-4 h-4" />
-                  <span className="text-xs text-gray-600">{task.done ? 'Completed' : 'Pending'}</span>
+                  <input type="checkbox" checked={!!task.done} disabled={!isSelf && !canManage} className="w-5 h-5" onChange={() => {
+                    setTasksData(prev => prev.map((x: any) => x.id === task.id ? { ...x, done: !x.done } : x))
+                    void fetch(`/api/tasks/${task.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: !task.done }) }).catch(() => {})
+                  }} />
+                  <span className="text-xs text-gray-600">{task.done ? 'Done' : 'Tap the box when it is done'}</span>
                 </div>
               </div>
             ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  function MentionsView() {
-    return (
-      <div>
-        {searchLoading ? (
-          <div className="text-center text-gray-400 py-4 text-sm">Searching...</div>
-        ) : !searchResults ? (
-          <div className="text-center text-gray-400 py-4 text-sm">No results</div>
-        ) : (
-          <div className="space-y-3">
-            {searchResults.sales?.length > 0 && (
-              <div>
-                <h3 className="font-medium text-gray-700 mb-2 text-sm">Sales</h3>
-                {searchResults.sales.map((s: any) => (
-                  <div key={s.id} className="text-sm text-gray-600 mb-1">
-                    Receipt: {s.receipt_number} - {s.customer_name}
-                  </div>
-                ))}
-              </div>
-            )}
-            {searchResults.bills?.length > 0 && (
-              <div>
-                <h3 className="font-medium text-gray-700 mb-2 text-sm">Bills</h3>
-                {searchResults.bills.map((b: any) => (
-                  <div key={b.id} className="text-sm text-gray-600 mb-1">
-                    Bill: {b.bill_number} - {b.vendor_name}
-                  </div>
-                ))}
-              </div>
-            )}
-            {!searchResults.sales?.length && !searchResults.bills?.length && (
-              <div className="text-center text-gray-400 text-sm">No mentions found</div>
-            )}
           </div>
         )}
       </div>
@@ -154,25 +100,19 @@ export default function StaffMemberPersonalTab({
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
         {activeTab === 'times' && !isSelf && <SupervisorClockOut staffName={staffName} />}
         {activeTab === 'times' && <div className="p-3"><StaffTimesView staffName={staffName} username={username} /></div>}
-        {activeTab === 'violations' && <div className="p-2"><PenaltyCard staff={isSelf ? undefined : staffName} /></div>}
+        {activeTab === 'violations' && (
+          <div className="space-y-3 p-2">
+            <PenaltyCard staff={isSelf ? undefined : staffName} />
+            <div className="rounded-xl border border-gray-200 p-3"><ManageLogPanel category="team_behaviour_log" label="Behaviour incidents logged by managers" icon="🚦" filterAboutStaff={staffName} /></div>
+            <div className="rounded-xl border border-gray-200 p-3"><ManageLogPanel category="staff_display" label="Display incidents logged by managers" icon="📌" filterAboutStaff={staffName} /></div>
+          </div>
+        )}
         {activeTab === 'payslips' && isSelf && <div className="p-2"><PayslipsTab role={role} username={username} viewingStaff={staffName} /></div>}
         {activeTab === 'profile' && isSelf && <div className="p-2"><ProfileTab /></div>}
         {activeTab === 'tasks' && <div className="p-3"><TasksView /></div>}
-        {activeTab === 'mentions' && <div className="p-3"><MentionsView /></div>}
-        {activeTab === 'dressCode' && (<>
-          <DressCodeFlagsPanel filterStaff={staffName} />
-          <div className="p-3 border-t border-gray-100">
-            <ClosingReportLogView field="no_tshirt_staff" label="My Dress Code" icon="👕" filterStaff={staffName} />
-          </div>
-        </>)}
-        {activeTab === 'behaviour' && (
-          <div className="p-3"><ManageLogPanel category="team_behaviour_log" label="My Behaviour Incidents" icon="🚦" filterAboutStaff={staffName} /></div>
-        )}
+        {activeTab === 'dressCode' && <DressCodeFlagsPanel filterStaff={staffName} />}
         {activeTab === 'meeting' && (
           <div className="p-3"><StaffMeetingPanel staffRoster={staffRoster} routablePages={routablePages} filterStaff={staffName} /></div>
-        )}
-        {activeTab === 'display' && (
-          <div className="p-3"><ManageLogPanel category="staff_display" label="My Display" icon="📌" filterAboutStaff={staffName} /></div>
         )}
       </div>
     </div>

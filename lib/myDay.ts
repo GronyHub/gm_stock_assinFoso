@@ -60,6 +60,9 @@ export async function myDay(me: string, user: unknown): Promise<MyDayItem[]> {
     const quiz = await safe(() => sql`SELECT l.id FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
       AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75) ORDER BY l.id`, [] as { id: number }[])
     add({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: 'Pass each quiz (75% or more) within 7 days of its laws going live.', count: quiz.length, urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
+    const mt = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(due_date) AS first_due FROM custom_tasks WHERE LOWER(assigned_to) = ${me} AND NOT done`, [{ n: 0, first_due: null }])
+    const overdue = mt[0].first_due && String(mt[0].first_due).slice(0, 10) < day
+    add({ key: 'mytasks', icon: '📌', title: 'Tasks assigned to you', detail: overdue ? 'One or more are past their due date.' : 'Tasks a manager gave you. Open your page to see them.', count: Number(mt[0].n), urgency: overdue ? 'now' : 'soon', hub: 'tasks' })
     const q = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_queries WHERE staff = ${me} AND status = 'open'`, [{ n: 0 }])
     add({ key: 'queries', icon: '❓', title: 'Questions waiting for your answer', detail: 'A supervisor asked about a day you were at work.', count: Number(q[0].n), urgency: 'now' })
     const ack = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${me} AND status IN ('active', 'pending') AND source = 'manual' AND ack_at IS NULL AND created_at > now() - interval '30 days'`, [{ n: 0 }])
