@@ -1654,7 +1654,7 @@ function ItemHubPageInner() {
   }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
-  const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
+  const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
