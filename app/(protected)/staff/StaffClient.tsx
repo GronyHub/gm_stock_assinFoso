@@ -206,7 +206,7 @@ function groupByDate(rows: RecentRow[]) {
 }
 
 // readOnly: the Shop's team view. Staff clock in and out from the Times tab on their own profile, so here nothing can be clocked, added or edited.
-export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly = false }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string; readOnly?: boolean }) {
+export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly = false, extraToolbar }: { username: string; role: string; openAddSignal?: number; viewingStaff?: string; readOnly?: boolean; extraToolbar?: React.ReactNode }) {
   const isAdmin = !readOnly && (role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username))
   // A per-person page (viewingStaff set) narrows every staff-keyed list/table
   // down to just this one name, and hides the "My Time Today" clock panel
@@ -318,13 +318,13 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
       const all = [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]
       const todayStr = today.toISOString().slice(0, 10)
       const cutoff = new Date(today)
-      cutoff.setDate(cutoff.getDate() + 6)
+      cutoff.setDate(cutoff.getDate() + 30)
       const cutoffStr = cutoff.toISOString().slice(0, 10)
-      setUpcomingRota(all.filter((e: RotaEntry) => e.rota_date >= todayStr && e.rota_date <= cutoffStr))
+      // The coming days (from tomorrow) sit in the same grid as the recorded times: past, present and future in one place.
+      setUpcomingRota(all.filter((e: RotaEntry) => e.rota_date > todayStr && e.rota_date <= cutoffStr))
     }).catch(() => {})
   }, [])
 
-  const upcomingStaff = viewName ? ROTA_STAFF.filter(s => s.toLowerCase() === viewName) : ROTA_STAFF
   const upcomingByDate = useMemo(() => {
     const map: Record<string, Record<string, RotaEntry>> = {}
     for (const e of upcomingRota) {
@@ -392,8 +392,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   // Extracted so the same grid (with all its edit/delete interactions) can
   // render twice -- once for the active roster, once for whichever staff
   // are deactivated (see the "Inactive Staff Times" section below).
-  function historyTable(staffList: string[]) {
+  function historyTable(staffList: string[], withFuture = false) {
     const historyGrouped = groupByDate(allRecords)
+    const futureDates = withFuture ? Array.from(new Set(upcomingRota.map(e => e.rota_date))).sort() : []
     return (
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <table className="w-full text-[11px] table-fixed">
@@ -410,6 +411,31 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
+            {futureDates.length > 0 && (
+              <tr className="bg-blue-50"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">Coming up · planned on the rota</td></tr>
+            )}
+            {futureDates.map(d => (
+              <tr key={'f' + d} className="bg-blue-50/40">
+                <td className="px-1.5 py-0 text-blue-800 leading-tight">{fmtShortDate(d)}</td>
+                {staffList.map(s => {
+                  const e = upcomingRota.find(x => x.rota_date === d && x.staff_name.toLowerCase() === s.toLowerCase())
+                  return (
+                    <td key={s} className="px-0.5 py-0.5 text-center">
+                      {!e ? <span className="text-gray-300">—</span> : e.is_off ? <span className="text-gray-400">OFF</span> : (
+                        <div className="flex flex-col items-center leading-tight italic">
+                          <span className="text-blue-700">{e.sched_in ?? '—'}</span>
+                          <span className="text-blue-500">{e.sched_out ?? '—'}</span>
+                          {e.role === 'opener' || e.role === 'closer' ? <span className="text-[8px] font-bold not-italic text-indigo-700">{e.role}</span> : null}
+                        </div>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+            {futureDates.length > 0 && (
+              <tr className="bg-gray-100"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">Recorded times</td></tr>
+            )}
             {historyGrouped.length === 0 && (
               <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
             )}
@@ -525,33 +551,14 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
         )}
       </div>
 
-      {/* Times Log / Analytics -- moved up next to the flag so they're
-          immediately reachable instead of buried below the full history
-          grid. Closing Reports lives on the Closer page (Grony Manage)
-          instead now. Both stay collapsed by default. */}
+      {/* Analytics: a small icon (no text) so the times get the room. The Times Log is gone: nothing was kept in it. */}
       <div className="space-y-2">
-        {/* Times log — a shared record for anything worth writing down about
-            time-keeping (a bad habit spotted, a system change, work done on
-            this feature, etc.) that isn't tied to any one date's clock event. */}
         <div>
-          <button onClick={() => setShowLog(v => !v)}
-            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
-            <span className="text-xs font-semibold text-gray-700">📝 Times Log</span>
-            <span className="text-gray-400 text-xs">{showLog ? '▲ Hide' : '▼ Show'}</span>
-          </button>
-          {showLog && (
-            <div className="mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <ManageLogPanel category="staff_times_log" label="Times Log" icon="📝" />
-            </div>
-          )}
-        </div>
-
-        <div>
-          <button onClick={() => setShowAnalytics(v => !v)}
-            className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-3 py-2">
-            <span className="text-xs font-semibold text-gray-700">📊 Analytics</span>
-            <span className="text-gray-400 text-xs">{showAnalytics ? '▲ Hide' : '▼ Show'}</span>
-          </button>
+          <div className="flex items-center justify-end gap-1">
+            {extraToolbar}
+            <button onClick={() => setShowAnalytics(v => !v)} title="Analytics" aria-label="Analytics"
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${showAnalytics ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>📊</button>
+          </div>
           {showAnalytics && (
             <div className="mt-2 space-y-3">
               {displayStaff.map(name => {
@@ -639,56 +646,6 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
         </p>
       )}
 
-      {/* Upcoming Schedule -- read-only preview of the rota for the next 7
-          days, built/edited elsewhere (Build tab). Hidden entirely once
-          nothing's published for that window, rather than showing an empty
-          table. */}
-      {upcomingByDate.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-            <span className="text-xs font-semibold text-gray-600">Upcoming Schedule</span>
-          </div>
-          <table className="w-full text-[11px] table-fixed">
-            <colgroup>
-              <col style={{width:'22%'}} />
-              {upcomingStaff.map(s => <col key={s} />)}
-            </colgroup>
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-1.5 py-2 text-gray-500 font-semibold">Date</th>
-                {upcomingStaff.map(s => (
-                  <th key={s} className="text-center px-0.5 py-2 text-gray-500 font-semibold">{s}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {upcomingByDate.map(([date, map]) => (
-                <tr key={date}>
-                  <td className="px-1.5 py-1.5 text-gray-600 leading-tight">{fmtShortDate(date)}</td>
-                  {upcomingStaff.map(s => {
-                    const e = map[s]
-                    return (
-                      <td key={s} className="px-0.5 py-1 text-center">
-                        {!e ? (
-                          <span className="text-gray-200">—</span>
-                        ) : e.is_off ? (
-                          <span className="text-gray-400">OFF</span>
-                        ) : (
-                          <div className="flex flex-col items-center leading-tight">
-                            <span className="text-green-700">{e.sched_in ?? '—'}</span>
-                            <span className="text-orange-600">{e.sched_out ?? '—'}</span>
-                          </div>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {/* All records — grouped by date, one row per day, month total bar.
           One layout for everyone (each person's In/Out stacked inside a
           single cell, not split into side-by-side sub-columns) -- the old
@@ -698,7 +655,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           Only the *interaction* differs by who's looking: admins can edit
           any cell (with delete), everyone else can only edit their own
           column, and the rest is read-only. */}
-      {historyTable(activeDisplayStaff)}
+      {historyTable(activeDisplayStaff, true)}
 
       {/* Inactive Team Times -- deactivated staff (resigned/suspended/etc,
           see Users page) drop out of the grid above, but their clock
@@ -2194,6 +2151,8 @@ export function RotaTab({ canManage }: { canManage: boolean }) {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [rota, setRota] = useState<RotaEntry[]>([])
+  // Someone who no longer works here is listed only for months where the rota holds shifts they worked (their past records stay visible).
+  const rotaPeople = ROTA_STAFF.filter(n => isActiveStaff(n) || rota.some(e => e.staff_name.toLowerCase() === n.toLowerCase() && !e.is_off))
   const [absences, setAbsences] = useState<Absence[]>([])
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -2308,7 +2267,7 @@ export function RotaTab({ canManage }: { canManage: boolean }) {
 
           {rota.length > 0 && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {ROTA_STAFF.map(s => {
+              {rotaPeople.map(s => {
                 const h = hoursSummary[s] ?? 0
                 const target = s === 'Bino' ? 100 : 210
                 const pct = Math.min(100, Math.round((h / target) * 100))
@@ -2396,7 +2355,7 @@ export function RotaTab({ canManage }: { canManage: boolean }) {
                     {allOff && <span className="text-xs text-gray-400">— all off</span>}
                   </div>
                   <div className="divide-y divide-gray-50">
-                    {ROTA_STAFF.map(staff => {
+                    {rotaPeople.map(staff => {
                       const e = dayEntries.find(x => x.staff_name === staff)
                       if (!e) return null
                       return (
