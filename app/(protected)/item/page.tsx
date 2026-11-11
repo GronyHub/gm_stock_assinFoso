@@ -1630,10 +1630,11 @@ function ItemHubPageInner() {
   useEffect(() => { setEmbedUrl(null); setPersonal(null) }, [lossView, outerTab])
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
-    if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
+    if (open === '/my-day') setPersonal({ name: username, tab: 'waiting' })
+    else if (open && open.startsWith('/') && !open.startsWith('//')) setEmbedUrl(open)
     const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') setEmbedUrl(null); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
-    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; setPersonal(null); setEmbedUrl(d.path) }
+    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setPersonal({ name: username, tab: 'waiting' }) } else { setPersonal(null); setEmbedUrl(d.path) } }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
     return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own); window.removeEventListener('hub-open', hubOpen) }
   }, [])
@@ -1697,7 +1698,7 @@ function ItemHubPageInner() {
     { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },
     { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },
     { label: 'Penalties', names: ['penalties', 'penalty points'], run: () => openEmbed('/penalties') },
-    { label: 'Waiting for me', names: ['my day', 'waiting for me', 'my tasks', 'to do', 'what is waiting'], run: () => openEmbed('/my-day') },
+    { label: 'Waiting for me', names: ['my day', 'waiting for me', 'my tasks', 'to do', 'what is waiting'], run: () => openPersonal(username, 'waiting') },
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
     { label: 'System check', names: ['system check', 'integrity', 'health check'], run: () => openEmbed('/integrity') },
     { label: 'Barcode labels', names: ['barcode labels', 'labels', 'barcodes'], run: () => openEmbed('/barcode-labels') },
@@ -6792,7 +6793,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
-            <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={embedActive('/my-day')} badge={myDayBadge} href="/my-day" onClick={() => openEmbed('/my-day')} />
+            <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
             {/* Company Laws is the first button, then the Daily Checklist, on every tab. */}
             <SidePaneButton icon="📜" label="Company Laws" mode={cashDisplayMode} active={embedActive('/laws')} shared={isOwnerOrJoe}
               href="/laws" onClick={() => openEmbed('/laws')} />

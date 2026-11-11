@@ -12,11 +12,11 @@ const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
-export default function MyDayClient() {
+export default function MyDayClient({ onNavigate }: { onNavigate?: (i: MyDayItem) => void } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
   const load = () => fetch('/api/my-day', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setItems(d?.items ?? [])).catch(() => setItems([]))
   useEffect(() => { void load() }, [])
-  const go = (i: MyDayItem) => { if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
+  const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
   return (
     <div className="mx-auto max-w-2xl space-y-2 p-3">
       <div className="flex items-center justify-between">
