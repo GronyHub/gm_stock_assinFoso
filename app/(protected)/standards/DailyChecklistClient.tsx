@@ -35,7 +35,7 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
-export default function DailyChecklistClient({ canManage, embedded = false }: { canManage: boolean; embedded?: boolean }) {
+export default function DailyChecklistClient({ canManage, embedded = false, extras }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -125,13 +125,11 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
       const u = new URL(a.href, window.location.href)
       if (u.origin === window.location.origin && (u.pathname.startsWith('/pending-jobs') || u.pathname.startsWith('/laws'))) { e.preventDefault(); window.parent.postMessage({ type: 'open-path', path: u.pathname + u.search }, window.location.origin) }
     }}>
-      <ClosingReportCard />
       {!embedded && (
       <div className="mb-1 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Today</h1>
       </div>)}
-      {embedded && canManage && <div className="mb-1 flex justify-end"><a href="/standards/history" className="text-xs font-semibold text-blue-700 underline">History</a></div>}
       <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#14213D] px-3 py-2 text-white">
         <button type="button" disabled={!day || day <= CHECKLIST_START} onClick={() => day && void load(addDays(day, -1))} className="rounded-lg bg-white/15 px-3 py-1 text-lg font-bold disabled:opacity-30">‹</button>
         <div className="flex-1 text-center">
@@ -147,7 +145,7 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
             <p className="text-sm font-extrabold text-[#14213D]">NOW · {String(Math.floor(clock / 60)).padStart(2, '0')}:{String(clock % 60).padStart(2, '0')}</p>
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{late.length} late</span>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{dueNow.length} due now</span>
-            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto text-[11px] font-bold text-blue-700 underline">Day report</button>}
+            <span className="ml-auto flex items-center gap-3">{embedded && canManage && <a href="/standards/history" className="text-[11px] font-bold text-blue-700 underline">History</a>}{canEdit && <button type="button" onClick={() => setReporting(true)} className="text-[11px] font-bold text-blue-700 underline">Day report</button>}</span>
           </div>
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Waiting for the first staff member to clock in. The day&apos;s tasks start when they do.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
@@ -171,6 +169,8 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
             </div>
           ))}
+          {/* The day's other duties (closing report, pending jobs, CCTV) are tasks of the day too, so they sit here with the rest. */}
+          <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['ALSO_TODAY']"><ClosingReportCard />{extras}</div>
         </div>
       )}
       <div className="sticky top-0 z-10 mb-3 flex flex-wrap gap-1.5 bg-white/95 py-2">
