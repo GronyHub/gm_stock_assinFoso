@@ -5,6 +5,7 @@ import { notifyOwners, pushToUsers, pushToShop } from '@/lib/checklistAlerts'
 import { isManagerName } from '@/lib/signers'
 import { getClockState, onShift } from '@/lib/clockState'
 import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
+import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
 import { isShopDay } from '@/lib/rota'
@@ -172,10 +173,11 @@ export async function dayEndAssess(day = dayKey()) {
   const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id))
   if (!missed.length) return
   const due = effectiveDue(tiles as never, clock.dayStart)
+  const shifts = await rotaShifts(day)
   // A task left undone costs the people it was assigned to (everyone clocked in, the managers, the Opener or the Closer).
   for (const name of Array.from(new Set(clock.everIn))) {
     // ...but only if it fell due while they were at work: someone who clocked in after a task was due is not charged for it.
-    const mine = missed.filter(t => owes(t.assignment, name, clock) && (!due.has(t.id) || onShift(name, due.get(t.id)!, clock)))
+    const mine = missed.filter(t => (t.assignment === 'all' || !t.assignment) ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === name : owes(t.assignment, name, clock) && (!due.has(t.id) || onShift(name, due.get(t.id)!, clock)))
     if (!mine.length) continue
     const pts = Math.min(mine.length, MISSED_DAILY_CAP)
     const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')

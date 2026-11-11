@@ -6,6 +6,7 @@ import { canDecideFor } from '@/lib/penalties'
 import { getClockState, onShift } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
+import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay } from '@/lib/rota'
 import { pendingJobCounts } from '@/lib/pendingJobs'
 import { canLogAgainst } from '@/lib/violationLog'
@@ -53,9 +54,12 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
       const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
       const tiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment FROM daily_check_tiles
         WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string }[]
-      const todays = tiles.filter(t => appliesOn(t, day) && owes(t.assignment, me, clock))
+      const dayTiles = tiles.filter(t => appliesOn(t, day))
+      const shifts = await rotaShifts(day)
       const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number }[]).map(r => r.tile_id))
-      const due = effectiveDue(todays, clock.dayStart)
+      const due = effectiveDue(dayTiles, clock.dayStart)
+      // Shared ("everyone") tasks have one named person from the rota; the Opener, Closer and manager tasks keep their own owner.
+      const todays = dayTiles.filter(t => t.assignment === 'all' || !t.assignment ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === me : owes(t.assignment, me, clock))
       // A task that fell due before this person clocked in (or after they left) was never theirs.
       const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin && onShift(me, due.get(t.id)!, clock)).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
       if (!late.length) return
