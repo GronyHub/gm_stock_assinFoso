@@ -1626,9 +1626,9 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'checklist' | 'laws' | 'home' | 'manage'
+  type ShopTab = 'checklist' | 'laws' | 'home' | 'manage' | 'people' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
-  const shopRoute = (path: string): { tab: ShopTab; src: string } | null => path.startsWith('/laws') ? { tab: 'laws', src: path } : (path === '/standards' || path.startsWith('/standards?')) ? { tab: 'checklist', src: path } : null
+  const shopRoute = (path: string): { tab: ShopTab; src: string } | null => path.startsWith('/laws') ? { tab: 'laws', src: path } : (path === '/standards' || path.startsWith('/standards?')) ? { tab: 'checklist', src: path } : path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
   const openShop = (tab: ShopTab = 'checklist') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
   const openPersonal = (name: string, tab = 'times') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
@@ -6799,6 +6799,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             </>}>
             <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
+            {(session?.user as { impersonating?: boolean } | undefined)?.impersonating && (
+              <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}
+                onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
+            )}
             <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
             <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('checklist')} />
@@ -6911,14 +6915,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              <SidePaneButton icon="🧭" label="Owner Guide" mode={cashDisplayMode} divider active={embedActive('/owner-guide')}
-                href="/owner-guide" onClick={() => openEmbed('/owner-guide')} />
-              <SidePaneButton icon="📣" label="Announcements" mode={cashDisplayMode} divider active={embedActive('/handbook-announcements')}
-                href="/handbook-announcements" onClick={() => openEmbed('/handbook-announcements')} />
               <SidePaneButton icon="🏷️" label="Barcode labels" mode={cashDisplayMode} divider active={embedActive('/barcode-labels')}
                 href="/barcode-labels" onClick={() => openEmbed('/barcode-labels')} />
-              <SidePaneButton icon="🩺" label="System check" mode={cashDisplayMode} divider active={embedActive('/integrity')}
-                href="/integrity" onClick={() => openEmbed('/integrity')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
@@ -6938,27 +6936,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
               )}
             </div>
-            )}
-            {isOwnerOrJoe && canSeeTeam && activeStaff.length > 0 && (
-              <div className="mt-1 pt-1 border-t border-white/30">
-                <div className="text-xs font-semibold text-gray-400 px-3 py-2">Staff Members</div>
-                {/* Home used to be its own tab on Items' switcher -- moved
-                    here instead, as an ordinary pane row like every staff
-                    member below it, once the switcher's own Home button (and
-                    its unread-announcements badge) was retired in favor of
-                    this row plus PresentStaffBar's own Total chip. */}
-                <SidePaneButton icon="🏠" label="Home" mode={cashDisplayMode}
-                  active={paneActive(lossView === 'home')}
-                  onClick={() => pickLossView('home')} />
-                {activeStaff.map((staff) => {
-                  const staffViewKey = `staffMember_${staff.username}` as LossView
-                  return (
-                    <SidePaneButton key={staff.username} icon={<StaffAvatar name={staff.username} url={staff.photo_url} size={22} />} label={staff.username.charAt(0).toUpperCase() + staff.username.slice(1)} mode={cashDisplayMode} divider
-                      active={paneActive(lossView === staffViewKey)}
-                      onClick={() => pickLossView(staffViewKey)} />
-                  )
-                })}
-              </div>
             )}
 
             </>)}
@@ -7130,7 +7107,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['checklist', '✅ Daily Checklist'], ['laws', '📜 Company Laws'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['checklist', '✅ Daily Checklist'], ['laws', '📜 Company Laws'], ['home', '🏠 Home'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['manage', '🛠 Manage'], ['people', '👥 People'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -7140,6 +7117,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {shop.tab === 'checklist' && <iframe key={'c' + (shop.src ?? '')} src={shop.src ?? '/standards'} title="Daily Checklist" className="h-full w-full border-0" />}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
+                  {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
+                  {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
+                  {shop.tab === 'checks' && <iframe key="k" src="/integrity" title="System check" className="h-full w-full border-0" />}
+                  {shop.tab === 'people' && (
+                    <div className="space-y-1 p-3">
+                      <p className="text-xs text-gray-500">Everyone on the team, whether or not they are clocked in. Tap a person to open their page.</p>
+                      {activeStaff.map(st => (
+                        <button key={st.username} type="button" onClick={() => openPersonal(st.username, 'times')} className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left text-sm font-semibold text-gray-900">
+                          <StaffAvatar name={st.username} url={st.photo_url} size={28} /><span className="capitalize">{st.username}</span>
+                        </button>))}
+                    </div>)}
                   {shop.tab === 'manage' && (
                     <div className="space-y-1 p-3">
                       <p className="text-xs text-gray-500">Pick a section. It opens in the main area.</p>
