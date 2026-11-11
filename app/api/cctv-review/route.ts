@@ -1,6 +1,7 @@
 import { cap } from '@/lib/strings'
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
 import sql from '@/lib/db'
+import { recordActivity } from '@/lib/logger'
 import { isOwnerLevel } from '@/lib/roles'
 import { ensureAttendance, to12h } from '@/lib/attendance'
 import { pushToUsers, notifyOwners } from '@/lib/checklistAlerts'
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
       const salesOk = !!b.sales_ok, lawsOk = !!b.laws_ok, note = String(b.note ?? '').trim().slice(0, 500)
       if ((!salesOk || !lawsOk) && note.length < 4) return badRequest('Say what was wrong, then log a violation or send a question for it.')
       await sql`UPDATE cctv_reviews SET status = 'done', reviewed_by = ${by}, reviewed_at = now(), sales_ok = ${salesOk}, laws_ok = ${lawsOk}, note = ${note} WHERE work_date = ${day}`
+      void recordActivity(by, 'completed a CCTV review', `${day}: sales ${salesOk ? 'as expected' : 'NOT as expected'}, laws ${lawsOk ? 'observed' : 'NOT observed'}`)
       void notifyOwners(`CCTV review done for ${day}`, `${cap(by)}: sales ${salesOk ? 'all as expected' : 'NOT all as expected'}, laws ${lawsOk ? 'all observed' : 'NOT all observed'}.`)
       return success({ ok: true })
     }

@@ -1,5 +1,6 @@
 import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
+import { recordActivity } from '@/lib/logger'
 import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
@@ -87,6 +88,7 @@ export async function autoClockOut(day: string, includeToday = false) {
     await setClockOut(r.n, r.d, out, 'auto', 'system')
     await sql`INSERT INTO clock_autos (staff, work_date, out_time, basis) VALUES (${r.n}, ${r.d}, ${out}, 'your last action at the shop in the app') ON CONFLICT DO NOTHING`
     n++
+    void recordActivity('app', 'clocked someone out automatically', `${cap(r.n)} on ${r.d} at ${out} (last action at the shop)`)
     void pushToUsers([r.n], 'You were clocked out for you', `You did not clock out on ${r.d}. The app set your time out to ${out}, your last action at the shop. Open the app to tap OK or send the correct time.`)
   }
   return n
@@ -105,11 +107,13 @@ export async function applyApproval(id: number, by: string, overrideHHMM?: strin
   if (c.field === 'in') {
     await sql`UPDATE staff_times SET actual_in = ${out}, in_source = 'approved', entered_by = ${by} WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`.catch(() => {})
     await sql`UPDATE clock_corrections SET status = 'approved', decided_by = ${by}, decided_at = now(), proposed_out = ${out} WHERE id = ${id}`
+    void recordActivity(by, 'approved a clock-in time', `${cap(String(c.staff))} on ${c.work_date}: ${out}`)
     void pushToUsers([String(c.staff)], 'Clock-in time approved', `Your time in for ${c.work_date} is ${out}.`)
     return out
   }
   await setClockOut(String(c.staff), String(c.work_date), out, 'approved', by)
   await sql`UPDATE clock_corrections SET status = 'approved', decided_by = ${by}, decided_at = now(), proposed_out = ${out} WHERE id = ${id}`
+  void recordActivity(by, 'approved a clock-out time', `${cap(String(c.staff))} on ${c.work_date}: ${out}`)
   void pushToUsers([String(c.staff)], 'Clock-out time approved', `Your time out for ${c.work_date} is ${out}.`)
   return out
 }

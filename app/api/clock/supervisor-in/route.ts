@@ -1,5 +1,6 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { recordActivity } from '@/lib/logger'
 import { actorKey } from '@/lib/clockState'
 import { canLogAgainst } from '@/lib/violationLog'
 import { SIGNERS } from '@/lib/signers'
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (staff, work_date) DO UPDATE SET in_time = ${t12}, basis = ${basis}, by_user = ${me}, status = 'notified'`
     void pushToUsers([staff], `${cap(me)} clocked you in`, `${day}: in at ${t12}. Evidence: ${evidence}. Open the app: tap OK, or send your correct time.`)
     if (me !== 'grony') void pushToUsers(['grony'], `${cap(me)} clocked ${cap(staff)} in`, `${day}: ${t12}. Evidence: ${evidence}`)
+    void recordActivity(me, 'clocked a colleague in', `${cap(staff)} on ${day} at ${t12} (${how})`)
     return success({ ok: true, in: t12, date: day })
   } catch (e) { return handleError('supervisor-in POST', e) }
 }

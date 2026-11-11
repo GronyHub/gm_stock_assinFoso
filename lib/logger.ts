@@ -33,7 +33,10 @@ const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set([
 // Notified to owner-level (Grony/Joe) only, never broadcast to all staff.
 const OWNER_ONLY_ACTIONS = new Set(['started viewing portal as', 'stopped viewing portal as'])
 
-export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number, sourceId?: number) {
+// silent: put it in the Home record without a push to everyone (used for the many small events of the day: ticks, signatures, points, approvals).
+export const recordActivity = (staffName: string, action: string, details?: string) => logActivity(staffName, action, details, undefined, undefined, true).catch(() => {})
+
+export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number, sourceId?: number, silent = false) {
   try {
     await sql`
       INSERT INTO activity_logs (staff_name, action, details)
@@ -62,7 +65,7 @@ export async function logActivity(staffName: string, action: string, details?: s
   }
 
   // fire push (non-blocking)
-  sendPush(staffName, action, details, OWNER_ONLY_ACTIONS.has(action)).catch(() => {})
+  if (!silent) sendPush(staffName, action, details, OWNER_ONLY_ACTIONS.has(action)).catch(() => {})
 }
 
 async function sendPush(staffName: string, action: string, details: string | undefined, ownerOnly: boolean) {

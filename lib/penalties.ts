@@ -6,6 +6,7 @@ import { isManagerName } from '@/lib/signers'
 import { getClockState } from '@/lib/clockState'
 import { appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
+import { recordActivity } from '@/lib/logger'
 
 // Penalty points. Every violation costs points (1 for now); points are recorded in a ledger. 20 points = a 3-day
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
@@ -65,6 +66,7 @@ export async function addPoint(a: Add) {
     VALUES (${staff}, ${points}, 'violation', ${a.reason}, ${a.source}, ${a.ref ?? null}, ${day}, ${a.lawId ?? null}, ${counted}, ${status}, ${a.by ?? 'system'}, ${a.violation ?? null}, ${a.lawCode ?? null})
     ON CONFLICT DO NOTHING RETURNING id, staff, points, reason, counted, status`
   if (!row) return null
+  void recordActivity(a.by ?? 'app', status === 'pending' ? 'logged a violation for confirmation' : 'added a penalty point', `${cap(staff)} (${points}): ${a.reason}`.slice(0, 240))
   if (status === 'active') {
     if (counted) await afterChange(staff, before, before + points)
     else void pushToUsers([staff], 'Penalty point warning (learning period)', `${a.reason}. From ${(await getSettings()).startCounting} this will cost ${points} point${points === 1 ? '' : 's'}.`)
@@ -94,12 +96,14 @@ export async function approveSanction(id: number, by: string, startDate?: string
   if (!s || s.status !== 'proposed') return null
   if (Number(s.tier) >= 50) {
     await sql`UPDATE penalty_sanctions SET status = 'approved', decided_by = ${by}, decided_at = now() WHERE id = ${id}`
+    void recordActivity(by, 'approved a dismissal', cap(String(s.staff)))
     void notifyOwners(`Dismissal approved: ${cap(String(s.staff))}`, 'Deactivate the account in Users when the dismissal is carried out.')
     return { dismissal: true }
   }
   const start = startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate) ? startDate : addDays(dayKey(), 1)
   const end = addDays(start, Number(s.days) - 1)
   await sql`UPDATE penalty_sanctions SET status = 'approved', decided_by = ${by}, decided_at = now(), start_date = ${start}, end_date = ${end} WHERE id = ${id}`
+  void recordActivity(by, 'approved a suspension', `${cap(String(s.staff))} from ${start} to ${end}`)
   const half = Number(s.tier) / 2, t = await totalPoints(String(s.staff))
   if (t > half) await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, day, counted, status, created_by)
     VALUES (${String(s.staff)}, ${-(t - half)}, 'reset', ${`Sanction applied: points reduced to ${half}`}, 'sanction', ${dayKey()}, TRUE, 'active', ${by})`
@@ -109,6 +113,7 @@ export async function approveSanction(id: number, by: string, startDate?: string
 export async function rejectSanction(id: number, by: string) {
   await ensurePenalties()
   await sql`UPDATE penalty_sanctions SET status = 'rejected', decided_by = ${by}, decided_at = now() WHERE id = ${id} AND status = 'proposed'`
+  void recordActivity(by, 'decided not to apply a sanction', `sanction ${id}`)
 }
 
 export async function suspendedMessage(staff: string, day = dayKey()): Promise<string | null> {
@@ -124,6 +129,7 @@ export async function confirmPending(id: number, by: string) {
   const counted = await isCounting(dayKey())
   const before = await totalPoints(String(p.staff))
   await sql`UPDATE staff_penalties SET status = 'active', counted = ${counted}, created_by = ${by} WHERE id = ${id}`
+  void recordActivity(by, 'confirmed a violation', `${cap(String(p.staff))} (${p.points})`)
   if (counted) await afterChange(String(p.staff), before, before + Number(p.points))
   else void pushToUsers([String(p.staff)], 'Penalty point warning (learning period)', 'A report about you was confirmed. After the learning period this will cost a point.')
   return true
@@ -132,6 +138,7 @@ export async function reversePoint(id: number, by: string) {
   const [p] = await sql`SELECT id, staff, points, counted, status FROM staff_penalties WHERE id = ${id}`
   if (!p || (p.status !== 'active' && p.status !== 'pending')) return false
   await sql`UPDATE staff_penalties SET status = 'reversed', note = ${'Reversed by ' + by} WHERE id = ${id}`
+  void recordActivity(by, 'took back a penalty point', `${cap(String(p.staff))}`)
   return true
 }
 

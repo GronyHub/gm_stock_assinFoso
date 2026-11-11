@@ -1,5 +1,6 @@
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
+import { recordActivity } from '@/lib/logger'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { notifyOwners } from '@/lib/checklistAlerts'
@@ -67,6 +68,8 @@ export async function POST(req: NextRequest) {
       VALUES (${id}, ${dayKey(now)}, ${b.value === 'Not done' ? 'Not done' : 'Done'}, ${note},
               ${JSON.stringify(extra)}::jsonb, ${actor})
       RETURNING id, tile_id, day, value, note, extra, recorded_by, recorded_at`
+
+    void recordActivity(actor, b.value === 'Not done' ? 'marked a task not done' : 'did a task', `${String(t.title).slice(0, 120)}${note ? ' — ' + note.slice(0, 80) : ''}`)
 
     // Mirror into the Grony Manage log that matches this tile, so that page's history keeps filling.
     if (t.log_category && logs.length) {

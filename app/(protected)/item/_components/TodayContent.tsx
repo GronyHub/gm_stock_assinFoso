@@ -161,6 +161,17 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, durationOverrides, c
   )
 }
 
+// Home is the record of everything done at the shop: sales, counts, ticked tasks, signed laws and quizzes, points and decisions, clock matters.
+const KINDS: { key: string; label: string; test: (c: string) => boolean }[] = [
+  { key: 'tasks', label: 'Tasks', test: c => /task|checklist/.test(c) },
+  { key: 'laws', label: 'Laws', test: c => /law|closing report/.test(c) },
+  { key: 'points', label: 'Points and decisions', test: c => /penalty|violation|sanction|suspension|dismissal|cctv/.test(c) },
+  { key: 'clock', label: 'Clock', test: c => /clock|time entry/.test(c) },
+  { key: 'sales', label: 'Sales', test: c => /sale|receipt/.test(c) },
+  { key: 'stock', label: 'Stock', test: c => /count|item|stock|purchase order|bill/.test(c) },
+]
+const kindOf = (p: { category?: string | null }) => KINDS.find(k => k.test(String(p.category ?? '').toLowerCase()))?.key ?? 'other'
+
 function AnnouncementsPanel() {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -171,6 +182,9 @@ function AnnouncementsPanel() {
   const [loadingMore, setLoadingMore] = useState(false)
 
   const PAGE_SIZE = 30
+  const [who, setWho] = useState('')
+  const [kind, setKind] = useState('')
+  const [find, setFind] = useState('')
 
   // Each staff member's running cumulative total for the day, keyed by
   // announcement id -- straight from /api/announcements/daily-totals rather
@@ -290,8 +304,16 @@ function AnnouncementsPanel() {
     load()
   }
 
+  const people = Array.from(new Set(posts.map(p => String(p.author).toLowerCase()))).sort()
+  const shown = posts.filter(p => (!who || String(p.author).toLowerCase() === who) && (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
+
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="space-y-1 border-b border-gray-200 p-2">
+        <div className="flex flex-wrap gap-1">{['', ...people].map(n => <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold capitalize ${who === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n || 'Everyone'}</button>)}</div>
+        <div className="flex flex-wrap gap-1">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
+        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" className="w-full rounded-lg border border-gray-300 p-1.5 text-[11px]" />
+      </div>
       {posts.length === 0 ? (
         <p className="text-[9px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
@@ -307,9 +329,9 @@ function AnnouncementsPanel() {
               </tr>
             </thead>
             <tbody>
-              {posts.map((p, i) => (
+              {shown.map((p, i) => (
                 <PostRow key={p.id} p={p}
-                  showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(posts[i - 1].created_at)}
+                  showDateHeader={i === 0 || dayKey(p.created_at) !== dayKey(shown[i - 1].created_at)}
                   staffDayTotalSeconds={runningTotals[p.id] ?? 0}
                   durationOverrides={durationOverrides}
                   canDelete={canDelete} onDelete={removePost} />

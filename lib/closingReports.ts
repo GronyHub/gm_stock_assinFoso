@@ -1,4 +1,5 @@
 import sql from '@/lib/db'
+import { recordActivity } from '@/lib/logger'
 import { once } from '@/lib/once'
 import { logActivity } from '@/lib/logger'
 
@@ -45,6 +46,7 @@ export async function saveClosingReport(day: string, who: string, cr: ClosingInp
             ${cr.unfortunate_event}, ${cr.unfortunate_event ? (cr.unfortunate_event_details || null) : null})
     ON CONFLICT (work_date) DO NOTHING RETURNING id`
   if (!rows.length) return false
+  void recordActivity(who, 'answered the closing report', day)
   const summary = [
     `No company T-shirt: ${noTshirt.length ? noTshirt.join(', ') : 'none'}`,
     `Roadside advert played: ${cr.advert_played ? 'Yes' : 'No'}`,
