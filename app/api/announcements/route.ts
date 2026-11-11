@@ -77,7 +77,19 @@ export async function GET(req: NextRequest) {
       ORDER BY a.created_at DESC
       LIMIT 30
     `
-    return success(rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) })))
+    const own = rows.map((r: any) => ({ ...r, media_urls: normalizeMedia(r.media_urls) }))
+    // A person's own record (author=name) also carries the shared tasks other people did on days they were at work: those count for them too.
+    if (author) {
+      const shared = await sql`SELECT e.id, e.recorded_by AS author, t.title, e.recorded_at AS created_at
+        FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
+        WHERE e.value = 'Done' AND t.assignment = 'all' AND t.law_id IS NOT NULL AND LOWER(e.recorded_by) <> LOWER(${author})
+          AND EXISTS (SELECT 1 FROM staff_times st WHERE LOWER(st.staff_name) = LOWER(${author}) AND st.work_date::text = e.day AND st.actual_in IS NOT NULL)
+          AND (${before}::timestamptz IS NULL OR e.recorded_at < ${before}::timestamptz)
+        ORDER BY e.recorded_at DESC LIMIT 30`.catch(() => [])
+      const extra = shared.map((e: any) => ({ id: -Number(e.id), author: e.author, body: `did a task for the team: ${e.title}`, media_urls: [], created_at: e.created_at, reply_to_id: null, estimated_duration_seconds: null, category: 'shared task', reply_to_author: null, reply_to_body: null }))
+      return success([...own, ...extra].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 30))
+    }
+    return success(own)
   } catch (e) {
     return handleError('announcements GET', e)
   }

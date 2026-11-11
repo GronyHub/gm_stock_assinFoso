@@ -61,9 +61,9 @@ export async function myDay(me: string, user: unknown, opts: { viewing?: boolean
       // One row per task, so each can be opened and done from here. Beyond eight, one row says how many more.
       for (const t of late.slice(0, 8)) {
         const mins = nowMin - due.get(t.id)!
-        add({ key: `task-${t.id}`, icon: '✅', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${t.id}` })
+        add({ key: `task-${t.id}`, icon: '⏳', title: t.title.length > 90 ? t.title.slice(0, 88) + '…' : t.title, detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${t.id}` })
       }
-      if (late.length > 8) add({ key: 'tasks-more', icon: '✅', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/todo' })
+      if (late.length > 8) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - 8} more tasks to do now`, detail: 'Open Today to see them all.', count: late.length - 8, urgency: 'now', href: '/todo' })
     }, undefined)
   }
 

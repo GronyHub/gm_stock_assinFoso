@@ -19,6 +19,14 @@ export default function MyDayClient({ onNavigate, forName = '' }: { onNavigate?:
   const [msg, setMsg] = useState('')
   const load = (w = who) => fetch('/api/my-day' + (w ? `?for=${encodeURIComponent(w)}` : ''), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setItems(d?.items ?? [])).catch(() => setItems([]))
   useEffect(() => { setItems(null); void load(forName) }, [forName])
+  // Whatever gets done leaves the list (it is then in Done): refresh when the tab is shown again and every minute.
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === 'visible') void load(forName) }
+    document.addEventListener('visibilitychange', again); window.addEventListener('focus', again)
+    const t = setInterval(again, 60000)
+    return () => { document.removeEventListener('visibilitychange', again); window.removeEventListener('focus', again); clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forName])
   async function remind() {
     const r = await fetch('/api/my-day/remind', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: who }) })
     const j = await r.json().catch(() => ({}))
