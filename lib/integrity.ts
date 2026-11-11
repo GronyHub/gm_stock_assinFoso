@@ -26,7 +26,7 @@ export async function runChecks(flags?: Record<string, unknown>): Promise<Check[
   const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE status = 'draft'`, [{ n: 0 }])
   add({ key: 'drafts', title: 'Draft laws waiting for approval', count: Number(drafts[0].n), examples: [], href: '/laws', hint: 'Approving creates their checklist tiles.', status: Number(drafts[0].n) ? 'warn' : 'ok' })
   const noTile = await safe(() => sql`SELECT COALESCE(code, 'law ' || id) AS c FROM page_laws WHERE status = 'live' AND law_type = 'recurring' AND tile_id IS NULL AND frequency IS NOT NULL`, [] as { c: string }[])
-  add({ key: 'recurring-no-tile', title: 'Recurring laws with no Daily Checklist tile', count: noTile.length, examples: noTile.slice(0, 5).map(r => String(r.c)), href: '/standards', hint: 'The task is a law but staff never see it on the checklist, so nothing can be missed or penalised.' })
+  add({ key: 'recurring-no-tile', title: 'Recurring laws with no task in Waiting for team', count: noTile.length, examples: noTile.slice(0, 5).map(r => String(r.c)), href: '/standards', hint: 'The task is a law but staff never see it on the checklist, so nothing can be missed or penalised.' })
   const orphanTile = await safe(() => sql`SELECT title FROM daily_check_tiles WHERE active AND law_id IS NULL AND frequency = 'daily'`, [] as { title: string }[])
   add({ key: 'tile-no-law', title: 'Active daily checklist tiles that no law backs', count: orphanTile.length, examples: orphanTile.slice(0, 5).map(r => String(r.title)), href: '/standards/manage', hint: 'An old tile: either write the law for it or switch it off, so the checklist and the laws agree.', status: orphanTile.length ? 'warn' : 'ok' })
 

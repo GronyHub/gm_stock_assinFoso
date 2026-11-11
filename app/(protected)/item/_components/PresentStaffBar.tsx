@@ -51,7 +51,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
   shopActive?: boolean          // the Shop is open
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
   salesBy?: Record<string, number>
-  // Tapping the Shop box (was Total) opens the hub's Shop page: Daily Checklist, Company Laws, Home, Manage.
+  // Tapping the Shop box (was Total) opens the hub's Shop page: Waiting for team, Company Laws, Home, Manage.
   onOpenShop?: () => void
   // For supervisors: how many things wait for each person (lowercase name), shown as a red count on their avatar.
   waitingBy?: Record<string, { total: number; now: number }>
@@ -172,7 +172,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
             )}
           </button>
         ))}
-        <button type="button" onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title="Open the Shop: Daily Checklist, Company Laws, Home"
+        <button type="button" onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title="Open the Shop: Waiting for team, Company Laws, Home"
           className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${shopActive ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-gray-100 hover:bg-gray-200 active:bg-gray-300'}`}>
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
           {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}

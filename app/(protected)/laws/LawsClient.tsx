@@ -135,7 +135,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   async function approve(body: { id?: number; category?: string }) {
     const r = await fetch('/api/page-laws/approve', { method: 'POST', headers: json, body: JSON.stringify(body) }); const d = await r.json().catch(() => ({}))
-    if (r.ok) { flash(d.approved ? `Approved ${d.approved}. Tiles are in the Daily Checklist.` : 'Tiles created'); void load() } else flash(d.error ?? 'Could not approve')
+    if (r.ok) { flash(d.approved ? `Approved ${d.approved}. Tiles are in Waiting for team.` : 'Tiles created'); void load() } else flash(d.error ?? 'Could not approve')
   }
 
   async function signLaws(ids: number[]) {
@@ -185,12 +185,12 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
             {l.law_type === 'recurring' ? (<>
               <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}><b>🗓 When:</b> {sched || 'not set yet'}</p>
-              <p className="text-[10px] leading-snug text-gray-800"><b>✅ Daily Checklist:</b> {l.assignment && l.assignment !== 'all' ? `done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}. ` : l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
+              <p className="text-[10px] leading-snug text-gray-800"><b>✅ Waiting for team:</b> {l.assignment && l.assignment !== 'all' ? `done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}. ` : l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
               {l.tile_id && l.kept && <p className="text-[10px] font-semibold leading-snug text-gray-800">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
             </>) : l.law_type === 'app' ? (
               <p className="text-[10px] leading-snug text-gray-800"><b>⚙ In the app:</b> the app enforces it itself.</p>
             ) : (<>
-              <p className="text-[10px] leading-snug text-gray-500"><b>✅ Daily Checklist:</b> none, it is not an activity.</p>
+              <p className="text-[10px] leading-snug text-gray-500"><b>✅ Waiting for team:</b> none, it is not an activity.</p>
               {l.reminder === 'login' ? <p className="text-[10px] leading-snug text-gray-800"><b>🔔 In the app:</b> a reminder after login, before work starts. Staff tick once to agree.</p>
                 : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>🔔 In the app:</b> a reminder after the first sale, and again from 13:30. Staff tick once to agree.</p>
                 : <p className="text-[10px] leading-snug text-gray-500"><b>🔔 In the app:</b> no reminder yet.</p>}
@@ -372,7 +372,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All laws</button>
-            {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = catLaws.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws in ${area.label}? Their tiles go into the Daily Checklist and the old tiles they replace are stopped.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
+            {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = catLaws.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws in ${area.label}? Their tiles go into Waiting for team and the old tiles they replace are stopped.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>

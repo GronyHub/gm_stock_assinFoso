@@ -37,7 +37,7 @@ export const ensureAttendance = once(async () => {
     reviewed_by TEXT, reviewed_at TIMESTAMPTZ, sales_ok BOOLEAN, laws_ok BOOLEAN, note TEXT)`.catch(() => {})
 })
 
-// The last thing a staff member did that can only be done AT the shop: a Live Sale tap, a Daily Checklist tick (photos, cleaning, closing) or a
+// The last thing a staff member did that can only be done AT the shop: a Live Sale tap, a Waiting for team tick (photos, cleaning, closing) or a
 // shop routine tick. Looking at pages or reading laws does not count, because that can be done from anywhere. Never before clock-in; after 7pm counts too.
 export async function lastActivityMins(staff: string, day: string, clockInMins: number): Promise<number> { return (await lastActivity(staff, day, clockInMins)).mins }
 export async function lastActivity(staff: string, day: string, clockInMins: number): Promise<{ mins: number; found: boolean }> {
@@ -177,12 +177,12 @@ export async function attendanceTick(now = new Date()) {
     await reminder(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
   }
   if (hm === '18:30' && await claim(`closingrem:${day}`)) {
-    // Nudge whoever is at the shop if the closing report (Daily Checklist) is still not answered.
+    // Nudge whoever is at the shop if the closing report (Waiting for team) is still not answered.
     const [r] = await sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`.catch(() => [])
     if (!r) {
       const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
       const who = rows.map(x => x.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
-      if (who.length) await reminder(who, 'Closing report', 'The closing report is not answered yet. Open the Daily Checklist and tap Answer now.')
+      if (who.length) await reminder(who, 'Closing report', 'The closing report is not answered yet. Open Waiting for team and tap Answer now.')
     }
   }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
@@ -202,9 +202,9 @@ export async function attendanceTick(now = new Date()) {
     await ensureAttendance()
     if (await claim(`remind:${day}:${hr}`)) {
       const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe'`
-      if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open the Daily Checklist.`)
+      if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open your profile (Waiting for me).`)
       const [{ j }] = await sql`SELECT COUNT(*)::int AS j FROM clock_corrections WHERE status = 'pending' AND staff = 'joe'`
-      if (Number(j) > 0) await reminder(['grony'], 'Joe\'s clock-out time to approve', 'Open the Daily Checklist.')
+      if (Number(j) > 0) await reminder(['grony'], 'Joe\'s clock-out time to approve', 'Open your profile (Waiting for me).')
       const [{ sn }] = await sql`SELECT COUNT(*)::int AS sn FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe'`.catch(() => [{ sn: 0 }])
       const [{ dp }] = await sql`SELECT COUNT(*)::int AS dp FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe'`.catch(() => [{ dp: 0 }])
       if (Number(sn) + Number(dp) > 0) await reminder(['joe'], 'Decisions waiting for you', `${Number(sn) ? sn + ' sanction(s) to approve. ' : ''}${Number(dp) ? dp + ' violation(s) to confirm or review.' : ''} Open Penalties.`)

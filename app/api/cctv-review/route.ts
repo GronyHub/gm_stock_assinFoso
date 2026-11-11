@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
-  if (actorKey(session.user as any) !== 'joe') return badRequest('Joe reviews the CCTV (he has the CCTV app). Grony can prompt him from the Daily Checklist.')
+  if (actorKey(session.user as any) !== 'joe') return badRequest('Joe reviews the CCTV (he has the CCTV app). Grony can prompt him from Waiting for me.')
   try {
     await ensureAttendance()
     const b = await req.json().catch(() => ({}))

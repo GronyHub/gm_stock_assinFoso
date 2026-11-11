@@ -1,7 +1,7 @@
 // Company Laws: the categories every law belongs to (compulsory), the three law types, and how a schedule reads.
 export type LawType = 'recurring' | 'standing' | 'app'
 export const LAW_TYPES: { key: LawType; label: string; help: string }[] = [
-  { key: 'recurring', label: 'Recurring task', help: 'Done on a schedule. Becomes a tile in the Daily Checklist.' },
+  { key: 'recurring', label: 'Recurring task', help: 'Done on a schedule. Becomes a tile in Waiting for team.' },
   { key: 'standing', label: 'Standing rule', help: 'Always applies. No tile; kept in mind all day.' },
   { key: 'app', label: 'App-enforced', help: 'The app checks this itself and raises a flag.' },
 ]

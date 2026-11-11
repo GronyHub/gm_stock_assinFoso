@@ -6,7 +6,7 @@ import type { LawQuestion } from '@/lib/lawQuiz'
 //   2. "What happens if it is not followed?" -- the consequence that matches the kind of law (task, standing rule, app-checked).
 // The owner can replace or extend any quiz in Company Laws. A law that already has a quiz is never touched.
 const CONSEQUENCE: Record<string, { right: string; wrong: string[] }> = {
-  recurring: { right: 'The task is left undone on the Daily Checklist and a point is lost at the end of the day', wrong: ['Nothing happens: it is only advice', 'Only a spoken warning, with no record', 'The staff member pays for it'] },
+  recurring: { right: 'The task is left undone in Waiting for team and a point is lost at the end of the day', wrong: ['Nothing happens: it is only advice', 'Only a spoken warning, with no record', 'The staff member pays for it'] },
   standing: { right: 'A manager logs a violation with a note: 1 point', wrong: ['Nothing happens: it is only advice', 'Only a spoken warning, with no record', 'The customer decides the penalty'] },
   app: { right: 'The app finds it itself and adds the point', wrong: ['Nothing happens: it is only advice', 'Only a spoken warning, with no record', 'Staff are asked to mark themselves'] },
 }

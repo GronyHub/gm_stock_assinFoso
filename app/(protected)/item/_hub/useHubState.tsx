@@ -197,7 +197,7 @@ export function useHubState() {
   // this list -- see MANAGE_LIST_ITEMS.filter below.
   const [liveManageSection, setLiveManageSection] = useState<LossView>(MANAGE_LIST_ITEMS[0].key)
   // The Manage options (Opener, Closer, ... and the Team ones), listed on the left sidebar under a "Manage" heading.
-  // Logging pages that staff now answer from the Daily Checklist instead (tiles for them are in the checklist). Staff no
+  // Logging pages that staff now answer from Waiting for team instead (tiles for them are in the checklist). Staff no
   // longer see these rows; the owner and manager keep them, and the checklist's History shows who logged what.
   const CHECKLIST_LOGGED_KEYS = new Set<string>(['unfortunate_events', 'staff_dress', 'team_behaviour'])
   function manageSideOptions() {
@@ -829,7 +829,7 @@ export function useHubState() {
   // this jumps straight to a specific row regardless of which outer tab is
   // currently showing, so callers don't need their own changeTab-then-
   // override two-step any more.
-  // Pages that are not part of the hub (Company Laws, the Daily Checklist, How To...) and a person's own page open INSIDE the right pane, so the left
+  // Pages that are not part of the hub (Company Laws, Waiting for team, How To...) and a person's own page open INSIDE the right pane, so the left
   // sidebar and the top staff bar never leave the screen. (See components/FrameFlag.tsx for the page side.)
   const [voiceSaleSignal, setVoiceSaleSignal] = useState(0)
   const [myDayBadge, setMyDayBadge] = useState(0)
@@ -863,7 +863,7 @@ export function useHubState() {
   const barRef = useRef<HTMLDivElement>(null)
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
-    // The Daily Checklist is the Shop's "To do" tab (/todo); old links keep their ?tile= and ?closing=
+    // Waiting for team is the Shop's first tab (/todo); old links keep their ?tile= and ?closing=
     if (path === '/todo' || path.startsWith('/todo?')) return { tab: 'todo', src: path }
     if (path === '/standards' || path.startsWith('/standards?')) { const q = path.split('?')[1]; return { tab: 'todo', src: '/todo' + (q ? '?' + q : '') } }
     if (path.startsWith('/laws')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); if (q.get('view') === 'today') { q.delete('view'); return { tab: 'todo', src: '/todo' + (q.toString() ? '?' + q.toString() : '') } } return { tab: 'laws', src: path } }
@@ -943,7 +943,7 @@ export function useHubState() {
   const voiceDests: Dest[] = [
     { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('todo') },
     { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
-    { label: 'Daily Checklist', names: ['daily checklist', 'checklist'], run: () => openEmbed('/standards') },
+    { label: 'Waiting for team', names: ['waiting for team', 'team', 'daily checklist', 'checklist', 'to do'], run: () => openShop('todo') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
     { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },
     { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },

@@ -14,8 +14,8 @@ export const META = [
   { title: 'Confirm the laws shown before work', violation: 'The login reminder of laws is not confirmed before work starts on a day you are clocked in', how: 'After you log in the reminder appears\nRead it, tick once to agree, and confirm' },
 ]
 export const META_JOE = [
-  { title: 'Complete each CCTV review within 48 hours', violation: 'A CCTV review of a day staff worked without the manager clocked in is still not done 48 hours after it was raised', how: 'Open the CCTV review from the pop-up or the Daily Checklist\nWatch the times shown, confirm sales and laws, and complete it' },
-  { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open Penalties and the Daily Checklist\nApprove or reject each one, or ask the staff member a question' },
+  { title: 'Complete each CCTV review within 48 hours', violation: 'A CCTV review of a day staff worked without the manager clocked in is still not done 48 hours after it was raised', how: 'Open the CCTV review from the pop-up or Waiting for team\nWatch the times shown, confirm sales and laws, and complete it' },
+  { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open your profile (Waiting for me) and the Shop Violations tab\nApprove or reject each one, or ask the staff member a question' },
 ]
 const SEED = 'meta-v1', REMIND_FRACTION = 5 // quiz and video: reminder on day 5 of 7
 

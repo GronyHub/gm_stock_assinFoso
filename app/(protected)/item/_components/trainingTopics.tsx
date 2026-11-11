@@ -78,7 +78,7 @@ export const TOPICS: Topic[] = [
         <p className="text-sm text-gray-700">Everything opens from the left sidebar (on a phone, tap the menu icon to bring it back). The buttons you can use have a yellow label for the owner and Joe; staff only see their own buttons.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Company Laws</strong> -- the rules of each area, with a video and a short quiz for every category.</li>
-          <li><strong>Daily Checklist</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
+          <li><strong>Waiting for team</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
           <li><strong>Items / Live Sale</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
           <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong>, <strong>Team Times</strong> -- the rest of your day-to-day tools.</li>
           <li><strong>Payslips</strong> and <strong>Profile</strong> -- your own pay and your own details and photo.</li>
@@ -122,7 +122,7 @@ export const TOPICS: Topic[] = [
     keywords: 'clock in out opener closer gps location closing report time break',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Clock in and out from <strong>Team Times</strong> in the sidebar. It is GPS-checked: you have to be at the shop, or it will not let you. You can only tick Daily Checklist tiles once you are clocked in.</p>
+        <p className="text-sm text-gray-700">Clock in and out from the <strong>Times</strong> tab of your own profile (tap your name in the bar at the top). It is GPS-checked: you have to be at the shop, or it will not let you. You can only tick Waiting for team tiles once you are clocked in.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Opener</strong> -- whoever clocks in earliest that day.</li>
           <li><strong>Closer</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire.</li>
@@ -133,12 +133,12 @@ export const TOPICS: Topic[] = [
   },
   {
     id: 'daily-checklist-how',
-    title: 'The Daily Checklist: what to do and when',
+    title: 'Waiting for team: what to do and when',
     group: 'Getting Started',
     keywords: 'daily checklist tiles now late tick photo question persons minutes clock in',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Open <strong>Daily Checklist</strong> from the sidebar. Each small tile is one job. The <strong>Now</strong> box shows what is due this minute; late jobs turn red and the owner and Joe are told.</p>
+        <p className="text-sm text-gray-700">Tap <strong>Shop</strong> in the sidebar (or the Shop box in the top bar): it opens on <strong>Waiting for team</strong>. Each small tile is one job. The <strong>Now</strong> box shows what is due this minute; late jobs turn red and the owner and Joe are told.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li>You can only tick tiles once you are <strong>clocked in</strong>. The day starts at the first clock-in.</li>
           <li>Tap a tile to see what it means and how to do it before you confirm.</li>
@@ -192,7 +192,7 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Staff</strong> -- the shop team. You use Company Laws, the Daily Checklist, Items / Live Sale, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
+          <li><strong>Staff</strong> -- the shop team. You use Company Laws, Waiting for team, Items / Live Sale, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
           <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals.</li>
         </ul>
         <Callout>Anything you cannot see is not part of your job in the app. If you think you need it, ask Joe.</Callout>
