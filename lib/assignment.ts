@@ -1,13 +1,11 @@
-import { isManagerName } from '@/lib/signers'
-
 // Who performs a recurring law's task. A law's "Who does it" decides it; its checklist tile carries the same value.
 //   all      every staff member clocked in that day
-//   managers only the managers clocked in (Grony, Joe, Bino)
+//   managers the manager, Joe (the owner is not bound by the daily tasks)
 //   opener   the first person to clock in that day
 //   closer   the last person to clock out that day (while people are still in, any of them may do it)
 export const ASSIGNMENTS = [
   { key: 'all', label: 'Everyone clocked in' },
-  { key: 'managers', label: 'Managers only' },
+  { key: 'managers', label: 'The manager (Joe)' },
   { key: 'opener', label: 'The Opener (first in)' },
   { key: 'closer', label: 'The Closer (last out)' },
 ] as const
@@ -17,7 +15,7 @@ export const cleanAssignment = (v: unknown): Assignment => (ASSIGNMENTS.some(a =
 // Does this person carry a task with this assignment today? `closer` is only known once people clock out; until then everyone still in may do it.
 export function owes(assignment: string | null | undefined, name: string, ctx: { opener: string | null; lastOut: string | null }): boolean {
   const n = name.toLowerCase()
-  if (assignment === 'managers') return isManagerName(n)
+  if (assignment === 'managers') return n === 'joe'
   if (assignment === 'opener') return ctx.opener == null || ctx.opener === n
   if (assignment === 'closer') return ctx.lastOut == null || ctx.lastOut === n
   return true

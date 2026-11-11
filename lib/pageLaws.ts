@@ -71,6 +71,7 @@ async function ensureCompanyLawsImpl() {
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
   await assignmentFromAudienceOnce()
+  await mapOpeningClosingOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -217,6 +218,29 @@ async function approveAllDraftsOnce() {
     const ids = drafts.map(d => d.id)
     if (ids.length) await sql`UPDATE page_laws SET live_at = now() + interval '3 days' WHERE id = ANY(${ids}) AND status = 'live'`
   } catch (e) { console.error('approve all drafts failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The Opening and Closing checklist tiles made from the old Standards list all duplicated a law that already has its own tile. The old
+// tiles are switched off (records kept), the laws get their "Who does it", and two standing laws gain the sentence their old tile carried.
+// The owner approved this mapping in conversation (2026-11-12). Done once.
+async function mapOpeningClosingOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('map-opening-closing-2026-11-12') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`UPDATE daily_check_tiles SET active = false WHERE law_id IS NULL AND active AND section IN ('Opening', 'Closing') AND kind = 'tap'
+      AND id IN (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 76, 77, 78, 80, 81, 82)`
+    await sql`UPDATE daily_check_tiles SET law_id = 111 WHERE id = 1 AND law_id IS NULL AND kind = 'properties' AND EXISTS (SELECT 1 FROM page_laws WHERE id = 111)`
+    const sets: [string, number[]][] = [['opener', [76, 110, 56, 111, 112, 113, 46, 70, 82, 133]], ['managers', [139]], ['closer', [80, 102, 79, 114, 142, 134]]]
+    for (const [a, ids] of sets) {
+      await sql`UPDATE page_laws SET assignment = ${a} WHERE id = ANY(${ids})`
+      await sql`UPDATE daily_check_tiles SET assignment = ${a} WHERE law_id = ANY(${ids})`
+    }
+    // A changed wording changes the law's hash, so everyone is asked to sign it again; the clock for that starts now.
+    await sql`UPDATE page_laws SET text = text || ' A staff member''s own phone charges only at the back of the shop.', live_at = now()
+      WHERE id = 85 AND text NOT ILIKE '%phone charges only at the back%'`
+    await sql`UPDATE page_laws SET text = text || ' Laptop wallpapers are solid black.', live_at = now()
+      WHERE id = 145 AND text NOT ILIKE '%wallpapers are solid black%'`
+  } catch (e) { console.error('opening/closing mapping failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
