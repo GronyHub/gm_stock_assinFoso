@@ -111,7 +111,9 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   }
 
   // decisions for supervisors
-  if (owner) {
+  // A supervisor viewing the owner's or Joe's list sees the decisions waiting for them too (read-only).
+  const decider = owner || (!!opts.viewing && (me === 'joe' || me === 'grony'))
+  if (decider) {
     const claims = await safe(() => sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> ${me} AND COALESCE(against, '') <> ${me}`, [{ n: 0 }])
     add({ key: 'claims', icon: '🕐', title: 'Clock times to approve', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out.', count: Number(claims[0].n), urgency: 'soon', href: '/standards' })
     const sanc = await safe(() => sql`SELECT staff FROM penalty_sanctions WHERE status = 'proposed'`, [] as { staff: string }[])
@@ -121,7 +123,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
     const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(id) AS first FROM page_laws WHERE status = 'draft'`, [{ n: 0, first: null }])
     add({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: Number(drafts[0].n), urgency: 'later', href: drafts[0].first ? `/laws?law=${drafts[0].first}` : '/laws' })
   }
-  if (me === 'joe' && !opts.viewing) {
+  if (me === 'joe') {
     const r = await safe(() => sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`, [{ n: 0 }])
     add({ key: 'cctv', icon: '🎥', title: 'CCTV reviews to do', detail: 'Days staff worked while you were not clocked in. Due within 48 hours.', count: Number(r[0].n), urgency: 'now', href: '/cctv-review' })
   }

@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
       await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND field = 'in' AND status = 'pending'`
       await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, against, field) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Clock-in time entered by ' + cap(me)}, ${against}, 'in')`
       await sql`UPDATE clock_in_autos SET status = 'submitted' WHERE staff = ${me} AND work_date = ${date} AND status = 'notified'`
-      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], `${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
-      else void notifyOwners(`${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], `${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open your profile (Waiting for me) to approve it.`)
+      else void notifyOwners(`${cap(me)} sent a clock-in time to approve`, `${date}: ${t12}. Open your profile (Waiting for me) to approve it.`)
       return success({ in: t12, pending: true })
     }
     if (b.action === 'auto_ok') { await sql`UPDATE clock_autos SET status = 'ok' WHERE id = ${Number(b.id)} AND staff = ${me}`; return success({ ok: true }) }
@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
       await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, against) VALUES (${me}, ${date}, 'entered', ${t12}, ${'Entered by ' + cap(me)}, ${against})`
       await sql`UPDATE clock_autos SET status = 'submitted' WHERE staff = ${me} AND work_date = ${date} AND status = 'notified'`
       // Joe's own times are approved by Grony only; everyone else's by Grony or Joe.
-      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], 'Joe sent a clock-out time to approve', `${date}: ${t12}. Open the Daily Checklist to approve it.`)
-      else void notifyOwners(`${cap(me)} sent a clock-out time to approve`, `${date}: ${t12}. Open the Daily Checklist to approve it.`)
+      if (me === 'joe' || against === 'joe') void pushToUsers(['grony'], 'Joe sent a clock-out time to approve', `${date}: ${t12}. Open your profile (Waiting for me) to approve it.`)
+      else void notifyOwners(`${cap(me)} sent a clock-out time to approve`, `${date}: ${t12}. Open your profile (Waiting for me) to approve it.`)
       return success({ out: t12, pending: true })
     }
     return badRequest('Unknown action.')

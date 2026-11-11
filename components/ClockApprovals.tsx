@@ -11,7 +11,15 @@ export default function ClockApprovals() {
     fetch('/api/clock/corrections', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setList(d?.pending ?? [])).catch(() => {})
     fetch('/api/cctv-review?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPendingReviews((d?.pending || d?.all || 0))).catch(() => {})
   }
-  useEffect(() => { load() }, [])
+  // Kept fresh: a time sent while this page is open shows up without reloading.
+  useEffect(() => {
+    load()
+    const again = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', again); window.addEventListener('focus', again)
+    const t = setInterval(again, 60000)
+    return () => { document.removeEventListener('visibilitychange', again); window.removeEventListener('focus', again); clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [pick, setPick] = useState<Record<number, string>>({})
   async function act(id: number, action: 'approve' | 'reject') {
     await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action, time: action === 'approve' ? pick[id] : undefined }) })

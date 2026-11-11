@@ -27,13 +27,12 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
             </>}>
-            <SidePaneToggle mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
+            <SidePaneToggle selfActive={!!personal && personal.name.toLowerCase() === username.toLowerCase()} mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} />
 
             {(session?.user as { impersonating?: boolean } | undefined)?.impersonating && (
               <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}
                 onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
             )}
-            <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting'} badge={myDayBadge} href="/my-day" onClick={() => openPersonal(username, 'waiting')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
             <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
