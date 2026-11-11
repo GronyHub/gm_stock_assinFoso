@@ -35,7 +35,8 @@ export const proxy = auth(req => {
     const u = req.auth?.user as { role?: string; username?: string; name?: string } | undefined
     if (u && u.role !== 'children_manager' && !isOwnerLevel(u)) {
       if (path.startsWith('/api/')) {
-        if (under(path, STAFF_BLOCKED_API)) return NextResponse.json(req.method === 'GET' ? [] : { error: 'Not available for this account' }, { status: 403 })
+        // Ending a "view as" must always work: while viewing as a staff member this request looks like theirs, and it only removes the cookie.
+        if (under(path, STAFF_BLOCKED_API) && !(path === '/api/impersonate' && req.method === 'DELETE')) return NextResponse.json(req.method === 'GET' ? [] : { error: 'Not available for this account' }, { status: 403 })
       } else if (under(path, STAFF_BLOCKED_PAGES)) {
         return NextResponse.redirect(new URL('/item', req.nextUrl))
       }
