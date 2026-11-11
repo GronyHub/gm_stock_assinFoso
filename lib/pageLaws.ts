@@ -70,9 +70,11 @@ async function ensureCompanyLawsImpl() {
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
+  await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS month_day INTEGER`.catch(() => {})
   await assignmentFromAudienceOnce()
   await mapOpeningClosingOnce()
   await mapRemainingTilesOnce()
+  await rotaAndTodoLawsOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -163,6 +165,8 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff', reminder: ['login', 'first_sale'].includes(b.reminder) ? String(b.reminder) : 'none',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     assignment: cleanAssignment(b.assignment),
+    // monthly laws: the day of the month it is done on (1 to 31; a short month uses its last day)
+    month_day: recurring && String(b.frequency ?? '') === 'monthly' && Number.isInteger(Number(b.month_day)) && Number(b.month_day) >= 1 && Number(b.month_day) <= 31 ? Number(b.month_day) : null,
     points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
   }
 }
@@ -283,6 +287,23 @@ async function mapRemainingTilesOnce() {
     for (let i = 196; i <= 254; i++) ids.push(i)
     await sql`UPDATE daily_check_tiles SET active = false WHERE law_id IS NULL AND active AND kind = 'tap' AND id = ANY(${ids})`
   } catch (e) { console.error('remaining tiles mapping failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// Laws the rota and the future to-do list stand on (the owner's rule: everything rests on a law). Created once; the weekly law
+// "The team rota for the week is set and everyone knows it" already existed.
+async function rotaAndTodoLawsOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('rota-todo-laws-2026-11-12') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const mk = async (title: string, sub: string, text: string, violation: string, by: 'manager' | 'app' = 'manager') => {
+      await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title, assignment, live_at)
+        VALUES ('Staff management', ${text}, false, 'law', 'Staff management', ${sub}, 'standing', 'live', 'todo-rota-v1', 'tick', 1,
+                ${JSON.stringify([{ text: violation, points: 1, by }])}, ${title}, 'all', now() + interval '3 days')`
+    }
+    await mk('Work the shifts on the rota', 'Rota', 'Work the shifts the rota gives you, and arrive at your scheduled time. If you cannot work a shift, tell Joe as early as you can so it can be covered.', 'A shift on the rota is not worked and Joe was not told in time')
+    await mk('The Opener and the Closer come from the rota', 'Rota', 'The Opener and the Closer of the day are the people the rota names for it. If the rota does not name them, the Opener is the first to clock in and the Closer is the last to clock out. A task given to the Opener or the Closer is theirs, and if it is left undone at the end of the day the point is theirs.', 'A task given to the Opener or the Closer is left undone at the end of the day', 'app')
+    await mk('Do the to-do items you are given by their date', 'To do', 'A to-do item added in To do for a date, to you or to everyone, is done by that date. Joe and the owner add them.', 'A to-do item given to you is not done by its date')
+  } catch (e) { console.error('rota/to-do laws failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.

@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { parseTimeMins } from '@/lib/staffTimes'
+import { rotaRolesFor } from '@/lib/rota'
 
 // Who is at work today, from the clock-in records (Ghana is on GMT, so UTC days are the shop's days).
 export type ClockState = { dayStart: number | null; present: string[]; everIn: string[]; opener: string | null; lastOut: string | null }
@@ -15,6 +16,11 @@ export async function getClockState(day: string): Promise<ClockState> {
     const i = parseTimeMins(r.actual_in); if (i != null && i < openMin) { openMin = i; opener = r.name }
     const o = r.actual_out ? parseTimeMins(r.actual_out) : null; if (o != null && o >= outMin) { outMin = o; lastOut = r.name }
   }
-  return { dayStart, present: rows.filter(r => !r.actual_out).map(r => r.name), everIn: rows.map(r => r.name), opener, lastOut }
+  // The rota names the Opener and the Closer when it can: a person who is on the rota for that role and actually clocked in carries it.
+  const rr = await rotaRolesFor(day)
+  const everIn = rows.map(r => r.name)
+  if (rr?.opener && everIn.includes(rr.opener)) opener = rr.opener
+  if (rr?.closer && everIn.includes(rr.closer)) lastOut = rr.closer
+  return { dayStart, present: rows.filter(r => !r.actual_out).map(r => r.name), everIn, opener, lastOut }
 }
 export const actorKey = (u: { username?: string; name?: string | null } | undefined) => String(u?.username ?? u?.name ?? '').toLowerCase()

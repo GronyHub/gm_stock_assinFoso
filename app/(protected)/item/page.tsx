@@ -106,6 +106,7 @@ const ExpensesAnalyticsSection   = dynamic(() => import('./_components/ExpensesA
 const LossTab        = dynamic(() => import('./_components/LossTab'),         { ssr: false, loading: () => loading('Loading…') })
 const ProfitLossTab  = dynamic(() => import('./_components/ProfitLossTab'),   { ssr: false, loading: () => loading('Loading…') })
 const DailySummaryTab = dynamic(() => import('./_components/DailySummaryTab'), { ssr: false, loading: () => loading('Loading…') })
+const ShopRota = dynamic(() => import('./_components/ShopRota'), { ssr: false, loading: () => loading('Loading…') })
 const ShopTeamTimes = dynamic(() => import('./_components/ShopTeamTimes'), { ssr: false, loading: () => loading('Loading…') })
 const GronyManageContent = dynamic(() => import('./_components/GronyManageTab'), { ssr: false, loading: () => loading('Loading…') })
 const VendorsPage    = dynamic(() => import('../vendors/page'),               { ssr: false, loading: () => loading('Loading…') })
@@ -1634,7 +1635,7 @@ function ItemHubPageInner() {
   const [barH, setBarH] = useState(0)
   const barRef = useRef<HTMLDivElement>(null)
   // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
+  type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'rota' | 'violations' | 'tasks' | 'guide' | 'checks'
   const [shop, setShop] = useState<{ tab: ShopTab; src?: string } | null>(null)
   const shopRoute = (path: string): { tab: ShopTab; src: string } | null => {
     // The Daily Checklist is the Shop's "To do" tab (/todo); old links keep their ?tile= and ?closing=
@@ -1652,7 +1653,7 @@ function ItemHubPageInner() {
     const open = new URLSearchParams(window.location.search).get('open')
     if (open === '/my-day') setPersonal({ name: username, tab: 'waiting' })
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
-    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) { const r = shopRoute(e.data.path); if (r) { setEmbedUrl(null); setPersonal(null); setShop(r) } else { setShop(null); setPersonal(null); setEmbedUrl(e.data.path) } }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
     const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: 'waiting' }) } else { setPersonal(null); const r = shopRoute(d.path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(d.path) } } }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
@@ -7120,7 +7121,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['todo', '✅ To do'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['todo', '✅ To do'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ['rota', '🗓 Rota'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Violations'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -7130,6 +7131,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                   {shop.tab === 'todo' && <iframe key={'t' + (shop.src ?? '')} src={shop.src ?? '/todo'} title="To do" className="h-full w-full border-0" />}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
+                  {shop.tab === 'rota' && <div className="p-2"><ShopRota canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} /></div>}
                   {shop.tab === 'violations' && <iframe key="v" src="/penalties" title="Violations" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
