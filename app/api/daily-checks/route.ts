@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const q = req.nextUrl.searchParams.get('day') ?? ''
     const today = dayKey()
     const day = /^\d{4}-\d{2}-\d{2}$/.test(q) && q >= CHECKLIST_START && q <= today ? q : today
-    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position, minutes, days, ask, ok_label, issue_label, log_category, needs_photo, category, subcategory, law_id FROM daily_check_tiles WHERE active AND (${mgr} OR law_id IS NULL OR law_id NOT IN (SELECT id FROM page_laws WHERE audience = 'managers')) ORDER BY position, id`
+    const tiles = await sql`SELECT id, section, time, title, icon, how, kind, prop_filter, frequency, weekday, position, minutes, days, ask, ok_label, issue_label, log_category, needs_photo, category, subcategory, law_id, assignment FROM daily_check_tiles WHERE active AND (${mgr} OR law_id IS NULL OR law_id NOT IN (SELECT id FROM page_laws WHERE audience = 'managers')) ORDER BY position, id`
     const events = await sql`
       SELECT e.id, e.tile_id, e.day, e.value, e.note, e.extra, e.recorded_by, e.recorded_at
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const clock = await getClockState(today)
     const me = actorKey(session.user as any)
     const exempt = (session.user as { role?: string })?.role === 'owner'
-    return success({ day, today, tiles, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present })
+    return success({ day, today, tiles, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present, opener: clock.opener, closer: clock.lastOut })
   } catch (e) { return handleError('daily-checks GET', e) }
 }
 

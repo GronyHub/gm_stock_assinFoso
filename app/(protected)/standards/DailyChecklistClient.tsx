@@ -24,6 +24,16 @@ type Adhoc = { id: number; category: string; note: string; photo_url: string | n
 
 type Prop = { id: number; name: string; availability: string | null; working: string | null; location: string | null; not_working_reason: string | null; not_available_reason: string | null }
 
+// Who does a task: the law's "Who does it". The Opener and Closer are named once they are known for the day.
+const nm = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
+function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: string | null; closer: string | null } }) {
+  const a = t.assignment ?? 'all'
+  const [label, cls] = a === 'opener' ? [`Opener${roles.opener ? ` · ${nm(roles.opener)}` : ''}`, 'bg-indigo-100 text-indigo-800']
+    : a === 'closer' ? [`Closer${roles.closer ? ` · ${nm(roles.closer)}` : ''}`, 'bg-purple-100 text-purple-800']
+    : a === 'managers' ? ['Joe', 'bg-amber-100 text-amber-900'] : ['Everyone', 'bg-gray-100 text-gray-600']
+  return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
+}
+
 export default function DailyChecklistClient({ canManage, embedded = false }: { canManage: boolean; embedded?: boolean }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
@@ -34,6 +44,7 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
   const [clockedIn, setClockedIn] = useState(true)
   const [names, setNames] = useState(false)
   const [present, setPresent] = useState<string[]>([])
+  const [roles, setRoles] = useState<{ opener: string | null; closer: string | null }>({ opener: null, closer: null })
   const [adhoc, setAdhoc] = useState<Adhoc[]>([])
   const [logging, setLogging] = useState(false)
   const [section, setSection] = useState<string>('All day')
@@ -51,7 +62,7 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
       try {
         const r = await fetch(`/api/daily-checks${d ? `?day=${d}` : ''}`, { cache: 'no-store' })
         const j = await r.json()
-        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setAdhoc(Array.isArray(j.adhoc) ? j.adhoc : []); setError(''); return }
+        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setRoles({ opener: j.opener ?? null, closer: j.closer ?? null }); setAdhoc(Array.isArray(j.adhoc) ? j.adhoc : []); setError(''); return }
       } catch { /* retry */ }
       await new Promise(r => setTimeout(r, 700 * (i + 1)))
     }
@@ -142,7 +153,7 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
                   <button type="button" onClick={() => setSheet(t)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     <span className="text-lg leading-none">{t.icon}</span>
                     <span className="shrink-0 text-[10px] font-bold text-gray-500">{fmt(due.get(t.id)!)}</span>
-                    <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
+                    <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}<WhoTag t={t} roles={roles} /></span>
                   </button>
                   {g.label !== 'NEXT' && linkFor(t) && <a href={linkFor(t)!.href} className="shrink-0 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-bold text-white">{linkFor(t)!.label}</a>}
                   {g.label !== 'NEXT' && (t.kind === 'tap'
@@ -182,7 +193,7 @@ export default function DailyChecklistClient({ canManage, embedded = false }: { 
                 className={`flex w-full items-center gap-2 rounded-lg border px-2 py-1 text-left ${state === 'done' ? 'border-green-400 bg-green-50' : state === 'notdone' ? 'border-gray-300 bg-gray-100' : minsLate >= 15 ? 'border-red-400 bg-red-50' : minsLate >= 0 ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                 <span className="text-lg leading-none">{t.icon}</span>
                 <span className="w-10 shrink-0 text-[10px] font-bold text-gray-500">{t.frequency !== 'daily' ? PERIOD_WORD[t.frequency] : (t.time ?? '')}</span>
-                <span className="line-clamp-2 flex-1 text-[11px] font-semibold leading-tight text-gray-900">{t.title}</span>
+                <span className="line-clamp-2 flex-1 text-[11px] font-semibold leading-tight text-gray-900">{t.title}<WhoTag t={t} roles={roles} /></span>
                 {state === 'done' && <span className="text-xs font-bold text-green-700">✓</span>}
                 {state === 'notdone' && <span className="text-xs font-bold text-gray-600">✕</span>}
               </button>

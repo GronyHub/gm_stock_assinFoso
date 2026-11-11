@@ -56,7 +56,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; manager?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
   // Two lenses on the same laws: by topic, and by type and when. (Today, the laws due today, is the Shop's To do tab.)
-  const [view, setView] = useState<'topic' | 'type'>('topic')
+  const [view, setView] = useState<'topic' | 'type' | 'role'>('topic')
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
@@ -75,7 +75,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const q = new URLSearchParams(window.location.search)
     const t = q.get('tile'), c = q.get('cat')
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
-    if (q.get('view') === 'type') setView('type')
+    if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -273,16 +273,36 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
-      <div className="mb-2 flex items-center gap-2">
-        <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
-        <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Company Laws</h1>
-        {canManage && <a href="/penalties" className="text-xs font-semibold text-red-700 underline">Penalties</a>}{canManage && <a href="/cctv-review" className="ml-2 text-xs font-semibold text-red-700 underline">CCTV review</a>}
-      </div>
-      <div className="mb-2 grid grid-cols-2 gap-1">
-        {([['topic', '📚 By topic'], ['type', '🕐 By type and when']] as const).map(([k, label]) => (
+      <div className="mb-2 grid grid-cols-3 gap-1">
+        {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
         ))}
       </div>
+      {view === 'role' && laws && (() => {
+        const all = laws.filter(l => l.status !== 'draft' || canManage)
+        const groups = ASSIGNMENTS.filter(a => a.key !== 'all').map(a => [a.label, all.filter(l => (l.assignment ?? 'all') === a.key).sort((x, y) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id), true] as [string, Law[], boolean])
+          .concat([['Everyone clocked in', all.filter(l => (l.assignment ?? 'all') === 'all'), false]])
+        const table = (list: Law[]) => (
+          <div className="space-y-2 overflow-x-auto">
+            <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+            {list.map(l => <LawCard key={l.id} l={l} />)}
+          </div>)
+        return (
+          <div className="space-y-4">
+            <p className="text-[11px] text-gray-500">The laws by who does them: the Opener (first to clock in), the Closer (last to clock out), the manager (Joe), and everyone. Change who does a law in its editor.</p>
+            {groups.map(([title, list, open]) => open ? (
+              <div key={title}>
+                <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
+                {list.length ? table(list) : <p className="rounded-lg bg-gray-50 p-2 text-xs text-gray-500">No laws are assigned to this role.</p>}
+              </div>
+            ) : (
+              <details key={title} className="rounded-xl border border-gray-200 bg-white p-2">
+                <summary className="cursor-pointer text-sm font-bold text-gray-900">{title} ({list.length})</summary>
+                <div className="mt-2">{table(list)}</div>
+              </details>
+            ))}
+          </div>)
+      })()}
       {view === 'type' && laws && (() => {
         const all = laws.filter(l => l.status !== 'draft' || canManage)
         const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')

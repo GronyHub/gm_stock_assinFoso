@@ -25,7 +25,7 @@ export default function ClockApprovals() {
   return (
     <div className="mx-auto max-w-3xl space-y-2 px-3 pt-3">
       {me === 'grony' && <div className="flex items-center gap-2"><button type="button" onClick={() => void nudge()} className="rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">Prompt Joe to check</button>{sent && <span className="text-xs text-gray-700">{sent}</span>}</div>}
-      {pendingReviews > 0 && <a href="/cctv-review" className="block rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{pendingReviews} CCTV review{pendingReviews === 1 ? '' : 's'} waiting: staff worked while Joe was not clocked in. Open the review →</a>}
+      {pendingReviews > 0 && <a href="/cctv-review" onClick={e => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (ev.handled) e.preventDefault() }} className="block rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{pendingReviews} CCTV review{pendingReviews === 1 ? '' : 's'} waiting: staff worked while Joe was not clocked in. Open the review →</a>}
       {list.length > 0 && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-extrabold text-amber-900">Clock-in and clock-out times to approve</p>
