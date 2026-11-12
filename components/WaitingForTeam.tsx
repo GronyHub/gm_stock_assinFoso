@@ -108,7 +108,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                      onClick={d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
+                      lawHref={canManage && d.lawId ? `/laws?law=${d.lawId}` : undefined} />
                   })}</div>
                 </div>) })}
             </div>)}

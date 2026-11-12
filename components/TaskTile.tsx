@@ -20,15 +20,16 @@ export function DensityToggle({ density, onChange }: { density: TileDensity; onC
   )
 }
 
-export default function TaskTile({ density, time, title, who, category, type, detail, tone, mark, badge, icon, onClick }: {
+export default function TaskTile({ density, time, title, who, category, type, detail, tone, mark, badge, icon, onClick, lawHref }: {
   density: TileDensity; time?: string | null; title: string; who?: string | null; category?: string | null; type?: string | null; detail?: string | null
   tone: string; mark?: 'done' | 'miss' | 'no'; badge?: number; icon?: string; onClick?: () => void
+  lawHref?: string // owner/manager only: a small link on the tile to the law behind it (change how often it repeats, restructure it)
 }) {
   const full = density === 'full'
   const markEl = mark && (
     <span className={`absolute right-1 top-0 font-black leading-none ${full ? 'text-base' : 'text-[12px]'} ${mark === 'done' ? 'text-green-600' : mark === 'miss' ? 'text-red-600' : 'text-gray-500'}`}
       title={mark === 'done' ? 'Done' : mark === 'miss' ? 'Not done at all' : 'Marked not done, with a reason'}>{mark === 'done' ? '✓' : mark === 'miss' ? '✗' : '–'}</span>)
-  return (
+  const tile = (
     <button type="button" title={title} onClick={onClick} onContextMenu={e => e.preventDefault()}
       className={`relative flex select-none flex-col items-start justify-start gap-px rounded-md border text-left active:opacity-70 ${full ? 'min-h-[4.5rem] px-2 py-1.5' : 'min-h-[3.6rem] px-1 py-0.5'} ${tone}`}>
       {markEl}
@@ -38,5 +39,12 @@ export default function TaskTile({ density, time, title, who, category, type, de
       {full && (category || type) ? <span className="text-[10px] font-semibold leading-tight text-gray-500">{[category, type].filter(Boolean).join(' · ')}</span> : null}
       {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${full ? 'truncate pt-0.5 text-[11px]' : 'truncate text-[7px]'}`}>{who}</span> : null}
     </button>
+  )
+  if (!lawHref) return tile
+  return (
+    <div className="relative flex flex-col [&>button]:flex-1">{tile}
+      <a href={lawHref} title="Open the law behind this task to change it" onClick={e => e.stopPropagation()}
+        className={`absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1.5 py-1 text-[10px]' : 'px-1 py-0.5 text-[8px]'}`}>Law</a>
+    </div>
   )
 }

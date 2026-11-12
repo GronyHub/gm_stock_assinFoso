@@ -155,7 +155,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} />))}
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />))}
           </div>
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
@@ -184,7 +184,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} />
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />
             ))}
           </div>
         </div>
