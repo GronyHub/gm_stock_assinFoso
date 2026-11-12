@@ -16,7 +16,7 @@ export function useTileDensity(): [TileDensity, (d: TileDensity) => void] {
 export function DensityToggle({ density, onChange }: { density: TileDensity; onChange: (d: TileDensity) => void }) {
   return (
     <button type="button" onClick={() => onChange(density === 'full' ? 'compact' : 'full')} title={density === 'full' ? 'Show small tiles' : 'Show the whole text on each tile'}
-      className="shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-[11px] font-bold text-gray-700">{density === 'full' ? '▦ Small' : '▤ Full'}</button>
+      className="shrink-0 rounded-lg border border-gray-300 bg-white px-1.5 py-1.5 text-[10px] font-bold text-gray-700">{density === 'full' ? '▦ Small' : '▤ Full'}</button>
   )
 }
 

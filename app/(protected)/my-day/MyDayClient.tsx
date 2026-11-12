@@ -47,7 +47,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
   const overdue = everything.filter(i => i.urgency === 'now').reduce((n, i) => n + i.count, 0)
   const name = who ? who.charAt(0).toUpperCase() + who.slice(1) : ''
   return (
-    <div className="mx-auto max-w-2xl space-y-2 p-3">
+    <div className="mx-auto max-w-2xl space-y-1.5 p-2">
       {/* One compact row: counts on the left, refresh and remind as icons on phones (words from sm up). The tab already names the list. */}
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 text-xs font-semibold text-gray-700">
@@ -56,8 +56,8 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
           {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
         </p>
         {!densityProp && <DensityToggle density={density} onChange={setDensity} />}
-        {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-1.5 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
-        <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
+        {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
+        <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2 py-1 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
       </div>
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {!who && !team && lens !== 'notdone' && <ClockNotices onChange={() => void load()} />}
@@ -66,9 +66,9 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
       {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ {team || lens === 'notdone' ? 'Nothing is overdue.' : `Nothing is waiting${who ? ` for ${name}` : ' for you'}.`}</p>}
       {!team && lens !== 'notdone' && items && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-nowrap gap-1 overflow-x-auto">
           {([['all', 'Everything', everything.length], ['waiting', 'Waiting', everything.filter(isOpen).length], ['overdue', 'Overdue', everything.filter(isOver).length], ['done', 'Done', everything.filter(isDone).length]] as const).map(([k, label, n]) => (
-            <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+            <button key={k} type="button" onClick={() => setFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
           ))}
         </div>)}
       <div className={tileGrid(density)}>

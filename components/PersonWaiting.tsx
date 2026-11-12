@@ -19,7 +19,7 @@ export default function PersonWaiting({ forName = '', onNavigate }: { forName?: 
   const dates = [...past, today, ...ahead]
   return (
     <div>
-      <div className="flex items-start gap-2 px-2 pt-2">
+      <div className="flex items-start gap-1 px-2 pt-1">
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} />
         <DensityToggle density={density} onChange={setDensity} />
       </div>
@@ -44,13 +44,13 @@ export function PersonDayTiles({ person, date, density }: { person: string; date
   const n = (st: string) => items?.filter(i => i.state === st).length ?? 0
   const shown = items?.filter(i => f === 'all' || i.state === f) ?? []
   return (
-    <div className="space-y-2 p-3">
+    <div className="space-y-1.5 p-2">
       {items === null && <p className="text-sm text-gray-400">Loading…</p>}
       {items && items.length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {date > today ? 'is planned' : 'fell'} for {person ? 'this person' : 'you'} on this day.</p>}
       {items && items.length > 0 && date < today && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-nowrap gap-1 overflow-x-auto">
           {([['all', 'Everything', items.length], ['done', 'Done', n('done')], ['not', 'Marked not done', n('not')], ['miss', 'Not done at all', n('miss')]] as const).map(([k, label, c]) => (
-            <button key={k} type="button" onClick={() => setF(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${f === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {c}</button>
+            <button key={k} type="button" onClick={() => setF(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${f === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {c}</button>
           ))}
         </div>)}
       {items && shown.length > 0 && (

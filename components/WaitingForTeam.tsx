@@ -69,15 +69,15 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const minDate = today
   const more = () => setAhead(a => a + 31)
   return (
-    <div className="pb-24 pt-2">
-      <div className="flex items-start gap-2 px-3">
+    <div className="-mx-2 -mt-3 pb-24 pt-1">
+      <div className="flex items-start gap-1 px-2">
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
         <DensityToggle density={density} onChange={setDensity} />
-        {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-2 text-xs font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
+        {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[11px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
-      {msg && <p className="mx-3 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
+      {msg && <p className="mx-2 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {adding && (
-        <div className="mx-3 mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
+        <div className="mx-2 mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
           <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="What has to be done?" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
           <div className="grid grid-cols-2 gap-2">
             <input type="date" min={minDate} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="rounded-lg border border-gray-300 p-2 text-sm" />
@@ -88,9 +88,9 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
         </div>
       )}
       {chipNames.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1 px-3">
+        <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
           {['', ...chipNames].map(n => (
-            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`rounded-full px-3 py-1 text-xs font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
+            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
           ))}
         </div>)}
       <div className="mt-2">
@@ -98,7 +98,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
               extras={<>{canManage && <ClockApprovals density={density} />}<PendingJobsDue density={density} /></>} />
           : (
-            <div className="space-y-2 px-3">
+            <div className="space-y-1 px-2">
               {fduties === null && <p className="text-sm text-gray-400">Loading…</p>}
               {fduties && fduties.filter(mine).length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing is planned for {person ? nm(person) : 'this day'}.</p>}
               {fduties && BANDS.map(b => { const rows = fduties.filter(mine).filter(d => b.test(d)); if (!rows.length) return null; return (

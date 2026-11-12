@@ -145,10 +145,10 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       {error && <p className="mx-3 mb-2 text-sm text-red-600">{error}</p>}
       {settling && !error && <p className="px-3 text-sm text-gray-400">Loading…</p>}
       {!settling && !isToday && day && (
-        <div className="space-y-2 px-3">
-          <div className="flex flex-wrap gap-1">
+        <div className="space-y-1.5 px-2">
+          <div className="flex flex-nowrap gap-1 overflow-x-auto">
             {([['all', 'Everything', pastDuties.length], ['done', 'Done', pastDuties.filter(x => x.state === 'done').length], ['no', 'Marked not done', pastDuties.filter(x => x.state === 'no').length], ['miss', 'Not done at all', pastDuties.filter(x => x.state === 'miss').length]] as const).map(([k, label, n]) => (
-              <button key={k} type="button" onClick={() => setPastFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+              <button key={k} type="button" onClick={() => setPastFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
           </div>
           <div className={tileGrid(density)}>
@@ -165,14 +165,14 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
         </div>
       )}
           {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
-      {!settling && isToday && <div className="mx-3 mb-2 flex flex-wrap gap-1">
+      {!settling && isToday && <div className="mx-2 mb-1 flex flex-nowrap items-center gap-1 overflow-x-auto">
             {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
-              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
-            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
+            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto shrink-0 whitespace-nowrap px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
       </div>}
       {!settling && isToday && (
-        <div className="mx-3 mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
+        <div className="mx-2 mb-2 space-y-1.5 rounded-xl border border-[#14213D] bg-white p-1">
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet. The day&apos;s tasks start when the first person does; they are listed at their planned times.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
@@ -189,7 +189,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           </div>
         </div>
       )}
-      {!settling && isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mx-3 mb-2 w-[calc(100%-1.5rem)] rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
+      {!settling && isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mx-2 mb-2 w-[calc(100%-1rem)] rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
