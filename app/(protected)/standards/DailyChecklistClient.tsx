@@ -136,8 +136,11 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           <div className="grid grid-cols-6 gap-1">
             {pastTiles.map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'; return (
               <button key={t.id} type="button" title={t.title} onClick={() => setSheet(t)} onContextMenu={e => e.preventDefault()}
-                className={`flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}`}>
-                <span className="text-[8px] font-extrabold leading-none text-gray-500">{t.time}{v === 'yes' ? ' ✓' : v === 'no' ? ' ✕' : ''}</span>
+                className={`relative flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}`}>
+                <span className="text-[8px] font-extrabold leading-none text-gray-500">{t.time}</span>
+                {v === 'yes' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-green-600" title="Done">✓</span>}
+                {v === 'miss' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-red-600" title="Not done at all">✗</span>}
+                {v === 'no' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-gray-500" title="Marked not done, with a reason">–</span>}
                 <span className="line-clamp-3 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(t.title)}</span>
                 {ev && <span className="mt-auto w-full truncate text-[7px] font-bold leading-tight text-indigo-800">{ev.recorded_by ? ev.recorded_by.charAt(0).toUpperCase() + ev.recorded_by.slice(1) : ''}</span>}
               </button>) })}
