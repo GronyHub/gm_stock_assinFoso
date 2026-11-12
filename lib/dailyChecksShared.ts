@@ -97,3 +97,6 @@ export function appliesOn(t: { days?: string | null }, day: string): boolean {
 
 // UTC clock time (HH:MM) of an ISO timestamp.
 export const hhmm = (iso: string) => { const d = new Date(iso); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}` }
+
+// A tile has room for a few words: the name before the colon ("Cable check: no cable lies…" -> "Cable check"). Tap for the whole task.
+export const shortTitle = (t: string) => { const h = t.split(':')[0].trim(); return h.length >= 6 && h.length <= 42 ? h : t }

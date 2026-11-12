@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES } from '@/lib/lawCategories'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
-  addDays, appliesOn, dayLabel, effectiveDue, hhmm, inPeriod, type CheckEvent, type CheckTile, type Frequency,
+  addDays, appliesOn, dayLabel, effectiveDue, hhmm, inPeriod, shortTitle, type CheckEvent, type CheckTile, type Frequency,
 } from '@/lib/dailyChecksShared'
 
 const json = { 'Content-Type': 'application/json' }
@@ -33,9 +33,6 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
     : a === 'managers' ? ['Joe', 'bg-amber-100 text-amber-900'] : ['Everyone', 'bg-gray-100 text-gray-600']
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
-
-// A tile has room for a few words: the name before the colon ("Cable check: no cable lies…" -> "Cable check"). Tap for the whole task.
-const shortTitle = (t: string) => { const h = t.split(':')[0].trim(); return h.length >= 6 && h.length <= 42 ? h : t }
 
 export default function DailyChecklistClient({ canManage, embedded = false, extras }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode }) {
   const canEdit = canManage

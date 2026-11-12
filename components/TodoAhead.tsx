@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import type { AheadDay, AheadItem } from '@/lib/todoAhead'
+import { shortTitle } from '@/lib/dailyChecksShared'
 
 const FILTERS = [['', 'Everything'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['oneoff', 'One-off']] as const
 const BANDS: { key: AheadItem['band']; label: string }[] = [{ key: 'opener', label: 'Opener' }, { key: 'daytime', label: 'Daytime' }, { key: 'closer', label: 'Closer' }, { key: 'oneoff', label: 'To do items' }]
@@ -71,17 +72,16 @@ export default function TodoAhead() {
             {BANDS.map(b => { const rows = d.items.filter(i => i.band === b.key); if (!rows.length) return null; return (
               <div key={b.key}>
                 <p className="mb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
-                <ul className="space-y-1">{rows.map(i => (
-                  <li key={i.key} className="flex items-start gap-2 text-[12px]">
-                    <span className="w-11 shrink-0 font-bold text-gray-500">{i.time ?? ''}</span>
-                    <span className="min-w-0 flex-1 text-gray-900">{i.title}
-                      {i.freq !== 'daily' && i.kind === 'law' && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-px text-[9px] font-bold uppercase text-amber-900">{i.freq}{i.note ? ` · ${i.note}` : ''}</span>}
-                      {(i.who || i.role) && <span className="ml-1 rounded-full bg-indigo-100 px-1.5 py-px text-[9px] font-bold text-indigo-800">{i.role && i.who ? `${i.role} · ${nm(i.who)}` : i.role ?? nm(i.who)}</span>}
-                      {i.note && i.kind === 'oneoff' && <span className="block text-[11px] text-gray-500">{i.note}</span>}
-                    </span>
-                    {i.law_id && <button type="button" onClick={() => go(`/laws?law=${i.law_id}`)} className="shrink-0 text-[10px] font-bold text-blue-700 underline">Law</button>}
-                  </li>))}
-                </ul>
+                <div className="grid grid-cols-6 gap-1">{rows.map(i => {
+                  const who = (i.role && i.who ? `${i.role} · ${nm(i.who)}` : i.role ?? nm(i.who)) || 'Everyone'
+                  return (
+                    <button key={i.key} type="button" title={`${i.title}${i.note ? ' — ' + i.note : ''}`} onClick={() => { if (i.law_id) go(`/laws?law=${i.law_id}`) }}
+                      className={`flex min-h-[4rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${i.kind === 'oneoff' ? 'border-indigo-300 bg-indigo-50' : i.freq !== 'daily' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
+                      <span className="text-[8px] font-extrabold leading-none text-gray-500">{i.time ?? (i.freq !== 'daily' ? i.freq : '')}</span>
+                      <span className="line-clamp-3 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(i.title)}</span>
+                      {who && <span className="mt-auto w-full truncate text-[7px] font-bold leading-tight text-indigo-800">{who}</span>}
+                    </button>)
+                })}</div>
               </div>) })}
           </div>
         </div>))}
