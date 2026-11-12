@@ -26,7 +26,7 @@ export default function PageToolbar({ children, inlineClassName, inline = false,
 }) {
   const el = usePageToolbarEl()
   if (el && !inline) return createPortal(
-    <div className={`flex min-w-0 flex-wrap items-center justify-end gap-1.5 ${grow ? 'flex-1' : 'shrink-0'}
+    <div className={`flex flex-nowrap items-center justify-end gap-1.5 shrink-0 ${grow ? 'min-w-[12rem] flex-1' : ''}
       [&>select]:flex-none [&>select]:max-w-[170px] [&>div.relative]:min-w-[150px]`}>{children}</div>, el)
   return <div className={inlineClassName ?? 'flex items-center gap-1.5'}>{children}</div>
 }

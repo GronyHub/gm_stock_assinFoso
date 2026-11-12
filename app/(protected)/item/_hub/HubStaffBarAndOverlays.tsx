@@ -33,7 +33,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
                   that don't use it. */}
-              <div ref={setPageToolbarEl} className="flex min-w-[16rem] flex-1 flex-wrap items-center justify-end gap-1.5 empty:hidden" />
+              <div ref={setPageToolbarEl} className="flex min-w-[16rem] max-h-8 flex-1 flex-nowrap items-center justify-end gap-1.5 overflow-x-auto overflow-y-hidden empty:hidden" />
             </div>,
             navSlotEl
           )}
