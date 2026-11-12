@@ -5,7 +5,7 @@ import CloserQuestionnaire, { type ClosingAnswers } from '@/components/CloserQue
 
 // The closing report (a row among the day's tasks), answered from the Daily Checklist (it used to block the last person's clock-out). Shown at the top of the Daily Checklist whenever someone is
 // clocked in (due from 5pm, can be answered early), and as "done" once it has been answered. Never covers the screen: it is a card on the page, and the questions open only when tapped.
-export default function ClosingReportCard({ density = 'compact' }: { density?: TileDensity }) {
+export default function ClosingReportCard({ density = 'compact', closer }: { density?: TileDensity; closer?: string | null }) {
   const [st, setSt] = useState<{ done: boolean; by: string | null; present: string[] } | null>(null)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -25,7 +25,7 @@ export default function ClosingReportCard({ density = 'compact' }: { density?: T
   }
   return (<>
     <TaskTile density={density} icon="🌙" time="17:00" title="Closing report" detail={st.done ? `Answered${st.by ? ` by ${st.by.charAt(0).toUpperCase() + st.by.slice(1)}` : ''}.` : early ? 'Due from 5pm; it can be answered early.' : 'Not answered yet today.'}
-      who={st.done && st.by ? st.by.charAt(0).toUpperCase() + st.by.slice(1) : 'Closer'} category="Staff management" type="Recurring task" mark={st.done ? 'done' : undefined}
+      who={st.done && st.by ? st.by.charAt(0).toUpperCase() + st.by.slice(1) : closer ? `Closer · ${closer.charAt(0).toUpperCase() + closer.slice(1)}` : 'Closer'} category="Staff management" type="Recurring task" mark={st.done ? 'done' : undefined}
       tone={st.done ? 'border-green-400 bg-green-50' : early ? 'border-gray-200 bg-gray-50' : 'border-amber-300 bg-amber-50'} onClick={st.done ? undefined : () => setOpen(true)} />
     {err && <p className="col-span-full text-xs font-bold text-red-700">{err}</p>}
     {open && <CloserQuestionnaire presentStaff={st.present} saving={saving} onSubmit={a => void submit(a)} onCancel={() => setOpen(false)} />}

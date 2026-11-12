@@ -4,12 +4,21 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 // The strip of small date tiles that runs across the top of Waiting for team and Waiting for me: earlier days to the left, Today highlighted, days ahead to the right.
 export default function DateStrip({ dates, sel, today, onSel, more }: { dates: string[]; sel: string; today: string; onSel: (d: string) => void; more?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
-  // Open at Today: set the strip's own scroll position (not the page's), once it has been laid out.
-  const toToday = () => { const el = ref.current, b = el?.querySelector('[data-today="1"]') as HTMLElement | null; if (el && b) el.scrollLeft = Math.max(0, b.offsetLeft - 4) }
-  useLayoutEffect(() => { toToday(); const t = setTimeout(toToday, 150); return () => clearTimeout(t) // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Open at Today: set the strip's own scroll position once it has been laid out (inside a frame that can take a moment), and again when more dates arrive,
+  // until the person starts scrolling it themselves.
+  const touched = useRef(false)
+  const toToday = () => { const el = ref.current, b = el?.querySelector('[data-today="1"]') as HTMLElement | null; if (el && b && !touched.current) el.scrollLeft = Math.max(0, b.offsetLeft - 4) }
+  useLayoutEffect(() => {
+    toToday()
+    const timers = [100, 300, 700, 1500].map(ms => setTimeout(toToday, ms))
+    window.addEventListener('load', toToday)
+    return () => { timers.forEach(clearTimeout); window.removeEventListener('load', toToday) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => { toToday() // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dates.length])
   return (
-    <div ref={ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Pick a date">
+    <div ref={ref} onPointerDown={() => { touched.current = true }} onTouchStart={() => { touched.current = true }} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Pick a date">
       {dates.map(d => {
         const dt = new Date(d + 'T00:00:00Z'), on = sel === d, isT = d === today, isPast = d < today
         return (
