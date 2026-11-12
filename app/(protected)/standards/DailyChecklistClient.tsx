@@ -118,6 +118,15 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const settling = (dayParam !== null && day !== dayParam) || (dayParam === null && !!today && day !== today)
   const pastTiles = useMemo(() => visible.filter(t => t.frequency === 'daily' && t.kind !== 'properties' && t.time).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.id - b.id), [visible])
   const [showLate, setShowLate] = useState(false)
+  const [todayFilter, setTodayFilter] = useState<'all' | 'waiting' | 'overdue' | 'done'>('all')
+  // Every timed task of today in time order, each with how it stands.
+  const dayList = isToday ? visible.filter(t => t.frequency === 'daily' && t.kind !== 'properties' && (dayStart == null ? planned.has(t.id) : due.has(t.id))).sort((a, b) => dueOf(a.id) - dueOf(b.id) || a.id - b.id).map(t => {
+    const ev = latest(t)
+    const valid = !!ev && (ev.value === 'Done' || (!!ev.note && ev.note.trim().length >= 4 && !ev.extra?.overruled))
+    const mins = clock - dueOf(t.id)
+    const st = valid ? (ev!.value === 'Done' ? 'done' : 'no') : dayStart == null ? 'later' : mins >= 15 ? 'late' : mins >= 0 ? 'now' : 'later'
+    return { t, st: st as 'done' | 'no' | 'late' | 'now' | 'later', ev: valid ? ev : undefined }
+  }) : []
 
   return (
     <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'} onClick={e => {
@@ -162,17 +171,19 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
           <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['DECISIONS_AND_DUTIES']"><ClosingReportCard />{extras}</div>
-          {[{ label: 'LATE', rows: late, cls: 'bg-red-50 border-red-300', more: 0 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
-            <div key={g.label} className="space-y-1">
-              <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label === 'NEXT' ? 'LATER TODAY' : g.label}</p>
-              <div className={tileGrid(density)}>
-                {g.rows.map(t => (
-                  <TaskTile key={t.id} density={density} time={fmt(dueOf(t.id))} title={t.title} who={whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label} tone={g.cls} onClick={() => setSheet(t)} />
-                ))}
-              </div>
-              {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
-            </div>
-          ))}
+          {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
+          <div className="flex flex-wrap gap-1">
+            {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'late' || x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
+              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+            ))}
+          </div>
+          <div className={tileGrid(density)}>
+            {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'late' || x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, ev }) => (
+              <TaskTile key={t.id} density={density} time={fmt(dueOf(t.id))} title={t.title} who={ev ? nm(ev.recorded_by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
+                detail={ev?.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
+                tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'} onClick={() => setSheet(t)} />
+            ))}
+          </div>
         </div>
       )}
       {!settling && isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mx-3 mb-2 w-[calc(100%-1.5rem)] rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
