@@ -34,6 +34,9 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
+// A tile has room for a few words: the name before the colon ("Cable check: no cable lies…" -> "Cable check"). Tap for the whole task.
+const shortTitle = (t: string) => { const h = t.split(':')[0].trim(); return h.length >= 6 && h.length <= 42 ? h : t }
+
 export default function DailyChecklistClient({ canManage, embedded = false, extras }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
@@ -143,22 +146,18 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
           <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['DECISIONS_AND_DUTIES']"><ClosingReportCard />{extras}</div>
-          {[{ label: 'LATE', rows: showLate ? late : late.slice(0, 4), cls: 'bg-red-50 border-red-300', more: late.length - 4 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
+          {[{ label: 'LATE', rows: late, cls: 'bg-red-50 border-red-300', more: 0 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
             <div key={g.label} className="space-y-1">
               <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label === 'NEXT' ? 'LATER TODAY' : g.label}</p>
-              {g.rows.map(t => (
-                <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${g.cls}`}>
-                  <button type="button" onClick={() => setSheet(t)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                    <span className="text-lg leading-none">{t.icon}</span>
-                    <span className="shrink-0 text-[10px] font-bold text-gray-500">{fmt(dueOf(t.id))}</span>
-                    <span className="line-clamp-2 text-[11px] font-semibold leading-tight text-gray-900">{t.title}<WhoTag t={t} roles={roles} /></span>
+              <div className="grid grid-cols-6 gap-1">
+                {g.rows.map(t => (
+                  <button key={t.id} type="button" title={t.title} onClick={() => setSheet(t)} onContextMenu={e => e.preventDefault()}
+                    className={`flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${g.cls}`}>
+                    <span className={`text-[8px] font-extrabold leading-none ${g.label === 'LATE' ? 'text-red-700' : 'text-gray-500'}`}>{fmt(dueOf(t.id))}</span>
+                    <span className="line-clamp-4 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(t.title)}</span>
                   </button>
-                  {g.label !== 'NEXT' && linkFor(t) && <a href={linkFor(t)!.href} className="shrink-0 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-bold text-white">{linkFor(t)!.label}</a>}
-                  {g.label !== 'NEXT' && (t.kind === 'tap'
-                    ? <button type="button" disabled={locked} onClick={() => void tap(t)} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Done</button>
-                    : <button type="button" disabled={locked} onClick={() => setSheet(t)} className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-30">Open</button>)}
-                </div>
-              ))}
+                ))}
+              </div>
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
             </div>
           ))}
