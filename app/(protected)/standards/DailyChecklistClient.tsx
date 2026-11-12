@@ -160,12 +160,6 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       )}
       {!settling && isToday && (
         <div className="mx-3 mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-extrabold text-[#14213D]">NOW · {String(Math.floor(clock / 60)).padStart(2, '0')}:{String(clock % 60).padStart(2, '0')}</p>
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{late.length} late</span>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{dueNow.length} due now</span>
-            <span className="ml-auto flex items-center gap-3">{canEdit && <button type="button" onClick={() => setReporting(true)} className="text-[11px] font-bold text-blue-700 underline">Day report</button>}</span>
-          </div>
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet. The day&apos;s tasks start when the first person does; they are listed at their planned times.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
@@ -176,6 +170,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'late' || x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
               <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
+            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
           </div>
           <div className={tileGrid(density)}>
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'late' || x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, ev }) => (
