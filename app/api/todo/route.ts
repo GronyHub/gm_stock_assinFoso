@@ -26,9 +26,9 @@ export async function GET(req: NextRequest) {
     const days = Math.min(Math.max(Number(q.get('days')) || 31, 1), 120)
     const to = addDays(from, days - 1)
     const manager = isOwnerLevel(session.user as never)
-    const tiles = await sql`SELECT t.id, t.title, t.time, t.minutes, t.frequency, t.days, t.weekday, t.assignment, l.id AS law_id, l.month_day, l.audience
+    const tiles = await sql`SELECT t.id, t.title, t.time, t.minutes, t.frequency, t.days, t.weekday, t.assignment, l.id AS law_id, l.month_day, l.audience, l.category, l.law_type
       FROM daily_check_tiles t JOIN page_laws l ON l.id = t.law_id AND l.tile_id = t.id
-      WHERE t.active AND l.status = 'live' AND t.kind <> 'properties' AND (${manager} OR l.audience <> 'managers')` as unknown as { id: number; title: string; time: string | null; minutes: number | null; frequency: string; days: string | null; weekday: string | null; assignment: string; law_id: number; month_day: number | null }[]
+      WHERE t.active AND l.status = 'live' AND t.kind <> 'properties' AND (${manager} OR l.audience <> 'managers')` as unknown as { id: number; title: string; time: string | null; minutes: number | null; frequency: string; days: string | null; weekday: string | null; assignment: string; law_id: number; month_day: number | null; category: string | null; law_type: string | null }[]
     const oneoff = await sql`SELECT id, title, notes, substr(due_date::text, 1, 10) AS d, assigned_to FROM custom_tasks WHERE submenu = 'To do' AND NOT COALESCE(done, false) AND substr(due_date::text, 1, 10) BETWEEN ${from} AND ${to}`.catch(() => []) as unknown as { id: number; title: string; notes: string | null; d: string; assigned_to: string | null }[]
     const jobs = await sql`SELECT id, customer, job, status, due_on::text AS d FROM pending_jobs WHERE status <> 'done' AND due_on BETWEEN ${from}::date AND ${to}::date`.catch(() => []) as unknown as { id: number; customer: string; job: string; status: string; d: string }[]
     const rota = await rotaRolesBetween(from, to)
@@ -47,13 +47,13 @@ export async function GET(req: NextRequest) {
         if (!hit) continue
         const a = t.assignment ?? 'all'
         items.push({
-          key: `t${t.id}-${d}`, kind: 'law', freq: t.frequency, time: t.time, title: t.title, minutes: t.minutes, law_id: t.law_id, note,
+          key: `t${t.id}-${d}`, kind: 'law', freq: t.frequency, time: t.time, title: t.title, minutes: t.minutes, law_id: t.law_id, note, category: t.category, lawType: t.law_type,
           band: a === 'opener' ? 'opener' : a === 'closer' ? 'closer' : 'daytime',
           role: a === 'opener' ? 'Opener' : a === 'closer' ? 'Closer' : a === 'managers' ? 'Joe' : null,
           who: a === 'opener' ? r?.opener ?? null : a === 'closer' ? r?.closer ?? null : a === 'managers' ? 'joe' : null,
         })
       }
-      for (const o of oneoff.filter(x => x.d === d)) items.push({ key: `o${o.id}`, kind: 'oneoff', freq: 'once', time: null, title: o.title, minutes: null, law_id: null, note: o.notes, band: 'oneoff', role: null, who: o.assigned_to ? o.assigned_to.toLowerCase() : null })
+      for (const o of oneoff.filter(x => x.d === d)) items.push({ key: `o${o.id}`, kind: 'oneoff', freq: 'once', time: null, title: o.title, minutes: null, law_id: null, note: o.notes, category: 'To do items', lawType: 'oneoff', band: 'oneoff', role: null, who: o.assigned_to ? o.assigned_to.toLowerCase() : null })
       for (const j of jobs.filter(x => x.d === d)) items.push({ key: `j${j.id}`, kind: 'oneoff', freq: 'once', time: null, title: `Pending job · ${j.customer}: ${j.job.slice(0, 90)}`, minutes: null, law_id: null, note: j.status === 'ready' ? 'Ready: waiting for the customer' : null, band: 'oneoff', role: null, who: null })
       items.sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
       out.push({ date: d, rota: r ? { opener: r.opener, closer: r.closer } : null, items })

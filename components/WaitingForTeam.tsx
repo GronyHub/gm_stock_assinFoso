@@ -1,10 +1,12 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AheadDay, AheadItem } from '@/lib/todoAhead'
-import { addDays, CHECKLIST_START, shortTitle } from '@/lib/dailyChecksShared'
+import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DailyChecklistClient from '@/app/(protected)/standards/DailyChecklistClient'
 import ClockApprovals from '@/components/ClockApprovals'
 import PendingJobsDue from '@/components/PendingJobsDue'
+import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
+import { LAW_TYPES } from '@/lib/lawCategories'
 
 const BANDS: { key: AheadItem['band']; label: string }[] = [{ key: 'opener', label: 'Opener' }, { key: 'daytime', label: 'Daytime' }, { key: 'closer', label: 'Closer' }, { key: 'oneoff', label: 'To do items' }]
 const nm = (n: string | null) => (n ? n.charAt(0).toUpperCase() + n.slice(1) : '')
@@ -16,6 +18,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10)
 // holds only what belongs to the chosen date: today's live list, an earlier day's record, or a coming day's planned tasks (named from the rota).
 export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const today = todayKey()
+  const [density, setDensity] = useTileDensity()
   const [sel, setSel] = useState(today)
   const [days, setDays] = useState<AheadDay[]>([])
   const [canAdd, setCanAdd] = useState(false)
@@ -64,6 +67,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           })}
           {days.length > 0 && <button type="button" onClick={more} title="Show more days" className="flex w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-300 text-[10px] font-bold text-gray-500">+31</button>}
         </div>
+        <DensityToggle density={density} onChange={setDensity} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-2 text-xs font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
       {msg && <p className="mx-3 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
@@ -80,7 +84,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
       )}
       <div className="mt-2">
         {sel <= today
-          ? <DailyChecklistClient key={sel} canManage={canManage} embedded dayParam={sel === today ? null : sel}
+          ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} dayParam={sel === today ? null : sel}
               extras={<>{canManage && <ClockApprovals />}<PendingJobsDue /></>} />
           : (
             <div className="space-y-2 px-3">
@@ -89,15 +93,10 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
               {curDay && BANDS.map(b => { const rows = curDay.items.filter(i => i.band === b.key); if (!rows.length) return null; return (
                 <div key={b.key}>
                   <p className="mb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
-                  <div className="grid grid-cols-6 gap-1">{rows.map(i => {
+                  <div className={tileGrid(density)}>{rows.map(i => {
                     const who = (i.role && i.who ? `${i.role} · ${nm(i.who)}` : i.role ?? nm(i.who)) || 'Everyone'
-                    return (
-                      <button key={i.key} type="button" title={`${i.title}${i.note ? ' — ' + i.note : ''}`} onClick={() => { if (i.law_id) go(`/laws?law=${i.law_id}`) }}
-                        className={`flex min-h-[4rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${i.kind === 'oneoff' ? 'border-indigo-300 bg-indigo-50' : i.freq !== 'daily' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}>
-                        <span className="text-[8px] font-extrabold leading-none text-gray-500">{i.time ?? (i.freq !== 'daily' ? i.freq : '')}</span>
-                        <span className="line-clamp-3 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(i.title)}</span>
-                        <span className="mt-auto w-full truncate text-[7px] font-bold leading-tight text-indigo-800">{who}</span>
-                      </button>)
+                    return <TaskTile key={i.key} density={density} time={i.time ?? (i.freq !== 'daily' ? i.freq : null)} title={i.title} who={who} category={i.category} type={i.kind === 'oneoff' ? 'One-off' : LAW_TYPES.find(x => x.key === i.lawType)?.label}
+                      detail={i.note} tone={i.kind === 'oneoff' ? 'border-indigo-300 bg-indigo-50' : i.freq !== 'daily' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'} onClick={() => { if (i.law_id) go(`/laws?law=${i.law_id}`) }} />
                   })}</div>
                 </div>) })}
             </div>)}

@@ -3,7 +3,8 @@ import { cap } from '@/lib/strings'
 import WithMic from '@/components/WithMic'
 import ClosingReportCard from '@/components/ClosingReportCard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LAW_CATEGORIES } from '@/lib/lawCategories'
+import { LAW_CATEGORIES, LAW_TYPES } from '@/lib/lawCategories'
+import TaskTile, { tileGrid, type TileDensity } from '@/components/TaskTile'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
   addDays, appliesOn, dayLabel, effectiveDue, hhmm, inPeriod, shortTitle, type CheckEvent, type CheckTile, type Frequency,
@@ -34,7 +35,7 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
-export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null }) {
+export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null, density = 'compact' }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null; density?: TileDensity }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -45,6 +46,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const [present, setPresent] = useState<string[]>([])
   const [roles, setRoles] = useState<{ opener: string | null; closer: string | null }>({ opener: null, closer: null })
   const [adhoc, setAdhoc] = useState<Adhoc[]>([])
+  const [alloc, setAlloc] = useState<Record<string, string>>({})
   const [logging, setLogging] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
@@ -52,6 +54,8 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const [reporting, setReporting] = useState(false)
   const [clock, setClock] = useState(() => nowHM())
   useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
+  // Who a task falls on: the person the rota names for a shared task, or its role (Opener / Closer) with the name, or Joe.
+  const whoOf = (t: { id: number; assignment?: string }) => { const a = t.assignment ?? 'all'; return a === 'opener' ? `Opener${roles.opener ? ` · ${nm(roles.opener)}` : ''}` : a === 'closer' ? `Closer${roles.closer ? ` · ${nm(roles.closer)}` : ''}` : a === 'managers' ? 'Joe' : alloc[t.id] ? nm(alloc[t.id]) : 'Everyone' }
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
 
@@ -60,7 +64,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       try {
         const r = await fetch(`/api/daily-checks${d ? `?day=${d}` : ''}`, { cache: 'no-store' })
         const j = await r.json()
-        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setRoles({ opener: j.opener ?? null, closer: j.closer ?? null }); setAdhoc(Array.isArray(j.adhoc) ? j.adhoc : []); setError(''); return }
+        if (r.ok && Array.isArray(j.tiles)) { setTiles(j.tiles); setAlloc(j.alloc ?? {}); setEvents(j.events); setToday(j.today); setDay(j.day); setDayStart(typeof j.dayStart === 'number' ? j.dayStart : null); setClockedIn(j.clockedIn !== false); setPresent(Array.isArray(j.present) ? j.present : []); setRoles({ opener: j.opener ?? null, closer: j.closer ?? null }); setAdhoc(Array.isArray(j.adhoc) ? j.adhoc : []); setError(''); return }
       } catch { /* retry */ }
       await new Promise(r => setTimeout(r, 700 * (i + 1)))
     }
@@ -133,17 +137,10 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       {!settling && !isToday && day && (
         <div className="space-y-2 px-3">
           <p className="text-[11px] text-gray-500">{pastTiles.filter(t => latest(t)?.value === 'Done').length} done · {pastTiles.filter(t => latest(t)?.value === 'Not done').length} marked not done · {pastTiles.filter(t => !latest(t)).length} not done at all</p>
-          <div className="grid grid-cols-6 gap-1">
-            {pastTiles.map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'; return (
-              <button key={t.id} type="button" title={t.title} onClick={() => setSheet(t)} onContextMenu={e => e.preventDefault()}
-                className={`relative flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}`}>
-                <span className="text-[8px] font-extrabold leading-none text-gray-500">{t.time}</span>
-                {v === 'yes' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-green-600" title="Done">✓</span>}
-                {v === 'miss' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-red-600" title="Not done at all">✗</span>}
-                {v === 'no' && <span className="absolute right-0.5 top-0 text-[12px] font-black leading-none text-gray-500" title="Marked not done, with a reason">–</span>}
-                <span className="line-clamp-3 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(t.title)}</span>
-                {ev && <span className="mt-auto w-full truncate text-[7px] font-bold leading-tight text-indigo-800">{ev.recorded_by ? ev.recorded_by.charAt(0).toUpperCase() + ev.recorded_by.slice(1) : ''}</span>}
-              </button>) })}
+          <div className={tileGrid(density)}>
+            {pastTiles.map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'
+              return <TaskTile key={t.id} density={density} time={t.time} title={t.title} who={ev ? nm(ev.recorded_by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
+                detail={ev?.note ?? null} mark={v === 'yes' ? 'done' : v === 'miss' ? 'miss' : 'no'} tone={v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'} onClick={() => setSheet(t)} /> })}
           </div>
           {pastTiles.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
@@ -168,13 +165,9 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {[{ label: 'LATE', rows: late, cls: 'bg-red-50 border-red-300', more: 0 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
             <div key={g.label} className="space-y-1">
               <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label === 'NEXT' ? 'LATER TODAY' : g.label}</p>
-              <div className="grid grid-cols-6 gap-1">
+              <div className={tileGrid(density)}>
                 {g.rows.map(t => (
-                  <button key={t.id} type="button" title={t.title} onClick={() => setSheet(t)} onContextMenu={e => e.preventDefault()}
-                    className={`flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${g.cls}`}>
-                    <span className={`text-[8px] font-extrabold leading-none ${g.label === 'LATE' ? 'text-red-700' : 'text-gray-500'}`}>{fmt(dueOf(t.id))}</span>
-                    <span className="line-clamp-4 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(t.title)}</span>
-                  </button>
+                  <TaskTile key={t.id} density={density} time={fmt(dueOf(t.id))} title={t.title} who={whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label} tone={g.cls} onClick={() => setSheet(t)} />
                 ))}
               </div>
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}

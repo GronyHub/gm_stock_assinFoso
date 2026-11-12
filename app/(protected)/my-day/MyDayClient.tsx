@@ -4,6 +4,7 @@ import type { MyDayItem } from '@/lib/myDay'
 import ClockNotices from '@/components/ClockNotices'
 import PenaltyDecisions from '@/components/PenaltyDecisions'
 import ClockApprovals from '@/components/ClockApprovals'
+import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
 
 // These are answered right here on cards (see components/ClockNotices.tsx), so they are not repeated in the list below.
 const INLINE = new Set(['clock-prev', 'clock-auto', 'queries', 'sanctions', 'violations', 'claims', 'cctv'])
@@ -14,6 +15,7 @@ const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
 export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone'; team?: boolean } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
+  const [density, setDensity] = useTileDensity()
   const [owners, setOwners] = useState<Record<string, string[]>>({})
   // A supervisor looking at a team member's list gets it from that person's own page (forName): read-only, with a reminder button.
   const who = forName
@@ -48,6 +50,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
           {items ? (team || lens === 'notdone' ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.`) : ''}
           {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
         </p>
+        <DensityToggle density={density} onChange={setDensity} />
         {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-1.5 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
         <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
       </div>
@@ -57,15 +60,13 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       {!who && !team && lens === 'todo' && <PenaltyDecisions onChange={() => void load()} />}
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
       {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ {team || lens === 'notdone' ? 'Nothing is overdue.' : `Nothing is waiting${who ? ` for ${name}` : ' for you'}.`}</p>}
-      {shown.map(i => (
-        <div key={i.key} className={`flex items-center gap-3 rounded-2xl border-2 p-3 ${TONE[i.urgency]}`}>
-          <span className="text-2xl">{i.icon}</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold text-gray-900">{i.title} {i.count > 1 && <span className="ml-1 rounded-full bg-[#14213D] px-2 py-0.5 text-[10px] font-bold text-white">{i.count}</span>} <span className="ml-1 text-[10px] font-bold uppercase text-gray-500">{TAG[i.urgency]}</span></p>
-            <p className="text-xs text-gray-700">{i.detail}{team && owners[i.key] ? ` Falls on: ${owners[i.key].join(', ')}.` : ''}</p>
-          </div>
-          {!who && !team && (i.href || i.hub) && <button type="button" onClick={() => go(i)} className="shrink-0 rounded-xl bg-[#14213D] px-3 py-2 text-xs font-bold text-white">{i.key.startsWith('task-') ? 'Do it' : 'Open'}</button>}
-        </div>))}
+      <div className={tileGrid(density)}>
+        {shown.map(i => (
+          <TaskTile key={i.key} density={density} icon={i.icon} time={i.time ?? (i.state ? undefined : TAG[i.urgency])} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type} badge={i.count}
+            mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : undefined}
+            tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.urgency === 'now' ? 'border-red-300 bg-red-50' : i.urgency === 'soon' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}
+            onClick={!who && (i.href || i.hub) ? () => go(i) : undefined} />))}
+      </div>
     </div>
   )
 }

@@ -78,6 +78,7 @@ async function ensureCompanyLawsImpl() {
   await pendingJobsLawsOnce()
   await absenceLawOnce()
   await dedupeLawsOnce()
+  await pendingJobsConfirmOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -358,6 +359,21 @@ async function dedupeLawsOnce() {
     // "Mark printers" is one item of the weekly property marking, not a separate timed task.
     await sql`UPDATE daily_check_tiles SET time = NULL WHERE title = 'Mark printers' AND law_id IN (SELECT id FROM page_laws WHERE title = 'Mark the shop properties every week')`.catch(() => {})
   } catch (e) { console.error('dedupe laws failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The pending-jobs round is only asked for while there are open pending jobs, and asks staff to confirm they are working on them (2026-11-13).
+async function pendingJobsConfirmOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('pending-jobs-confirm-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { ensureTileCondition } = await import('./dailyChecks')
+    await ensureTileCondition()
+    const text = 'Pending jobs: confirm you have gone through every open pending job and are working on them. Finish what is due, and call every customer whose job is ready or overdue.'
+    const laws = await sql`UPDATE page_laws SET text = ${text} WHERE seed = 'pending-jobs-v1' AND title = 'Go through the pending jobs' RETURNING id`
+    const { syncLawTile } = await import('./lawTiles')
+    for (const l of laws) await syncLawTile(l.id as number).catch(() => {})
+    await sql`UPDATE daily_check_tiles SET condition = 'pending_jobs' WHERE law_id = ANY(${laws.map(l => l.id)})`
+  } catch (e) { console.error('pending jobs confirm failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.

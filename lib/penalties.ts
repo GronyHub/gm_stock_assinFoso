@@ -1,3 +1,4 @@
+import { unmetConditions } from '@/lib/tileConditions'
 import { cap } from '@/lib/strings'
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
@@ -166,10 +167,11 @@ export async function dayEndAssess(day = dayKey()) {
   const clock = await getClockState(day)
   if (!clock.everIn.length) return
   // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law). Who carries it is the law's "Who does it".
-  const tiles = await sql`SELECT id, title, days, assignment, time, minutes, frequency, kind FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
+  const tiles = await sql`SELECT id, title, days, assignment, time, minutes, frequency, kind, condition FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
   const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND (value = 'Done' OR (value = 'Not done' AND LENGTH(TRIM(COALESCE(note, ''))) >= 4 AND COALESCE(extra->>'overruled', '') <> 'true'))` as unknown as { tile_id: number }[]
   const doneSet = new Set(done.map(d => d.tile_id))
-  const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id))
+  const unmet = await unmetConditions()
+  const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id) && !((t as { condition?: string | null }).condition && unmet.has(String((t as { condition?: string | null }).condition))))
   if (!missed.length) return
   const due = effectiveDue(tiles as never, clock.dayStart)
   const shifts = await rotaShifts(day)

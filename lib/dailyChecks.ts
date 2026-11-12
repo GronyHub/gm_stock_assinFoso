@@ -37,6 +37,9 @@ function place(r: SRow): { section: string; frequency: string } | null {
 // One-time upgrade: every tile gets a work-time value (minutes) that is credited to whoever ticks it, and the
 // tiles that only repeat a clock-in or clock-out (those have their own place in the app) are taken off the list.
 // Past records are kept. Runs only while the minutes column does not exist yet.
+// A tile can depend on a condition (e.g. 'pending_jobs': only asked for while the shop holds open pending jobs).
+export const ensureTileCondition = once(async () => { await sql`ALTER TABLE daily_check_tiles ADD COLUMN IF NOT EXISTS condition TEXT`.catch(() => {}) })
+
 async function migrateMinutes() {
   try {
     const [{ has }] = await sql`SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'daily_check_tiles' AND column_name = 'minutes') AS has`
@@ -97,6 +100,7 @@ async function ensureImpl() {
     recorded_by TEXT NOT NULL, recorded_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   await sql`CREATE INDEX IF NOT EXISTS daily_check_events_day ON daily_check_events (day)`.catch(() => {})
   await migrateMinutes()
+  await ensureTileCondition()
   await migrateKinds()
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM daily_check_tiles`
   if (n > 0) return
