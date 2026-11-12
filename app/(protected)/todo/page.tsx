@@ -12,5 +12,11 @@ export default async function TodoPage() {
   const session = await auth()
   if (!session) redirect('/login')
   const manager = isOwnerLevel(session.user as never)
-  return <><div className="pt-3"><DailyChecklistClient canManage={manager} embedded extras={<>{manager && <ClockApprovals />}<PendingJobsDue /></>} /></div><div className="px-3 pb-24"><TodoAhead /></div></>
+  return (
+    <div className="pb-24 pt-3">
+      <TodoAhead>
+        <DailyChecklistClient canManage={manager} embedded extras={<>{manager && <ClockApprovals />}<PendingJobsDue /></>} />
+      </TodoAhead>
+    </div>
+  )
 }

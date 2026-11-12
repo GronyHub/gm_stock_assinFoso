@@ -17,7 +17,7 @@ const go = (path: string) => { if (window.parent !== window) window.parent.postM
 
 // The days ahead, like the Home feed: each date with its Opener, Daytime and Closer duties (named from the rota), the weekly and monthly laws on their
 // days, and the one-off to-do items added for it. The filters on top narrow it.
-export default function TodoAhead() {
+export default function TodoAhead({ children }: { children?: React.ReactNode }) {
   const [days, setDays] = useState<AheadDay[]>([])
   const [filter, setFilter] = useState('')
   const [canAdd, setCanAdd] = useState(false)
@@ -44,12 +44,13 @@ export default function TodoAhead() {
   const shown = days.map(d => ({ ...d, items: d.items.filter(keep) })).filter(d => d.items.length)
   const minDate = new Date().toISOString().slice(0, 10)
   // One date open at a time: the one tapped in the strip (the first day by default).
-  const [sel, setSel] = useState('')
-  const cur = shown.find(d => d.date === sel) ?? shown[0]
+  const [sel, setSel] = useState('today')
+  const isToday = sel === 'today'
+  const cur = isToday ? undefined : (shown.find(d => d.date === sel) ?? shown[0])
   return (
-    <div className="mt-4 space-y-2">
+    <div className="space-y-2 px-3">
       <div className="flex items-center gap-2">
-        <h2 className="mr-auto text-base font-extrabold text-[#14213D]">Coming up</h2>
+        <span className="mr-auto" />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} className="rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">{adding ? 'Cancel' : '+ Add to do'}</button>}
       </div>
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
@@ -64,18 +65,19 @@ export default function TodoAhead() {
           <button type="button" disabled={!form.title.trim() || !form.date} onClick={() => void add()} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Add to the list</button>
         </div>
       )}
-      <div className="flex flex-wrap gap-1">{FILTERS.map(([k, label]) => <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>)}</div>
-      {shown.length > 0 && (
-        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pick a date">
-          {shown.map(d => { const dt = new Date(d.date + 'T00:00:00Z'); const on = cur?.date === d.date
-            return (
-              <button key={d.date} type="button" role="tab" aria-selected={on} onClick={() => setSel(d.date)} title={dateLabel(d.date)}
-                className={`flex w-9 shrink-0 select-none flex-col items-center rounded-md border py-0.5 leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : 'border-gray-300 bg-white text-gray-800'}`}>
-                <span className={`text-[7px] font-bold uppercase ${on ? 'text-blue-200' : 'text-gray-500'}`}>{dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
-                <span className="text-[13px] font-extrabold">{dt.getUTCDate()}</span>
-                <span className={`text-[7px] font-bold ${on ? 'text-blue-200' : 'text-gray-400'}`}>{dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</span>
-              </button>) })}
-        </div>)}
+      {!isToday && <div className="flex flex-wrap gap-1">{FILTERS.map(([k, label]) => <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>)}</div>}
+      <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pick a date">
+        {(() => { const t0 = new Date(); const td = new Date(Date.UTC(t0.getUTCFullYear(), t0.getUTCMonth(), t0.getUTCDate())); return [{ date: 'today', dt: td, today: true }, ...shown.map(d => ({ date: d.date, dt: new Date(d.date + 'T00:00:00Z'), today: false }))] })().map(d => {
+          const on = isToday ? d.today : cur?.date === d.date
+          return (
+            <button key={d.date} type="button" role="tab" aria-selected={on} onClick={() => setSel(d.date)} title={d.today ? 'Today' : dateLabel(d.date)}
+              className={`flex w-9 shrink-0 select-none flex-col items-center rounded-md border py-0.5 leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : d.today ? 'border-blue-500 bg-blue-50 text-gray-800' : 'border-gray-300 bg-white text-gray-800'}`}>
+              <span className={`text-[7px] font-bold uppercase ${on ? 'text-blue-200' : 'text-gray-500'}`}>{d.today ? 'Today' : d.dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
+              <span className="text-[13px] font-extrabold">{d.dt.getUTCDate()}</span>
+              <span className={`text-[7px] font-bold ${on ? 'text-blue-200' : 'text-gray-400'}`}>{d.dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</span>
+            </button>) })}
+      </div>
+      {isToday && <div className="-mx-3">{children}</div>}
       {cur && (
         <div key={cur.date} className="rounded-xl border border-gray-200 bg-white">
           <div className="flex flex-wrap items-center gap-x-3 rounded-t-xl bg-[#14213D] px-3 py-1.5 text-white">
@@ -99,9 +101,9 @@ export default function TodoAhead() {
               </div>) })}
           </div>
         </div>)}
-      {!loading && !shown.length && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {filter ? 'of that kind ' : ''}in the coming days.</p>}
-      {loading && <p className="text-sm text-gray-400">Loading…</p>}
-      {!loading && days.length > 0 && <button type="button" onClick={() => void load(new Date(new Date(days[days.length - 1].date + 'T00:00:00Z').getTime() + 86400000).toISOString().slice(0, 10), true)} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Show 31 more days</button>}
+      {!isToday && !loading && !shown.length && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {filter ? 'of that kind ' : ''}in the coming days.</p>}
+      {!isToday && loading && <p className="text-sm text-gray-400">Loading…</p>}
+      {!isToday && !loading && days.length > 0 && <button type="button" onClick={() => void load(new Date(new Date(days[days.length - 1].date + 'T00:00:00Z').getTime() + 86400000).toISOString().slice(0, 10), true)} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Show 31 more days</button>}
     </div>
   )
 }
