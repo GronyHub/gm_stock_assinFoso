@@ -4,7 +4,7 @@ import type { MyDayItem } from '@/lib/myDay'
 import ClockNotices from '@/components/ClockNotices'
 import PenaltyDecisions from '@/components/PenaltyDecisions'
 import ClockApprovals from '@/components/ClockApprovals'
-import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
+import TaskTile, { DensityToggle, tileGrid, useTileDensity, type TileDensity } from '@/components/TaskTile'
 
 // These are answered right here on cards (see components/ClockNotices.tsx), so they are not repeated in the list below.
 const INLINE = new Set(['clock-prev', 'clock-auto', 'queries', 'sanctions', 'violations', 'claims', 'cctv'])
@@ -13,9 +13,10 @@ const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
-export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone'; team?: boolean } = {}) {
+export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false, density: densityProp }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone'; team?: boolean; density?: TileDensity } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
-  const [density, setDensity] = useTileDensity()
+  const [ownDensity, setDensity] = useTileDensity()
+  const density = densityProp ?? ownDensity
   const [owners, setOwners] = useState<Record<string, string[]>>({})
   // A supervisor looking at a team member's list gets it from that person's own page (forName): read-only, with a reminder button.
   const who = forName
@@ -50,7 +51,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
           {items ? (team || lens === 'notdone' ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.`) : ''}
           {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
         </p>
-        <DensityToggle density={density} onChange={setDensity} />
+        {!densityProp && <DensityToggle density={density} onChange={setDensity} />}
         {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-1.5 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
         <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
       </div>

@@ -1,10 +1,11 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { AheadDay, AheadItem } from '@/lib/todoAhead'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DailyChecklistClient from '@/app/(protected)/standards/DailyChecklistClient'
 import ClockApprovals from '@/components/ClockApprovals'
 import PendingJobsDue from '@/components/PendingJobsDue'
+import DateStrip from '@/components/DateStrip'
 import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
 import { LAW_TYPES } from '@/lib/lawCategories'
 
@@ -46,27 +47,12 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   for (let d = addDays(today, -1); d >= CHECKLIST_START && past.length < 60; d = addDays(d, -1)) past.unshift(d)
   const dates = [...past, today, ...days.map(d => d.date).filter(d => d > today)]
   const curDay = days.find(d => d.date === sel)
-  const stripRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { stripRef.current?.querySelector('[data-today="1"]')?.scrollIntoView({ inline: 'start', block: 'nearest' }) }, [])
   const minDate = today
   const more = () => { const last = days[days.length - 1]?.date; if (last) void load(addDays(last, 1), true) }
   return (
     <div className="pb-24 pt-2">
       <div className="flex items-start gap-2 px-3">
-        <div ref={stripRef} className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Pick a date">
-          {dates.map(d => {
-            const dt = new Date(d + 'T00:00:00Z'), on = sel === d, isT = d === today, isPast = d < today
-            return (
-              <button key={d} type="button" role="tab" aria-selected={on} data-today={isT ? '1' : undefined} onClick={() => setSel(d)}
-                title={dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
-                className={`flex w-9 shrink-0 select-none flex-col items-center rounded-md border py-0.5 leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : isT ? 'border-blue-500 bg-blue-50 text-gray-800' : isPast ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-gray-300 bg-white text-gray-800'}`}>
-                <span className={`text-[7px] font-bold uppercase ${on ? 'text-blue-200' : 'text-gray-500'}`}>{isT ? 'Today' : dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
-                <span className="text-[13px] font-extrabold">{dt.getUTCDate()}</span>
-                <span className={`text-[7px] font-bold ${on ? 'text-blue-200' : 'text-gray-400'}`}>{dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</span>
-              </button>)
-          })}
-          {days.length > 0 && <button type="button" onClick={more} title="Show more days" className="flex w-9 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-300 text-[10px] font-bold text-gray-500">+31</button>}
-        </div>
+        <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={days.length > 0 ? more : undefined} />
         <DensityToggle density={density} onChange={setDensity} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2.5 py-2 text-xs font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>

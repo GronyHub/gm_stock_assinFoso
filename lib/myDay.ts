@@ -3,20 +3,20 @@ import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName, SIGNERS } from '@/lib/signers'
 import { ensureAttendance, openRecords, REVIEW_FROM } from '@/lib/attendance'
 import { canDecideFor } from '@/lib/penalties'
-import { getClockState, onShift } from '@/lib/clockState'
+import { getClockState, onShift, type ClockState } from '@/lib/clockState'
 import { effectiveDue, appliesOn } from '@/lib/dailyChecksShared'
 import { owes } from '@/lib/assignment'
 import { LAW_TYPES } from '@/lib/lawCategories'
 import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
-import { isShopDay } from '@/lib/rota'
+import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { pendingJobCounts } from '@/lib/pendingJobs'
 import { canLogAgainst } from '@/lib/violationLog'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
 // "Waiting for me": everything the signed-in person owes or must decide, from every part of the app, in one list.
 // urgency: 'now' (overdue or blocking), 'soon' (due today or within 24 hours), 'later'. `href` opens in the hub's right pane; `hub` asks the hub to open a view.
-export type MyDayItem = { key: string; icon: string; title: string; detail: string; count: number; urgency: 'now' | 'soon' | 'later'; href?: string; hub?: string; state?: 'done' | 'not'; time?: string | null; who?: string; category?: string; type?: string }
+export type MyDayItem = { key: string; icon: string; title: string; detail: string; count: number; urgency: 'now' | 'soon' | 'later'; href?: string; hub?: string; state?: 'done' | 'not' | 'miss'; time?: string | null; who?: string; category?: string; type?: string }
 const lawTypeLabel = (t: string | null | undefined) => LAW_TYPES.find(x => x.key === t)?.label
 const today = () => new Date().toISOString().slice(0, 10)
 const safe = async <T,>(f: () => Promise<T>, d: T): Promise<T> => { try { return await f() } catch { return d } }
@@ -168,4 +168,43 @@ export async function teamNotDone(user: unknown): Promise<{ items: MyDayItem[]; 
     }
   }
   return { items: [...byKey.values()].sort((a, b) => ({ now: 0, soon: 1, later: 2 }[a.urgency] - { now: 0, soon: 1, later: 2 }[b.urgency])), who }
+}
+
+// One person's checklist duties on any other date: an earlier day (done, marked not done, or missed) or a day ahead (planned from the rota). Today is myDay().
+export async function personDay(me: string, date: string): Promise<MyDayItem[]> {
+  const todayKey = today()
+  if (date === todayKey) return []
+  const future = date > todayKey
+  if (!(await isShopDay(date))) return []
+  const shifts = await rotaShifts(date)
+  let clock: ClockState
+  if (future) {
+    const rr = await rotaRolesFor(date)
+    const ins: Record<string, number> = {}, outs: Record<string, number | null> = {}
+    for (const sh of shifts) { ins[sh.n] = sh.from; outs[sh.n] = sh.to }
+    clock = { dayStart: shifts.length ? Math.min(...shifts.map(x => x.from)) : null, present: [], everIn: shifts.map(x => x.n), opener: rr?.opener ?? null, lastOut: rr?.closer ?? null, ins, outs }
+  } else clock = await getClockState(date)
+  if (clock.dayStart == null) return []
+  const allTiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition,
+      (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
+    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null }[]
+  const dayTiles = allTiles.filter(t => appliesOn(t, date))
+  const evRows = future ? [] : await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${date} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean } | null }[]
+  const latestEv = new Map<number, (typeof evRows)[number]>(); for (const r of evRows) latestEv.set(r.tile_id, r)
+  // A task that depends on a condition is only listed on a day when it was actually asked for (or ahead, when nobody can tell yet).
+  const tiles = dayTiles.filter(t => !t.condition || future || latestEv.has(t.id))
+  const due = effectiveDue(tiles, clock.dayStart)
+  const mine = tiles.filter(t => t.assignment === 'all' || !t.assignment ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === me : owes(t.assignment, me, clock))
+    .sort((a, b) => (due.get(a.id) ?? 0) - (due.get(b.id) ?? 0) || a.id - b.id)
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
+  return mine.map(t => {
+    const base = { title: t.title, time: due.has(t.id) ? hhmm(due.get(t.id)!) : t.time, who: cap1(me), category: t.category ?? undefined, type: lawTypeLabel(t.law_type), count: 0, urgency: 'later' as const }
+    const ev = latestEv.get(t.id)
+    if (future) return { key: `plan-${t.id}`, icon: '🕘', detail: `Planned for ${hhmm(due.get(t.id)!)}.`, ...base }
+    const at = ev ? new Date(ev.recorded_at) : null, atS = at ? `${String(at.getUTCHours()).padStart(2, '0')}:${String(at.getUTCMinutes()).padStart(2, '0')}` : ''
+    if (ev && ev.value !== 'Not done') return { key: `day-${t.id}`, icon: '✅', state: 'done' as const, detail: `Done by ${cap1(ev.recorded_by)} at ${atS}.`, ...base }
+    if (ev && ev.note && ev.note.trim().length >= 4 && !ev.extra?.overruled) return { key: `day-${t.id}`, icon: '➖', state: 'not' as const, detail: `Marked not done by ${cap1(ev.recorded_by)} at ${atS}: ${ev.note}`, ...base }
+    return { key: `day-${t.id}`, icon: '❌', state: 'miss' as const, detail: 'Not done at all.', ...base }
+  })
 }

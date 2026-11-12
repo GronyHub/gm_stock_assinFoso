@@ -8,6 +8,7 @@ import ProfileTab from './ProfileTab'
 import SupervisorClockOut from './SupervisorClockOut'
 import { PenaltyCard } from '@/components/PenaltyChip'
 import MyDayClient from '../../my-day/MyDayClient'
+import PersonWaiting from '@/components/PersonWaiting'
 import PersonLaws from './PersonLaws'
 import PersonUpcoming from './PersonUpcoming'
 import dynamic from 'next/dynamic'
@@ -112,10 +113,10 @@ export default function StaffMemberPersonalTab({
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
         {activeTab === 'laws' && (isSelf || mayView) && <PersonLaws staff={staffName.toLowerCase()} />}
         {activeTab === 'done' && (isSelf || mayView) && <PersonRecord forStaff={staffName.toLowerCase()} />}
-        {activeTab === 'waiting' && !isSelf && mayView && <MyDayClient forName={staffName.toLowerCase()} />}
+        {activeTab === 'waiting' && !isSelf && mayView && <PersonWaiting forName={staffName.toLowerCase()} />}
         {activeTab === 'notdone' && (isSelf || mayView) && <MyDayClient lens="notdone" forName={isSelf ? '' : staffName.toLowerCase()} onNavigate={isSelf ? (i => { if (i.href) window.dispatchEvent(new CustomEvent('hub-open', { detail: { path: i.href, handled: false } })) }) : undefined} />}
         {activeTab === 'waiting' && isSelf && (
-          <MyDayClient onNavigate={i => {
+          <PersonWaiting onNavigate={i => {
             if (i.hub) setActiveTab(i.hub as TabKey)
             else if (i.href) window.dispatchEvent(new CustomEvent('hub-open', { detail: { path: i.href, handled: false } }))
           }} />
