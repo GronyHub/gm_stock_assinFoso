@@ -6,8 +6,6 @@ import PenaltyDecisions from '@/components/PenaltyDecisions'
 import ClockApprovals from '@/components/ClockApprovals'
 import TaskTile, { DensityToggle, tileGrid, useTileDensity, type TileDensity } from '@/components/TaskTile'
 
-// These are answered right here on cards (see components/ClockNotices.tsx), so they are not repeated in the list below.
-const INLINE = new Set(['clock-prev', 'clock-auto', 'queries', 'sanctions', 'violations', 'claims', 'cctv'])
 
 const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber-50', later: 'border-gray-200 bg-white' } as const
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
@@ -38,8 +36,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
     setMsg(r.ok ? (j.message ?? 'Reminder sent.') : (j.error ?? 'Could not send.')); setTimeout(() => setMsg(''), 4000)
   }
   const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
-  const hidden = who || lens === 'notdone' ? new Set<string>() : INLINE
-  const everything = items?.filter(i => !hidden.has(i.key)) ?? []
+  const everything = items?.filter(i => !(i.inline && !who && lens !== 'notdone')) ?? []
   // "Done" holds only what was really finished; an "all clear" tile (nothing waiting) is not work done.
   const isDone = (i: MyDayItem) => (i.state === 'done' || i.state === 'not') && !i.clear
   const isOver = (i: MyDayItem) => !i.state && i.count > 0 && (i.key.startsWith('task-') || i.key === 'tasks-more' || i.urgency === 'now')
