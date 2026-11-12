@@ -34,7 +34,7 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
-export default function DailyChecklistClient({ canManage, embedded = false, extras }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode }) {
+export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -66,7 +66,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
     }
     setError('Could not load the checklist. Pull down to try again.')
   }, [])
-  useEffect(() => { void load(null) }, [load])
+  useEffect(() => { void load(dayParam) }, [load, dayParam])
   // Waiting for me opens the exact task: /standards?tile=ID
   const deepTile = useRef(false)
   useEffect(() => {
@@ -110,6 +110,9 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const next = dayStart == null ? pending : pending.filter(t => due.get(t.id)! > clock)
   const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   const locked = isToday && !clockedIn
+  // Shown only once the chosen day has loaded (switching dates must not flash the previous day).
+  const settling = (dayParam !== null && day !== dayParam) || (dayParam === null && !!today && day !== today)
+  const pastTiles = useMemo(() => visible.filter(t => t.frequency === 'daily' && t.kind !== 'properties' && t.time).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '') || a.id - b.id), [visible])
   const [showLate, setShowLate] = useState(false)
 
   return (
@@ -125,13 +128,29 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Today</h1>
       </div>)}
-      <div className="mb-2 rounded-xl bg-[#14213D] px-3 py-2 text-center text-white">
-        <p className="text-sm font-bold">{day ? dayLabel(day) : 'Loading…'}</p>
-        <p className="text-[11px] text-blue-200">{pending.length} waiting{late.length ? ` · ${late.length} late` : ''}</p>
-      </div>
-      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-      {isToday && (
-        <div className="mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
+      {error && <p className="mx-3 mb-2 text-sm text-red-600">{error}</p>}
+      {settling && !error && <p className="px-3 text-sm text-gray-400">Loading…</p>}
+      {!settling && !isToday && day && (
+        <div className="space-y-2 px-3">
+          <p className="text-[11px] text-gray-500">{pastTiles.filter(t => latest(t)?.value === 'Done').length} done · {pastTiles.filter(t => latest(t)?.value === 'Not done').length} marked not done · {pastTiles.filter(t => !latest(t)).length} not done at all</p>
+          <div className="grid grid-cols-6 gap-1">
+            {pastTiles.map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'; return (
+              <button key={t.id} type="button" title={t.title} onClick={() => setSheet(t)} onContextMenu={e => e.preventDefault()}
+                className={`flex min-h-[3.6rem] select-none flex-col items-start justify-start gap-px rounded-md border px-1 py-0.5 text-left active:opacity-70 ${v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}`}>
+                <span className="text-[8px] font-extrabold leading-none text-gray-500">{t.time}{v === 'yes' ? ' ✓' : v === 'no' ? ' ✕' : ''}</span>
+                <span className="line-clamp-3 break-words text-[8px] font-semibold leading-[1.1] text-gray-900">{shortTitle(t.title)}</span>
+                {ev && <span className="mt-auto w-full truncate text-[7px] font-bold leading-tight text-indigo-800">{ev.recorded_by ? ev.recorded_by.charAt(0).toUpperCase() + ev.recorded_by.slice(1) : ''}</span>}
+              </button>) })}
+          </div>
+          {pastTiles.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
+          {adhoc.length > 0 && (
+            <div className="space-y-1"><p className="text-[10px] font-extrabold uppercase text-gray-500">Other work logged</p>
+              {adhoc.map(a => <p key={a.id} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-gray-900"><b>{a.recorded_by}</b> · {hhmm(a.recorded_at)} · {a.note}</p>)}
+            </div>)}
+        </div>
+      )}
+      {!settling && isToday && (
+        <div className="mx-3 mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-extrabold text-[#14213D]">NOW · {String(Math.floor(clock / 60)).padStart(2, '0')}:{String(clock % 60).padStart(2, '0')}</p>
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">{late.length} late</span>
@@ -160,7 +179,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           ))}
         </div>
       )}
-      {isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mb-2 w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
+      {!settling && isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mx-3 mb-2 w-[calc(100%-1.5rem)] rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
