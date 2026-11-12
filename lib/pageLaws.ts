@@ -80,6 +80,7 @@ async function ensureCompanyLawsImpl() {
   await dedupeLawsOnce()
   await pendingJobsConfirmOnce()
   await cashCountedLawOnce()
+  await (await import('./questionGroups')).seedQuestionGroupsOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`

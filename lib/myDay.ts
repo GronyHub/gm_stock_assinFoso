@@ -1,3 +1,4 @@
+import { hasClosingGroups } from '@/lib/questionGroups'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName, SIGNERS } from '@/lib/signers'
@@ -69,7 +70,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const urg = (d: Duty): MyDayItem['urgency'] => (d.state === 'late' ? 'now' : d.state === 'now' ? 'soon' : 'later')
 
   // The closing report is answered in Waiting for team by whoever closes; it is shown here to whoever is at work until it is answered.
-  if (isStaff && me !== 'grony') {
+  if (isStaff && me !== 'grony' && !(await hasClosingGroups())) {
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
     if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early in Waiting for team.', count: 1, urgency: now.getUTCHours() >= 17 ? 'soon' : 'later', href: '/todo?closing=1', who: me1, category: 'Staff management', type: 'Recurring task' })

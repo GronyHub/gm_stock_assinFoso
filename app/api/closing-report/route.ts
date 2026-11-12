@@ -2,6 +2,7 @@ import { getAuthUser, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { actorKey } from '@/lib/clockState'
 import { ensureClosingReports, saveClosingReport, validClosing } from '@/lib/closingReports'
+import { hasClosingGroups } from '@/lib/questionGroups'
 import { NextRequest } from 'next/server'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -15,7 +16,7 @@ export async function GET() {
     await ensureClosingReports()
     const [r] = await sql`SELECT closer_name FROM closing_reports WHERE work_date = ${today()}`
     const present = await sql`SELECT DISTINCT staff_name FROM staff_times WHERE work_date = ${today()} AND actual_in IS NOT NULL AND staff_name <> '__shop_open__' ORDER BY staff_name`
-    return success({ done: !!r, by: r?.closer_name ?? null, present: present.map(p => String(p.staff_name)) })
+    return success({ replaced: await hasClosingGroups(), done: !!r, by: r?.closer_name ?? null, present: present.map(p => String(p.staff_name)) })
   } catch (e) { return handleError('closing-report GET', e) }
 }
 export async function POST(req: NextRequest) {

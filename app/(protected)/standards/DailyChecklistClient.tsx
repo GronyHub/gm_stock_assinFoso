@@ -2,6 +2,7 @@
 import { cap } from '@/lib/strings'
 import WithMic from '@/components/WithMic'
 import ClosingReportCard from '@/components/ClosingReportCard'
+import GroupForm from '@/components/GroupForm'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES, LAW_TYPES } from '@/lib/lawCategories'
 import TaskTile, { tileGrid, type TileDensity } from '@/components/TaskTile'
@@ -243,8 +244,9 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
         {t.law_id && t.category && <a href={`/laws?cat=${encodeURIComponent(t.category)}`} className="block text-[11px] font-semibold text-blue-700 underline">From the Company Laws · {t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
         {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
-        {t.kind !== 'tap' && !ev && isToday && <AnswerForm t={t} present={present} onSaved={onSaved} onClose={onClose} />}
-        {ev && t.kind !== 'tap' && <AnswerSummary ev={ev} />}
+        {t.kind === 'group' && <GroupForm tileId={t.id} day={ev?.day ?? new Date().toISOString().slice(0, 10)} editable={isToday} canEdit={canEdit} onSaved={onSaved} onClose={onClose} />}
+        {t.kind !== 'tap' && t.kind !== 'group' && !ev && isToday && <AnswerForm t={t} present={present} onSaved={onSaved} onClose={onClose} />}
+        {ev && t.kind !== 'tap' && t.kind !== 'group' && <AnswerSummary ev={ev} />}
         {t.kind === 'tap' && isToday && (!ev || editableEv) && (<>
           <p className="text-xs font-bold uppercase text-gray-500">Time it was done {ev ? '' : '(blank = now)'}</p>
           <div className="flex flex-wrap items-center gap-2">

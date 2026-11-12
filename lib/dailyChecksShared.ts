@@ -4,7 +4,7 @@
 // those follow these.
 export const CHECK_SECTIONS = ['Opening', 'Daytime', 'Stations', 'Staff', 'Social media', 'Closing', 'Grony 2', 'Weekly', 'Monthly', 'Equipment'] as string[]
 export type CheckSection = string
-export const TILE_KINDS = ['tap', 'question', 'persons', 'entry', 'properties'] as const
+export const TILE_KINDS = ['tap', 'question', 'persons', 'entry', 'properties', 'group'] as const
 export type TileKind = typeof TILE_KINDS[number]
 export const KIND_LABEL: Record<string, string> = { tap: 'Tick when done', question: 'Question (all good / report a problem)', persons: 'Tick each person present', entry: 'Write a note or photo', properties: 'Opens a list of items' }
 // The log (Grony Manage) each kind of record also goes into, so those pages keep their history.

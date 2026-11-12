@@ -6,14 +6,14 @@ import CloserQuestionnaire, { type ClosingAnswers } from '@/components/CloserQue
 // The closing report (a row among the day's tasks), answered from the Daily Checklist (it used to block the last person's clock-out). Shown at the top of the Daily Checklist whenever someone is
 // clocked in (due from 5pm, can be answered early), and as "done" once it has been answered. Never covers the screen: it is a card on the page, and the questions open only when tapped.
 export default function ClosingReportCard({ density = 'compact', closer }: { density?: TileDensity; closer?: string | null }) {
-  const [st, setSt] = useState<{ done: boolean; by: string | null; present: string[] } | null>(null)
+  const [st, setSt] = useState<{ replaced?: boolean; done: boolean; by: string | null; present: string[] } | null>(null)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const load = () => fetch('/api/closing-report', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSt(d)).catch(() => {})
   useEffect(() => { void load() }, [])
   useEffect(() => { if (new URLSearchParams(window.location.search).get('closing') && st && !st.done) setOpen(true) }, [st])
-  if (!st || (!st.done && st.present.length === 0)) return null
+  if (!st || st.replaced || (!st.done && st.present.length === 0)) return null
   const early = new Date().getUTCHours() < 17
   async function submit(a: ClosingAnswers) {
     setSaving(true); setErr('')

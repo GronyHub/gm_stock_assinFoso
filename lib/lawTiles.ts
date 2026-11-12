@@ -13,8 +13,12 @@ const firstSentence = (t: string) => {
 // law) has its tile stopped. The tile carries the law's category so the checklist and History group by it.
 export async function syncLawTile(lawId: number) {
   await ensureDailyChecks()
+  await (await import('@/lib/questionGroups')).ensureQuestionGroups()
   const [l] = await sql`SELECT id, text, category, subcategory, law_type, days, law_time, frequency, minutes, dos, status, tile_id, proof, assignment FROM page_laws WHERE id = ${lawId}`
   if (!l) { await sql`UPDATE daily_check_tiles SET active = false WHERE law_id = ${lawId}`; return }
+  // A law whose question lives in a question group (and is not the group's own parent law) has no tile of its own.
+  const [absorbed] = await sql`SELECT 1 FROM question_group_items i JOIN question_groups g ON g.id = i.group_id AND g.active WHERE i.active AND i.law_id = ${lawId} AND COALESCE(g.tile_id, -1) <> COALESCE(${l.tile_id ?? null}::int, -2) LIMIT 1`
+  if (absorbed) { if (l.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${l.tile_id}`; return }
   const wants = l.status === 'live' && l.law_type === 'recurring' && l.frequency && l.minutes && l.category
   if (!wants) {
     if (l.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${l.tile_id}`
@@ -36,7 +40,7 @@ export async function syncLawTile(lawId: number) {
   if (l.tile_id) {
     await sql`UPDATE daily_check_tiles SET active = true, title = ${title}, how = ${how}, section = ${l.category}, category = ${l.category}, subcategory = ${l.subcategory},
       time = ${time}, frequency = ${l.frequency}, days = ${days}, weekday = ${weekday}, minutes = ${l.minutes}, icon = ${icon}, law_id = ${lawId},
-      kind = ${kind}, needs_photo = ${photo}, log_category = ${logCat}, ask = ${ask}, ok_label = ${okLabel}, issue_label = ${issueLabel}, assignment = ${l.assignment ?? 'all'} WHERE id = ${l.tile_id}`
+      kind = CASE WHEN EXISTS (SELECT 1 FROM question_groups g WHERE g.tile_id = daily_check_tiles.id AND g.active) THEN 'group' ELSE ${kind} END, needs_photo = ${photo}, log_category = ${logCat}, ask = ${ask}, ok_label = ${okLabel}, issue_label = ${issueLabel}, assignment = ${l.assignment ?? 'all'} WHERE id = ${l.tile_id}`
   } else {
     const [t] = await sql`INSERT INTO daily_check_tiles (section, category, subcategory, time, title, icon, how, kind, frequency, days, weekday, minutes, law_id, position, created_by, needs_photo, log_category, ask, ok_label, issue_label)
       VALUES (${l.category}, ${l.category}, ${l.subcategory}, ${time}, ${title}, ${icon}, ${how}, ${kind}, ${l.frequency}, ${days}, ${weekday}, ${l.minutes}, ${lawId},

@@ -273,6 +273,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
+      {canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
       <div className="mb-2 grid grid-cols-3 gap-1">
         {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
