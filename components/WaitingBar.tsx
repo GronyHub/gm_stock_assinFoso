@@ -11,6 +11,9 @@ export default function WaitingBar() {
   const [now, setNow] = useState(0)
   const [later, setLater] = useState(false)
   const [choose, setChoose] = useState(false)
+  // Hidden while Waiting for me or Waiting for team is open: the page already says what is waiting.
+  const [onPage, setOnPage] = useState(false)
+  useEffect(() => { const h = (e: Event) => setOnPage(!!(e as CustomEvent).detail); window.addEventListener('waiting-view', h); return () => window.removeEventListener('waiting-view', h) }, [])
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
     let live = true
@@ -25,7 +28,7 @@ export default function WaitingBar() {
     window.dispatchEvent(new CustomEvent('hub-open', { detail: ev }))
     if (!ev.handled) window.location.href = '/item?open=' + encodeURIComponent('/my-day')
   }
-  if (total <= 0 || later) return null
+  if (total <= 0 || later || onPage) return null
   return (
     <div className="fixed bottom-3 left-20 right-0 z-[60] flex justify-center px-3 sm:left-24 print:hidden">
       <div className={`w-full max-w-sm rounded-xl border bg-white p-2.5 shadow-xl ${now ? 'border-red-300' : 'border-amber-300'}`}>

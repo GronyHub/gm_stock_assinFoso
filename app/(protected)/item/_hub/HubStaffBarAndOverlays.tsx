@@ -1,4 +1,5 @@
 'use client'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { setPageToolbarEl } from '@/lib/pageToolbar'
@@ -9,6 +10,7 @@ import HubContentColumn from './HubContentColumn'
 
 export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { initialTab, outerTab, lossView, search, setLiveManageSection, manageSideOptions, fixedCategoryIds, activeStaff, items, waitingBy, embedRef, embedUrl, personal, setPersonal, barH, barRef, shop, setShop, openShop, openPersonal, navSlotEl, isDesktop, role, username, isOwnerOrJoe, canManage, canSeeManage, canSeeTeam, routablePages, liveTapsStatus, liveTodaySalesTotal, salesByStaff, pickItemsMode, renderSectionFlags, goItemsMode, renderTabSwitcher } = h
+  useEffect(() => { window.dispatchEvent(new CustomEvent('waiting-view', { detail: personal?.tab === 'waiting' || shop?.tab === 'todo' })) }, [personal, shop])
   return (<><div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar + tab switcher: on desktop these portal into
               Nav's own top strip (see lib/navSlot.ts) instead of rendering

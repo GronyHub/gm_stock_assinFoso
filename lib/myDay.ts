@@ -16,7 +16,7 @@ import { ACTIVE_STAFF } from '@/lib/staffList'
 
 // "Waiting for me": everything the signed-in person owes or must decide, from every part of the app, in one list.
 // urgency: 'now' (overdue or blocking), 'soon' (due today or within 24 hours), 'later'. `href` opens in the hub's right pane; `hub` asks the hub to open a view.
-export type MyDayItem = { key: string; icon: string; title: string; detail: string; count: number; urgency: 'now' | 'soon' | 'later'; href?: string; hub?: string; state?: 'done' | 'not' | 'miss'; time?: string | null; who?: string; category?: string; type?: string }
+export type MyDayItem = { key: string; icon: string; title: string; detail: string; count: number; urgency: 'now' | 'soon' | 'later'; href?: string; hub?: string; state?: 'done' | 'not' | 'miss'; clear?: boolean; time?: string | null; who?: string; category?: string; type?: string }
 const lawTypeLabel = (t: string | null | undefined) => LAW_TYPES.find(x => x.key === t)?.label
 const today = () => new Date().toISOString().slice(0, 10)
 const safe = async <T,>(f: () => Promise<T>, d: T): Promise<T> => { try { return await f() } catch { return d } }
@@ -52,7 +52,9 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const owner = !opts.viewing && isOwnerLevel(user as never), manager = isManagerName(me)
   const isStaff = SIGNERS.includes(me)
   // A standing duty (laws to sign, quizzes, decisions...) is always shown: a green tick when nothing is waiting.
-  const tile = (i: MyDayItem) => add(i.count > 0 ? i : { ...i, state: 'done', detail: 'Nothing waiting.', urgency: 'later' }, true)
+  const STANDING_TYPE: Record<string, string> = { sign: 'Law to sign', quiz: 'Law quiz', 'pending-jobs': 'Pending job', mytasks: 'Assigned task', claims: 'Decision', sanctions: 'Decision', violations: 'Decision', drafts: 'Decision', cctv: 'Review' }
+  const me1 = me.charAt(0).toUpperCase() + me.slice(1)
+  const tile = (i: MyDayItem) => { const full = { ...i, who: me1, category: i.category ?? 'Standing duty', type: i.type ?? STANDING_TYPE[i.key] }; add(i.count > 0 ? full : { ...full, state: 'done', clear: true, detail: 'Nothing waiting.', urgency: 'later' }, true) }
   const add = (i: MyDayItem | null, keep = false) => { if (i && (i.count > 0 || keep)) items.push(i) }
 
   if (isStaff && me !== 'grony') {
@@ -71,7 +73,8 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
       const now = new Date()
       if (!(await isShopDay(day))) return
       const clock = await getClockState(day)
-      if (clock.dayStart == null || !clock.present.includes(me)) return
+      // Not waiting for them to clock in: a task that belongs to the manager, the Opener or the Closer is theirs either way.
+      if (clock.dayStart == null) return
       const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
       const allTiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition,
           (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
@@ -90,7 +93,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
       const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
       const meta = (t: (typeof tiles)[number]) => ({ who: cap1(me), category: t.category ?? undefined, type: lawTypeLabel(t.law_type) })
       // A task that fell due before this person clocked in (or after they left) was never theirs.
-      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin && onShift(me, due.get(t.id)!, clock)).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
+      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin && ((t.assignment ?? 'all') !== 'all' || onShift(me, due.get(t.id)!, clock))).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
       // One tile per task, so each can be opened and done from here. (Only the Not done tab lists them all.)
       const cap = opts.lens === 'notdone' ? 500 : 8
       for (const t of late.slice(0, cap)) {
@@ -156,7 +159,8 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const order = { now: 0, soon: 1, later: 2 }
   const isTask = (i: MyDayItem) => i.key.startsWith('task-') || i.key === 'tasks-more'
   const pick = opts.lens === 'notdone' ? items.filter(isTask) : opts.lens === 'todo' ? items.filter(i => !isTask(i)) : items
-  return pick.sort((a, b) => order[a.urgency] - order[b.urgency])
+  // Everything already clear goes last.
+  return pick.sort((a, b) => Number(!!a.clear) - Number(!!b.clear) || order[a.urgency] - order[b.urgency])
 }
 
 // Shop-wide "Not done": every task due or overdue today that nobody has done yet, with who it falls on.

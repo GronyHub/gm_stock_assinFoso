@@ -33,9 +33,15 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
   if (!list.length && !pendingReviews && me !== 'grony') return null
   return (
     <>
-      {me === 'grony' && <TaskTile density={density} icon="🔔" title="Prompt Joe to check" detail={sent || 'Sends Joe a reminder of what is waiting for him.'} category="Standing duty" type="Decision" who="Grony" tone="border-gray-300 bg-white" onClick={() => void nudge()} />}
-      {pendingReviews > 0 && <TaskTile density={density} icon="🎥" time="48h" title={`CCTV reviews: ${pendingReviews} waiting`} detail="Staff worked while Joe was not clocked in." category="Standing duty" type="Review" who="Joe" tone="border-red-300 bg-red-50"
-        onClick={() => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (!ev.handled) window.location.href = '/cctv-review' }} />}
+      {pendingReviews > 0 && (
+        <div className="flex flex-col gap-1">
+          <TaskTile density={density} icon="🎥" time="48h" title={`CCTV reviews: ${pendingReviews} waiting`} detail="Staff worked while Joe was not clocked in." category="Standing duty" type="Review" who="Joe" tone="border-red-300 bg-red-50"
+            onClick={() => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (!ev.handled) window.location.href = '/cctv-review' }} />
+          {me === 'grony' && <button type="button" onClick={() => void nudge()} className="rounded-md bg-[#14213D] px-2 py-1 text-[10px] font-bold text-white">🔔 Prompt Joe</button>}
+          {sent && <span className="text-[10px] text-gray-600">{sent}</span>}
+        </div>)}
+      {pendingReviews === 0 && me === 'grony' && (
+        <div className="col-span-full flex items-center gap-2"><button type="button" onClick={() => void nudge()} className="rounded-md bg-[#14213D] px-2.5 py-1 text-[11px] font-bold text-white">🔔 Prompt Joe to check</button>{sent && <span className="text-[11px] text-gray-600">{sent}</span>}</div>)}
       {list.length > 0 && (
         <div className="col-span-full rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-extrabold text-amber-900">Clock-in and clock-out times to approve</p>

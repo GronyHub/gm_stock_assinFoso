@@ -165,6 +165,13 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             </div>)}
         </div>
       )}
+          {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
+      {!settling && isToday && <div className="mx-3 mb-2 flex flex-wrap gap-1">
+            {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
+              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+            ))}
+            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
+      </div>}
       {!settling && isToday && (
         <div className="mx-3 mb-3 space-y-2 rounded-xl border-2 border-[#14213D] bg-white p-2">
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet. The day&apos;s tasks start when the first person does; they are listed at their planned times.</p>}
@@ -172,15 +179,8 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
           {!person && <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} />{extras}</div>}
-          {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
-          <div className="flex flex-wrap gap-1">
-            {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'late' || x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
-              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
-            ))}
-            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
-          </div>
           <div className={tileGrid(density)}>
-            {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'late' || x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, ev }) => (
+            {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, ev }) => (
               <TaskTile key={t.id} density={density} time={fmt(dueOf(t.id))} title={t.title} who={ev ? nm(ev.recorded_by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
                 detail={ev?.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'} onClick={() => setSheet(t)} />

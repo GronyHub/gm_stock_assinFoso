@@ -40,9 +40,10 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
   const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
   const hidden = who || lens === 'notdone' ? new Set<string>() : INLINE
   const everything = items?.filter(i => !hidden.has(i.key)) ?? []
-  const isDone = (i: MyDayItem) => i.state === 'done' || i.state === 'not'
+  // "Done" holds only what was really finished; an "all clear" tile (nothing waiting) is not work done.
+  const isDone = (i: MyDayItem) => (i.state === 'done' || i.state === 'not') && !i.clear
   const isOver = (i: MyDayItem) => !i.state && i.count > 0 && (i.key.startsWith('task-') || i.key === 'tasks-more' || i.urgency === 'now')
-  const isOpen = (i: MyDayItem) => !i.state
+  const isOpen = (i: MyDayItem) => !i.state && !isOver(i)
   const filtered = filter === 'done' ? everything.filter(isDone) : filter === 'overdue' ? everything.filter(isOver) : filter === 'waiting' ? everything.filter(isOpen) : everything
   const shown = lens === 'notdone' || team ? everything : filtered
   const waiting = everything.filter(i => i.urgency !== 'later').reduce((n, i) => n + i.count, 0)
@@ -54,7 +55,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 text-xs font-semibold text-gray-700">
           {!(who || team || lens === 'notdone' || onNavigate) && <span className="mr-2 text-base font-extrabold text-[#14213D]">Waiting for me</span>}
-          {items ? (team || lens === 'notdone' ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : `${waiting} waiting${overdue ? `, ${overdue} overdue` : ''}.`) : ''}
+          {items && (team || lens === 'notdone') ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : ''}
           {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
         </p>
         {!densityProp && <DensityToggle density={density} onChange={setDensity} />}
