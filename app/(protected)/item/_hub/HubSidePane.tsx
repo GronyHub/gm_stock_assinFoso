@@ -33,6 +33,9 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}
                 onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
             )}
+            {/* The two places everything lives: what is waiting for me, and what is waiting for the team. */}
+            <SidePaneButton icon="📋" label="Waiting for me" mode={cashDisplayMode} active={personal?.tab === 'waiting' && personal.name.toLowerCase() === username.toLowerCase()} badge={myDayBadge} href="/my-day" noNewTab onClick={() => openPersonal(username, 'waiting')} />
+            <SidePaneButton icon="✅" label="Waiting for team" mode={cashDisplayMode} active={shop?.tab === 'todo'} divider noNewTab onClick={() => openShop('todo')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
             <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button: the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
