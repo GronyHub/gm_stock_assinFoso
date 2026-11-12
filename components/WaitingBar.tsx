@@ -13,6 +13,9 @@ export default function WaitingBar() {
   const [choose, setChoose] = useState(false)
   // Hidden while Waiting for me or Waiting for team is open: the page already says what is waiting.
   const [onPage, setOnPage] = useState(false)
+  // Inside a page the hub shows in its right pane (a frame) the hub's own bar is the one to use: a second bar there could only reload the hub inside the frame.
+  const [framed, setFramed] = useState(false)
+  useEffect(() => { try { setFramed(window.self !== window.top) } catch { setFramed(true) } }, [])
   useEffect(() => { const h = (e: Event) => setOnPage(!!(e as CustomEvent).detail); window.addEventListener('waiting-view', h); return () => window.removeEventListener('waiting-view', h) }, [])
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
@@ -28,7 +31,7 @@ export default function WaitingBar() {
     window.dispatchEvent(new CustomEvent('hub-open', { detail: ev }))
     if (!ev.handled) window.location.href = '/item?open=' + encodeURIComponent('/my-day')
   }
-  if (total <= 0 || later || onPage) return null
+  if (total <= 0 || later || onPage || framed) return null
   return (
     <div className="fixed bottom-3 left-20 right-0 z-[60] flex justify-center px-3 sm:left-24 print:hidden">
       <div className={`w-full max-w-sm rounded-xl border bg-white p-2.5 shadow-xl ${now ? 'border-red-300' : 'border-amber-300'}`}>
