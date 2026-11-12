@@ -179,6 +179,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
           {!person && <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} />{extras}</div>}
+          {person && dayList.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-xs font-semibold text-gray-600">Nothing falls on {nm(person)} today yet. Tasks are shared out by the rota once they are at work.</p>}
           <div className={tileGrid(density)}>
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, ev }) => (
               <TaskTile key={t.id} density={density} time={fmt(dueOf(t.id))} title={t.title} who={ev ? nm(ev.recorded_by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}

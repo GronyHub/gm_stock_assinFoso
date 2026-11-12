@@ -27,6 +27,8 @@ export async function getClockState(day: string): Promise<ClockState> {
   const everIn = rows.map(r => r.name)
   if (rr?.opener && everIn.includes(rr.opener)) opener = rr.opener
   if (rr?.closer && everIn.includes(rr.closer)) lastOut = rr.closer
+  // Until anyone has clocked out the rota's Closer carries the closing tasks (before this they showed on everyone's list).
+  else if (lastOut == null && rr?.closer) lastOut = rr.closer
   const ins: Record<string, number> = {}, outs: Record<string, number | null> = {}
   for (const r of rows) { const i = parseTimeMins(r.actual_in); if (i != null) ins[r.name] = Math.min(ins[r.name] ?? i, i); outs[r.name] = r.actual_out ? parseTimeMins(r.actual_out) : null }
   return { dayStart, present: rows.filter(r => !r.actual_out).map(r => r.name), everIn, opener, lastOut, ins, outs }
