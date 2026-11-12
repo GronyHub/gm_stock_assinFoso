@@ -63,7 +63,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       </div>
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {!who && !team && lens !== 'notdone' && <ClockNotices onChange={() => void load()} />}
-      {!who && !team && lens !== 'notdone' && <ClockApprovals />}
+      {!who && !team && lens !== 'notdone' && <div className={tileGrid(density)}><ClockApprovals density={density} /></div>}
       {!who && !team && lens !== 'notdone' && <PenaltyDecisions onChange={() => void load()} />}
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
       {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ {team || lens === 'notdone' ? 'Nothing is overdue.' : `Nothing is waiting${who ? ` for ${name}` : ' for you'}.`}</p>}

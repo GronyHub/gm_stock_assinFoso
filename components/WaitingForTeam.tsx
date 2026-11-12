@@ -71,7 +71,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
       <div className="mt-2">
         {sel <= today
           ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} dayParam={sel === today ? null : sel}
-              extras={<>{canManage && <ClockApprovals />}<PendingJobsDue /></>} />
+              extras={<>{canManage && <ClockApprovals density={density} />}<PendingJobsDue density={density} /></>} />
           : (
             <div className="space-y-2 px-3">
               {loading && !curDay && <p className="text-sm text-gray-400">Loading…</p>}

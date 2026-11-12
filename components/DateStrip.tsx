@@ -1,12 +1,15 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 // The strip of small date tiles that runs across the top of Waiting for team and Waiting for me: earlier days to the left, Today highlighted, days ahead to the right.
 export default function DateStrip({ dates, sel, today, onSel, more }: { dates: string[]; sel: string; today: string; onSel: (d: string) => void; more?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => { ref.current?.querySelector('[data-today="1"]')?.scrollIntoView({ inline: 'start', block: 'nearest' }) }, [])
+  // Open at Today: set the strip's own scroll position (not the page's), once it has been laid out.
+  const toToday = () => { const el = ref.current, b = el?.querySelector('[data-today="1"]') as HTMLElement | null; if (el && b) el.scrollLeft = Math.max(0, b.offsetLeft - 4) }
+  useLayoutEffect(() => { toToday(); const t = setTimeout(toToday, 150); return () => clearTimeout(t) // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
-    <div ref={ref} className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Pick a date">
+    <div ref={ref} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Pick a date">
       {dates.map(d => {
         const dt = new Date(d + 'T00:00:00Z'), on = sel === d, isT = d === today, isPast = d < today
         return (

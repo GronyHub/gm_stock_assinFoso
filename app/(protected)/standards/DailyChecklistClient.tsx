@@ -164,7 +164,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
-          <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['DECISIONS_AND_DUTIES']"><ClosingReportCard />{extras}</div>
+          <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} />{extras}</div>
           {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
           <div className="flex flex-wrap gap-1">
             {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'late' || x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (

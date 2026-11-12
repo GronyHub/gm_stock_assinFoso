@@ -1,10 +1,11 @@
 'use client'
 import { cap } from '@/lib/strings'
 import { useEffect, useState } from 'react'
+import TaskTile, { type TileDensity } from '@/components/TaskTile'
 
 type P = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; estimated: string | null }
 // For Grony and Joe only: clock-out times staff entered after forgetting, waiting for approval. Not a tile on the Daily Checklist.
-export default function ClockApprovals() {
+export default function ClockApprovals({ density = 'compact' }: { density?: TileDensity }) {
   const [list, setList] = useState<P[]>([])
   const [pendingReviews, setPendingReviews] = useState(0)
   const load = () => {
@@ -31,11 +32,12 @@ export default function ClockApprovals() {
   async function nudge() { const r = await fetch('/api/clock/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const d = await r.json().catch(() => ({})); setSent(d?.sent ? 'Joe has been prompted.' : 'Nothing is waiting for Joe.') }
   if (!list.length && !pendingReviews && me !== 'grony') return null
   return (
-    <div className="mx-auto max-w-3xl space-y-2 px-3 pt-3">
-      {me === 'grony' && <div className="flex items-center gap-2"><button type="button" onClick={() => void nudge()} className="rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">Prompt Joe to check</button>{sent && <span className="text-xs text-gray-700">{sent}</span>}</div>}
-      {pendingReviews > 0 && <a href="/cctv-review" onClick={e => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (ev.handled) e.preventDefault() }} className="block rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{pendingReviews} CCTV review{pendingReviews === 1 ? '' : 's'} waiting: staff worked while Joe was not clocked in. Open the review →</a>}
+    <>
+      {me === 'grony' && <TaskTile density={density} icon="🔔" title="Prompt Joe to check" detail={sent || 'Sends Joe a reminder of what is waiting for him.'} category="Standing duty" type="Decision" who="Grony" tone="border-gray-300 bg-white" onClick={() => void nudge()} />}
+      {pendingReviews > 0 && <TaskTile density={density} icon="🎥" time="48h" title={`CCTV reviews: ${pendingReviews} waiting`} detail="Staff worked while Joe was not clocked in." category="Standing duty" type="Review" who="Joe" tone="border-red-300 bg-red-50"
+        onClick={() => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (!ev.handled) window.location.href = '/cctv-review' }} />}
       {list.length > 0 && (
-        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+        <div className="col-span-full rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-extrabold text-amber-900">Clock-in and clock-out times to approve</p>
           {list.map(p => (
             <div key={p.id} className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-900">
@@ -45,6 +47,6 @@ export default function ClockApprovals() {
               <button type="button" onClick={() => void act(p.id, 'reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800">Reject</button>
             </div>))}
         </div>)}
-    </div>
+    </>
   )
 }
