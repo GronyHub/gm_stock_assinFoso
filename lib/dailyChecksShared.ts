@@ -27,7 +27,7 @@ export type CheckTile = {
 }
 export type CheckEvent = {
   id: number; tile_id: number; day: string; value: string; note: string | null
-  extra: { done_at?: string; answer?: 'ok' | 'issue'; persons?: Record<string, 'ok' | 'not'>; about_staff?: string; photo_url?: string } | null; recorded_by: string; recorded_at: string
+  extra: { done_at?: string; answer?: 'ok' | 'issue'; persons?: Record<string, 'ok' | 'not'>; about_staff?: string; photo_url?: string; overruled?: boolean } | null; recorded_by: string; recorded_at: string
 }
 
 export const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const

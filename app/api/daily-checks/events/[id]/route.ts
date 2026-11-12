@@ -4,6 +4,7 @@ import { ensureDailyChecks, dayKey, creditWork, removeCredit } from '@/lib/daily
 import { getClockState, actorKey } from '@/lib/clockState'
 import { NextRequest } from 'next/server'
 import { clearMyDayCache } from '@/lib/myDay'
+import { isOwnerLevel } from '@/lib/roles'
 
 async function mustBeClockedIn(user: unknown) {
   if ((user as { role?: string })?.role === 'owner') return null
@@ -29,6 +30,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const extra = { ...((e.extra as object) ?? {}), ...(typeof b.done_at === 'string' ? (HM.test(b.done_at) ? { done_at: b.done_at } : {}) : {}) }
     if (b.done_at === null || b.done_at === '') delete (extra as { done_at?: string }).done_at
     const value = b.value === 'Done' || b.value === 'Not done' ? b.value : null
+    // The owner and Joe can reject a reason: the task then counts as missed again (a point at day end).
+    if (b.overrule === true) { if (!isOwnerLevel(session.user as never)) return badRequest('Only the owner and Joe can reject a reason.'); (extra as { overruled?: boolean }).overruled = true }
+    if ((value ?? e.value) === 'Not done' && String(b.note ?? '').trim().length < 4) return badRequest('Write why it could not be done.')
     clearMyDayCache()
     await sql`UPDATE daily_check_events SET value = COALESCE(${value}, value), note = ${b.note ? String(b.note).slice(0, 500) : null}, extra = ${JSON.stringify(extra)}::jsonb WHERE id = ${id}`
     if (value && value !== e.value) {

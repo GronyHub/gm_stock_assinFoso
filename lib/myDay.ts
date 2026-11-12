@@ -72,7 +72,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
         WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string }[]
       const dayTiles = tiles.filter(t => appliesOn(t, day))
       const shifts = await rotaShifts(day)
-      const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day}` as unknown as { tile_id: number }[]).map(r => r.tile_id))
+      const handled = new Set((await sql`SELECT tile_id FROM daily_check_events WHERE day = ${day} AND NOT (value = 'Not done' AND COALESCE(extra->>'overruled', '') = 'true')` as unknown as { tile_id: number }[]).map(r => r.tile_id))
       const due = effectiveDue(dayTiles, clock.dayStart)
       // Shared ("everyone") tasks have one named person from the rota; the Opener, Closer and manager tasks keep their own owner.
       const todays = dayTiles.filter(t => t.assignment === 'all' || !t.assignment ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === me : owes(t.assignment, me, clock))

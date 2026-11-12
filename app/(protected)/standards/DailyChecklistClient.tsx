@@ -103,7 +103,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   // Before the first clock-in each task waits at its own planned time.
   const planned = useMemo(() => { const m = new Map<number, number>(); for (const t of tiles) if (t.frequency === 'daily' && t.kind !== 'properties' && t.time && /^\d\d:\d\d$/.test(t.time)) m.set(t.id, Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3))); return m }, [tiles])
   const dueOf = (id: number) => (dayStart == null ? planned.get(id) : due.get(id)) ?? 0
-  const pending = isToday ? visible.filter(t => (dayStart == null ? planned.has(t.id) : due.has(t.id)) && !latest(t)).sort((a, b) => dueOf(a.id) - dueOf(b.id) || a.id - b.id) : []
+  const pending = isToday ? visible.filter(t => (dayStart == null ? planned.has(t.id) : due.has(t.id)) && (!latest(t) || latest(t)?.extra?.overruled)).sort((a, b) => dueOf(a.id) - dueOf(b.id) || a.id - b.id) : []
   const late = dayStart == null ? [] : pending.filter(t => clock - due.get(t.id)! >= 15)
   const dueNow = dayStart == null ? [] : pending.filter(t => { const d = clock - due.get(t.id)!; return d >= 0 && d < 15 })
   // Everything still ahead today (before the first clock-in the whole day is ahead).
@@ -202,14 +202,14 @@ function useRun(onSaved: (m: string) => void, onClose: () => void) {
     } catch (e) { setErr((e as Error).message) }
     setBusy(false)
   }
-  return { busy, err, run }
+  return { busy, err, setErr, run }
 }
 
 function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; present: string[]; onClose: () => void; onSaved: (m: string) => void }) {
   const [doneAt, setDoneAt] = useState(ev?.extra?.done_at ?? '')
   const [note, setNote] = useState(ev?.note ?? '')
   const [editing, setEditing] = useState(false)
-  const { busy, err, run } = useRun(onSaved, onClose)
+  const { busy, err, setErr, run } = useRun(onSaved, onClose)
   const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/daily-checks/tap', { method: 'POST', headers: json, body: JSON.stringify({ tile_id: t.id, value, done_at: doneAt || undefined, note: note || undefined }) }), `${value}: ${t.title}`)
   const patch = (extra: Record<string, unknown>, msg: string) => run(() => fetch(`/api/daily-checks/events/${ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ done_at: doneAt || null, note: note || null, ...extra }) }), msg)
   const revert = () => { if (confirm('Remove this record and put the tile back to waiting?')) void run(() => fetch(`/api/daily-checks/events/${ev!.id}`, { method: 'DELETE' }), 'Reverted') }
@@ -229,7 +229,7 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
         </div>
         {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
         {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
-        {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[11px] font-semibold text-red-700">If this is still undone at the end of the day, everyone clocked in gets a penalty point (at most 3 a day).</p>}
+        {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[11px] font-semibold text-red-700">If this is still undone at the end of the day, whoever it falls on gets a penalty point (at most 3 a day). Marking it Not done with a real reason excuses the point.</p>}
         {t.law_id && t.category && <a href={`/laws?cat=${encodeURIComponent(t.category)}`} className="block text-[11px] font-semibold text-blue-700 underline">From the Company Laws · {t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
         {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
@@ -242,15 +242,16 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
             <input type="time" value={doneAt} onChange={e => setDoneAt(e.target.value)} className="rounded-xl border border-gray-300 p-2 text-sm" />
             {doneAt && <button type="button" onClick={() => setDoneAt('')} className="text-xs font-semibold text-gray-500">Clear</button>}
           </div>
-          <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
+          <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (a reason is needed for Not done)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
         </>)}
         {err && <p className="text-sm text-red-600">{err}</p>}
         {t.kind === 'tap' && isToday && !ev && (
           <div className="flex gap-2">
             <button type="button" disabled={busy} onClick={() => void record('Done')} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Done now</button>
-            <button type="button" disabled={busy} onClick={() => void record('Not done')} className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white disabled:opacity-40">Not done</button>
+            <button type="button" disabled={busy} onClick={() => { if (note.trim().length < 4) { setErr('Write why it could not be done, then press Not done.'); return } void record('Not done') }} className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white disabled:opacity-40">Not done</button>
           </div>
         )}
+        {canEdit && ev?.value === 'Not done' && !ev.extra?.overruled && isToday && <button type="button" disabled={busy} onClick={() => void patch({ overrule: true }, 'Reason rejected: it will cost a point if still undone')} className="w-full rounded-xl bg-red-600 py-3 text-base font-bold text-white disabled:opacity-40">Reject this reason (counts as missed)</button>}
         {t.kind !== 'tap' && editableEv && <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}
         {t.kind === 'tap' && editableEv && (<>
           <button type="button" disabled={busy} onClick={() => void patch({}, 'Saved')} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save changes</button>
@@ -268,7 +269,7 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
 function PropsSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; onClose: () => void; onSaved: (m: string) => void }) {
   const [props, setProps] = useState<Prop[] | null>(null)
   const [editing, setEditing] = useState(false)
-  const { busy, err, run } = useRun(onSaved, onClose)
+  const { busy, err, setErr, run } = useRun(onSaved, onClose)
   useEffect(() => {
     fetch('/api/properties').then(r => r.json()).then((d: unknown) => setProps(Array.isArray(d) ? d as Prop[] : [])).catch(() => setProps([]))
   }, [])
@@ -439,7 +440,7 @@ function AnswerForm({ t, present, onSaved, onClose }: { t: CheckTile; present: s
   const [up, setUp] = useState(false)
   const [persons, setPersons] = useState<Record<string, 'ok' | 'not'>>({})
   const [localErr, setLocalErr] = useState('')
-  const { busy, err, run } = useRun(onSaved, onClose)
+  const { busy, err, setErr, run } = useRun(onSaved, onClose)
   const behaviour = t.log_category === 'team_behaviour_log'
   async function pickPhoto(f: File) {
     setUp(true); setLocalErr('')
@@ -511,7 +512,7 @@ function AdhocForm({ onClose, onSaved }: { onClose: () => void; onSaved: (m: str
   const [photo, setPhoto] = useState<string | null>(null)
   const [up, setUp] = useState(false)
   const [localErr, setLocalErr] = useState('')
-  const { busy, err, run } = useRun(onSaved, onClose)
+  const { busy, err, setErr, run } = useRun(onSaved, onClose)
   async function pick(f: File) {
     setUp(true); setLocalErr('')
     try {

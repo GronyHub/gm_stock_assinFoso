@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     const logs: { notes: string | null; photo: string | null; about: string | null }[] = []
     let problem = ''
 
+    // "Not done" is an honest report, not a way out: it needs a reason, and only a reason excuses the day-end point.
+    if (b.value === 'Not done' && (note ?? '').trim().length < 4) return badRequest('Write why it could not be done.')
+
     if (b.value !== 'Not done') {
       if (t.kind === 'question') {
         const answer = b.answer === 'issue' ? 'issue' : 'ok'

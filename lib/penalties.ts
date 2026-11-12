@@ -167,7 +167,7 @@ export async function dayEndAssess(day = dayKey()) {
   if (!clock.everIn.length) return
   // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law). Who carries it is the law's "Who does it".
   const tiles = await sql`SELECT id, title, days, assignment, time, minutes, frequency, kind FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
-  const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND value = 'Done'` as unknown as { tile_id: number }[]
+  const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND (value = 'Done' OR (value = 'Not done' AND LENGTH(TRIM(COALESCE(note, ''))) >= 4 AND COALESCE(extra->>'overruled', '') <> 'true'))` as unknown as { tile_id: number }[]
   const doneSet = new Set(done.map(d => d.tile_id))
   const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id))
   if (!missed.length) return
