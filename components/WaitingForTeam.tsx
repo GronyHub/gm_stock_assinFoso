@@ -30,7 +30,8 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   // Filter by person: on Today anyone can; on other dates only the people the signed-in supervisor may look at.
   const [who, setWho] = useState('')
   const [viewable, setViewable] = useState<string[]>([])
-  useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setViewable(Array.isArray(d?.people) ? d.people : [])).catch(() => {}) }, [])
+  const [self, setSelf] = useState('')
+  useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { setViewable(Array.isArray(d?.people) ? d.people : []); setSelf(String(d?.self ?? '')) }).catch(() => {}) }, [])
   const [sel, setSel] = useState(today)
   const [ahead, setAhead] = useState(31)
   const [fduties, setFduties] = useState<Duty[] | null>(null)
@@ -60,7 +61,8 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const past: string[] = []
   for (let d = addDays(today, -1); d >= CHECKLIST_START && past.length < 60; d = addDays(d, -1)) past.unshift(d)
   const dates = [...past, today, ...Array.from({ length: ahead }, (_, i) => addDays(today, i + 1))]
-  const chipNames = sel === today ? ACTIVE_STAFF.filter(n => n !== 'grony') : viewable
+  // Everyone who can have a duty gets a chip: on Today every active person (the owner has decisions and approvals too); on other dates you and the people you may look at.
+  const chipNames = sel === today ? [...ACTIVE_STAFF] : ACTIVE_STAFF.filter(n => n === self || viewable.includes(n))
   const person = who && chipNames.includes(who) ? who : ''
   // With a person chosen, only what falls on them (and what is for everyone).
   const mine = (d: Duty) => !person || d.owner === person || (d.owner === null && (d.kind === 'oneoff' || d.kind === 'periodic' || d.kind === 'job'))

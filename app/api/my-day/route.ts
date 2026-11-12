@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const user = session.user as { username?: string | null; name?: string | null; role?: string | null }
     const q = req.nextUrl.searchParams
     if (q.get('team')) return success(await teamNotDone(user))
-    if (q.get('people')) return success({ people: viewablePeople(user) })
+    if (q.get('people')) return success({ people: viewablePeople(user), self: actorKey(user as never) })
     // ?counts=1: for a supervisor, how many things wait for each person they may look at (shown as a count on their avatar)
     if (q.get('counts')) {
       const out: Record<string, { total: number; now: number }> = {}
