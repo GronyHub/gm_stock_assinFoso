@@ -43,6 +43,9 @@ export default function TodoAhead() {
   const keep = (i: AheadItem) => !filter || (filter === 'oneoff' ? i.kind === 'oneoff' : i.freq === filter)
   const shown = days.map(d => ({ ...d, items: d.items.filter(keep) })).filter(d => d.items.length)
   const minDate = new Date().toISOString().slice(0, 10)
+  // One date open at a time: the one tapped in the strip (the first day by default).
+  const [sel, setSel] = useState('')
+  const cur = shown.find(d => d.date === sel) ?? shown[0]
   return (
     <div className="mt-4 space-y-2">
       <div className="flex items-center gap-2">
@@ -62,14 +65,25 @@ export default function TodoAhead() {
         </div>
       )}
       <div className="flex flex-wrap gap-1">{FILTERS.map(([k, label]) => <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>)}</div>
-      {shown.map(d => (
-        <div key={d.date} className="rounded-xl border border-gray-200 bg-white">
+      {shown.length > 0 && (
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pick a date">
+          {shown.map(d => { const dt = new Date(d.date + 'T00:00:00Z'); const on = cur?.date === d.date
+            return (
+              <button key={d.date} type="button" role="tab" aria-selected={on} onClick={() => setSel(d.date)} title={dateLabel(d.date)}
+                className={`flex w-9 shrink-0 select-none flex-col items-center rounded-md border py-0.5 leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : 'border-gray-300 bg-white text-gray-800'}`}>
+                <span className={`text-[7px] font-bold uppercase ${on ? 'text-blue-200' : 'text-gray-500'}`}>{dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
+                <span className="text-[13px] font-extrabold">{dt.getUTCDate()}</span>
+                <span className={`text-[7px] font-bold ${on ? 'text-blue-200' : 'text-gray-400'}`}>{dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</span>
+              </button>) })}
+        </div>)}
+      {cur && (
+        <div key={cur.date} className="rounded-xl border border-gray-200 bg-white">
           <div className="flex flex-wrap items-center gap-x-3 rounded-t-xl bg-[#14213D] px-3 py-1.5 text-white">
-            <p className="text-sm font-bold">{dateLabel(d.date)}</p>
-            {d.rota && <p className="text-[11px] text-blue-200">{d.rota.opener ? `Opener ${nm(d.rota.opener)}` : ''}{d.rota.opener && d.rota.closer ? ' · ' : ''}{d.rota.closer ? `Closer ${nm(d.rota.closer)}` : ''}</p>}
+            <p className="text-sm font-bold">{dateLabel(cur.date)}</p>
+            {cur.rota && <p className="text-[11px] text-blue-200">{cur.rota.opener ? `Opener ${nm(cur.rota.opener)}` : ''}{cur.rota.opener && cur.rota.closer ? ' · ' : ''}{cur.rota.closer ? `Closer ${nm(cur.rota.closer)}` : ''}</p>}
           </div>
           <div className="space-y-2 p-2">
-            {BANDS.map(b => { const rows = d.items.filter(i => i.band === b.key); if (!rows.length) return null; return (
+            {BANDS.map(b => { const rows = cur.items.filter(i => i.band === b.key); if (!rows.length) return null; return (
               <div key={b.key}>
                 <p className="mb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
                 <div className="grid grid-cols-6 gap-1">{rows.map(i => {
@@ -84,7 +98,7 @@ export default function TodoAhead() {
                 })}</div>
               </div>) })}
           </div>
-        </div>))}
+        </div>)}
       {!loading && !shown.length && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {filter ? 'of that kind ' : ''}in the coming days.</p>}
       {loading && <p className="text-sm text-gray-400">Loading…</p>}
       {!loading && days.length > 0 && <button type="button" onClick={() => void load(new Date(new Date(days[days.length - 1].date + 'T00:00:00Z').getTime() + 86400000).toISOString().slice(0, 10), true)} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Show 31 more days</button>}
