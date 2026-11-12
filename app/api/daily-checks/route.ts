@@ -1,5 +1,6 @@
 import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
-import { dutiesForDate } from '@/lib/duties'
+import { allDutiesForDate } from '@/lib/duties'
+import { dutyViewer } from '@/lib/myDay'
 import { unmetConditions } from '@/lib/tileConditions'
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     const me = actorKey(session.user as any)
     const exempt = (session.user as { role?: string })?.role === 'owner'
     // Who each task falls on and how it stands, from the same calculation Waiting for me reads.
-    const duties = await dutiesForDate(day)
+    const duties = await allDutiesForDate(day, dutyViewer(session.user as never))
     return success({ day, today, tiles, duties, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present, opener: clock.opener, closer: clock.lastOut })
   } catch (e) { return handleError('daily-checks GET', e) }
 }

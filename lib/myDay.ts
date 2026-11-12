@@ -11,7 +11,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { pendingJobCounts } from '@/lib/pendingJobs'
-import { dutiesForDate, type Duty } from '@/lib/duties'
+import { dutiesForDate, standingRowsAll, allDutiesForDate, type Duty } from '@/lib/duties'
 import { canLogAgainst } from '@/lib/violationLog'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
@@ -26,6 +26,12 @@ const safe = async <T,>(f: () => Promise<T>, d: T): Promise<T> => { try { return
 export function viewablePeople(user: { username?: string | null; name?: string | null; role?: string | null } | undefined): string[] {
   const self = String(user?.username ?? user?.name ?? '').toLowerCase()
   return ACTIVE_STAFF.filter(n => n !== self && canLogAgainst(user as never, n) && (n !== 'grony' || self === 'grony'))
+}
+
+// Who the viewer may see standing duties of: themselves and the people they supervise (the owner: everyone).
+export function dutyViewer(user: { username?: string | null; name?: string | null; role?: string | null } | undefined) {
+  const self = String(user?.username ?? user?.name ?? '').toLowerCase(), ok = new Set([self, ...viewablePeople(user)])
+  return { includeManagerLaws: isOwnerLevel(user as never), canSee: (p: string) => isOwnerLevel(user as never) || ok.has(p) }
 }
 
 // `viewing` = a supervisor is looking at someone else's list: only that person's own matters are shown, never the supervisor's decisions.
@@ -57,6 +63,11 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const me1 = me.charAt(0).toUpperCase() + me.slice(1)
   const tile = (i: MyDayItem) => { const full = { ...i, who: me1, category: i.category ?? 'Standing duty', type: i.type ?? STANDING_TYPE[i.key] }; add(i.count > 0 ? full : { ...full, state: 'done', clear: true, detail: 'Nothing waiting.', urgency: 'later' }, true) }
   const add = (i: MyDayItem | null, keep = false) => { if (i && (i.count > 0 || keep)) items.push(i) }
+
+  // The standing duties (laws, quizzes, CCTV, decisions) come from the same rows Waiting for team shows for every person.
+  const standAll = await standingRowsAll()
+  const stand = standAll.filter(x => x.person === me)
+  const leftOf = (k: 'sign' | 'quiz' | 'cctv' | 'approve') => stand.filter(x => x.kind === k).reduce((a, x) => a + x.n - x.done, 0)
 
   if (isStaff && me !== 'grony') {
     // clock-out and clock-in matters
@@ -97,15 +108,14 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
 
   if (isStaff) {
     // laws to sign, quizzes, login reminders (each has a due date: see standingRows)
-    const stand = await standingRows(me, { manager, staffDuties: me !== 'grony', decider: false })
     const dueText = (k: 'sign' | 'quiz') => { const r = stand.filter(x => x.kind === k); const over = r.filter(x => x.due < day).reduce((a, x) => a + x.n - x.done, 0), now = r.filter(x => x.due === day).reduce((a, x) => a + x.n - x.done, 0); return `${over} overdue · ${now} due today.` }
     const unsigned = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(l.id) AS first FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
       AND NOT EXISTS (SELECT 1 FROM law_signatures s WHERE s.law_id = l.id AND s.staff = ${me})`, [{ n: 0 }])
-    tile({ key: 'sign', icon: '✍', title: 'Company Laws to sign', detail: `${dueText('sign')} Each is due 24 hours after it goes live.`, count: Number(unsigned[0].n), urgency: me === 'grony' ? 'later' : 'soon', // the owner is not bound by the laws, so this never inflates the bar
+    tile({ key: 'sign', icon: '✍', title: 'Company Laws to sign', detail: `${dueText('sign')} Each is due 24 hours after it goes live.`, count: leftOf('sign'), urgency: me === 'grony' ? 'later' : 'soon', // the owner is not bound by the laws, so this never inflates the bar
       href: unsigned[0].first ? `/laws?law=${unsigned[0].first}&sign=1` : '/laws?sign=1' })
     const quiz = await safe(() => sql`SELECT l.id FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${manager}))
       AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75) ORDER BY l.id`, [] as { id: number }[])
-    tile({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: `${dueText('quiz')} Pass each quiz (75% or more) within 7 days of its law going live.`, count: quiz.length, urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
+    tile({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: `${dueText('quiz')} Pass each quiz (75% or more) within 7 days of its law going live.`, count: leftOf('quiz'), urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
     const pj = await safe(() => pendingJobCounts(), { open: 0, ready: 0, overdue: 0 })
     tile({ key: 'pending-jobs', icon: '🧾', title: 'Pending jobs overdue', detail: `${pj.overdue} job${pj.overdue === 1 ? '' : 's'} customers left ${pj.overdue === 1 ? 'is' : 'are'} past the promised date. Finish it, or call the customer.`, count: pj.overdue, urgency: 'now', href: '/pending-jobs' })
     const mt = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(due_date) AS first_due FROM custom_tasks WHERE LOWER(assigned_to) = ${me} AND NOT done AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${day})`, [{ n: 0, first_due: null }])
@@ -122,7 +132,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const decider = owner || (!!opts.viewing && (me === 'joe' || me === 'grony'))
   if (decider) {
     const claims = await safe(() => sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> ${me} AND COALESCE(against, '') <> ${me}`, [{ n: 0 }])
-    tile({ key: 'claims', icon: '🕐', title: 'Clock times to approve', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out.', count: Number(claims[0].n), urgency: 'soon', hub: 'waiting' })
+    tile({ key: 'claims', icon: '🕐', title: 'Clock times to approve', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out.', count: leftOf('approve'), urgency: 'soon', hub: 'waiting' })
     const sanc = await safe(() => sql`SELECT staff FROM penalty_sanctions WHERE status = 'proposed'`, [] as { staff: string }[])
     tile({ key: 'sanctions', icon: '⚖', title: 'Sanctions to approve', detail: 'A staff member reached a points level.', count: sanc.filter(s => canDecideFor(me, String(s.staff))).length, urgency: 'soon', href: '/penalties' })
     const viol = await safe(() => sql`SELECT staff FROM staff_penalties WHERE status IN ('pending', 'disputed')`, [] as { staff: string }[])
@@ -132,7 +142,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   }
   if (me === 'joe') {
     const r = await safe(() => sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`, [{ n: 0 }])
-    tile({ key: 'cctv', icon: '🎥', title: 'CCTV reviews to do', detail: opts.viewing ? 'Days staff worked while Joe was not clocked in. Due within 48 hours.' : 'Days staff worked while you were not clocked in. Due within 48 hours.', count: Number(r[0].n), urgency: 'now', href: '/cctv-review' })
+    tile({ key: 'cctv', icon: '🎥', title: 'CCTV reviews to do', detail: opts.viewing ? 'Days staff worked while Joe was not clocked in. Due within 48 hours.' : 'Days staff worked while you were not clocked in. Due within 48 hours.', count: leftOf('cctv'), urgency: 'now', href: '/cctv-review' })
   }
   const order = { now: 0, soon: 1, later: 2 }
   const isTask = (i: MyDayItem) => i.key.startsWith('task-') || i.key === 'tasks-more'
@@ -154,61 +164,22 @@ export async function teamNotDone(user: unknown): Promise<{ items: MyDayItem[]; 
   return { items: [...byKey.values()].sort((a, b) => ({ now: 0, soon: 1, later: 2 }[a.urgency] - { now: 0, soon: 1, later: 2 }[b.urgency])), who }
 }
 
-// One person's checklist duties on any other date: an earlier day (done, marked not done, or missed) or a day ahead (planned from the rota). Today is myDay().
-export async function personDay(me: string, date: string, user?: unknown): Promise<MyDayItem[]> {
-  const standing = await standingForDate(me, user, date).catch(() => [] as MyDayItem[])
-  return [...standing, ...(await personDayTasks(me, date))]
-}
-async function personDayTasks(me: string, date: string): Promise<MyDayItem[]> {
-  const todayKey = today()
-  if (date === todayKey) return []
+// One person's duties on any other date, from the same calculation Waiting for team reads: an earlier day (done, marked not done, or missed) or a day ahead.
+// Today is myDay(), which adds the personal items that have no date.
+const KIND_ICON: Record<string, string> = { task: '✅', periodic: '🔁', oneoff: '📌', job: '🧾', standing: '📋' }
+export async function personDay(me: string, date: string, _user?: unknown): Promise<MyDayItem[]> {
+  if (date === today()) return []
   const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
-  const mine = (await dutiesForDate(date)).filter(d => d.owner === me)
+  const all = await allDutiesForDate(date, { includeManagerLaws: true, canSee: p => p === me })
+  // Duties for everyone (a one-off for the whole team, a weekly law nobody is named for) are on each person's list too.
+  const mine = all.filter(d => d.owner === me || (d.owner === null && (d.kind === 'oneoff' || d.kind === 'periodic' || d.kind === 'job')))
   return mine.map(d => {
-    const hh = `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}`
-    const base = { title: d.title, time: hh, who: cap1(me), category: d.category ?? undefined, type: lawTypeLabel(d.lawType), count: 0, urgency: 'later' as const }
-    if (d.state === 'plan') return { key: `plan-${d.id}`, icon: '🕘', detail: `Planned for ${d.time}.`, ...base }
-    if (d.state === 'done') return { key: `day-${d.id}`, icon: '✅', state: 'done' as const, detail: `Done by ${cap1(d.by ?? me)} at ${d.at}.`, ...base }
-    if (d.state === 'no') return { key: `day-${d.id}`, icon: '➖', state: 'not' as const, detail: `Marked not done by ${cap1(d.by ?? me)} at ${d.at}: ${d.note}`, ...base }
-    return { key: `day-${d.id}`, icon: '❌', state: 'miss' as const, detail: 'Not done at all.', ...base }
-  })
-}
-
-// Standing duties have due dates too: a law is due to be signed 24 hours after it goes live, its quiz 7 days after, a CCTV review and a decision 48 hours after they were raised.
-// Rows are grouped by the date they fall due, with how many of them are already done.
-type StandingRow = { kind: 'sign' | 'quiz' | 'cctv' | 'approve'; due: string; n: number; done: number }
-export async function standingRows(me: string, opts: { manager: boolean; staffDuties: boolean; decider: boolean }): Promise<StandingRow[]> {
-  const out: StandingRow[] = []
-  if (opts.staffDuties) {
-    const sign = await safe(() => sql`SELECT (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '24 hours')::date::text AS due, COUNT(*)::int AS n,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM law_signatures s WHERE s.law_id = l.id AND s.staff = ${me}))::int AS done
-      FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${opts.manager})) GROUP BY 1`, [] as { due: string; n: number; done: number }[])
-    for (const r of sign as unknown as { due: string; n: number; done: number }[]) out.push({ kind: 'sign', ...r })
-    const quiz = await safe(() => sql`SELECT (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '7 days')::date::text AS due, COUNT(*)::int AS n,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75))::int AS done
-      FROM page_laws l WHERE l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND ${opts.manager})) AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' GROUP BY 1`, [] as { due: string; n: number; done: number }[])
-    for (const r of quiz as unknown as { due: string; n: number; done: number }[]) out.push({ kind: 'quiz', ...r })
-  }
-  if (me === 'joe') {
-    const cctv = await safe(() => sql`SELECT (created_at + interval '48 hours')::date::text AS due, COUNT(*)::int AS n, COUNT(*) FILTER (WHERE status <> 'pending')::int AS done FROM cctv_reviews GROUP BY 1`, [] as { due: string; n: number; done: number }[])
-    for (const r of cctv as unknown as { due: string; n: number; done: number }[]) out.push({ kind: 'cctv', ...r })
-  }
-  if (opts.decider) {
-    const ap = await safe(() => sql`SELECT (requested_at + interval '48 hours')::date::text AS due, COUNT(*)::int AS n, COUNT(*) FILTER (WHERE status <> 'pending')::int AS done FROM clock_corrections WHERE staff <> ${me} GROUP BY 1`, [] as { due: string; n: number; done: number }[])
-    for (const r of ap as unknown as { due: string; n: number; done: number }[]) out.push({ kind: 'approve', ...r })
-  }
-  return out
-}
-const STANDING_TITLE = { sign: ['✍', 'Company Laws to sign', 'Law'], quiz: ['📝', 'Law quizzes to pass', 'Law'], cctv: ['🎥', 'CCTV reviews to do', 'Review'], approve: ['🕐', 'Clock times to approve', 'Decision'] } as const
-
-// The standing duties that fall due on one date, as tiles (done / not done at all / planned).
-export async function standingForDate(me: string, user: unknown, date: string): Promise<MyDayItem[]> {
-  const todayKey = today()
-  const rows = (await standingRows(me, { manager: isManagerName(me), staffDuties: SIGNERS.includes(me) && me !== 'grony', decider: isOwnerLevel(user as never) || me === 'joe' || me === 'grony' })).filter(r => r.due === date)
-  return rows.filter(r => r.n > 0).map(r => {
-    const [icon, title, kind] = STANDING_TITLE[r.kind], left = r.n - r.done
-    const base = { key: `standing-${r.kind}-${date}`, icon, title, time: 'due', who: me.charAt(0).toUpperCase() + me.slice(1), category: 'Standing duty', type: kind, count: 0, urgency: 'later' as const }
-    if (date > todayKey) return { ...base, detail: `${r.n} fall${r.n === 1 ? 's' : ''} due on this day.` }
-    return left === 0 ? { ...base, state: 'done' as const, detail: `All ${r.n} done.` } : { ...base, state: 'miss' as const, detail: `${left} of ${r.n} not done.` }
+    const hh = d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}` : d.time || undefined
+    const base = { key: `${d.state}-${d.key}`, title: d.title, time: hh, who: cap1(me), category: d.category ?? undefined, type: d.typeLabel ?? lawTypeLabel(d.lawType), count: 0, urgency: 'later' as const }
+    const by = d.by ? cap1(d.by) : cap1(me)
+    if (d.state === 'plan') return { ...base, icon: '🕘', detail: d.detail ?? (d.kind === 'task' ? `Planned for ${hh}.` : 'Planned.') }
+    if (d.state === 'done') return { ...base, icon: KIND_ICON[d.kind] ?? '✅', state: 'done' as const, detail: d.detail ?? `Done by ${by}${d.at ? ` at ${d.at}` : ''}.` }
+    if (d.state === 'no') return { ...base, icon: '➖', state: 'not' as const, detail: `Marked not done by ${by}${d.at ? ` at ${d.at}` : ''}: ${d.note}` }
+    return { ...base, icon: '❌', state: 'miss' as const, detail: d.detail ?? 'Not done at all.' }
   })
 }

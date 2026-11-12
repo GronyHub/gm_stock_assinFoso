@@ -56,8 +56,11 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const [clock, setClock] = useState(() => nowHM())
   useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
   // Who a task falls on and how it stands come from the server (the same duties calculation Waiting for me reads).
-  const dutyOf = new Map(duties.map(d => [d.id, d]))
-  const whoOf = (t: { id: number }) => { const d = dutyOf.get(t.id); return d ? (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone') : 'Everyone' }
+  const whoOfDuty = (d: Duty) => (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
+  // A duty with a task behind it opens that task; the rest (standing duties, one-offs, jobs) are information.
+  const tileOf = (d: Duty) => (d.kind === 'task' || d.kind === 'periodic' ? tiles.find(t => t.id === d.id) : undefined)
+  const mineOrDid = (d: Duty) => !person || d.owner === person.toLowerCase() || d.by?.toLowerCase() === person.toLowerCase()
+  const typeOf = (d: Duty) => d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label
   const [pastFilter, setPastFilter] = useState<'all' | 'done' | 'no' | 'miss'>('all')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
@@ -119,12 +122,12 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const locked = isToday && !clockedIn
   // Shown only once the chosen day has loaded (switching dates must not flash the previous day).
   const settling = (dayParam !== null && day !== dayParam) || (dayParam === null && !!today && day !== today)
-  const pastDuties = !isToday ? duties.map(d => ({ t: tiles.find(t => t.id === d.id), d })).filter((x): x is { t: CheckTile; d: Duty } => !!x.t && (!person || x.d.owner === person.toLowerCase() || x.d.by?.toLowerCase() === person.toLowerCase())) : []
+  const pastDuties = !isToday ? duties.filter(d => (d.kind !== 'task' || !!tileOf(d)) && mineOrDid(d)) : []
   const [showLate, setShowLate] = useState(false)
   const [todayFilter, setTodayFilter] = useState<'all' | 'waiting' | 'overdue' | 'done'>('all')
   // Every timed task of today in time order, each with how it stands (the server's duties).
-  const dayList = isToday ? duties.filter(d => tiles.some(t => t.id === d.id)).filter(d => !person || d.owner === person.toLowerCase() || d.by?.toLowerCase() === person.toLowerCase())
-    .map(d => ({ t: tiles.find(t => t.id === d.id)!, st: (d.state === 'done' || d.state === 'no' || d.state === 'late' || d.state === 'now' ? d.state : 'later') as 'done' | 'no' | 'late' | 'now' | 'later', d })) : []
+  const dayList = isToday ? duties.filter(d => (d.kind !== 'task' || !!tileOf(d)) && mineOrDid(d))
+    .map(d => ({ d, st: (d.state === 'done' || d.state === 'no' || d.state === 'late' || d.state === 'now' ? d.state : 'later') as 'done' | 'no' | 'late' | 'now' | 'later' })) : []
 
   return (
     <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'} onClick={e => {
@@ -144,14 +147,15 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       {!settling && !isToday && day && (
         <div className="space-y-2 px-3">
           <div className="flex flex-wrap gap-1">
-            {([['all', 'Everything', pastDuties.length], ['done', 'Done', pastDuties.filter(x => x.d.state === 'done').length], ['no', 'Marked not done', pastDuties.filter(x => x.d.state === 'no').length], ['miss', 'Not done at all', pastDuties.filter(x => x.d.state === 'miss').length]] as const).map(([k, label, n]) => (
+            {([['all', 'Everything', pastDuties.length], ['done', 'Done', pastDuties.filter(x => x.state === 'done').length], ['no', 'Marked not done', pastDuties.filter(x => x.state === 'no').length], ['miss', 'Not done at all', pastDuties.filter(x => x.state === 'miss').length]] as const).map(([k, label, n]) => (
               <button key={k} type="button" onClick={() => setPastFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
           </div>
           <div className={tileGrid(density)}>
-            {pastDuties.filter(x => pastFilter === 'all' || x.d.state === pastFilter).map(({ t, d }) => (
-              <TaskTile key={t.id} density={density} time={fmt(d.due)} title={t.title} who={d.by ? nm(d.by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
-                detail={d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'} onClick={() => setSheet(t)} />))}
+            {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
+              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
+                detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} />))}
           </div>
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
@@ -176,10 +180,11 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {!person && <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} closer={roles.closer} />{extras}</div>}
           {person && dayList.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-xs font-semibold text-gray-600">Nothing falls on {nm(person)} today yet. Tasks are shared out by the rota once they are at work.</p>}
           <div className={tileGrid(density)}>
-            {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ t, st, d }) => (
-              <TaskTile key={t.id} density={density} time={fmt(d.due)} title={t.title} who={d.by ? nm(d.by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
-                detail={d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
-                tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'} onClick={() => setSheet(t)} />
+            {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
+              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
+                detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
+                tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} />
             ))}
           </div>
         </div>
