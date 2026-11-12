@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const absences = await sql`
     SELECT staff_name, start_date::text AS start_date, end_date::text AS end_date
     FROM staff_absences
-    WHERE start_date <= ${lastDay} AND end_date >= ${firstDay}
+    WHERE COALESCE(absence_type, '') <> 'late' AND start_date <= ${lastDay} AND end_date >= ${firstDay}
   `
 
   function isAbsent(staff: string, dateStr: string): boolean {

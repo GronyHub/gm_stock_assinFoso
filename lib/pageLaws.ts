@@ -91,6 +91,7 @@ async function ensureCompanyLawsImpl() {
   await (await import('./lawDraftsMore')).seedMoreLaws()
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
   await seedSanctionsLaw()
+  await seedAttendanceLaw()
   await seedCashLaws()
   await seedFlagLaws()
   await approveOnce('flags-v1', 'The owner asked for the flag laws and checks')
@@ -401,6 +402,20 @@ async function assignmentFromAudienceOnce() {
     await sql`UPDATE page_laws SET assignment = 'managers' WHERE audience = 'managers' AND assignment = 'all'`
     await sql`UPDATE daily_check_tiles SET assignment = 'managers' WHERE law_id IN (SELECT id FROM page_laws WHERE assignment = 'managers')`.catch(() => {})
   } catch (e) { console.error('assignment migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+async function seedAttendanceLaw() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'attendance-v1'`
+    if (n > 0) return
+    const violations = [
+      { text: 'Late for the rostered start (more than 10 minutes) without telling the shop in the app first', points: 1, by: 'staff', record: 'Added automatically at day end from the rota and the clock', how: 'Open Times and tell the shop you will be late, with the time you expect to arrive, before you arrive.' },
+      { text: 'Absent on a rostered day without telling the shop in the app first', points: 2, by: 'staff', record: 'Added automatically at day end from the rota and the clock', how: 'Open Times and report the absence before your shift starts.' },
+    ]
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, dos, donts, status, seed, points, violations, title)
+      VALUES ('Staff management', ${'Lateness and absence: if you will be late or absent, tell the shop in the app (Times) before you arrive late or before your shift starts. Late without telling costs 1 penalty point. Absent without notice costs 2 penalty points. Telling the shop in time costs nothing.'},
+              false, 'law', 'Staff management', 'Attendance', 'standing', ${'Report lateness in Times with the time you expect to arrive\nReport an absence before your shift starts'}, ${'Arrive late or stay away without telling the shop'}, 'live', 'attendance-v1', 1, ${JSON.stringify(violations)}, 'Tell the shop if you are late or absent')`
+  } catch (e) { console.error('attendance law seed failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 async function seedSanctionsLaw() {

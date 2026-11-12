@@ -7,7 +7,6 @@ import CaretakerGuard from '@/components/CaretakerGuard'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
-import ServiceStrip from '@/components/ServiceStrip'
 import WaitingBar from '@/components/WaitingBar'
 import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
@@ -45,7 +44,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     <div className="min-h-screen flex flex-col">
       <div className="print:hidden no-frame">
         <ImpersonationBar />
-        <ServiceStrip mobile />
         <Nav />
       </div>
       <MainContainer>{children}</MainContainer>

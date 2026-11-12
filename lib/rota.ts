@@ -10,7 +10,7 @@ export async function rotaRolesBetween(from: string, to: string): Promise<Record
     const rows = await sql`SELECT LOWER(staff_name) AS n, rota_date::text AS d, sched_in, sched_out, role FROM staff_rota
       WHERE rota_date BETWEEN ${from}::date AND ${to}::date AND NOT COALESCE(is_off, false) AND staff_name <> '__shop_open__'` as unknown as { n: string; d: string; sched_in: string | null; sched_out: string | null; role: string | null }[]
     // Someone who has reported an absence for the day is not the Opener or the Closer.
-    const abs = await sql`SELECT LOWER(staff_name) AS n, start_date::text AS s, end_date::text AS e FROM staff_absences WHERE end_date >= ${from}::date AND start_date <= ${to}::date`.catch(() => []) as unknown as { n: string; s: string; e: string }[]
+    const abs = await sql`SELECT LOWER(staff_name) AS n, start_date::text AS s, end_date::text AS e FROM staff_absences WHERE COALESCE(absence_type, '') <> 'late' AND end_date >= ${from}::date AND start_date <= ${to}::date`.catch(() => []) as unknown as { n: string; s: string; e: string }[]
     const away = (n: string, d: string) => abs.some(a => a.n === n && a.s <= d && a.e >= d)
     const byDay = new Map<string, typeof rows>()
     for (const r of rows) { if (away(r.n, r.d)) continue; if (!byDay.has(r.d)) byDay.set(r.d, []); byDay.get(r.d)!.push(r) }

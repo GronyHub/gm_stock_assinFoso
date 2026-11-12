@@ -241,12 +241,12 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   const [viewMode, setViewMode] = useState<'all' | 'future' | 'past'>('all')
   const [optsOpen, setOptsOpen] = useState(false)
   const [absOpen, setAbsOpen] = useState(false)
-  const [absForm, setAbsForm] = useState({ from: '', to: '', reason: '' })
+  const [absForm, setAbsForm] = useState({ type: 'absent' as 'absent' | 'late', from: '', to: '', expected: '', reason: '' })
   const [absMsg, setAbsMsg] = useState('')
   const [absences, setAbsences] = useState<{ staff_name: string; start_date: string; end_date: string }[]>([])
   useEffect(() => { fetch('/api/shop-settings').then(r => r.ok ? r.json() : null).then(d => d?.times && setDisplay(d.times)).catch(() => {}) }, [])
   useEffect(() => { try { setOwnerSeeAll(localStorage.getItem('timesOwnerSeeAll') === '1') } catch { /* private window */ } }, [])
-  const loadAbsences = () => fetch('/api/rota/absences').then(r => r.ok ? r.json() : []).then(d => setAbsences(Array.isArray(d) ? d : [])).catch(() => {})
+  const loadAbsences = () => fetch('/api/rota/absences').then(r => r.ok ? r.json() : []).then(d => setAbsences(Array.isArray(d) ? d.filter((a: { absence_type?: string | null }) => a.absence_type !== 'late') : [])).catch(() => {})
   useEffect(() => { void loadAbsences() }, [])
   async function saveDisplay(next: { hidden: string[]; hideEmpty: boolean }) {
     setDisplay(next)
@@ -254,10 +254,10 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   }
   async function reportAbsence() {
     setAbsMsg('')
-    const r = await fetch('/api/rota/absences/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: absForm.from, to: absForm.to || absForm.from, reason: absForm.reason }) })
+    const r = await fetch('/api/rota/absences/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: absForm.type, from: absForm.from, to: absForm.type === 'late' ? absForm.from : absForm.to || absForm.from, expected: absForm.expected, reason: absForm.reason }) })
     const j = await r.json().catch(() => ({}))
     if (!r.ok) { setAbsMsg(j.error ?? 'Could not report it.'); return }
-    setAbsMsg('Reported. Joe and the owner have been told.'); setAbsForm({ from: '', to: '', reason: '' }); void loadAbsences(); load()
+    setAbsMsg('Reported. Joe and the owner have been told.'); setAbsForm({ type: 'absent', from: '', to: '', expected: '', reason: '' }); void loadAbsences(); load()
   }
 
   const [mine, setMine] = useState<Mine>(null)
@@ -597,14 +597,17 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           </div>
           {absOpen && (
             <div className="mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
-              <p className="text-xs font-bold text-gray-900">Report an absence</p>
-              <p className="text-[11px] text-gray-600">Staff report an absence at least a day before it. If something happens on the day itself, tell Joe straight away.</p>
+              <p className="text-xs font-bold text-gray-900">Tell the shop: late or absent</p>
+              <div className="grid grid-cols-2 gap-1">
+                {(['late', 'absent'] as const).map(k => <button key={k} type="button" onClick={() => setAbsForm(f => ({ ...f, type: k }))} className={`rounded-lg py-1.5 text-xs font-bold ${absForm.type === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k === 'late' ? 'I will be late' : 'I will be absent'}</button>)}
+              </div>
+              <p className="text-[11px] text-gray-600">Tell the shop here before you arrive late or before your shift starts. Late without telling = 1 penalty point. Absent without notice = 2 points.</p>
               <div className="grid grid-cols-2 gap-2">
-                <label className="text-[11px] font-semibold text-gray-700">From<input type="date" min={ownerLevel ? undefined : new Date(Date.now() + 86400000).toISOString().slice(0, 10)} value={absForm.from} onChange={e => setAbsForm(f => ({ ...f, from: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
-                <label className="text-[11px] font-semibold text-gray-700">To (optional)<input type="date" min={absForm.from || undefined} value={absForm.to} onChange={e => setAbsForm(f => ({ ...f, to: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+                <label className="text-[11px] font-semibold text-gray-700">From<input type="date" min={ownerLevel ? undefined : new Date().toISOString().slice(0, 10)} value={absForm.from} onChange={e => setAbsForm(f => ({ ...f, from: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+                {absForm.type === 'late' ? <label className="text-[11px] font-semibold text-gray-700">I expect to arrive at<input type="time" value={absForm.expected} onChange={e => setAbsForm(f => ({ ...f, expected: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label> : <label className="text-[11px] font-semibold text-gray-700">To (optional)<input type="date" min={absForm.from || undefined} value={absForm.to} onChange={e => setAbsForm(f => ({ ...f, to: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>}
               </div>
               <input value={absForm.reason} onChange={e => setAbsForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
-              <button onClick={() => void reportAbsence()} disabled={!absForm.from} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Report it</button>
+              <button onClick={() => void reportAbsence()} disabled={!absForm.from || (absForm.type === 'late' && !absForm.expected)} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Report it</button>
               {absMsg && <p className="text-xs font-semibold text-gray-800">{absMsg}</p>}
             </div>
           )}

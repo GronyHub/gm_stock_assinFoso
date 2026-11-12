@@ -1,12 +1,14 @@
 import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
+import { ensureAbsenceColumns } from '@/lib/attendancePenalties'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await ensureAbsenceColumns()
   const rows = await sql`
-    SELECT id, staff_name, start_date::text, end_date::text, reason, absence_type
+    SELECT id, staff_name, start_date::text, end_date::text, reason, absence_type, expected_time
     FROM staff_absences ORDER BY start_date DESC
   `
   return NextResponse.json(rows)

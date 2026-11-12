@@ -71,7 +71,6 @@ export async function addPoint(a: Add) {
   void recordActivity(a.by ?? 'app', status === 'pending' ? 'logged a violation for confirmation' : 'added a penalty point', `${cap(staff)} (${points}): ${a.reason}`.slice(0, 240))
   if (status === 'active') {
     if (counted) await afterChange(staff, before, before + points)
-    else void pushToUsers([staff], 'Penalty point warning (learning period)', `${a.reason}. From ${(await getSettings()).startCounting} this will cost ${points} point${points === 1 ? '' : 's'}.`)
   }
   return row
 }
@@ -183,6 +182,14 @@ const claim = async (key: string) => (await sql`INSERT INTO penalty_claims (key)
 // Once a minute from instrumentation.ts; it only does anything at 08:20 (Monday prompt), 19:20 and 19:30.
 export async function penaltiesTick(now = new Date()) {
   if (process.env.PENALTIES === 'off') return
+  // One-time pilot start (2026-11-12): lateness and absence points are charged from yesterday, and every pilot point is practice that never counts;
+  // the real phase starts on Monday 2026-11-16.
+  await ensurePenalties()
+  if (await claim('attendance-pilot-2026-11-12')) {
+    await sql`INSERT INTO penalty_settings (key, value) VALUES ('start_counting', '2026-11-16') ON CONFLICT (key) DO UPDATE SET value = '2026-11-16'`.catch(() => {})
+    const { assessAttendance } = await import('@/lib/attendancePenalties')
+    await assessAttendance('2026-11-11').catch(e => console.error('attendance backfill failed:', e instanceof Error ? e.message : String(e)))
+  }
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
   const day = dayKey(now)
   if (!(await isShopDay(day))) return
@@ -198,6 +205,6 @@ export async function penaltiesTick(now = new Date()) {
       }
     }
   }
-  if (hm === '19:20') { await ensurePenalties(); if (await claim(`dayend:${day}`)) await dayEndAssess(day) }
+  if (hm === '19:20') { await ensurePenalties(); if (await claim(`dayend:${day}`)) { await dayEndAssess(day); await (await import('@/lib/attendancePenalties')).assessAttendance(day).catch(() => {}) } }
   if (hm === '19:30') { await ensurePenalties(); if (await claim(`fade:${day}`)) await fadeTick(day) }
 }
