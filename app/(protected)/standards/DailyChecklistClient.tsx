@@ -35,7 +35,7 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
-export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null, density = 'compact' }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null; density?: TileDensity }) {
+export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null, density = 'compact', person = '' }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null; density?: TileDensity; person?: string }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -56,6 +56,9 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
   // Who a task falls on: the person the rota names for a shared task, or its role (Opener / Closer) with the name, or Joe.
   const whoOf = (t: { id: number; assignment?: string }) => { const a = t.assignment ?? 'all'; return a === 'opener' ? `Opener${roles.opener ? ` · ${nm(roles.opener)}` : ''}` : a === 'closer' ? `Closer${roles.closer ? ` · ${nm(roles.closer)}` : ''}` : a === 'managers' ? 'Joe' : alloc[t.id] ? nm(alloc[t.id]) : 'Everyone' }
+  // The one person a task falls on (lower case), or null when it is not yet known.
+  const ownerOf = (t: { id: number; assignment?: string }) => { const a = t.assignment ?? 'all'; return a === 'opener' ? roles.opener : a === 'closer' ? roles.closer : a === 'managers' ? 'joe' : alloc[t.id] ?? null }
+  const [pastFilter, setPastFilter] = useState<'all' | 'done' | 'no' | 'miss'>('all')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const held = useRef(false)
 
@@ -126,7 +129,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
     const mins = clock - dueOf(t.id)
     const st = valid ? (ev!.value === 'Done' ? 'done' : 'no') : dayStart == null ? 'later' : mins >= 15 ? 'late' : mins >= 0 ? 'now' : 'later'
     return { t, st: st as 'done' | 'no' | 'late' | 'now' | 'later', ev: valid ? ev : undefined }
-  }) : []
+  }).filter(x => !person || (ownerOf(x.t)?.toLowerCase() === person.toLowerCase()) || x.ev?.recorded_by?.toLowerCase() === person.toLowerCase()) : []
 
   return (
     <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'} onClick={e => {
@@ -145,9 +148,13 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       {settling && !error && <p className="px-3 text-sm text-gray-400">Loading…</p>}
       {!settling && !isToday && day && (
         <div className="space-y-2 px-3">
-          <p className="text-[11px] text-gray-500">{pastTiles.filter(t => latest(t)?.value === 'Done').length} done · {pastTiles.filter(t => latest(t)?.value === 'Not done').length} marked not done · {pastTiles.filter(t => !latest(t)).length} not done at all</p>
+          <div className="flex flex-wrap gap-1">
+            {([['all', 'Everything', pastTiles.length], ['done', 'Done', pastTiles.filter(t => latest(t)?.value === 'Done').length], ['no', 'Marked not done', pastTiles.filter(t => latest(t)?.value === 'Not done').length], ['miss', 'Not done at all', pastTiles.filter(t => !latest(t)).length]] as const).map(([k, label, n]) => (
+              <button key={k} type="button" onClick={() => setPastFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+            ))}
+          </div>
           <div className={tileGrid(density)}>
-            {pastTiles.map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'
+            {pastTiles.filter(t => { const e = latest(t); return pastFilter === 'all' || (pastFilter === 'done' && e?.value === 'Done') || (pastFilter === 'no' && e?.value === 'Not done') || (pastFilter === 'miss' && !e) }).map(t => { const ev = latest(t); const v = ev ? (ev.value === 'Not done' ? 'no' : 'yes') : 'miss'
               return <TaskTile key={t.id} density={density} time={t.time} title={t.title} who={ev ? nm(ev.recorded_by) : whoOf(t)} category={t.category} type={LAW_TYPES.find(x => x.key === t.law_type)?.label}
                 detail={ev?.note ?? null} mark={v === 'yes' ? 'done' : v === 'miss' ? 'miss' : 'no'} tone={v === 'yes' ? 'border-green-400 bg-green-50' : v === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'} onClick={() => setSheet(t)} /> })}
           </div>
@@ -164,7 +171,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
-          <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} />{extras}</div>
+          {!person && <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} />{extras}</div>}
           {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
           <div className="flex flex-wrap gap-1">
             {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'late' || x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (

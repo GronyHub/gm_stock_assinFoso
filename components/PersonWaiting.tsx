@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { MyDayItem } from '@/lib/myDay'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DateStrip from '@/components/DateStrip'
-import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
+import TaskTile, { DensityToggle, tileGrid, useTileDensity, type TileDensity } from '@/components/TaskTile'
 import MyDayClient from '@/app/(protected)/my-day/MyDayClient'
 
 // Waiting for me: the same date strip as Waiting for team, filtered to one person. Today is their live list; another date holds only their own duties
@@ -12,19 +12,11 @@ export default function PersonWaiting({ forName = '', onNavigate }: { forName?: 
   const today = new Date().toISOString().slice(0, 10)
   const [sel, setSel] = useState(today)
   const [density, setDensity] = useTileDensity()
-  const [items, setItems] = useState<MyDayItem[] | null>(null)
   const past: string[] = []
   for (let d = addDays(today, -1); d >= CHECKLIST_START && past.length < 60; d = addDays(d, -1)) past.unshift(d)
   const ahead: string[] = []
   for (let i = 1; i <= 31; i++) ahead.push(addDays(today, i))
   const dates = [...past, today, ...ahead]
-  useEffect(() => {
-    if (sel === today) return
-    let live = true; setItems(null)
-    fetch(`/api/my-day?date=${sel}${forName ? `&for=${encodeURIComponent(forName)}` : ''}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live) setItems(d?.items ?? []) }).catch(() => { if (live) setItems([]) })
-    return () => { live = false }
-  }, [sel, today, forName])
-  const done = items?.filter(i => i.state === 'done').length ?? 0, notd = items?.filter(i => i.state === 'not').length ?? 0, miss = items?.filter(i => i.state === 'miss').length ?? 0
   return (
     <div>
       <div className="flex items-start gap-2 px-2 pt-2">
@@ -34,18 +26,40 @@ export default function PersonWaiting({ forName = '', onNavigate }: { forName?: 
       {sel === today
         ? <MyDayClient key={`${forName}`} forName={forName} onNavigate={onNavigate} density={density} lens="all" />
         : (
-          <div className="space-y-2 p-3">
-            {items === null && <p className="text-sm text-gray-400">Loading…</p>}
-            {items && items.length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {sel > today ? 'is planned' : 'fell'} for {forName ? 'this person' : 'you'} on this day.</p>}
-            {items && items.length > 0 && sel < today && <p className="text-[11px] text-gray-500">{done} done · {notd} marked not done · {miss} not done at all</p>}
-            {items && items.length > 0 && (
-              <div className={tileGrid(density)}>
-                {items.map(i => (
-                  <TaskTile key={i.key} density={density} icon={i.icon} time={i.time} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type}
-                    mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : i.state === 'miss' ? 'miss' : undefined}
-                    tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.state === 'miss' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} />))}
-              </div>)}
-          </div>)}
+          <PersonDayTiles person={forName} date={sel} density={density} />)}
+    </div>
+  )
+}
+
+// One person's duties on a date other than today, as tiles. Earlier dates get a filter on how each ended; coming dates list what is planned.
+export function PersonDayTiles({ person, date, density }: { person: string; date: string; density: TileDensity }) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [items, setItems] = useState<MyDayItem[] | null>(null)
+  const [f, setF] = useState<'all' | 'done' | 'not' | 'miss'>('all')
+  useEffect(() => {
+    let live = true; setItems(null)
+    fetch(`/api/my-day?date=${date}${person ? `&for=${encodeURIComponent(person)}` : ''}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (live) setItems(d?.items ?? []) }).catch(() => { if (live) setItems([]) })
+    return () => { live = false }
+  }, [date, person])
+  const n = (st: string) => items?.filter(i => i.state === st).length ?? 0
+  const shown = items?.filter(i => f === 'all' || i.state === f) ?? []
+  return (
+    <div className="space-y-2 p-3">
+      {items === null && <p className="text-sm text-gray-400">Loading…</p>}
+      {items && items.length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing {date > today ? 'is planned' : 'fell'} for {person ? 'this person' : 'you'} on this day.</p>}
+      {items && items.length > 0 && date < today && (
+        <div className="flex flex-wrap gap-1">
+          {([['all', 'Everything', items.length], ['done', 'Done', n('done')], ['not', 'Marked not done', n('not')], ['miss', 'Not done at all', n('miss')]] as const).map(([k, label, c]) => (
+            <button key={k} type="button" onClick={() => setF(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${f === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {c}</button>
+          ))}
+        </div>)}
+      {items && shown.length > 0 && (
+        <div className={tileGrid(density)}>
+          {shown.map(i => (
+            <TaskTile key={i.key} density={density} icon={i.icon} time={i.time} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type}
+              mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : i.state === 'miss' ? 'miss' : undefined}
+              tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.state === 'miss' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} />))}
+        </div>)}
     </div>
   )
 }

@@ -8,6 +8,8 @@ import PendingJobsDue from '@/components/PendingJobsDue'
 import DateStrip from '@/components/DateStrip'
 import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
 import { LAW_TYPES } from '@/lib/lawCategories'
+import { PersonDayTiles } from '@/components/PersonWaiting'
+import { ACTIVE_STAFF } from '@/lib/staffList'
 
 const BANDS: { key: AheadItem['band']; label: string }[] = [{ key: 'opener', label: 'Opener' }, { key: 'daytime', label: 'Daytime' }, { key: 'closer', label: 'Closer' }, { key: 'oneoff', label: 'To do items' }]
 const nm = (n: string | null) => (n ? n.charAt(0).toUpperCase() + n.slice(1) : '')
@@ -20,6 +22,10 @@ const todayKey = () => new Date().toISOString().slice(0, 10)
 export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const today = todayKey()
   const [density, setDensity] = useTileDensity()
+  // Filter by person: on Today anyone can; on other dates only the people the signed-in supervisor may look at.
+  const [who, setWho] = useState('')
+  const [viewable, setViewable] = useState<string[]>([])
+  useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setViewable(Array.isArray(d?.people) ? d.people : [])).catch(() => {}) }, [])
   const [sel, setSel] = useState(today)
   const [days, setDays] = useState<AheadDay[]>([])
   const [canAdd, setCanAdd] = useState(false)
@@ -47,6 +53,8 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   for (let d = addDays(today, -1); d >= CHECKLIST_START && past.length < 60; d = addDays(d, -1)) past.unshift(d)
   const dates = [...past, today, ...days.map(d => d.date).filter(d => d > today)]
   const curDay = days.find(d => d.date === sel)
+  const chipNames = sel === today ? ACTIVE_STAFF.filter(n => n !== 'grony') : viewable
+  const person = who && chipNames.includes(who) ? who : ''
   const minDate = today
   const more = () => { const last = days[days.length - 1]?.date; if (last) void load(addDays(last, 1), true) }
   return (
@@ -68,9 +76,15 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           <button type="button" disabled={!form.title.trim() || !form.date} onClick={() => void add()} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Add to the list</button>
         </div>
       )}
+      {chipNames.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1 px-3">
+          {['', ...chipNames].map(n => (
+            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`rounded-full px-3 py-1 text-xs font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
+          ))}
+        </div>)}
       <div className="mt-2">
-        {sel <= today
-          ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} dayParam={sel === today ? null : sel}
+        {person && sel !== today ? <PersonDayTiles person={person} date={sel} density={density} /> : sel <= today
+          ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
               extras={<>{canManage && <ClockApprovals density={density} />}<PendingJobsDue density={density} /></>} />
           : (
             <div className="space-y-2 px-3">
