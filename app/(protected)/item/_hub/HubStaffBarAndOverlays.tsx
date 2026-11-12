@@ -27,13 +27,13 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
-              <div className="flex min-w-0 shrink items-center gap-3 overflow-x-auto">
+              <div className="flex min-w-0 max-w-[55%] shrink items-center gap-3 overflow-x-auto">
               <PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('todo')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
                   that don't use it. */}
-              <div ref={setPageToolbarEl} className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 empty:hidden" />
+              <div ref={setPageToolbarEl} className="flex min-w-[16rem] flex-1 flex-wrap items-center justify-end gap-1.5 empty:hidden" />
             </div>,
             navSlotEl
           )}
