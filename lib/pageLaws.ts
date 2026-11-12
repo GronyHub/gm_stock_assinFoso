@@ -79,6 +79,7 @@ async function ensureCompanyLawsImpl() {
   await absenceLawOnce()
   await dedupeLawsOnce()
   await pendingJobsConfirmOnce()
+  await cashCountedLawOnce()
   try {
     for (const [id, cat, sub, type, days, freq] of FIRST_SORT) {
       await sql`UPDATE page_laws SET category = ${cat}, subcategory = ${sub}, law_type = ${type}, days = ${days}, frequency = ${freq} WHERE id = ${id} AND category IS NULL`
@@ -374,6 +375,21 @@ async function pendingJobsConfirmOnce() {
     for (const l of laws) await syncLawTile(l.id as number).catch(() => {})
     await sql`UPDATE daily_check_tiles SET condition = 'pending_jobs' WHERE law_id = ANY(${laws.map(l => l.id)})`
   } catch (e) { console.error('pending jobs confirm failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The owner's new law (2026-11-13): the manager enters the previous day's Cash Counted before 09:00. A recurring task for the manager, so it has a time, a tile and a point.
+async function cashCountedLawOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('cash-counted-law-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { syncLawTile } = await import('./lawTiles')
+    const text = "The manager or owner enters the previous day's Cash Counted every day before 09:00. Cash Counted includes all cash received for the day, whether from MoMo, debtors, part payments or other sources. It is entered by the manager or owner because they hold the finances of the business."
+    const violations = [{ text: "Yesterday's Cash Counted is not entered by 09:00", points: 1, by: 'manager', record: 'Logged against the manager in Violations', how: "Open the Sales Log and enter yesterday's Cash Counted before doing anything else" }]
+    const [r] = await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, status, seed, proof, points, violations, title, assignment, audience, dos, donts, live_at)
+      VALUES ('Finance', ${text}, false, 'law', 'Finance', 'Sales Log', 'recurring', 'daily', '09:00', 5, 'live', 'cash-counted-v1', 'tick', 1, ${JSON.stringify(violations)}, 'Enter Cash Counted', 'managers', 'managers',
+              ${'Complete the CCTV review first, to be sure every sale was recorded.'}, ${"Do not log in or carry on with the day's work without entering the previous day's Cash Counted."}, now()) RETURNING id`
+    await syncLawTile(r.id as number).catch(() => {})
+  } catch (e) { console.error('cash counted law failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 // The new "Who does it" column starts from what the law already said: a managers' law is done by the managers. Once.
