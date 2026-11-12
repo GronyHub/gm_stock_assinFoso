@@ -494,16 +494,23 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
         )}
         <div className="space-y-1 rounded-xl border border-red-200 bg-red-50 p-2">
           <label className={lab}>Violations (required): what exactly breaks this law</label>
-          {d.violations.map((v, i) => (
-            <div key={i} className="flex items-center gap-1">
-              <input value={v.text} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, text: e.target.value } : x))} placeholder="For example: a sale is not recorded the same day" className={inp} />
-              <input type="number" min={0} max={20} value={v.points} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, points: e.target.value } : x))} className={inp + ' w-14'} title="Points" />
-              <select value={v.by} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, by: e.target.value } : x))} className={inp + ' w-28'}><option value="manager">Manager logs</option><option value="app">App checks</option></select>
-              <label className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-red-700"><input type="checkbox" checked={!!v.dismissal} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, dismissal: e.target.checked } : x))} />Dismissal</label>
-              <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700">✕</button>
-            </div>))}
-          {d.violations.map((v, i) => <input key={'r' + i} value={v.record ?? ''} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, record: e.target.value } : x))} placeholder={`How violation ${i + 1} is recorded (optional)`} className={inp} />)}
-          {d.violations.map((v, i) => <textarea key={'h' + i} value={v.how ?? ''} onChange={e => set('violations', d.violations.map((x, j) => j === i ? { ...x, how: e.target.value } : x))} rows={2} placeholder={`How to avoid violation ${i + 1}: one step per line`} className={inp} />)}
+          {/* Each violation is one card, so its fields stay together: what breaks the law, its points and who records it, how it is recorded, how to avoid it. */}
+          {d.violations.map((v, i) => {
+            const setV = (patch: Record<string, unknown>) => set('violations', d.violations.map((x, j) => j === i ? { ...x, ...patch } : x))
+            return (
+              <div key={i} className="space-y-1 rounded-lg border border-red-200 bg-white/70 p-1.5">
+                <label className={lab}>Violation {i + 1}: what breaks the law</label>
+                <input value={v.text} onChange={e => setV({ text: e.target.value })} placeholder="For example: a sale is not recorded the same day" className={inp} />
+                <div className="flex flex-wrap items-end gap-1">
+                  <div><label className={lab}>Points</label><input type="number" min={0} max={20} value={v.points} onChange={e => setV({ points: e.target.value })} className={inp + ' w-16'} title="Points" /></div>
+                  <div className="min-w-[8rem] flex-1"><label className={lab}>Recorded by</label><select value={v.by} onChange={e => setV({ by: e.target.value })} className={inp}><option value="manager">Manager logs it</option><option value="app">The app checks it</option></select></div>
+                  <label className="flex shrink-0 items-center gap-1 pb-2 text-[10px] font-bold text-red-700"><input type="checkbox" checked={!!v.dismissal} onChange={e => setV({ dismissal: e.target.checked })} />Dismissal</label>
+                  <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="mb-0.5 rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700" title="Remove this violation">✕</button>
+                </div>
+                <input value={v.record ?? ''} onChange={e => setV({ record: e.target.value })} placeholder="How it is recorded (optional)" className={inp} />
+                <textarea value={v.how ?? ''} onChange={e => setV({ how: e.target.value })} rows={2} placeholder="How to avoid it: one step per line (optional)" className={inp} />
+              </div>)
+          })}
           <button type="button" onClick={() => set('violations', [...d.violations, { text: '', points: '1', by: 'manager' }])} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-700">+ Add a violation</button>
           <div><label className={lab}>Not a violation (optional)</label><input value={d.not_violation} onChange={e => set('not_violation', e.target.value)} className={inp} /></div>
         </div>
