@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import DailyChecklistClient from '../standards/DailyChecklistClient'
 import { isOwnerLevel } from '@/lib/roles'
-import CctvDue from '@/components/CctvDue'
+import ClockApprovals from '@/components/ClockApprovals'
 import TodoAhead from '@/components/TodoAhead'
 import PendingJobsDue from '@/components/PendingJobsDue'
 
@@ -12,5 +12,5 @@ export default async function TodoPage() {
   const session = await auth()
   if (!session) redirect('/login')
   const manager = isOwnerLevel(session.user as never)
-  return <><div className="pt-3"><DailyChecklistClient canManage={manager} embedded extras={<><PendingJobsDue />{manager && <CctvDue />}</>} /></div><div className="px-3 pb-24"><TodoAhead /></div></>
+  return <><div className="pt-3"><DailyChecklistClient canManage={manager} embedded extras={<>{manager && <ClockApprovals />}<PendingJobsDue /></>} /></div><div className="px-3 pb-24"><TodoAhead /></div></>
 }

@@ -141,6 +141,8 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet. The day&apos;s tasks start when the first person does; they are listed at their planned times.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
+          {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
+          <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['DECISIONS_AND_DUTIES']"><ClosingReportCard />{extras}</div>
           {[{ label: 'LATE', rows: showLate ? late : late.slice(0, 4), cls: 'bg-red-50 border-red-300', more: late.length - 4 }, { label: 'DO NOW', rows: dueNow, cls: 'bg-amber-50 border-amber-300', more: 0 }, { label: 'NEXT', rows: next, cls: 'bg-gray-50 border-gray-200', more: 0 }].map(g => g.rows.length > 0 && (
             <div key={g.label} className="space-y-1">
               <p className={`text-[10px] font-extrabold ${g.label === 'LATE' ? 'text-red-600' : g.label === 'DO NOW' ? 'text-amber-700' : 'text-gray-500'}`}>{g.label === 'NEXT' ? 'LATER TODAY' : g.label}</p>
@@ -160,8 +162,6 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               {g.label === 'LATE' && g.more > 0 && <button type="button" onClick={() => setShowLate(v => !v)} className="text-[11px] font-bold text-red-700 underline">{showLate ? 'Show fewer' : `Show ${g.more} more late`}</button>}
             </div>
           ))}
-          {/* The day's other duties (closing report, pending jobs, CCTV) are tasks of the day too, so they sit here with the rest. */}
-          <div className="space-y-1 empty:hidden before:block before:text-[10px] before:font-extrabold before:text-gray-500 before:content-['ALSO_TODAY']"><ClosingReportCard />{extras}</div>
         </div>
       )}
       {isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mb-2 w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
