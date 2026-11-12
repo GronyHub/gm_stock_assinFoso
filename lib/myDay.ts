@@ -11,7 +11,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { pendingJobCounts } from '@/lib/pendingJobs'
-import { dutiesForDate, standingRowsAll, allDutiesForDate, type Duty } from '@/lib/duties'
+import { dutiesForDate, standingRowsAll, allDutiesForDate, personalDuties, type Duty } from '@/lib/duties'
 import { canLogAgainst } from '@/lib/violationLog'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
@@ -68,14 +68,17 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const standAll = await standingRowsAll()
   const stand = standAll.filter(x => x.person === me)
   const leftOf = (k: 'sign' | 'quiz' | 'cctv' | 'approve') => stand.filter(x => x.kind === k).reduce((a, x) => a + x.n - x.done, 0)
+  // The personal items without a date (assigned tasks, questions, decisions, clock matters...) come from the same function too.
+  const pdAll = await personalDuties()
+  const cnt = (k: string) => pdAll.filter(d => d.key === `s:${k}:${me}` || d.key === `s:${k}:team`).reduce((a, d) => a + (d.count ?? 0), 0)
 
   if (isStaff && me !== 'grony') {
     // clock-out and clock-in matters
     const prev = (await safe(() => openRecords(me), [])).filter(r => r.d < day && r.d >= REVIEW_FROM)
-    add({ key: 'clock-prev', icon: '🕐', title: 'You did not clock out', detail: `${prev.length} earlier day${prev.length === 1 ? '' : 's'} without a time out. Enter your time out.`, count: prev.length, urgency: 'now' })
+    add({ key: 'clock-prev', icon: '🕐', title: 'You did not clock out', detail: `${cnt('clock-prev')} earlier day${cnt('clock-prev') === 1 ? '' : 's'} without a time out. Enter your time out.`, count: cnt('clock-prev'), urgency: 'now' })
     const autos = await safe(() => sql`SELECT COUNT(*)::int AS n FROM clock_autos WHERE staff = ${me} AND status = 'notified'`, [{ n: 0 }])
     const ins = await safe(() => sql`SELECT COUNT(*)::int AS n FROM clock_in_autos WHERE staff = ${me} AND status = 'notified'`, [{ n: 0 }])
-    add({ key: 'clock-auto', icon: '🕐', title: opts.viewing ? `Check ${me.charAt(0).toUpperCase() + me.slice(1)}'s clock times` : 'Check your clock times', detail: opts.viewing ? 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' : 'A clock-in or clock-out was set for you. Tap OK or send the correct time.', count: Number(autos[0].n) + Number(ins[0].n), urgency: 'soon' })
+    add({ key: 'clock-auto', icon: '🕐', title: opts.viewing ? `Check ${me.charAt(0).toUpperCase() + me.slice(1)}'s clock times` : 'Check your clock times', detail: opts.viewing ? 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' : 'A clock-in or clock-out was set for you. Tap OK or send the correct time.', count: cnt('clock-auto'), urgency: 'soon' })
     // closing report
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
@@ -117,14 +120,14 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
       AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' AND NOT EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = ${me} AND m.score::float / NULLIF(m.total, 0) >= 0.75) ORDER BY l.id`, [] as { id: number }[])
     tile({ key: 'quiz', icon: '📝', title: 'Law quizzes to pass', detail: `${dueText('quiz')} Pass each quiz (75% or more) within 7 days of its law going live.`, count: leftOf('quiz'), urgency: 'later', href: quiz.length ? `/laws?law=${quiz[0].id}&quiz=1` : '/laws' })
     const pj = await safe(() => pendingJobCounts(), { open: 0, ready: 0, overdue: 0 })
-    tile({ key: 'pending-jobs', icon: '🧾', title: 'Pending jobs overdue', detail: `${pj.overdue} job${pj.overdue === 1 ? '' : 's'} customers left ${pj.overdue === 1 ? 'is' : 'are'} past the promised date. Finish it, or call the customer.`, count: pj.overdue, urgency: 'now', href: '/pending-jobs' })
+    tile({ key: 'pending-jobs', icon: '🧾', title: 'Pending jobs overdue', detail: `${pj.overdue} job${pj.overdue === 1 ? '' : 's'} customers left ${pj.overdue === 1 ? 'is' : 'are'} past the promised date. Finish it, or call the customer.`, count: cnt('pending-jobs'), urgency: 'now', href: '/pending-jobs' })
     const mt = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(due_date) AS first_due FROM custom_tasks WHERE LOWER(assigned_to) = ${me} AND NOT done AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${day})`, [{ n: 0, first_due: null }])
     const overdue = mt[0].first_due && String(mt[0].first_due).slice(0, 10) < day
-    tile({ key: 'mytasks', icon: '📌', title: opts.viewing ? `Tasks assigned to ${me.charAt(0).toUpperCase() + me.slice(1)}` : 'Tasks assigned to you', detail: overdue ? 'One or more are past their due date.' : opts.viewing ? 'Tasks a manager gave them.' : 'Tasks a manager gave you. Open your page to see them.', count: Number(mt[0].n), urgency: overdue ? 'now' : 'soon', hub: 'tasks' })
+    tile({ key: 'mytasks', icon: '📌', title: opts.viewing ? `Tasks assigned to ${me.charAt(0).toUpperCase() + me.slice(1)}` : 'Tasks assigned to you', detail: overdue ? 'One or more are past their due date.' : opts.viewing ? 'Tasks a manager gave them.' : 'Tasks a manager gave you. Open your page to see them.', count: cnt('mytasks'), urgency: overdue ? 'now' : 'soon', hub: 'tasks' })
     const q = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_queries WHERE staff = ${me} AND status = 'open'`, [{ n: 0 }])
-    add({ key: 'queries', icon: '❓', title: opts.viewing ? 'Questions waiting for their answer' : 'Questions waiting for your answer', detail: 'A supervisor asked about a day you were at work.', count: Number(q[0].n), urgency: 'now' })
+    add({ key: 'queries', icon: '❓', title: opts.viewing ? 'Questions waiting for their answer' : 'Questions waiting for your answer', detail: 'A supervisor asked about a day you were at work.', count: cnt('queries'), urgency: 'now' })
     const ack = await safe(() => sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${me} AND status IN ('active', 'pending') AND source = 'manual' AND ack_at IS NULL AND created_at > now() - interval '30 days'`, [{ n: 0 }])
-    add({ key: 'ack', icon: '⚖', title: opts.viewing ? 'Violations logged against them' : 'Violations logged against you', detail: 'Acknowledge each one, or dispute it with a note.', count: Number(ack[0].n), urgency: 'soon', hub: 'violations' })
+    add({ key: 'ack', icon: '⚖', title: opts.viewing ? 'Violations logged against them' : 'Violations logged against you', detail: 'Acknowledge each one, or dispute it with a note.', count: cnt('ack'), urgency: 'soon', hub: 'violations' })
   }
 
   // decisions for supervisors
@@ -134,11 +137,11 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
     const claims = await safe(() => sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> ${me} AND COALESCE(against, '') <> ${me}`, [{ n: 0 }])
     tile({ key: 'claims', icon: '🕐', title: 'Clock times to approve', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out.', count: leftOf('approve'), urgency: 'soon', hub: 'waiting' })
     const sanc = await safe(() => sql`SELECT staff FROM penalty_sanctions WHERE status = 'proposed'`, [] as { staff: string }[])
-    tile({ key: 'sanctions', icon: '⚖', title: 'Sanctions to approve', detail: 'A staff member reached a points level.', count: sanc.filter(s => canDecideFor(me, String(s.staff))).length, urgency: 'soon', href: '/penalties' })
+    tile({ key: 'sanctions', icon: '⚖', title: 'Sanctions to approve', detail: 'A staff member reached a points level.', count: cnt('sanctions'), urgency: 'soon', href: '/penalties' })
     const viol = await safe(() => sql`SELECT staff FROM staff_penalties WHERE status IN ('pending', 'disputed')`, [] as { staff: string }[])
-    tile({ key: 'violations', icon: '⚖', title: 'Violations to confirm or review', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.', count: viol.filter(s => canDecideFor(me, String(s.staff))).length, urgency: 'soon', href: '/penalties' })
+    tile({ key: 'violations', icon: '⚖', title: 'Violations to confirm or review', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.', count: cnt('violations'), urgency: 'soon', href: '/penalties' })
     const drafts = await safe(() => sql`SELECT COUNT(*)::int AS n, MIN(id) AS first FROM page_laws WHERE status = 'draft'`, [{ n: 0, first: null }])
-    tile({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: Number(drafts[0].n), urgency: 'later', href: drafts[0].first ? `/laws?law=${drafts[0].first}` : '/laws' })
+    tile({ key: 'drafts', icon: '📜', title: 'Draft laws to approve', detail: 'Approving creates the checklist tiles.', count: cnt('drafts'), urgency: 'later', href: drafts[0].first ? `/laws?law=${drafts[0].first}` : '/laws' })
   }
   if (me === 'joe') {
     const r = await safe(() => sql`SELECT COUNT(*)::int AS n FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`, [{ n: 0 }])

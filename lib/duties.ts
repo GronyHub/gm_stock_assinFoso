@@ -5,7 +5,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { SIGNERS } from '@/lib/signers'
-import { inPeriod, WEEKDAYS, type Frequency } from '@/lib/dailyChecksShared'
+import { inPeriod, WEEKDAYS, CHECKLIST_START, type Frequency } from '@/lib/dailyChecksShared'
 
 // THE one calculation of the checklist duties on a date: every timed daily task, who it falls on, and how it stands. Waiting for team reads all of them,
 // Waiting for me reads one person's, so the two can never disagree about whose a task is or whether it is late.
@@ -68,6 +68,58 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
   return out.sort((x, y) => x.due - y.due || x.id - y.id)
 }
 
+// ---- Personal items that have no date of their own and wait until dealt with: tasks a manager assigned, questions, violations to acknowledge, clock matters, decisions, drafts, pending jobs.
+const PERSONAL: Record<string, { title: string; icon: string; type: string; detail: string }> = {
+  mytasks: { title: 'Tasks assigned', icon: '📌', type: 'Assigned task', detail: 'Tasks a manager gave them.' },
+  queries: { title: 'Questions waiting for an answer', icon: '❓', type: 'Question', detail: 'A supervisor asked about a day they were at work.' },
+  ack: { title: 'Violations to acknowledge', icon: '⚖', type: 'Violation', detail: 'Acknowledge each one, or dispute it with a note.' },
+  'clock-prev': { title: 'A time out is missing', icon: '🕐', type: 'Clock', detail: 'Earlier days without a time out.' },
+  'clock-auto': { title: 'Check the clock times', icon: '🕐', type: 'Clock', detail: 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' },
+  sanctions: { title: 'Sanctions to approve', icon: '⚖', type: 'Decision', detail: 'A staff member reached a points level.' },
+  violations: { title: 'Violations to confirm or review', icon: '⚖', type: 'Decision', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.' },
+  drafts: { title: 'Draft laws to approve', icon: '📜', type: 'Decision', detail: 'Approving creates the checklist tasks.' },
+  'pending-jobs': { title: 'Pending jobs overdue', icon: '🧾', type: 'Customer job', detail: 'Jobs customers left are past the promised date. Finish them, or call the customer.' },
+}
+export const PERSONAL_META = PERSONAL
+export async function personalDuties(): Promise<Duty[]> {
+  const todayKey = today(), out: Duty[] = []
+  const staff = SIGNERS.filter(n => n !== 'grony'), deciders = ['grony', 'joe']
+  const mk = (key: keyof typeof PERSONAL, owner: string | null, count: number, late: boolean, extra?: string): Duty => ({ kind: 'standing', key: `s:${key}:${owner ?? 'team'}`, id: -1, title: PERSONAL[key].title, time: '', due: 24 * 60 + 1, owner, role: null,
+    category: 'Standing duty', lawType: null, lawId: null, typeLabel: PERSONAL[key].type, state: late ? 'late' : 'now', count, detail: `${PERSONAL[key].detail}${extra ? ' ' + extra : ''}` })
+  try {
+    const r = await sql`SELECT LOWER(assigned_to) AS p, COUNT(*)::int AS n, MIN(substr(due_date::text, 1, 10)) AS first_due FROM custom_tasks WHERE assigned_to IS NOT NULL AND NOT COALESCE(done, false) AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${todayKey}) GROUP BY 1`
+    for (const x of r) if (num(x.n) > 0) out.push(mk('mytasks', String(x.p), num(x.n), !!x.first_due && String(x.first_due) < todayKey, x.first_due && String(x.first_due) < todayKey ? 'One or more are past their due date.' : ''))
+  } catch { /* leave out */ }
+  try { const r = await sql`SELECT staff AS p, COUNT(*)::int AS n FROM staff_queries WHERE status = 'open' GROUP BY 1`; for (const x of r) if (num(x.n) > 0) out.push(mk('queries', String(x.p), num(x.n), true)) } catch { /* leave out */ }
+  try { const r = await sql`SELECT staff AS p, COUNT(*)::int AS n FROM staff_penalties WHERE status IN ('active', 'pending') AND source = 'manual' AND ack_at IS NULL AND created_at > now() - interval '30 days' GROUP BY 1`; for (const x of r) if (num(x.n) > 0) out.push(mk('ack', String(x.p), num(x.n), false)) } catch { /* leave out */ }
+  try {
+    const r = await sql`SELECT LOWER(staff_name) AS p, COUNT(*)::int AS n FROM staff_times WHERE actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__' AND work_date < ${todayKey} AND work_date >= ${CHECKLIST_START} GROUP BY 1`
+    for (const x of r) if (num(x.n) > 0 && staff.includes(String(x.p))) out.push(mk('clock-prev', String(x.p), num(x.n), true))
+  } catch { /* leave out */ }
+  try {
+    const a = await sql`SELECT staff AS p, COUNT(*)::int AS n FROM clock_autos WHERE status = 'notified' GROUP BY 1`
+    const b = await sql`SELECT staff AS p, COUNT(*)::int AS n FROM clock_in_autos WHERE status = 'notified' GROUP BY 1`
+    const m = new Map<string, number>(); for (const x of [...a, ...b]) m.set(String(x.p), (m.get(String(x.p)) ?? 0) + num(x.n))
+    for (const [p, n] of m) if (n > 0 && staff.includes(p)) out.push(mk('clock-auto', p, n, false))
+  } catch { /* leave out */ }
+  try {
+    const sanc = await sql`SELECT staff FROM penalty_sanctions WHERE status = 'proposed'`
+    const viol = await sql`SELECT staff FROM staff_penalties WHERE status IN ('pending', 'disputed')`
+    const can = (d: string, subject: string) => d !== String(subject).toLowerCase()
+    for (const d of deciders) {
+      const sc = sanc.filter(x => can(d, x.staff)).length, vc = viol.filter(x => can(d, x.staff)).length
+      if (sc > 0) out.push(mk('sanctions', d, sc, false)); if (vc > 0) out.push(mk('violations', d, vc, false))
+    }
+    const drafts = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE status = 'draft'`
+    if (num(drafts[0]?.n) > 0) for (const d of deciders) out.push(mk('drafts', d, num(drafts[0].n), false))
+  } catch { /* leave out */ }
+  try {
+    const pj = await sql`SELECT COUNT(*)::int AS n FROM pending_jobs WHERE status <> 'done' AND due_on < ${todayKey}::date`
+    if (num(pj[0]?.n) > 0) out.push(mk('pending-jobs', null, num(pj[0].n), true))
+  } catch { /* leave out */ }
+  return out
+}
+
 // ---- Everything else that is due on a date: standing duties, weekly and monthly laws, one-off to-dos, pending jobs. Read by the same screens as the tasks above.
 
 type StandingRow = { person: string; kind: 'sign' | 'quiz' | 'cctv' | 'approve'; due: string; n: number; done: number }
@@ -123,6 +175,8 @@ export async function standingDuties(date: string): Promise<Duty[]> {
       const left = dueToday.reduce((a, r) => a + r.n - r.done, 0), total = dueToday.reduce((a, r) => a + r.n, 0)
       if (overdue > 0) out.push(mk(base, 'overdue', 'late', overdue, `${overdue} overdue. ${STANDING[base.kind].detail}`))
       if (total > 0) out.push(mk(base, 'today', left > 0 ? 'now' : 'done', left, left > 0 ? `${left} of ${total} due today. ${STANDING[base.kind].detail}` : `All ${total} due today are done.`))
+      const later = list.filter(r => r.due > todayKey).reduce((a, r) => a + r.n - r.done, 0)
+      if (later > 0) out.push(mk(base, 'later', 'later', later, `${later} more waiting, due on a later day. ${STANDING[base.kind].detail}`))
     } else {
       const here = list.filter(r => r.due === date), total = here.reduce((a, r) => a + r.n, 0), left = here.reduce((a, r) => a + r.n - r.done, 0)
       if (total === 0) continue
@@ -172,6 +226,6 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
 
 // Everything due on a date, for one viewer: the checklist tasks (done by the rest of the day's rules), the standing duties of the people the viewer may see, and the rest.
 export async function allDutiesForDate(date: string, viewer: { includeManagerLaws: boolean; canSee: (person: string) => boolean }): Promise<Duty[]> {
-  const [tasks, standing, other] = await Promise.all([dutiesForDate(date), standingDuties(date), otherDuties(date, viewer.includeManagerLaws)])
-  return [...tasks, ...other, ...standing.filter(d => d.owner && viewer.canSee(d.owner))]
+  const [tasks, standing, other, personal] = await Promise.all([dutiesForDate(date), standingDuties(date), otherDuties(date, viewer.includeManagerLaws), date === today() ? personalDuties() : Promise.resolve([] as Duty[])])
+  return [...tasks, ...other, ...standing.filter(d => d.owner && viewer.canSee(d.owner)), ...personal.filter(d => !d.owner || viewer.canSee(d.owner))]
 }
