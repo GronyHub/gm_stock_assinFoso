@@ -69,12 +69,8 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                     </div>)}
                 </div>
               </>) : personal ? (<>
-                <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-3 py-1.5">
-                  <p className="text-sm font-bold capitalize text-gray-900">{personal.name}</p>
-                  <button type="button" onClick={() => setPersonal(null)} className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
-                </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                  <StaffMemberPersonalTab key={personal.name + personal.tab} staffName={personal.name} initialTab={personal.tab as never} username={username} role={role} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
+                  <StaffMemberPersonalTab key={personal.name + personal.tab} onClose={() => setPersonal(null)} staffName={personal.name} initialTab={personal.tab as never} username={username} role={role} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} />
                 </div>
               </>) : (
                 <iframe ref={embedRef} key={embedUrl} src={embedUrl ?? ''} title="Page" className="min-h-0 w-full flex-1 border-0" />
