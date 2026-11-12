@@ -11,6 +11,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { pendingJobCounts } from '@/lib/pendingJobs'
+import { dutiesForDate, type Duty } from '@/lib/duties'
 import { canLogAgainst } from '@/lib/violationLog'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
@@ -68,51 +69,28 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
     const [cr] = await safe(() => sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`, [] as never[])
     const [here] = await safe(() => sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${me} AND work_date = ${day} AND actual_in IS NOT NULL`, [] as never[])
     if (here && !cr) add({ key: 'closing', icon: '🌙', title: 'Closing report not answered today', detail: 'Due from 5pm; you can answer it early in Waiting for team.', count: 1, urgency: new Date().getUTCHours() >= 17 ? 'soon' : 'later', href: '/todo?closing=1' })
-    // checklist tasks that fall on this person: the ones still waiting (due or later) and the ones already finished today, each as its own tile
+    // checklist tasks that fall on this person (from the one duties calculation that Waiting for team reads too)
     await safe(async () => {
       const now = new Date()
-      if (!(await isShopDay(day))) return
-      const clock = await getClockState(day)
-      // Not waiting for them to clock in: a task that belongs to the manager, the Opener or the Closer is theirs either way.
-      if (clock.dayStart == null) return
       const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
-      const allTiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition,
-          (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
-        WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null }[]
-      const unmet = await unmetConditions()
-      const tiles = allTiles.filter(t => !t.condition || !unmet.has(t.condition))
-      const dayTiles = tiles.filter(t => appliesOn(t, day))
-      const shifts = await rotaShifts(day)
-      const evRows = await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${day} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean } | null }[]
-      const latestEv = new Map<number, (typeof evRows)[number]>(); for (const r of evRows) latestEv.set(r.tile_id, r)
-      const handled = new Set([...latestEv.values()].filter(r => !(r.value === 'Not done' && r.extra?.overruled)).map(r => r.tile_id))
-      const due = effectiveDue(dayTiles, clock.dayStart)
-      // Shared ("everyone") tasks have one named person from the rota; the Opener, Closer and manager tasks keep their own owner.
-      const todays = dayTiles.filter(t => t.assignment === 'all' || !t.assignment ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === me : owes(t.assignment, me, clock))
+      const mine = (await dutiesForDate(day)).filter(d => d.owner === me)
       const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
       const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
-      const meta = (t: (typeof tiles)[number]) => ({ who: cap1(me), category: t.category ?? undefined, type: lawTypeLabel(t.law_type) })
-      // A task that fell due before this person clocked in (or after they left) was never theirs.
-      const late = todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! <= nowMin && ((t.assignment ?? 'all') !== 'all' || onShift(me, due.get(t.id)!, clock))).sort((a, b) => due.get(a.id)! - due.get(b.id)!)
+      const meta = (d: Duty) => ({ who: cap1(me), category: d.category ?? undefined, type: lawTypeLabel(d.lawType) })
+      const late = mine.filter(d => d.state === 'late' || d.state === 'now')
       // One tile per task, so each can be opened and done from here. (Only the Not done tab lists them all.)
       const cap = opts.lens === 'notdone' ? 500 : 8
-      for (const t of late.slice(0, cap)) {
-        const mins = nowMin - due.get(t.id)!
-        add({ key: `task-${t.id}`, icon: '⏳', title: t.title, time: hhmm(due.get(t.id)!), ...meta(t), detail: `Due ${hhmm(due.get(t.id)!)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${t.id}` })
+      for (const d of late.slice(0, cap)) {
+        const mins = nowMin - d.due
+        add({ key: `task-${d.id}`, icon: '⏳', title: d.title, time: hhmm(d.due), ...meta(d), detail: `Due ${hhmm(d.due)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${d.id}` })
       }
-      if (late.length > cap) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - cap} more tasks to do now`, detail: 'Open Waiting for team to see them all.', count: late.length - cap, urgency: 'now', hub: undefined, href: '/todo' })
+      if (late.length > cap) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - cap} more tasks to do now`, detail: 'Open Waiting for team to see them all.', count: late.length - cap, urgency: 'now', href: '/todo' })
       if (opts.lens === 'notdone') return
-      // Ahead of their time today: still to come
-      for (const t of todays.filter(t => !handled.has(t.id) && due.has(t.id) && due.get(t.id)! > nowMin).sort((a, b) => due.get(a.id)! - due.get(b.id)!)) {
-        add({ key: `tasknext-${t.id}`, icon: '🕘', title: t.title, time: hhmm(due.get(t.id)!), ...meta(t), detail: `Due ${hhmm(due.get(t.id)!)}.`, count: 0, urgency: 'later', href: `/todo?tile=${t.id}` }, true)
-      }
-      // Finished today (done, or marked not done with a reason): shown so the day reads complete
-      for (const t of todays) {
-        const ev = latestEv.get(t.id); if (!ev || ev.extra?.overruled) continue
-        const when = new Date(ev.recorded_at), at = `${String(when.getUTCHours()).padStart(2, '0')}:${String(when.getUTCMinutes()).padStart(2, '0')}`
-        const done = ev.value !== 'Not done'
-        add({ key: `taskdone-${t.id}`, icon: done ? '✅' : '➖', title: t.title, time: due.has(t.id) ? hhmm(due.get(t.id)!) : t.time, ...meta(t), state: done ? 'done' : 'not',
-          detail: done ? `Done by ${cap1(ev.recorded_by)} at ${at}.` : `Marked not done by ${cap1(ev.recorded_by)} at ${at}${ev.note ? `: ${ev.note}` : ''}.`, count: 0, urgency: 'later' }, true)
+      for (const d of mine.filter(x => x.state === 'later')) add({ key: `tasknext-${d.id}`, icon: '🕘', title: d.title, time: hhmm(d.due), ...meta(d), detail: `Due ${hhmm(d.due)}.`, count: 0, urgency: 'later', href: `/todo?tile=${d.id}` }, true)
+      for (const d of mine.filter(x => x.state === 'done' || x.state === 'no')) {
+        const done = d.state === 'done'
+        add({ key: `taskdone-${d.id}`, icon: done ? '✅' : '➖', title: d.title, time: hhmm(d.due), ...meta(d), state: done ? 'done' : 'not',
+          detail: done ? `Done by ${cap1(d.by ?? me)} at ${d.at}.` : `Marked not done by ${cap1(d.by ?? me)} at ${d.at}${d.note ? `: ${d.note}` : ''}.`, count: 0, urgency: 'later' }, true)
       }
     }, undefined)
   }
@@ -184,38 +162,15 @@ export async function personDay(me: string, date: string, user?: unknown): Promi
 async function personDayTasks(me: string, date: string): Promise<MyDayItem[]> {
   const todayKey = today()
   if (date === todayKey) return []
-  const future = date > todayKey
-  if (!(await isShopDay(date))) return []
-  const shifts = await rotaShifts(date)
-  let clock: ClockState
-  if (future) {
-    const rr = await rotaRolesFor(date)
-    const ins: Record<string, number> = {}, outs: Record<string, number | null> = {}
-    for (const sh of shifts) { ins[sh.n] = sh.from; outs[sh.n] = sh.to }
-    clock = { dayStart: shifts.length ? Math.min(...shifts.map(x => x.from)) : null, present: [], everIn: shifts.map(x => x.n), opener: rr?.opener ?? null, lastOut: rr?.closer ?? null, ins, outs }
-  } else clock = await getClockState(date)
-  if (clock.dayStart == null) return []
-  const allTiles = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition,
-      (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
-    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null }[]
-  const dayTiles = allTiles.filter(t => appliesOn(t, date))
-  const evRows = future ? [] : await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${date} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean } | null }[]
-  const latestEv = new Map<number, (typeof evRows)[number]>(); for (const r of evRows) latestEv.set(r.tile_id, r)
-  // A task that depends on a condition is only listed on a day when it was actually asked for (or ahead, when nobody can tell yet).
-  const tiles = dayTiles.filter(t => !t.condition || future || latestEv.has(t.id))
-  const due = effectiveDue(tiles, clock.dayStart)
-  const mine = tiles.filter(t => t.assignment === 'all' || !t.assignment ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === me : owes(t.assignment, me, clock))
-    .sort((a, b) => (due.get(a.id) ?? 0) - (due.get(b.id) ?? 0) || a.id - b.id)
-  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
-  return mine.map(t => {
-    const base = { title: t.title, time: due.has(t.id) ? hhmm(due.get(t.id)!) : t.time, who: cap1(me), category: t.category ?? undefined, type: lawTypeLabel(t.law_type), count: 0, urgency: 'later' as const }
-    const ev = latestEv.get(t.id)
-    if (future) return { key: `plan-${t.id}`, icon: '🕘', detail: `Planned for ${hhmm(due.get(t.id)!)}.`, ...base }
-    const at = ev ? new Date(ev.recorded_at) : null, atS = at ? `${String(at.getUTCHours()).padStart(2, '0')}:${String(at.getUTCMinutes()).padStart(2, '0')}` : ''
-    if (ev && ev.value !== 'Not done') return { key: `day-${t.id}`, icon: '✅', state: 'done' as const, detail: `Done by ${cap1(ev.recorded_by)} at ${atS}.`, ...base }
-    if (ev && ev.note && ev.note.trim().length >= 4 && !ev.extra?.overruled) return { key: `day-${t.id}`, icon: '➖', state: 'not' as const, detail: `Marked not done by ${cap1(ev.recorded_by)} at ${atS}: ${ev.note}`, ...base }
-    return { key: `day-${t.id}`, icon: '❌', state: 'miss' as const, detail: 'Not done at all.', ...base }
+  const mine = (await dutiesForDate(date)).filter(d => d.owner === me)
+  return mine.map(d => {
+    const hh = `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}`
+    const base = { title: d.title, time: hh, who: cap1(me), category: d.category ?? undefined, type: lawTypeLabel(d.lawType), count: 0, urgency: 'later' as const }
+    if (d.state === 'plan') return { key: `plan-${d.id}`, icon: '🕘', detail: `Planned for ${d.time}.`, ...base }
+    if (d.state === 'done') return { key: `day-${d.id}`, icon: '✅', state: 'done' as const, detail: `Done by ${cap1(d.by ?? me)} at ${d.at}.`, ...base }
+    if (d.state === 'no') return { key: `day-${d.id}`, icon: '➖', state: 'not' as const, detail: `Marked not done by ${cap1(d.by ?? me)} at ${d.at}: ${d.note}`, ...base }
+    return { key: `day-${d.id}`, icon: '❌', state: 'miss' as const, detail: 'Not done at all.', ...base }
   })
 }
 

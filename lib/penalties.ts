@@ -6,7 +6,7 @@ import { notifyOwners, pushToUsers, reminder } from '@/lib/checklistAlerts'
 import { isManagerName } from '@/lib/signers'
 import { getClockState, onShift } from '@/lib/clockState'
 import { appliesOn, effectiveDue, addDays } from '@/lib/dailyChecksShared'
-import { rotaShifts, allocatedTo } from '@/lib/allocation'
+import { dutiesForDate } from '@/lib/duties'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
 import { isShopDay } from '@/lib/rota'
@@ -161,25 +161,17 @@ export async function fadeTick(day = dayKey()) {
   }
 }
 
-// Day end: every task left undone costs every person who clocked in that day a point, at most MISSED_DAILY_CAP each.
+// Day end: every task left undone costs the person it falls on a point, at most MISSED_DAILY_CAP each. Who it falls on and whether it was done come from the one
+// duties calculation that Waiting for team and Waiting for me read, so what the screens show is exactly what is charged.
 export async function dayEndAssess(day = dayKey()) {
   await ensurePenalties()
   const clock = await getClockState(day)
   if (!clock.everIn.length) return
-  // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law). Who carries it is the law's "Who does it".
-  const tiles = await sql`SELECT id, title, days, assignment, time, minutes, frequency, kind, condition FROM daily_check_tiles WHERE active AND law_id IS NOT NULL AND frequency = 'daily' AND kind <> 'properties' AND time IS NOT NULL ORDER BY time, id` as unknown as { id: number; title: string; days: string | null; assignment: string }[]
-  const done = await sql`SELECT DISTINCT tile_id FROM daily_check_events WHERE day = ${day} AND (value = 'Done' OR (value = 'Not done' AND LENGTH(TRIM(COALESCE(note, ''))) >= 4 AND COALESCE(extra->>'overruled', '') <> 'true'))` as unknown as { tile_id: number }[]
-  const doneSet = new Set(done.map(d => d.tile_id))
-  const unmet = await unmetConditions()
-  const missed = tiles.filter(t => appliesOn(t, day) && !doneSet.has(t.id) && !((t as { condition?: string | null }).condition && unmet.has(String((t as { condition?: string | null }).condition))))
-  if (!missed.length) return
-  const due = effectiveDue(tiles as never, clock.dayStart)
-  const shifts = await rotaShifts(day)
-  // A task left undone costs the people it was assigned to (everyone clocked in, the managers, the Opener or the Closer).
-  for (const name of Array.from(new Set(clock.everIn))) {
-    // ...but only if it fell due while they were at work: someone who clocked in after a task was due is not charged for it.
-    const mine = missed.filter(t => (t.assignment === 'all' || !t.assignment) ? due.has(t.id) && allocatedTo(t.id, due.get(t.id)!, clock, shifts) === name : owes(t.assignment, name, clock) && (!due.has(t.id) || onShift(name, due.get(t.id)!, clock)))
-    if (!mine.length) continue
+  // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law).
+  const owed = (await dutiesForDate(day)).filter(d => d.lawId != null && d.state !== 'done' && d.state !== 'no' && d.owner && clock.everIn.includes(d.owner))
+  const byOwner = new Map<string, typeof owed>()
+  for (const d of owed) byOwner.set(d.owner!, [...(byOwner.get(d.owner!) ?? []), d])
+  for (const [name, mine] of byOwner) {
     const pts = Math.min(mine.length, MISSED_DAILY_CAP)
     const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
     await addPoint({ staff: name, points: pts, reason: `${mine.length} checklist task${mine.length === 1 ? '' : 's'} left undone today (${first}${mine.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })

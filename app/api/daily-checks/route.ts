@@ -1,5 +1,5 @@
 import { appliesOn, effectiveDue } from '@/lib/dailyChecksShared'
-import { rotaShifts, allocatedTo } from '@/lib/allocation'
+import { dutiesForDate } from '@/lib/duties'
 import { unmetConditions } from '@/lib/tileConditions'
 import { requireAuth, badRequest, getActorName, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
@@ -35,15 +35,9 @@ export async function GET(req: NextRequest) {
     const clock = await getClockState(today)
     const me = actorKey(session.user as any)
     const exempt = (session.user as { role?: string })?.role === 'owner'
-    // Today's shared tasks have one named person each (from the rota); the screen shows it on the tile.
-    const alloc: Record<number, string> = {}
-    if (day === today && clock.dayStart != null) {
-      const shifts = await rotaShifts(today)
-      const dayTiles = (tiles as unknown as { id: number; assignment?: string | null; time: string | null; minutes: number | null; frequency: string; kind: string; days: string | null }[]).filter(t => appliesOn(t as never, today))
-      const dueMap = effectiveDue(dayTiles as never, clock.dayStart)
-      for (const t of dayTiles) if ((t.assignment ?? 'all') === 'all' && dueMap.has(t.id)) { const n = allocatedTo(t.id, dueMap.get(t.id)!, clock, shifts); if (n) alloc[t.id] = n }
-    }
-    return success({ day, today, tiles, alloc, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present, opener: clock.opener, closer: clock.lastOut })
+    // Who each task falls on and how it stands, from the same calculation Waiting for me reads.
+    const duties = await dutiesForDate(day)
+    return success({ day, today, tiles, duties, events, adhoc, dayStart: clock.dayStart, clockedIn: exempt || clock.present.includes(me), exempt, present: clock.present, opener: clock.opener, closer: clock.lastOut })
   } catch (e) { return handleError('daily-checks GET', e) }
 }
 
