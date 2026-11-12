@@ -19,7 +19,6 @@ export type TabKey = 'waiting' | 'notdone' | 'done' | 'laws' | 'times' | 'violat
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waiting', icon: '📋', label: 'Waiting for me' },
-  { key: 'notdone', icon: '⏳', label: 'Not done' },
   { key: 'done', icon: '✔', label: 'Done' },
   { key: 'laws', icon: '📜', label: 'Laws and quizzes' },
   { key: 'times', icon: '🕐', label: 'Times' },
@@ -102,7 +101,7 @@ export default function StaffMemberPersonalTab({
     <div className="px-2 pt-2 space-y-2">
       <div className="flex items-start gap-1">
       <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
-        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView) && (t.key !== 'notdone' || isSelf || mayView) && (t.key !== 'done' || isSelf || mayView) && (t.key !== 'laws' || isSelf || mayView)).map(t => (
+        {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView) && (t.key !== 'done' || isSelf || mayView) && (t.key !== 'laws' || isSelf || mayView)).map(t => (
           <button key={t.key} type="button" ref={el => { if (el && activeTab === t.key) el.scrollIntoView({ inline: 'center', block: 'nearest' }) }} onClick={() => setActiveTab(t.key)}
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -118,7 +117,6 @@ export default function StaffMemberPersonalTab({
         {activeTab === 'laws' && (isSelf || mayView) && <PersonLaws staff={staffName.toLowerCase()} />}
         {activeTab === 'done' && (isSelf || mayView) && <PersonRecord forStaff={staffName.toLowerCase()} />}
         {activeTab === 'waiting' && !isSelf && mayView && <PersonWaiting forName={staffName.toLowerCase()} />}
-        {activeTab === 'notdone' && (isSelf || mayView) && <MyDayClient lens="notdone" forName={isSelf ? '' : staffName.toLowerCase()} onNavigate={isSelf ? (i => { if (i.href) window.dispatchEvent(new CustomEvent('hub-open', { detail: { path: i.href, handled: false } })) }) : undefined} />}
         {activeTab === 'waiting' && isSelf && (
           <PersonWaiting onNavigate={i => {
             if (i.hub) setActiveTab(i.hub as TabKey)

@@ -161,11 +161,12 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, durationOverrides, c
   )
 }
 
-// Home is the record of everything done at the shop: sales, counts, ticked tasks, signed laws and quizzes, points and decisions, clock matters.
+// Home is the record of what people did at the shop: sales, counts, ticked tasks, signed laws and quizzes, clock matters. Penalty points and decisions are not here:
+// they live in Violations.
+const isPenalty = (p: { category?: string | null }) => /penalty|violation|sanction|suspension|dismissal/.test(String(p.category ?? '').toLowerCase())
 const KINDS: { key: string; label: string; test: (c: string) => boolean }[] = [
   { key: 'tasks', label: 'Tasks', test: c => /task|checklist/.test(c) },
   { key: 'laws', label: 'Laws', test: c => /law|closing report/.test(c) },
-  { key: 'points', label: 'Points and decisions', test: c => /penalty|violation|sanction|suspension|dismissal|cctv/.test(c) },
   { key: 'clock', label: 'Clock', test: c => /clock|time entry/.test(c) },
   { key: 'sales', label: 'Sales', test: c => /sale|receipt/.test(c) },
   { key: 'stock', label: 'Stock', test: c => /count|item|stock|purchase order|bill/.test(c) },
@@ -304,7 +305,7 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
     load()
   }
 
-  const shown = posts.filter(p => (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
+  const shown = posts.filter(p => !isPenalty(p) && (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

@@ -32,7 +32,7 @@ export default function PersonWaiting({ forName = '', onNavigate }: { forName?: 
         <DensityToggle density={density} onChange={setDensity} />
       </div>
       {sel === today
-        ? <MyDayClient key={`${forName}`} forName={forName} onNavigate={onNavigate} density={density} />
+        ? <MyDayClient key={`${forName}`} forName={forName} onNavigate={onNavigate} density={density} lens="all" />
         : (
           <div className="space-y-2 p-3">
             {items === null && <p className="text-sm text-gray-400">Loading…</p>}

@@ -13,9 +13,10 @@ const TONE = { now: 'border-red-300 bg-red-50', soon: 'border-amber-300 bg-amber
 const TAG = { now: 'Now', soon: 'Today', later: 'When you can' } as const
 
 // Waiting for me: everything the signed-in person owes or must decide, from every part of the app, most urgent first.
-export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false, density: densityProp }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone'; team?: boolean; density?: TileDensity } = {}) {
+export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', team = false, density: densityProp }: { onNavigate?: (i: MyDayItem) => void; forName?: string; lens?: 'todo' | 'notdone' | 'all'; team?: boolean; density?: TileDensity } = {}) {
   const [items, setItems] = useState<MyDayItem[] | null>(null)
   const [ownDensity, setDensity] = useTileDensity()
+  const [filter, setFilter] = useState<'all' | 'waiting' | 'overdue' | 'done'>('all')
   const density = densityProp ?? ownDensity
   const [owners, setOwners] = useState<Record<string, string[]>>({})
   // A supervisor looking at a team member's list gets it from that person's own page (forName): read-only, with a reminder button.
@@ -38,9 +39,14 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
   }
   const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
   const hidden = who || lens === 'notdone' ? new Set<string>() : INLINE
-  const shown = items?.filter(i => !hidden.has(i.key)) ?? []
-  const waiting = shown.filter(i => i.urgency !== 'later').reduce((n, i) => n + i.count, 0)
-  const overdue = shown.filter(i => i.urgency === 'now').reduce((n, i) => n + i.count, 0)
+  const everything = items?.filter(i => !hidden.has(i.key)) ?? []
+  const isDone = (i: MyDayItem) => i.state === 'done' || i.state === 'not'
+  const isOver = (i: MyDayItem) => !i.state && i.count > 0 && (i.key.startsWith('task-') || i.key === 'tasks-more' || i.urgency === 'now')
+  const isOpen = (i: MyDayItem) => !i.state
+  const filtered = filter === 'done' ? everything.filter(isDone) : filter === 'overdue' ? everything.filter(isOver) : filter === 'waiting' ? everything.filter(isOpen) : everything
+  const shown = lens === 'notdone' || team ? everything : filtered
+  const waiting = everything.filter(i => i.urgency !== 'later').reduce((n, i) => n + i.count, 0)
+  const overdue = everything.filter(i => i.urgency === 'now').reduce((n, i) => n + i.count, 0)
   const name = who ? who.charAt(0).toUpperCase() + who.slice(1) : ''
   return (
     <div className="mx-auto max-w-2xl space-y-2 p-3">
@@ -56,11 +62,17 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
         <button type="button" onClick={() => void load()} title="Refresh" aria-label="Refresh" className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">↻<span className="hidden sm:inline"> Refresh</span></button>
       </div>
       {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
-      {!who && !team && lens === 'todo' && <ClockNotices onChange={() => void load()} />}
-      {!who && !team && lens === 'todo' && <ClockApprovals />}
-      {!who && !team && lens === 'todo' && <PenaltyDecisions onChange={() => void load()} />}
+      {!who && !team && lens !== 'notdone' && <ClockNotices onChange={() => void load()} />}
+      {!who && !team && lens !== 'notdone' && <ClockApprovals />}
+      {!who && !team && lens !== 'notdone' && <PenaltyDecisions onChange={() => void load()} />}
       {items === null && <p className="text-sm text-gray-500">Loading…</p>}
       {items && !shown.length && <p className="rounded-xl bg-green-50 p-3 text-sm font-bold text-green-800">✅ {team || lens === 'notdone' ? 'Nothing is overdue.' : `Nothing is waiting${who ? ` for ${name}` : ' for you'}.`}</p>}
+      {!team && lens !== 'notdone' && items && (
+        <div className="flex flex-wrap gap-1">
+          {([['all', 'Everything', everything.length], ['waiting', 'Waiting', everything.filter(isOpen).length], ['overdue', 'Overdue', everything.filter(isOver).length], ['done', 'Done', everything.filter(isDone).length]] as const).map(([k, label, n]) => (
+            <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+          ))}
+        </div>)}
       <div className={tileGrid(density)}>
         {shown.map(i => (
           <TaskTile key={i.key} density={density} icon={i.icon} time={i.time ?? (i.state ? undefined : TAG[i.urgency])} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type} badge={i.count}
