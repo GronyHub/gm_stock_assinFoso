@@ -164,3 +164,24 @@ export async function seedQuestionGroupsOnce() {
     ] }, 'seed')
   } catch (e) { console.error('question groups seed failed:', e instanceof Error ? e.message : String(e)) }
 }
+
+const firstSentenceOf = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{20,160}?[.!?])(\s|$)/); return (m ? m[1] : one).slice(0, 200) }
+// From a law's own page: put the law into a group as a tick question (or take it out with groupId = null). A law is in at most one group; its own tile is replaced by the question,
+// and comes back when it is taken out.
+export async function setLawGroup(lawId: number, groupId: number | null): Promise<void> {
+  await ensureQuestionGroups()
+  const [l] = await sql`SELECT id, text, law_type, tile_id FROM page_laws WHERE id = ${lawId}`
+  if (!l) throw new Error('That law does not exist.')
+  await sql`UPDATE question_group_items SET active = FALSE WHERE law_id = ${lawId} AND active`
+  if (groupId != null) {
+    if (l.law_type !== 'recurring') throw new Error('Only a recurring law can be a question in a group (a group is answered on the day).')
+    const [g] = await sql`SELECT id, tile_id FROM question_groups WHERE id = ${groupId} AND active`
+    if (!g) throw new Error('That group does not exist.')
+    if (g.tile_id != null && g.tile_id === l.tile_id) throw new Error('This law is the one the group rests on; it cannot also be a question in it.')
+    const [{ p }] = await sql`SELECT COALESCE(MAX(position), -1) + 1 AS p FROM question_group_items WHERE group_id = ${groupId}`
+    await sql`INSERT INTO question_group_items (group_id, position, text, kind, law_id, required) VALUES (${groupId}, ${Number(p)}, ${firstSentenceOf(String(l.text))}, 'tick', ${lawId}, TRUE)`
+    await absorbLawTiles(groupId)
+  }
+  const { syncLawTile } = await import('@/lib/lawTiles')
+  await syncLawTile(lawId).catch(() => {})   // brings the tile back when it left a group, or keeps it away when it joined one
+}

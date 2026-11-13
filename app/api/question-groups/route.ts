@@ -5,11 +5,12 @@ import { listGroups, saveGroup, removeGroup, type SaveGroup } from '@/lib/questi
 import { NextRequest } from 'next/server'
 
 // The owner and Joe build the groups. GET returns every group plus the laws a question can point to; POST saves one (id = update); DELETE ?id= removes one (its laws get their own tiles back).
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
   if (!isOwnerLevel(session.user as never)) return badRequest('Only the owner and the manager build question groups.')
   try {
+    if (req.nextUrl.searchParams.get('brief')) return success({ groups: await listGroups() })   // for the Group control on each law
     const laws = await sql`SELECT id, category, subcategory, law_type, status, tile_id, assignment, LEFT(COALESCE(NULLIF(title, ''), text), 200) AS text FROM page_laws WHERE status = 'live' ORDER BY category, subcategory, id` as unknown as Record<string, unknown>[]
     return success({ groups: await listGroups(), laws })
   } catch (e) { return handleError('question groups list', e) }

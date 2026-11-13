@@ -38,6 +38,16 @@ const blank = (category: string): Draft => ({ text: '', category, subcategory: '
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [laws, setLaws] = useState<Law[] | null>(null)
+  // Question groups (owner and manager): a recurring law can be put into one from its own card.
+  const [groups, setGroups] = useState<{ id: number; name: string; items: { law_id: number | null }[] }[]>([])
+  const loadGroups = useCallback(() => { if (canManage) fetch('/api/question-groups?brief=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d?.groups) setGroups(d.groups) }).catch(() => {}) }, [canManage])
+  useEffect(() => { loadGroups() }, [loadGroups])
+  async function setGroupOf(lawId: number, groupId: number | null) {
+    const r = await fetch('/api/question-groups/law', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ law_id: lawId, group_id: groupId }) })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { flash(d.error ?? 'Could not change the group'); return }
+    flash(groupId ? 'Added to the group. Its own tile is replaced by the question.' : 'Taken out of the group. Its own tile is back.'); loadGroups(); void load()
+  }
   const [error, setError] = useState('')
   const [cat, setCat] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -202,6 +212,15 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           </div>
           <div className="space-y-1 border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
+            {canManage && l.law_type === 'recurring' && groups.length > 0 && (() => {
+              const inG = groups.find(g => g.items.some(i => i.law_id === l.id))
+              return (<select value={inG?.id ?? ''} onChange={e => void setGroupOf(l.id, e.target.value ? Number(e.target.value) : null)} title="Ask this law as a question inside a group tile"
+                className={`block w-full rounded border px-1 py-0.5 text-[10px] font-semibold ${inG ? 'border-blue-400 bg-blue-50 text-blue-800' : 'border-gray-300 bg-white text-gray-600'}`}>
+                {!inG && <option value="">Add to a group…</option>}
+                {groups.map(g => <option key={g.id} value={g.id}>{inG?.id === g.id ? 'In: ' : ''}{g.name}</option>)}
+                {inG && <option value="">Take out of the group</option>}
+              </select>)
+            })()}
             {l.law_type === 'recurring' ? (<>
               <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}><b>🗓 When:</b> {sched || 'not set yet'}</p>
               <p className="text-[10px] leading-snug text-gray-800"><b>✅ Waiting for team:</b> {l.assignment && l.assignment !== 'all' ? `done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}. ` : l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
