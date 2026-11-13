@@ -6,10 +6,12 @@ import { ensureDailyChecks } from '@/lib/dailyChecks'
 // assigned to (opener, closer, manager or everyone). Opening the tile shows every question; the tile is done when every required question has an answer. A question can point to a
 // law (so it keeps a Law link) and "absorbs" that law's own tile, so the same thing is never asked twice. The group's tile can rest on a parent law, which is what costs the point if it is left undone.
 export type ItemKind = 'tick' | 'yesno' | 'text' | 'number' | 'persons'
-export type GroupItem = { id: number; group_id: number; position: number; text: string; kind: ItemKind; detail_on: 'yes' | 'no' | null; law_id: number | null; key: string | null; required: boolean }
+export type GroupItem = { law_text?: string | null; id: number; group_id: number; position: number; text: string; kind: ItemKind; detail_on: 'yes' | 'no' | null; law_id: number | null; key: string | null; required: boolean }
 export type Group = { id: number; name: string; tile_id: number | null; bridge: string | null; active: boolean; items: GroupItem[]
   time: string | null; assignment: string | null; category: string | null; law_id: number | null; minutes: number | null }
 export type AnswerIn = { item_id: number; answer: string; detail?: string }
+
+const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{20,160}?[.!?])(\s|$)/); return (m ? m[1] : one).slice(0, 200) }
 
 export const ensureQuestionGroups = once(async () => {
   await ensureDailyChecks()
@@ -24,7 +26,9 @@ const KINDS: ItemKind[] = ['tick', 'yesno', 'text', 'number', 'persons']
 export async function listGroups(): Promise<Group[]> {
   await ensureQuestionGroups()
   const gs = await sql`SELECT g.id, g.name, g.tile_id, g.bridge, g.active, t.time, t.assignment, t.category, t.law_id, t.minutes FROM question_groups g LEFT JOIN daily_check_tiles t ON t.id = g.tile_id WHERE g.active ORDER BY g.id` as unknown as Omit<Group, 'items'>[]
-  const items = await sql`SELECT id, group_id, position, text, kind, detail_on, law_id, key, required FROM question_group_items WHERE active ORDER BY group_id, position, id` as unknown as GroupItem[]
+  const raw = await sql`SELECT i.id, i.group_id, i.position, i.text, i.kind, i.detail_on, i.law_id, i.key, i.required, l.text AS law_text FROM question_group_items i LEFT JOIN page_laws l ON l.id = i.law_id WHERE i.active ORDER BY i.group_id, i.position, i.id` as unknown as GroupItem[]
+  // A question taken from a law shows the law's own wording (so editing the law changes the question); only written questions keep their own text.
+  const items = raw.map(i => i.law_id && i.law_text ? { ...i, text: firstSentence(String(i.law_text)) } : i)
   return gs.map(g => ({ ...g, items: items.filter(i => i.group_id === g.id) }))
 }
 export async function groupForTile(tileId: number): Promise<Group | null> { return (await listGroups()).find(g => g.tile_id === tileId) ?? null }

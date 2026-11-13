@@ -90,7 +90,7 @@ export default function GroupsBuilder() {
             <p className="text-xs font-extrabold uppercase text-gray-500">Questions</p>
             {f.items.map((i, n) => (
               <div key={n} className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-2">
-                <textarea value={i.text} onChange={e => setItem(n, { text: e.target.value })} rows={2} className={inp} />
+                <textarea value={i.text} onChange={e => setItem(n, { text: e.target.value })} rows={2} readOnly={!!i.law_id} title={i.law_id ? 'The wording comes from the law. Edit the law to change it.' : undefined} className={`${inp} ${i.law_id ? 'bg-gray-100 text-gray-600' : ''}`} />
                 <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                   <select value={i.kind} onChange={e => setItem(n, { kind: e.target.value as ItemKind })} className="rounded border border-gray-300 bg-white p-1">{(Object.keys(KIND_LABEL) as ItemKind[]).map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}</select>
                   {i.kind === 'yesno' && <select value={i.detail_on ?? ''} onChange={e => setItem(n, { detail_on: (e.target.value || null) as 'yes' | 'no' | null })} className="rounded border border-gray-300 bg-white p-1"><option value="">No detail asked</option><option value="yes">Ask what happened on Yes</option><option value="no">Ask what happened on No</option></select>}
