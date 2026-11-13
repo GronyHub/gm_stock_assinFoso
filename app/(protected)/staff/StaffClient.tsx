@@ -584,9 +584,11 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
       {/* Analytics: a small icon (no text) so the times get the room. The Times Log is gone: nothing was kept in it. */}
       <div className="space-y-2">
         <div>
-          <div className="flex items-center gap-1">
-            <div className="flex min-w-0 flex-1 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setViewMode(k)} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
+          {/* The tabs never shrink or wrap their words; when the icons do not fit beside them (a phone), the icons drop to the next line instead of covering the tabs. */}
+          <div className="flex flex-wrap items-center gap-1">
+            <div className="flex shrink-0 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setViewMode(k)} className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
+            <div className="ml-auto flex shrink-0 items-center gap-1">
             {extraToolbar}
             <button onClick={() => { setAbsOpen(v => !v); setOptsOpen(false) }} title="Report an absence" aria-label="Report an absence"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${absOpen ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>🙋</button>
@@ -594,6 +596,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
               className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${optsOpen ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>👁</button>}
             <button onClick={() => setShowAnalytics(v => !v)} title="Analytics" aria-label="Analytics"
               className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${showAnalytics ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>📊</button>
+            </div>
           </div>
           {absOpen && (
             <div className="mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
