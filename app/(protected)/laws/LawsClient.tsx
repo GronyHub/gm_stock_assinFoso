@@ -25,8 +25,11 @@ const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
 const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
-const COLS = 'grid-cols-[0.85fr_1.2fr_1.05fr_0.85fr_0.5fr_1.1fr_1fr_0.55fr_repeat(4,40px)]'
-const HEAD = ['Law', 'Type and when', 'A violation is', 'How it is recorded', 'Points', 'How', 'Why', 'Quiz']
+// Five columns: the law, when it applies, what to do, what happens if it is broken (points and who records it), the quiz, then the signatures. Nothing is shown twice: the law's title is not repeated as its
+// 'violation', the same recording sentence is not printed on every row, and the Why is shown once per subcategory above its table.
+const COLS = 'grid-cols-[0.95fr_1.25fr_1.5fr_1.3fr_0.55fr_repeat(4,40px)]'
+const HEAD = ['Law', 'When', 'What to do', 'If it is broken', 'Quiz']
+const FILLER = /^a staff member does not follow this law/i   // the auto-written violation that only repeats the law's own title
 const typeName = (t: string) => t === 'recurring' ? 'Recurring task' : t === 'app' ? 'App-enforced' : 'Standing order'
 const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'A manager or superior logs it: seen in the shop or on the CCTV')
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
@@ -193,12 +196,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   const LawCard = ({ l }: { l: Law }) => {
     const sched = scheduleText(l)
-    const why = whyFor(l.category, l.subcategory)
     const signedAt = (sig?.signed ?? {})[l.id]
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div id={`law-${l.id}`} className={`min-w-[980px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div id={`law-${l.id}`} className={`min-w-[820px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <div className={`grid ${COLS}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
@@ -222,29 +224,23 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </select>)
             })()}
             {l.law_type === 'recurring' ? (<>
-              <p className={`text-[10px] leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}><b>🗓 When:</b> {sched || 'not set yet'}</p>
-              <p className="text-[10px] leading-snug text-gray-800"><b>✅ Waiting for team:</b> {l.assignment && l.assignment !== 'all' ? `done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}. ` : l.audience === 'managers' ? "a managers' tile. " : 'a tile. '}{({ tick: 'Staff tap to confirm it is done', photo: 'Staff take a photo and write a note', question: 'Staff answer All good, or Report a problem', persons: 'Staff tick each person at work' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Staff tap to confirm it is done'}. {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open</a> : '(Appears once approved.)'}</p>
+              <p className={`text-[10px] font-semibold leading-snug ${sched.startsWith('No schedule') ? 'text-amber-800' : 'text-indigo-800'}`}>🗓 {sched || 'Schedule not set yet'}</p>
+              <p className="text-[10px] leading-snug text-gray-800">{l.assignment && l.assignment !== 'all' ? `Done by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}.` : l.audience === 'managers' ? 'A manager does it.' : 'Anyone on shift.'} {({ tick: 'Taps to confirm it is done.', photo: 'Takes a photo and writes a note.', question: 'Answers All good, or Report a problem.', persons: 'Ticks each person at work.' } as Record<string, string>)[l.proof ?? 'tick'] ?? 'Taps to confirm it is done.'} {l.tile_id ? <a href="/standards" className="font-bold text-green-800 underline">Open tile</a> : <span className="text-gray-500">(Tile appears once approved.)</span>}</p>
               {l.tile_id && l.kept && <p className="text-[10px] font-semibold leading-snug text-gray-800">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
             </>) : l.law_type === 'app' ? (
-              <p className="text-[10px] leading-snug text-gray-800"><b>⚙ In the app:</b> the app enforces it itself.</p>
-            ) : (<>
-              <p className="text-[10px] leading-snug text-gray-500"><b>✅ Waiting for team:</b> none, it is not an activity.</p>
-              {l.reminder === 'login' ? <p className="text-[10px] leading-snug text-gray-800"><b>🔔 In the app:</b> a reminder after login, before work starts. Staff tick once to agree.</p>
-                : l.reminder === 'first_sale' ? <p className="text-[10px] leading-snug text-gray-800"><b>🔔 In the app:</b> a reminder after the first sale, and again from 13:30. Staff tick once to agree.</p>
-                : <p className="text-[10px] leading-snug text-gray-500"><b>🔔 In the app:</b> no reminder yet.</p>}
-            </>)}
+              <p className="text-[10px] leading-snug text-gray-800">⚙ The app enforces it itself.</p>
+            ) : (
+              <p className="text-[10px] leading-snug text-gray-800">{l.reminder === 'login' ? 'Always. Staff are reminded after login and tick once to agree.' : l.reminder === 'first_sale' ? 'Always. Staff are reminded after the first sale (and from 13:30) and tick once to agree.' : 'Always. Staff sign once to agree; no task or tile.'}</p>
+            )}
           </div>
-          <div className="border-l border-gray-200 p-1.5" style={{ gridColumn: 7, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
-            {why ? <><p className="text-[10px] leading-snug text-gray-800">{why.exists}</p><p className="mt-1 text-[10px] leading-snug text-red-800"><b>If not done:</b> {why.loss}</p></> : <span className="text-[10px] text-gray-300">-</span>}
-          </div>
-          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 8, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 5, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
             {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[10px] font-bold text-white">📝 Quiz {l.quiz_n}</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[10px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[10px] text-gray-300">-</span>}
           </div>
           {(sig?.staff ?? []).map(n => {
             const done = (sig?.by?.[n] ?? []).includes(l.id)
             const mark = sig?.marks?.[n]?.[l.id]
             return (
-              <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 9 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+              <div key={n} className="flex flex-col items-center justify-center gap-0.5 border-l border-gray-200" style={{ gridColumn: 6 + (sig?.staff ?? []).indexOf(n), gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
                 {l.status === 'draft' || (l.audience === 'managers' && !isManagerName(n)) ? <span className="text-[9px] text-gray-300">{l.audience === 'managers' && l.status !== 'draft' ? 'n/a' : '-'}</span>
                   : <>
                     {mark && <span title={`${n}: quiz mark`} className="text-[10px] font-extrabold text-indigo-700">{mark}</span>}
@@ -255,7 +251,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </div>
             )
           })}
-          {vlines.length === 0 && <p className="col-span-4 m-1.5 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">No violation lines yet.{canManage ? ' Edit the law and add what exactly breaks it.' : ''}</p>}
+          {vlines.length === 0 && <p className="col-span-2 m-1.5 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold text-amber-800">No violation lines yet.{canManage ? ' Edit the law and add what exactly breaks it.' : ''}</p>}
           {vlines.map((v, i) => {
             const how = v.how ? v.how.split('\n').map(x => x.trim()).filter(Boolean) : (i === 0 ? lines(l.dos) : [])
             const ch = av && v.chapter ? findChapter(av, v.chapter) : null
@@ -263,17 +259,17 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             const shared = l.law_type === 'recurring'
             return (
               <Fragment key={i}>
-                <div className="border-t border-gray-200 p-1.5"><p className="text-[11px] leading-snug text-gray-900">{v.text}</p>{l.not_violation && last && <p className="mt-1 text-[10px] leading-snug text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}</div>
-                <div className="space-y-1 border-t border-gray-200 p-1.5"><p className="text-[10px] leading-snug text-gray-700">{recordText(l, v)}</p>
-                  {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}
-                </div>
-                <div className="flex flex-col items-center gap-0.5 border-t border-gray-200 p-1">
-                  <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
-                  {shared && <span className="text-center text-[8px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
-                </div>
                 <div className="border-t border-gray-200 p-1.5">
-                  {how.length > 0 && <ol className="list-decimal space-y-0.5 pl-3 text-[10px] leading-snug text-gray-800">{how.map((x, k) => <li key={k}>{x}</li>)}</ol>}
+                  {how.length > 0 ? <ol className="list-decimal space-y-0.5 pl-3 text-[11px] leading-snug text-gray-900">{how.map((x, k) => <li key={k}>{x}</li>)}</ol> : <span className="text-[10px] text-gray-300">-</span>}
                   {ch && <button type="button" onClick={() => seek(ch.t)} className="mt-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white">▶ {fmtTime(ch.t)}</button>}
+                </div>
+                <div className="space-y-1 border-t border-gray-200 p-1.5">
+                  <span className="inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
+                  {shared && <span className="ml-1 text-[9px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
+                  {!FILLER.test(v.text) && <p className="text-[11px] leading-snug text-gray-900">{v.text}</p>}
+                  <p className="text-[10px] leading-snug text-gray-600">{v.record ?? (shared ? 'Added by the app if left undone at day end.' : v.by === 'app' || l.law_type === 'app' ? 'Checked by the app.' : 'A manager logs it.')}</p>
+                  {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}
+                  {l.not_violation && last && <p className="text-[10px] leading-snug text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
                 </div>
               </Fragment>
             )
@@ -323,7 +319,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           .concat([['Everyone clocked in', all.filter(l => (l.assignment ?? 'all') === 'all'), false]])
         const table = (list: Law[]) => (
           <div className="space-y-2 overflow-x-auto">
-            <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+            <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
             {list.map(l => <LawCard key={l.id} l={l} />)}
           </div>)
         return (
@@ -359,7 +355,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
                   {list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
               </div>))}
@@ -437,7 +433,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return (
               <div className="space-y-2">
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
                   {sorted.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
                 {mgrSorted.length > 0 && <ManagerSection area={area} laws={mgrSorted} Card={LawCard} />}
@@ -457,7 +453,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && Array.from(new Set(catLaws.filter(l => l.audience !== 'managers').map(l => l.subcategory ?? 'General'))).map(sub => (
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
-              <div className="space-y-2"><div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              {(() => { const wy = whyFor(catLaws.find(x => (x.subcategory ?? 'General') === sub)?.category ?? null, sub === 'General' ? null : sub); return wy ? <p className="mb-1.5 rounded-lg bg-gray-50 px-2 py-1 text-[11px] leading-snug text-gray-700"><b>Why:</b> {wy.exists} <b className="text-red-800">If not done:</b> <span className="text-red-800">{wy.loss}</span></p> : null })()}
+              <div className="space-y-2"><div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(sig?.staff ?? ['grony', 'bino', 'joe', 'james']).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {!AREA_VIDEO[area.key] && catLaws.some(l => l.audience === 'managers') && <ManagerSection area={area} laws={catLaws.filter(l => l.audience === 'managers')} Card={LawCard} />}
@@ -641,7 +638,7 @@ function ManagerSection({ area, laws, Card }: { area: LawArea; laws: Law[]; Card
       <p className="px-1 text-xs text-gray-700">{area.label}: the laws that only managers keep and enforce. {area.managerVideo ? '' : 'The managers\' video for this section is not recorded yet.'}</p>
       {area.managerVideo && <video onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key + '-managers', label: area.label + ' managers video' }) }).catch(() => {})} src={area.managerVideo} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
       <div className="space-y-2 overflow-x-auto">
-        <div className={`grid min-w-[980px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
+        <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[9px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}<span className="text-center">Gro</span><span className="text-center">Bin</span><span className="text-center">Joe</span><span className="text-center">Jam</span></div>
         {laws.map(l => <Card key={l.id} l={l} />)}
       </div>
     </div>
