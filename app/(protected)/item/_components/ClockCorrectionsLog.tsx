@@ -8,17 +8,17 @@ const ymd = (iso: string) => iso.slice(0, 10)
 const STATUS: Record<string, string> = { approved: 'bg-green-100 text-green-800', rejected: 'bg-gray-200 text-gray-800', pending: 'bg-amber-100 text-amber-800' }
 
 // The Shop's Times: every clock-in / clock-out time that was sent for approval, when it was sent, and who decided it and at what time. For the owner and Joe.
-export default function ClockCorrectionsLog() {
+export default function ClockCorrectionsLog({ defaultOpen = false, onClose }: { defaultOpen?: boolean; onClose?: () => void }) {
   const [rows, setRows] = useState<Row[] | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   useEffect(() => {
     if (!open || rows) return
     fetch('/api/clock/corrections?history=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setRows(d?.history ?? [])).catch(() => setRows([]))
   }, [open, rows])
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
-      <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-bold text-gray-900">
-        <span>🕐 Time approvals: who asked, who approved, and when</span><span className="text-gray-400">{open ? '▲' : '▼'}</span>
+      <button type="button" onClick={() => (onClose ? onClose() : setOpen(o => !o))} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-bold text-gray-900">
+        <span>🕐 Time approvals: who asked, who approved, and when</span><span className="text-gray-400">{onClose ? 'Close ✕' : open ? '▲' : '▼'}</span>
       </button>
       {open && (
         <div className="overflow-x-auto px-2 pb-2">
