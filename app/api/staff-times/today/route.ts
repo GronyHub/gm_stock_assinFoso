@@ -5,8 +5,10 @@ import { distanceMeters, allowedRadiusMeters, SHOP_LAT, SHOP_LNG } from '@/lib/g
 import { openerOf, parseTimeMins } from '@/lib/staffTimes'
 import { ensureClosingReports, saveClosingReport, validClosing } from '@/lib/closingReports'
 import { suspendedMessage } from '@/lib/penalties'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
+import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
+import { notifyOwners } from '@/lib/checklistAlerts'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time, latitude, longitude, accuracy, closing_report } = await req.json()
+  const { action, time, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
   if (!action || !time) return badRequest('Missing fields')
   if (!['in', 'out'].includes(action)) return badRequest('Invalid action')
   if (action === 'in' && sessionUser?.role !== 'owner') {
@@ -170,11 +172,18 @@ export async function POST(req: NextRequest) {
 
   await ensureOpeningCountCol()
 
-  if (!hasLocation) {
-    return badRequest('Location is required to clock in/out. Please enable location services and try again.')
-  }
-  if (!accepted) {
-    return badRequest(`You're too far from the shop to clock in/out (about ${Math.round(distance!)}m away).`)
+  // A clock-IN without a usable GPS fix (denied, unavailable, or not at the shop) is allowed only when the person asks for it: it is then held for the manager, who checks the CCTV and
+  // approves or rejects the time (see below). Clocking OUT still needs the GPS.
+  const unverified = action === 'in' && (!hasLocation || !accepted) && !!no_gps
+  if (!unverified) {
+    if (!hasLocation) {
+      const m = 'Location is required to clock in/out. Please enable location services and try again.'
+      return action === 'in' ? NextResponse.json({ error: m, offer_cctv: true }, { status: 400 }) : badRequest(m)
+    }
+    if (!accepted) {
+      const m = `You're too far from the shop to clock in/out (about ${Math.round(distance!)}m away).`
+      return action === 'in' ? NextResponse.json({ error: m, offer_cctv: true }, { status: 400 }) : badRequest(m)
+    }
   }
 
   try {
@@ -240,7 +249,7 @@ export async function POST(req: NextRequest) {
     if (existingRow) {
       if (action === 'in') {
         try {
-          await sql`UPDATE staff_times SET actual_in = ${time}, in_source = 'clock', entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
+          await sql`UPDATE staff_times SET actual_in = ${time}, in_source = ${unverified ? 'unverified' : 'clock'}, entered_by = ${enteredBy} WHERE id = ${existingRow.id}`
         } catch {
           await sql`UPDATE staff_times SET actual_in = ${time} WHERE id = ${existingRow.id}`
         }
@@ -256,7 +265,7 @@ export async function POST(req: NextRequest) {
         try {
           await sql`
             INSERT INTO staff_times (staff_name, work_date, actual_in, in_source, entered_by)
-            VALUES (${username}, ${today}, ${time}, 'clock', ${enteredBy})
+            VALUES (${username}, ${today}, ${time}, ${unverified ? 'unverified' : 'clock'}, ${enteredBy})
           `
         } catch {
           await sql`
@@ -301,8 +310,27 @@ export async function POST(req: NextRequest) {
       isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time)
     )
 
+    // After a clock-in: the time written is 30+ minutes before now -> a violation (5 = 1 point); no GPS -> held for the manager to approve from the CCTV.
+    let backdated: { minutes: number; count: number; pointAwarded: boolean } | null = null
+    let pendingApproval = false
+    if (action === 'in' && String(username).toLowerCase() !== 'grony') {
+      const who = String(username).toLowerCase(), wm = parseTimeMins(time), nowM = new Date().getUTCHours() * 60 + new Date().getUTCMinutes()
+      if (wm != null && nowM - wm >= BACKDATE_MINUTES) {
+        const r = await recordBackdate(who, today, time, nowM - wm).catch(() => null)
+        if (r) backdated = { minutes: nowM - wm, ...r }
+      }
+      if (unverified) {
+        await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${who} AND work_date = ${today} AND field = 'in' AND status = 'pending'`.catch(() => {})
+        await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, field) VALUES (${who}, ${today}, 'entered', ${time}, ${'No GPS: the manager checks the CCTV and approves the time in'}, 'in')`.catch(() => {})
+        pendingApproval = true
+        void notifyOwners(`${who.charAt(0).toUpperCase() + who.slice(1)} clocked in without GPS`, `Time in ${time}. Check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon).`)
+      }
+    }
+
     return success({
       ...updated,
+      backdated,
+      pending_approval: pendingApproval,
       is_opener: isOpener,
       is_closer: action === 'out' && isCloser,
       closing_report_saved: closerReportJustSaved,

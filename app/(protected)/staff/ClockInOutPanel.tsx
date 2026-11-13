@@ -107,20 +107,25 @@ export default function ClockInOutPanel({
     setTimeout(() => setAsked(null), 9000)
   }
 
-  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers }) {
+  // Without a usable GPS the person may still clock IN: the time is held for the manager, who checks the CCTV and approves or rejects it. They are told the decision.
+  const [noGps, setNoGps] = useState<{ time: string; why: string } | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
     setErr('')
     setRoleBanner(null)
     setSaving(true)
 
     let latitude: number | null = null, longitude: number | null = null, accuracy: number | null = null
-    try {
+    if (opts?.noGps) { setNoGps(null) } else try {
       const pos = await getLocation()
       latitude = pos.coords.latitude
       longitude = pos.coords.longitude
       accuracy = pos.coords.accuracy
     } catch (e: any) {
       setSaving(false)
+      const why = e?.code === 1 ? 'Location access was denied.' : (e?.message || 'Could not get your location.')
+      if (action === 'in') { setNoGps({ time, why }); return }
       if (e?.code === 1) setErr('Location access was denied. Please enable location services for this site and try again.')
       else setErr(e?.message || 'Could not get your location. Make sure GPS is turned on and try again.')
       return
@@ -128,7 +133,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, latitude, longitude, accuracy, closing_report: opts?.closingReport }),
+      body: JSON.stringify({ action, time, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
     })
     setSaving(false)
     if (res.ok) {
@@ -137,6 +142,10 @@ export default function ClockInOutPanel({
       setPickingTime(false)
       setCustomTime(nowAsHHMM())
       setCloserPrompt(null)
+      const parts: string[] = []
+      if (updated.pending_approval) parts.push('You clocked in without GPS. Your manager will check the CCTV and approve your time. You will be told the decision.')
+      if (updated.backdated) parts.push(`The time you wrote is ${updated.backdated.minutes} minutes earlier than now. That is recorded as a violation (${updated.backdated.count % 5 === 0 ? 5 : updated.backdated.count % 5} of 5; every 5 cost 1 penalty point).${updated.backdated.pointAwarded ? ' This was the 5th: 1 penalty point.' : ''}`)
+      setNotice(parts.length ? parts.join(' ') : null)
       if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today! Confirm the opening counts below to finish clocking in.')
       else if (updated.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
       if (action === 'out') {
@@ -148,7 +157,8 @@ export default function ClockInOutPanel({
       afterAction?.()
     } else {
       const d = await res.json().catch(() => ({}))
-      if (res.status === 409 && d.requires_closing_report) {
+      if (d.offer_cctv && action === 'in') { setNoGps({ time, why: d.error ?? 'Your location could not be confirmed.' }) }
+      else if (res.status === 409 && d.requires_closing_report) {
         // Last one out — show the closing questionnaire, then retry with answers.
         setCloserPrompt({ time, present: Array.isArray(d.present_staff) ? d.present_staff : [] })
       } else {
@@ -207,6 +217,22 @@ export default function ClockInOutPanel({
           onSubmit={answers => clock('out', { time: closerPrompt.time, closingReport: answers })}
           onCancel={() => setCloserPrompt(null)}
         />
+      )}
+      {noGps && (
+        <div className="space-y-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-extrabold text-amber-900">Clock in without GPS?</p>
+          <p className="text-sm text-amber-900">{noGps.why} You can still clock in, but the time is held until your manager checks the CCTV and approves it. You will be told the decision.</p>
+          <div className="flex gap-2">
+            <button type="button" disabled={saving} onClick={() => void clock('in', { time: noGps.time, noGps: true })} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Clock in without GPS</button>
+            <button type="button" onClick={() => setNoGps(null)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Cancel</button>
+          </div>
+        </div>
+      )}
+      {notice && (
+        <div className="flex items-start justify-between gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
+          <p className="text-sm font-semibold text-red-900">{notice}</p>
+          <button type="button" onClick={() => setNotice(null)} className="shrink-0 text-xs font-bold text-red-700">OK</button>
+        </div>
       )}
       {stillIn && (
         <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 sm:items-center print:hidden">

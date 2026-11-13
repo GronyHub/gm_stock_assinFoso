@@ -109,7 +109,7 @@ export async function applyApproval(id: number, by: string, overrideHHMM?: strin
     await sql`UPDATE staff_times SET actual_in = ${out}, in_source = 'approved', entered_by = ${by} WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`.catch(() => {})
     await sql`UPDATE clock_corrections SET status = 'approved', decided_by = ${by}, decided_at = now(), proposed_out = ${out} WHERE id = ${id}`
     void recordActivity(by, 'approved a clock-in time', `${cap(String(c.staff))} on ${c.work_date}: ${out}`)
-    void pushToUsers([String(c.staff)], 'Clock-in time approved', `Your time in for ${c.work_date} is ${out}.`)
+    void pushToUsers([String(c.staff)], 'Clock-in time approved', `${cap(by)} approved your time in for ${c.work_date}: ${out}.`)
     return out
   }
   await setClockOut(String(c.staff), String(c.work_date), out, 'approved', by)

@@ -2,7 +2,7 @@ import { requireAuth, badRequest, success, handleError, getActorName } from '@/l
 import { actorKey } from '@/lib/clockState'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
-import { ensureAttendance, applyApproval } from '@/lib/attendance'
+import { ensureAttendance, applyApproval, firstActivityMins, to12h } from '@/lib/attendance'
 import { pushToUsers } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       return success({ history })
     }
     const me = actorKey(session.user as any)
-    const pending = await sql`SELECT c.id, c.staff, c.work_date, c.field, c.proposed_out, c.requested_at, t.actual_in, t.actual_out AS estimated
+    const pending = await sql`SELECT c.id, c.staff, c.work_date, c.field, c.proposed_out, c.requested_at, c.basis, t.actual_in, t.actual_out AS estimated
       FROM clock_corrections c LEFT JOIN staff_times t ON LOWER(t.staff_name) = c.staff AND t.work_date = c.work_date
       WHERE c.status = 'pending' AND c.staff <> ${me} AND COALESCE(c.against, '') <> ${me} ORDER BY c.requested_at`
     return success({ pending })
@@ -40,10 +40,19 @@ export async function PATCH(req: NextRequest) {
     if (own && String(own.staff) === me) return badRequest('You cannot approve your own time. Grony approves Joe, and Joe approves the others.')
     if (b.action === 'approve') { const out = await applyApproval(id, by, b.time ? String(b.time) : undefined); return success({ ok: !!out, out }) }
     if (b.action === 'reject') {
-      const [c] = await sql`SELECT staff, work_date FROM clock_corrections WHERE id = ${id} AND status = 'pending'`
+      const [c] = await sql`SELECT staff, work_date, field FROM clock_corrections WHERE id = ${id} AND status = 'pending'`
       if (!c) return success({ ok: false })
       await sql`UPDATE clock_corrections SET status = 'rejected', decided_by = ${by}, decided_at = now() WHERE id = ${id}`
-      void pushToUsers([String(c.staff)], 'Clock-out time not approved', `Your time for ${c.work_date} was not approved. The app's estimate stands.`)
+      if (c.field === 'in') {
+        // A clock-in held for CCTV review (no GPS) that is not approved: the time becomes the person's first shop-only action that day, or is removed if there was none.
+        const [t] = await sql`SELECT in_source FROM staff_times WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`
+        if (t?.in_source === 'unverified') {
+          const f = await firstActivityMins(String(c.staff), String(c.work_date))
+          if (f != null) await sql`UPDATE staff_times SET actual_in = ${to12h(f)}, in_source = 'estimated' WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`
+          else await sql`UPDATE staff_times SET actual_in = NULL, in_source = 'estimated' WHERE LOWER(staff_name) = ${String(c.staff)} AND work_date = ${String(c.work_date)}`
+        }
+        void pushToUsers([String(c.staff)], 'Clock-in time not approved', `${by} did not approve your time in for ${c.work_date} after checking the CCTV. Your time in is now your first action at the shop that day, or open Times and enter it again.`)
+      } else void pushToUsers([String(c.staff)], 'Clock-out time not approved', `Your time for ${c.work_date} was not approved. The app's estimate stands.`)
       return success({ ok: true })
     }
     return badRequest('Unknown action.')
