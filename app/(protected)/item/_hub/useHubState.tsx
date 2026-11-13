@@ -872,16 +872,18 @@ export function useHubState() {
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
   const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
+  const usernameRef = useRef('')
+  const wantMyDay = useRef(false)
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
-    if (open === '/my-day') setPersonal({ name: username, tab: 'waiting' })
+    if (open === '/my-day') wantMyDay.current = true   // opened below, once the signed-in name is known (the session is often still loading at this moment)
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
     const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) { const r = shopRoute(e.data.path); if (r) { setEmbedUrl(null); setPersonal(null); setShop(r) } else { setShop(null); setPersonal(null); setEmbedUrl(e.data.path) } }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
-    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: 'waiting' }) } else { setPersonal(null); const r = shopRoute(d.path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(d.path) } } }
+    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setShop(null); setPersonal({ name: usernameRef.current, tab: 'waiting' }) } else { setPersonal(null); const r = shopRoute(d.path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(d.path) } } }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
     return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own); window.removeEventListener('hub-open', hubOpen) }
   }, [])
@@ -1301,6 +1303,9 @@ export function useHubState() {
   const navHeightPx = useNavHeightPx()
   const role = (session?.user as any)?.role ?? 'staff'
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
+  usernameRef.current = username
+  // "Open my page" requested before the session had loaded (a link to /item?open=/my-day): open it as soon as the name is known, never with an empty name
+  useEffect(() => { if (wantMyDay.current && username) { wantMyDay.current = false; setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: 'waiting' }) } }, [username])
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
   // Flags are for managers only: the owners and Bino. Everyone else never sees a flag (except Negative Stock on Live Sale).
   const showFlags = isOwnerOrJoe || isManagerName(username)

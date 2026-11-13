@@ -120,7 +120,7 @@ export default function StaffTimesView({ staffName, username, onOpenDone }: { st
       {loading ? (
         <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
       ) : !detail ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">Could not load time details.</p>
+        <div className="py-6 text-center"><p className="text-[11px] text-gray-400">Could not load time details.</p><button type="button" onClick={() => void loadDetail()} className="mt-2 rounded-lg bg-gray-100 px-3 py-1 text-[11px] font-bold text-gray-700">Try again</button></div>
       ) : (
         <>
           <div className="px-1 py-2 border-b border-gray-100 flex items-center justify-between text-[10px] text-gray-500 shrink-0">
