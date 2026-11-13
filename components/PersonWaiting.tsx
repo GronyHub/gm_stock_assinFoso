@@ -19,7 +19,7 @@ export default function PersonWaiting({ forName = '', onNavigate }: { forName?: 
   const dates = [...past, today, ...ahead]
   return (
     <div>
-      <div className="flex items-start gap-1 px-2 pt-1">
+      <div className="sticky top-0 z-20 flex items-start gap-1 bg-white px-2 pb-1 pt-1">   {/* stays on screen while the tiles scroll under it */}
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} />
         <DensityToggle density={density} onChange={setDensity} />
       </div>

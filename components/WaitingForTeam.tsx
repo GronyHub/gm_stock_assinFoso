@@ -70,10 +70,18 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const more = () => setAhead(a => a + 31)
   return (
     <div className="-mx-2 -mt-3 pb-24 pt-1">
+      <div className="sticky top-0 z-20 bg-white pb-1">   {/* the date strip and the staff chips stay on screen while the tiles scroll under them */}
       <div className="flex items-start gap-1 px-2">
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
         <DensityToggle density={density} onChange={setDensity} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[11px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
+      </div>
+      {chipNames.length > 0 && (
+        <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
+          {['', ...chipNames].map(n => (
+            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
+          ))}
+        </div>)}
       </div>
       {msg && <p className="mx-2 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {adding && (
@@ -87,12 +95,6 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           <button type="button" disabled={!form.title.trim() || !form.date} onClick={() => void add()} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Add to the list</button>
         </div>
       )}
-      {chipNames.length > 0 && (
-        <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
-          {['', ...chipNames].map(n => (
-            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
-          ))}
-        </div>)}
       <div className="mt-2">
         {sel <= today
           ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
