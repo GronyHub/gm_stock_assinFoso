@@ -35,7 +35,15 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
     const j = await r.json().catch(() => ({}))
     setMsg(r.ok ? (j.message ?? 'Reminder sent.') : (j.error ?? 'Could not send.')); setTimeout(() => setMsg(''), 4000)
   }
-  const go = (i: MyDayItem) => { if (onNavigate) { onNavigate(i); return } if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href }
+  // A supervisor looking at someone else's list: a checklist task opens in Waiting for team (where it can be read, and answered or overruled); a standing duty opens the page where it is done.
+  const taskId = (i: MyDayItem) => /^(?:task|tasknext|taskdone)-(\d+)$/.exec(i.key)?.[1]
+  const open = (path: string) => { if (window.parent !== window) window.parent.postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
+  const canTap = (i: MyDayItem) => who ? !!(taskId(i) || i.href) : !!(i.href || i.hub)
+  const go = (i: MyDayItem) => {
+    if (onNavigate) { onNavigate(i); return }
+    if (who) { const t = taskId(i); if (t) open(`/todo?tile=${t}`); else if (i.href) open(i.href); return }
+    if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href
+  }
   const everything = items?.filter(i => !(i.inline && !who && lens !== 'notdone')) ?? []
   // "Done" holds only what was really finished; an "all clear" tile (nothing waiting) is not work done.
   const isDone = (i: MyDayItem) => (i.state === 'done' || i.state === 'not') && !i.clear
@@ -53,7 +61,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
         <p className="min-w-0 flex-1 text-xs font-semibold text-gray-700">
           {!(who || team || lens === 'notdone' || onNavigate) && <span className="mr-2 text-base font-extrabold text-[#14213D]">Waiting for me</span>}
           {items && (team || lens === 'notdone') ? `${shown.reduce((n, i) => n + i.count, 0)} not done today. A point only if still undone at day end.` : ''}
-          {who && !onNavigate ? <span className="text-gray-400"> View only.</span> : null}
+          {who && !onNavigate ? <span className="text-gray-400"> Tap a tile to open it.</span> : null}
         </p>
         {!densityProp && <DensityToggle density={density} onChange={setDensity} />}
         {who && (lens === 'notdone' ? shown.length > 0 : true) && <button type="button" onClick={() => void remind()} title={`Remind ${name}`} aria-label={`Remind ${name}`} className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1 text-xs font-bold text-white">🔔<span className="hidden sm:inline"> Remind {name}</span></button>}
@@ -76,7 +84,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
           <TaskTile key={i.key} density={density} icon={i.icon} time={i.time ?? (i.state ? undefined : TAG[i.urgency])} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type} badge={i.count}
             mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : undefined}
             tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.urgency === 'now' ? 'border-red-300 bg-red-50' : i.urgency === 'soon' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}
-            onClick={!who && (i.href || i.hub) ? () => go(i) : undefined} />))}
+            onClick={canTap(i) ? () => go(i) : undefined} />))}
       </div>
     </div>
   )
