@@ -46,7 +46,9 @@ function fmtHrMin(totalMinutes: number): string {
 // a narrow detail-only modal -- this works identically whether they're
 // present or absent today. Polls for new activity/clock/break changes and
 // ticks its own clock every 30 seconds.
-export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, salesTotal, salesBy, waitingBy, activeStaff, shopActive }: {
+export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenShop, embedded, vertical, salesTotal, salesBy, waitingBy, activeStaff, shopActive }: {
+  // Phone: slim rows lined up in the left sidebar under the signed-in person's own button (photo with status ring, points, sales; no names, no hours -- tap a row for their times).
+  vertical?: boolean
   activeStaff?: string | null   // the person whose profile is open: their button is highlighted like the selected item in the left sidebar
   shopActive?: boolean          // the Shop is open
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
@@ -143,6 +145,35 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
   })
   const totalWorkedMins = computed.reduce((sum, c) => sum + c.workedMins, 0)
   const totalPresentMins = computed.reduce((sum, c) => sum + (c.totalMins ?? 0), 0)
+
+  if (vertical) {
+    const others = computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase())
+    return (
+      <div className="flex flex-col gap-1 border-b border-white/30 px-1 py-1">
+        {others.map(s => {
+          const k = s.staff_name.toLowerCase(), w = waitingBy?.[k], p = pts[k]
+          const on = !!activeStaff && activeStaff.toLowerCase() === k
+          return (
+            <button key={s.staff_name} type="button" data-keep-embed onClick={() => onOpenStaff(s.staff_name, 'times')}
+              title={`${s.staff_name}: ${s.status === 'absent' ? 'not clocked in today' : s.status === 'break' ? 'on break' : s.status === 'out' ? 'clocked out' : 'clocked in'}${s.totalMins != null ? ` · ${fmtHrMin(s.workedMins)}/${fmtHrMin(s.totalMins)}` : ''}`}
+              className={`relative flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${on ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
+              {(w?.total ?? 0) > 0 && <span className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[9px] font-extrabold leading-4 text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total > 99 ? '99+' : w!.total}</span>}
+              <span className="flex w-full min-w-0 items-center gap-1">
+                <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
+                {p !== undefined && <span className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{p}</span>}
+              </span>
+              <span className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">₵{((salesBy ?? {})[k] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            </button>
+          )
+        })}
+        <button type="button" data-keep-embed onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title={`The Shop: today's total sales · ${fmtHrMin(totalWorkedMins)}/${fmtHrMin(totalPresentMins)}`}
+          className={`flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${shopActive ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'}`}>
+          <span className="text-[10px] font-bold leading-tight text-white">🏪 Shop</span>
+          {salesTotal && <span className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">{salesTotal}</span>}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <>

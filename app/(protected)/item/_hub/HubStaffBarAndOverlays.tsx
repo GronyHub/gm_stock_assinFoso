@@ -19,7 +19,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               unchanged -- Nav is hidden entirely below the md breakpoint
               (nothing to portal into), so both render in place exactly as
               before. */}
-          {outerTab === 'loss' && !isDesktop && (
+          {outerTab === 'loss' && !isDesktop && h.sidePaneHidden && (
             <>
               <div ref={barRef}><PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('todo')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>

@@ -1295,7 +1295,7 @@ export function useHubState() {
     const ro = new ResizeObserver(() => setBarH(el.offsetHeight))
     ro.observe(el)
     return () => ro.disconnect()
-  }, [embedUrl, personal, isDesktop, outerTab])
+  }, [embedUrl, personal, isDesktop, outerTab, sidePaneHidden])
   // Nav's real rendered height (see lib/navHeight.ts) -- used below to size
   // this page's own content area to "the rest of the viewport", instead of
   // a hardcoded assumption that goes stale the moment Nav grows a second
