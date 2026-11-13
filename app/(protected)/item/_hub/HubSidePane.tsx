@@ -84,7 +84,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {showFlags && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + (countsFlagsCount - (violationCounts['neg_soh'] ?? 0)) + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
+              {showFlags && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
                 active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />

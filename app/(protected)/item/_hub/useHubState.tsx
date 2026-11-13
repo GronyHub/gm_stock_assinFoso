@@ -683,7 +683,7 @@ export function useHubState() {
   const cabFlagsCount = violationCountByType(['unchecked_cab'])
   const staffTimesFlagsCount = violationCountByType(['no_staff_times'])
   const dressFlagsCount = violationCountByType(['shirt_not_worn', 'shirt_overdue'])
-  const countsFlagsCount = violationCountByType(['daily', '7day', '15day', 'neg_soh'])
+  const countsFlagsCount = violationCountByType(['daily', '7day', '15day'])
   const lossByDateFlagsCount = violationCountByType(['gains', 'cost_gte_sell'])
   // These three pages' own flags (Expenses' similar-account/bundled-
   // description/no-vendor, Customers' and Vendors' missing-contact-info)

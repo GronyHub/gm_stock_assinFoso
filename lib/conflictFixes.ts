@@ -40,3 +40,16 @@ export async function flagsLawOnce() {
       VALUES ('Stock & records', ${text}, false, 'law', 'Stock & records', 'Flags', 'standing', 'live', 'flagquota-v1', 1, ${JSON.stringify(v)}, 'Fix at least 5 flags a day', 'managers', now())`
   } catch (e) { console.error('flags law failed:', e instanceof Error ? e.message : String(e)) }
 }
+
+// The daily counts law (2026-11-13): standalone, not part of the flags.
+export async function countsLawOnce() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'countquota-v1'`
+    const [r] = await sql`SELECT 1 FROM law_migrations WHERE key = 'seed-retired:countquota-v1'`
+    if (n || r) return
+    const text = 'Every working day the manager makes sure at least 10 items are counted in Counts (a stock count saved for each). Anyone may do the counting; making sure 10 are done is the manager\'s duty. Each day fewer than 10 are counted costs the manager 1 penalty point, checked at 19:25. The app reminds the manager through the day.'
+    const v = [{ text: 'Fewer than 10 items counted in a working day', points: 1, by: 'app', record: 'Added automatically by the app at 19:25', how: 'Open Counts\nCount the items that are due first\nSave each count' }]
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, points, violations, title, audience, live_at)
+      VALUES ('Stock & records', ${text}, false, 'law', 'Stock & records', 'Counts', 'standing', 'live', 'countquota-v1', 1, ${JSON.stringify(v)}, 'Count at least 10 items a day', 'managers', now())`
+  } catch (e) { console.error('counts law failed:', e instanceof Error ? e.message : String(e)) }
+}

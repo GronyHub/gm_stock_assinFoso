@@ -169,10 +169,17 @@ export async function attendanceTick(now = new Date()) {
   if (hr >= 18) await (await import('./presenceCheck')).expireDue().catch(() => {})   // presence checks nobody confirmed in time
   // The daily flags law: the morning list at 08:00, reminders to the manager through the day, the check at 19:25.
   if (['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '19:25'].includes(hm) && await claim(`flags:${hm}:${day}`)) {
-    const fq = await import('./flagQuota')
+    const fq = await import('./flagQuota'), cq = await import('./countQuota')
     if (hm === '08:00') await fq.snapshot(day).catch(() => {})
-    else if (hm === '19:25') await fq.assess(day).catch(e => console.error('flags assess failed:', e instanceof Error ? e.message : String(e)))
-    else await fq.remind(day).catch(() => {})
+    else if (hm === '19:25') {
+      await fq.assess(day).catch(e => console.error('flags assess failed:', e instanceof Error ? e.message : String(e)))
+      await cq.assessCounts(day).catch(e => console.error('counts assess failed:', e instanceof Error ? e.message : String(e)))
+    } else {
+      // One reminder to the manager covering both daily laws, only for the ones still short.
+      const p = await fq.progress(day).catch(() => null), n = await cq.countsToday(day)
+      const parts = [p && p.fixed < p.needed ? `Flags: ${fq.progressText(p)}` : '', n < cq.COUNTS_PER_DAY ? `Counts: ${cq.countsText(n)}` : ''].filter(Boolean)
+      if (parts.length) await (await import('./checklistAlerts')).pushToUsers(['joe'], 'Today\'s flags and counts', parts.join(' ')).catch(() => {})
+    }
   }
   if (hm === '19:00' && await claim(`stillhere:${day}`)) {
     await ensureAttendance()

@@ -71,9 +71,6 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                 type Row = { label: string; n: number; go: () => void }
                 const groups: { title: string; rows: Row[] }[] = [
                   { title: 'Live / Items', rows: [...liveSaleFlagList].sort((x, y) => (x.key === 'neg_soh' ? -1 : y.key === 'neg_soh' ? 1 : 0)).map(f => ({ label: f.key === 'neg_soh' ? '🔻 Negative Stock (start here)' : f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
-                  { title: 'Counts', rows: [
-                    { label: 'Count due daily', n: violationCounts['daily'] ?? 0, go: () => goCountMode() }, { label: 'Count due every 7 days', n: violationCounts['7day'] ?? 0, go: () => goCountMode() },
-                    { label: 'Count due every 15 days', n: violationCounts['15day'] ?? 0, go: () => goCountMode() } ] },
                   { title: 'Sales Log and receipts', rows: [
                     { label: 'No cash recorded', n: violationCounts['no_cash'] ?? 0, go: () => goItemsMode('log') }, { label: 'Missing days', n: violationCounts['missing_days'] ?? 0, go: () => goItemsMode('log') },
                     { label: 'Duplicate receipts', n: violationCounts['dup_receipts'] ?? 0, go: () => goItemsMode('log') }, { label: 'High walk-in share', n: violationCounts['high_wnw'] ?? 0, go: () => goItemsMode('log') } ] },

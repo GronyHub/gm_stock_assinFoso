@@ -82,6 +82,7 @@ async function ensureCompanyLawsImpl() {
   await (await import('./auditFixes')).auditFixesOnce()
   await (await import('./conflictFixes')).conflictFixesOnce()
   await (await import('./conflictFixes')).flagsLawOnce()
+  await (await import('./conflictFixes')).countsLawOnce()
   await (await import('./renameLive')).renameLiveOnce()
   await pendingJobsConfirmOnce()
   await cashCountedLawOnce()
