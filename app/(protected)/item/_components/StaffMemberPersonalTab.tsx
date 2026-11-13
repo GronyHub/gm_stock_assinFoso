@@ -20,7 +20,7 @@ export type TabKey = 'waiting' | 'notdone' | 'done' | 'laws' | 'times' | 'violat
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waiting', icon: '📋', label: 'Waiting for me' },
   { key: 'done', icon: '✔', label: 'Done' },
-  { key: 'laws', icon: '📜', label: 'Laws and quizzes' },
+  { key: 'laws', icon: '📜', label: 'Laws' },
   { key: 'times', icon: '🕐', label: 'Times' },
   { key: 'violations', icon: '⚖', label: 'Penalty Points' },
   { key: 'payslips', icon: '💵', label: 'Payslips' },
