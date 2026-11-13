@@ -1524,7 +1524,7 @@ export function useHubState() {
   const routablePages: string[] = [
     ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => v.label) : []),
-    ...(myStaffName ? ['Payslips', 'Violations', 'Analytics'] : []),
+    ...(myStaffName ? ['Payslips', 'Penalty Points', 'Violations', 'Analytics'] : []),
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => t.key !== 'staff_meeting').map(t => t.label) : []),
     ...(canSeeUK ? ['UK'] : []),
     ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),

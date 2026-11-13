@@ -20,11 +20,12 @@ export async function GET() {
     const rows = []
     for (const p of people) {
       const [w] = await sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${p.staff} AND status = 'active' AND NOT counted AND kind = 'violation'`
-      rows.push({ ...p, points: await totalPoints(p.staff), warnings: Number(w?.n ?? 0) })
+      const [pl] = await sql`SELECT COALESCE(SUM(points), 0)::int AS t FROM staff_penalties WHERE staff = ${p.staff} AND status = 'active' AND NOT counted AND kind = 'violation'`
+      rows.push({ ...p, points: await totalPoints(p.staff), warnings: Number(w?.n ?? 0), pilot: Number(pl?.t ?? 0) })
     }
     const pending = await sql`SELECT id, staff, points, reason, day, created_by, status, dispute_note FROM staff_penalties WHERE status IN ('pending', 'disputed') ORDER BY id DESC`
     const sanctions = await sql`SELECT id, staff, tier, points_at, status, days, hours, start_date, end_date, created_at FROM penalty_sanctions WHERE status IN ('proposed', 'approved') ORDER BY id DESC LIMIT 30`
-    const recent = await sql`SELECT id, staff, points, kind, reason, source, day, counted, status, created_by FROM staff_penalties ORDER BY id DESC LIMIT 60`
+    const recent = await sql`SELECT id, staff, points, kind, reason, source, day, counted, status, created_by FROM staff_penalties ORDER BY id DESC LIMIT 200`
     const laws = await sql`SELECT id, text, category, points FROM page_laws WHERE status = 'live' AND category IS NOT NULL ORDER BY category, id`.catch(() => [])
     return success({ me: actorKey(session.user as any), settings: st, people: rows, pending, sanctions, recent, laws })
   } catch (e) { return handleError('penalties GET', e) }

@@ -22,7 +22,7 @@ const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'done', icon: '✔', label: 'Done' },
   { key: 'laws', icon: '📜', label: 'Laws and quizzes' },
   { key: 'times', icon: '🕐', label: 'Times' },
-  { key: 'violations', icon: '⚖', label: 'Violations' },
+  { key: 'violations', icon: '⚖', label: 'Penalty Points' },
   { key: 'payslips', icon: '💵', label: 'Payslips' },
   { key: 'profile', icon: '👤', label: 'Profile' },
   { key: 'tasks', icon: '✅', label: 'Tasks' },

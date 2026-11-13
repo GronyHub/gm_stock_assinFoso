@@ -115,7 +115,7 @@ export async function metaTick(day: string) {
     for (const l of laws) {
       if (signed.has(l.id)) continue
       const h = hours(l.live_at)
-      if (h >= 24) await award(0, cSign, `sign:${l.id}`, `${l.code ?? 'A law'} was not signed within 24 hours of going live`)
+      if (h >= 24) await award(0, cSign, `sign:${l.id}`, `${l.code ?? (l.title ? `"${String(l.title).slice(0, 60)}"` : 'A law')} was not signed within 24 hours of going live`)
       else if (h >= 16 && await claim(`signrem:${l.id}:${s}`)) void reminder([s], 'Sign the new law', `${l.code ?? ''} ${l.title ?? ''} must be signed within 24 hours. Open Company Laws.`)
     }
     // 2 + 3. quiz and video per tile, 7 days after the tile's first law went live

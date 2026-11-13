@@ -94,7 +94,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 // Rota isn't here -- it's a shared weekly schedule across everyone at once,
 // so it lives under Grony Manage's own submenu instead (see RotaTab's
 // export below), not as one of this per-person/all-staff tab set.
-const TABS = ['Times', 'Payslips', 'Profiles', 'Violations', 'Role', 'Analytics'] as const
+const TABS = ['Times', 'Payslips', 'Profiles', 'Penalty Points', 'Role', 'Analytics'] as const
 type Tab = (typeof TABS)[number]
 
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
@@ -113,7 +113,7 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
       <rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M5 17c0-1.66 1.79-3 4-3s4 1.34 4 3"/><line x1="14" y1="10" x2="19" y2="10"/><line x1="14" y1="13" x2="19" y2="13"/>
     </svg>
   ),
-  Violations: (
+  'Penalty Points': (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
     </svg>
@@ -2788,7 +2788,7 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
       {tab === 'Times' && <TimesTab username={username} role={role} openAddSignal={openAddSignal} />}
       {tab === 'Payslips' && <PayslipsTab role={role} username={username} />}
       {tab === 'Profiles' && <TeamProfilesTab />}
-      {tab === 'Violations' && <ViolationsTab role={role} username={username} />}
+      {tab === 'Penalty Points' && <ViolationsTab role={role} username={username} />}
       {tab === 'Role' && <RoleTab role={role} username={username} />}
       {tab === 'Analytics' && <AnalyticsTab />}
     </div>

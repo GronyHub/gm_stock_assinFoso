@@ -3,7 +3,7 @@ import { cap } from '@/lib/strings'
 import { useCallback, useEffect, useState } from 'react'
 import { tierLabel } from '@/lib/penaltyRules'
 
-type Person = { staff: string; display_name: string; role: string; points: number; warnings: number }
+type Person = { staff: string; display_name: string; role: string; points: number; warnings: number; pilot?: number }
 type Pending = { id: number; staff: string; points: number; reason: string; day: string; created_by: string; status?: string; dispute_note?: string | null }
 type Sanction = { id: number; staff: string; tier: number; points_at: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }
 type Entry = { id: number; staff: string; points: number; kind: string; reason: string; source: string; day: string; counted: boolean; status: string; created_by: string | null }
@@ -49,7 +49,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
       {!d && !err && <p className="text-sm text-gray-400">Loading…</p>}
       {d && (<>
         <div className={`mb-3 rounded-xl p-3 text-xs font-semibold ${counting ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-800'}`}>
-          {counting ? `Points are counting (since ${dlabel(d.settings.startCounting)}).` : `Learning period: violations are warnings only until ${dlabel(d.settings.startCounting)}.`}
+          {counting ? `Points are counting (since ${dlabel(d.settings.startCounting)}).` : `PILOT until ${dlabel(d.settings.startCounting)}: the points below are practice. They show here so everyone can see how it will work, and they are reset when counting starts.`}
           {isOwner && <span className="ml-2 inline-flex items-center gap-1">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[11px]" />
             <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[11px] font-bold text-white">Save</button></span>}
         </div>
@@ -62,9 +62,9 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
         <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {d.people.map(p => (
             <div key={p.staff} className="rounded-xl border border-gray-200 bg-white p-2 text-center">
-              <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-lg font-extrabold ${bandCls(p.points)}`}>{p.points}</div>
+              <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-lg font-extrabold ${counting ? bandCls(p.points) : 'bg-blue-100 text-blue-900'}`}>{counting ? p.points : (p.pilot ?? 0)}</div>
               <p className="mt-1 text-sm font-bold text-gray-900">{p.display_name || cap(p.staff)}</p>
-              <p className="text-[10px] text-gray-500">{p.warnings} warning{p.warnings === 1 ? '' : 's'}</p>
+              <p className="text-[10px] text-gray-500">{counting ? `${p.warnings} warning${p.warnings === 1 ? '' : 's'}` : `pilot · ${p.warnings} entr${p.warnings === 1 ? 'y' : 'ies'}`}</p>
             </div>
           ))}
         </div>
@@ -88,7 +88,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
         <div className="space-y-1">
           {d.recent.map(e => (
             <div key={e.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs ${e.status === 'reversed' || e.status === 'dismissed' ? 'bg-gray-100 text-gray-400 line-through' : e.points < 0 ? 'bg-green-50' : e.counted ? 'bg-red-50' : 'bg-gray-50'}`}>
-              <span className="min-w-0 flex-1"><b>{cap(e.staff)}</b> · {e.points > 0 ? `+${e.points}` : e.points} · {dlabel(e.day)} · {e.reason}{e.points > 0 && !e.counted && e.status === 'active' ? ' (warning)' : ''}{e.status === 'pending' ? ' (pending)' : ''}</span>
+              <span className="min-w-0 flex-1"><b>{cap(e.staff)}</b> · {e.points > 0 ? `+${e.points}` : e.points} · {dlabel(e.day)} · {e.reason}{e.points > 0 && !e.counted && e.status === 'active' ? (counting ? ' (warning)' : ' (pilot)') : ''}{e.status === 'pending' ? ' (pending)' : ''}</span>
               {(e.status === 'active') && e.kind === 'violation' && <button type="button" onClick={() => { if (confirm('Take this point back?')) void call(`/api/penalties/${e.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'reverse' }) }, 'Point reversed') }} className="shrink-0 font-bold text-red-700 underline">Reverse</button>}
             </div>
           ))}
