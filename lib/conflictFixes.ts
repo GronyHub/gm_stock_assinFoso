@@ -2,7 +2,7 @@ import sql from '@/lib/db'
 
 // The owner asked (2026-11-13) for conflicting information to be fixed. Runs once. Laws whose text no longer matched how the app works are corrected (staff sign the
 // new wording again), and the clock-in rules that had no law get one.
-const SANCTIONS = 'Sanctions: every violation of the Company Laws costs the penalty points shown on that law (most cost 1; absence without notice costs 2). Your points are always shown at the top of your profile and in Penalty Points. 20 points is a 3-day suspension with 10 hours deducted. 30 points is a 1-week suspension with 20 hours deducted. 50 points is dismissal. The owner approves every sanction. After a suspension your points drop to half the level. Points reduce by 5 after a clean week. A checklist task left undone at the end of the day costs 1 point to the person it falls on (at most 3 points a day each); if someone else did it, it counts as done. Until counting starts (Monday 16 November 2026) points are a pilot: they are shown, but they reset and never count.'
+const SANCTIONS = 'Sanctions: every violation of the Company Laws costs the penalty points shown on that law (most cost 1; absence without notice costs 2). Your points are always shown at the top of your profile and in Penalty Points. 20 points is a 3-day suspension with 10 hours deducted. 30 points is a 1-week suspension with 20 hours deducted. 50 points is dismissal. The owner approves every sanction. After a suspension your points drop to half the level. Points reduce by 5 after a clean week. A checklist task left undone at the end of the day costs 1 point to the person it falls on (at most 3 points a day each); if someone else did it, it counts as done. Until counting starts (the date is on the Penalty Points page and is set by the owner) points are a pilot: they are shown, but they reset and never count.'
 const CLOCKIN = 'Clock in with the Clock In button, at the shop, with GPS on, at the real time. You clock in once and out once a day. A time you write that is 30 minutes or more earlier than the moment you clock in is a violation: every 5 of them cost 1 penalty point. If GPS is not working you may still clock in without it: your time then waits for the manager (Joe; Joe\'s own by Grony), who checks the CCTV and approves or rejects it, and you are told the decision.'
 const CLOCKIN_V = [
   { text: 'A clock-in time written 30 minutes or more before the moment of clocking in', points: 0, by: 'app', record: 'Recorded by the app; every 5 cost 1 point', how: 'Use Clock In (Now). If you really arrived earlier and could not clock in, tell Joe' },
@@ -52,4 +52,13 @@ export async function countsLawOnce() {
     await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, points, violations, title, audience, live_at)
       VALUES ('Stock & records', ${text}, false, 'law', 'Stock & records', 'Counts', 'standing', 'live', 'countquota-v1', 1, ${JSON.stringify(v)}, 'Count at least 10 items a day', 'managers', now())`
   } catch (e) { console.error('counts law failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The owner moved the start of counting (to 21 Nov) on the Penalty Points page: the law no longer names a date, it points to that setting.
+export async function sanctionsDateOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('sanctions-date-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`UPDATE page_laws SET text = REPLACE(text, 'Until counting starts (Monday 16 November 2026) points are a pilot', 'Until counting starts (the date is on the Penalty Points page and is set by the owner) points are a pilot') WHERE id = 148`
+  } catch (e) { console.error('sanctions date fix failed:', e instanceof Error ? e.message : String(e)) }
 }
