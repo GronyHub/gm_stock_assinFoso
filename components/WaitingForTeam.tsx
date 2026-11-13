@@ -39,6 +39,18 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const whoTouched = useRef(false)
   useEffect(() => { if (!canManage && self && !whoTouched.current) setWho(self) }, [canManage, self])
   const [refresh, setRefresh] = useState(0)
+  // A tap on a clock/question/approval duty tile: show the person's own cards (chip = Everyone for a manager, else their own name), then scroll to them.
+  useEffect(() => {
+    const f = (e: Event) => {
+      const what = String((e as CustomEvent).detail ?? '')
+      whoTouched.current = true; setWho(canManage ? '' : self); setSel(today)
+      setTimeout(() => {
+        if (what === 'approve') window.dispatchEvent(new CustomEvent('wft-focus-ready', { detail: 'approve' }))
+        else { const el = document.getElementById('wft-cards'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-4', 'ring-blue-500'); setTimeout(() => el.classList.remove('ring-4', 'ring-blue-500'), 4000) } }
+      }, 350)
+    }
+    window.addEventListener('wft-focus', f); return () => window.removeEventListener('wft-focus', f)
+  }, [canManage, self, today])
   const [sel, setSel] = useState(today)
   const [ahead, setAhead] = useState(31)
   const [fduties, setFduties] = useState<Duty[] | null>(null)
@@ -103,11 +115,11 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
         </div>
       )}
       {/* The answers that belong to the signed-in person (a missing clock time, a supervisor's question, a decision) sit here, on this page, when their own name (or Everyone) is in focus. */}
-      {sel === today && (!person || person === self) && <div className="mt-2 space-y-2 px-2"><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} /></div>}
+      {sel === today && (!person || person === self) && <div id="wft-cards" className="mt-2 space-y-2 rounded-xl px-2 empty:hidden"><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className={tileGrid(density)}><ClockApprovals density={density} /></div>}</div>}
       <div className="mt-2">
         {sel <= today
           ? <DailyChecklistClient key={`${sel}-${refresh}`} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
-              extras={<>{canManage && <ClockApprovals density={density} />}<PendingJobsDue density={density} /></>} />
+              extras={<PendingJobsDue density={density} />} />
           : (
             <div className="space-y-1 px-2">
               {fduties === null && <p className="text-sm text-gray-400">Loading…</p>}

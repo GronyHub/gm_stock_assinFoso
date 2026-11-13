@@ -31,6 +31,14 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     el.classList.add('ring-4', 'ring-blue-500'); setTimeout(() => el.classList.remove('ring-4', 'ring-blue-500'), 4000)
   }, [list])
+  useEffect(() => {
+    const f = (e: Event) => {
+      if ((e as CustomEvent).detail !== 'approve') return
+      let tries = 0   // the box may still be loading when the tile is tapped
+      const t = setInterval(() => { const el = boxRef.current; if (el) { clearInterval(t); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-4', 'ring-blue-500'); setTimeout(() => el.classList.remove('ring-4', 'ring-blue-500'), 4000) } else if (++tries > 12) clearInterval(t) }, 300)
+    }
+    window.addEventListener('wft-focus-ready', f); return () => window.removeEventListener('wft-focus-ready', f)
+  }, [])
   const [pick, setPick] = useState<Record<number, string>>({})
   async function act(id: number, action: 'approve' | 'reject') {
     await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action, time: action === 'approve' ? pick[id] : undefined }) })
