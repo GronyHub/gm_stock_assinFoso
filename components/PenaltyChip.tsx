@@ -32,7 +32,7 @@ export function PenaltyChip({ className = '' }: { className?: string }) {
   if (!p) return null
   const b = band(p.points)
   return (
-    <a href="/profile" title={p.learning ? `Learning period until ${p.countingFrom}: ${p.warnings} warning${p.warnings === 1 ? '' : 's'}, 0 counted` : 'Your penalty points'}
+    <a href="/profile" title={p.learning ? `Pilot until ${p.countingFrom}: ${p.warnings} pilot point entr${p.warnings === 1 ? 'y' : 'ies'}, none count yet` : 'Your penalty points'}
       className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none ${b.cls} ${className}`}>
       ⚖ {p.points}{p.learning && p.warnings > 0 ? ` · ${p.warnings}w` : ''}
     </a>

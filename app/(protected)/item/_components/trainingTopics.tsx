@@ -157,7 +157,7 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <p className="text-sm text-gray-700">Open <strong>Company Laws</strong> and tap a category. Each category has a short video, the laws with their do's and don'ts, and a 4-question quiz. Pass the quiz with 3 right.</p>
-        <p className="text-sm text-gray-700">Breaking a law costs penalty points. 20 points is a 3-day suspension, 30 is a week, and 50 is dismissal. Points start counting after your first two weeks, and clean weeks take 5 points off. The owner approves every sanction.</p>
+        <p className="text-sm text-gray-700">Breaking a law costs penalty points. 20 points is a 3-day suspension, 30 is a week, and 50 is dismissal. Points start counting on Monday 16 November 2026 (until then they are a pilot and reset), and each clean week takes 5 points off. The owner approves every sanction.</p>
       </div>
     ),
   },

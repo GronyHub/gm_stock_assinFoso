@@ -80,6 +80,7 @@ async function ensureCompanyLawsImpl() {
   await absenceLawOnce()
   await dedupeLawsOnce()
   await (await import('./auditFixes')).auditFixesOnce()
+  await (await import('./conflictFixes')).conflictFixesOnce()
   await pendingJobsConfirmOnce()
   await cashCountedLawOnce()
   await (await import('./questionGroups')).seedQuestionGroupsOnce()
@@ -386,7 +387,7 @@ async function cashCountedLawOnce() {
     if (!c.length) return
     const { syncLawTile } = await import('./lawTiles')
     const text = "The manager or owner enters the previous day's Cash Counted every day before 09:00. Cash Counted includes all cash received for the day, whether from MoMo, debtors, part payments or other sources. It is entered by the manager or owner because they hold the finances of the business."
-    const violations = [{ text: "Yesterday's Cash Counted is not entered by 09:00", points: 1, by: 'manager', record: 'Logged against the manager in Violations', how: "Open the Sales Log and enter yesterday's Cash Counted before doing anything else" }]
+    const violations = [{ text: "Yesterday's Cash Counted is not entered by 09:00", points: 1, by: 'manager', record: 'Logged against the manager in Penalty Points', how: "Open the Sales Log and enter yesterday's Cash Counted before doing anything else" }]
     const [r] = await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, frequency, law_time, minutes, status, seed, proof, points, violations, title, assignment, audience, dos, donts, live_at)
       VALUES ('Finance', ${text}, false, 'law', 'Finance', 'Sales Log', 'recurring', 'daily', '09:00', 5, 'live', 'cash-counted-v1', 'tick', 1, ${JSON.stringify(violations)}, 'Enter Cash Counted', 'managers', 'managers',
               ${'Complete the CCTV review first, to be sure every sale was recorded.'}, ${"Do not log in or carry on with the day's work without entering the previous day's Cash Counted."}, now()) RETURNING id`

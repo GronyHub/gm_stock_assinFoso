@@ -264,8 +264,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                   {ch && <button type="button" onClick={() => seek(ch.t)} className="mt-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white">▶ {fmtTime(ch.t)}</button>}
                 </div>
                 <div className="space-y-1 border-t border-gray-200 p-1.5">
-                  <span className="inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ shared' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
-                  {shared && <span className="ml-1 text-[9px] leading-tight text-gray-500">1 to 3 a day, shared by everyone clocked in</span>}
+                  <span className="inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ 1' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
+                  {shared && <span className="ml-1 text-[9px] leading-tight text-gray-500">to whoever it falls on, if left undone at day end (at most 3 a day)</span>}
                   {!FILLER.test(v.text) && <p className="text-[11px] leading-snug text-gray-900">{v.text}</p>}
                   <p className="text-[10px] leading-snug text-gray-600">{v.record ?? (shared ? 'Added by the app if left undone at day end.' : v.by === 'app' || l.law_type === 'app' ? 'Checked by the app.' : 'A manager logs it.')}</p>
                   {targets.length > 0 && l.status !== 'draft' && !shared && v.by === 'manager' && <button type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-bold text-white">Log</button>}

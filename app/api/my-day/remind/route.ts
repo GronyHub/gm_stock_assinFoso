@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const total = items.filter(i => i.urgency !== 'later').reduce((n, i) => n + i.count, 0)
     if (!total) return success({ sent: false, message: 'Nothing urgent is waiting for them.' })
     const from = String(user?.username ?? user?.name ?? '')
-    await pushToUsers([name], `${total} thing${total === 1 ? '' : 's'} waiting for you`, `${from.charAt(0).toUpperCase() + from.slice(1)} reminded you. Open Waiting for me to see them.`)
+    await pushToUsers([name], `${total} thing${total === 1 ? '' : 's'} waiting for you`, `${from.charAt(0).toUpperCase() + from.slice(1)} reminded you. Open Waiting for team to see them.`)
     return success({ sent: true, message: 'Reminder sent.' })
   } catch (e) { return handleError('my-day remind', e) }
 }

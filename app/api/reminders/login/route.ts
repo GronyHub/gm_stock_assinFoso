@@ -24,7 +24,7 @@ export async function GET() {
     for (const c of dec) out.push({ key: `clk${c.id}`, tone: c.status === 'approved' ? 'blue' : 'red', title: `Clock time ${c.status === 'approved' ? 'approved' : 'not approved'}`, text: `Your time ${c.field === 'in' ? 'in' : 'out'} for ${c.work_date} (${c.proposed_out}) was ${c.status === 'approved' ? 'approved' : 'not approved'}${c.decided_by ? ` by ${c.decided_by.charAt(0).toUpperCase() + c.decided_by.slice(1)}` : ''}.` })
     const items = await myDay(me, user, {}).catch(() => [])
     const late = items.filter(i => i.urgency === 'now' && i.state == null).reduce((a, i) => a + (i.count || 1), 0)
-    if (late > 0) out.push({ key: 'waiting', tone: 'amber', title: 'Waiting for you', text: `${late} thing${late === 1 ? ' is' : 's are'} due now in Waiting for me.` })
+    if (late > 0) out.push({ key: 'waiting', tone: 'amber', title: 'Waiting for you', text: `${late} thing${late === 1 ? ' is' : 's are'} due now. Open Waiting for team (it opens on your name).` })
     if ((user as { role?: string }).role === 'owner') {
       // Joe decides Bino's and James's clock times; after 48 hours unanswered the owner is told (on screen, never pushed).
       const [od] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND requested_at < now() - interval '48 hours'`.catch(() => [{ n: 0 }])

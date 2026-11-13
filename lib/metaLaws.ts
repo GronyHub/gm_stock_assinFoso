@@ -15,7 +15,7 @@ export const META = [
 ]
 export const META_JOE = [
   { title: 'Complete each CCTV review within 48 hours', violation: 'A CCTV review of a day staff worked without the manager clocked in is still not done 48 hours after it was raised', how: 'Open the CCTV review from the pop-up or Waiting for team\nWatch the times shown, confirm sales and laws, and complete it' },
-  { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open your profile (Waiting for me) and the Shop Violations tab\nApprove or reject each one, or ask the staff member a question' },
+  { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open Waiting for team (Today, Everyone) and the Shop Penalty Points tab\nApprove or reject each one, or ask the staff member a question' },
 ]
 const SEED = 'meta-v1', REMIND_FRACTION = 5 // quiz and video: reminder on day 5 of 7
 
@@ -49,7 +49,7 @@ export async function seedMetaJoe() {
 // Plain rules the app follows itself. They carry no penalty (points 0): they are written down so staff can read and sign them.
 const RULES = [
   { title: 'Clock out when you leave', audience: 'staff', violation: 'You leave without clocking out. No penalty: the app clocks you out at the time of your last action at the shop (a Live Sale tap or a checklist tick, even after 7pm), tells you, and you tap OK, send the correct time for approval, or tap Remind me later',
-    how: 'Clock out when you leave the shop\nAt 7pm the app asks: are you still at the shop?\nIf you forget, the app clocks you out using your last shop-only action and sends you a prompt\nA time you send is approved by Joe (Joe\'s is approved by Grony)\nWith no shop action to go on, you must enter your time out before you carry on' },
+    how: 'Clock out when you leave the shop. You clock in once and out once a day\nFrom 6pm, when a colleague clocks out and says nobody else is at the shop, you have 1 minute to confirm you are still there, or you are clocked out at your last action\nAt 7pm the app asks: are you still at the shop?\nIf you forget, the app clocks you out using your last shop-only action and sends you a prompt\nA time you send is approved by Joe (Joe\'s is approved by Grony)\nWith no shop action to go on, you must enter your time out before you carry on' },
   { title: 'Review the CCTV when staff work without the manager', audience: 'managers', violation: 'Days when staff were at work and the manager had not clocked in are not reviewed on CCTV. No penalty here: the 48-hour law carries the point',
     how: 'The app lists the days and the times staff worked without the manager\nWatch the CCTV for those times\nConfirm that every sale was entered and every law was kept\nIf not, log a violation or send a question to the staff member' },
 ]

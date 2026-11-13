@@ -55,7 +55,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
         </div>
 
         {(d.sanctions.some(s => s.status === 'proposed') || d.pending.length > 0) && (
-          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-900">⚖ {d.sanctions.filter(s => s.status === 'proposed').length} sanction(s) and {d.pending.length} violation(s) are waiting for a decision. They are decided on <b>Waiting for me</b>, in one place. <a href="/my-day" className="ml-1 underline">Open Waiting for me</a></p>
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs font-semibold text-amber-900">⚖ {d.sanctions.filter(s => s.status === 'proposed').length} sanction(s) and {d.pending.length} violation(s) are waiting for a decision. They are decided on <b>Waiting for team</b> (with your own name or Everyone chosen). <a href="/todo" className="ml-1 underline">Open Waiting for team</a></p>
         )}
 
         <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Staff</p>
