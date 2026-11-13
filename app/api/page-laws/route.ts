@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       return success(await withKept(visibleLaws(rows as { status?: string; audience?: string; tile_id?: number | null }[], owner, isManagerName(actorKey(me?.user as any))) as { tile_id?: number | null }[]))
     } else {
       // Fetch all laws across all scopes
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, reminder, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points, assignment, month_day FROM page_laws ORDER BY scope_key, id`
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, reminder, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points, assignment, month_day FROM page_laws WHERE COALESCE(status, 'live') <> 'retired' ORDER BY scope_key, id`
       return success(await withKept(visibleLaws(rows as { status?: string; audience?: string; tile_id?: number | null }[], owner, isManagerName(actorKey(me?.user as any))) as { tile_id?: number | null }[]))
     }
   } catch (e) {

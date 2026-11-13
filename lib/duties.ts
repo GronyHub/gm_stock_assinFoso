@@ -138,10 +138,7 @@ export async function standingRowsAll(): Promise<StandingRow[]> {
   const out: StandingRow[] = []
   const people = SIGNERS.filter(n => n !== 'grony'), managers = ['joe', 'bino']
   try {
-    const sign = await sql`SELECT p.n AS person, (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '24 hours')::date::text AS due, COUNT(*)::int AS n,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM law_signatures s WHERE s.law_id = l.id AND s.staff = p.n))::int AS done
-      FROM unnest(${people}::text[]) AS p(n) JOIN page_laws l ON l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND p.n = ANY(${managers}::text[]))) GROUP BY 1, 2`
-    for (const r of sign) out.push({ person: String(r.person), kind: 'sign', due: String(r.due), n: num(r.n), done: num(r.done) })
+    // Signing laws was dropped (2026-11-13): the laws are statutory, so there is no "laws to sign" duty.
   } catch { /* leave out */ }
   try {
     const quiz = await sql`SELECT p.n AS person, (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '7 days')::date::text AS due, COUNT(*)::int AS n,

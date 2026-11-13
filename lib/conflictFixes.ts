@@ -62,3 +62,15 @@ export async function sanctionsDateOnce() {
     await sql`UPDATE page_laws SET text = REPLACE(text, 'Until counting starts (Monday 16 November 2026) points are a pilot', 'Until counting starts (the date is on the Penalty Points page and is set by the owner) points are a pilot') WHERE id = 148`
   } catch (e) { console.error('sanctions date fix failed:', e instanceof Error ? e.message : String(e)) }
 }
+
+// Signing dropped (2026-11-13): the "sign each new law within 24 hours" law is taken out of force (kept as a row so the other app-checked laws keep their order),
+// and the pilot points given for unsigned laws are withdrawn.
+export async function dropSigningOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('drop-signing-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const laws = await sql`UPDATE page_laws SET status = 'retired' WHERE (title = 'Sign each new law within 24 hours' OR text ILIKE 'Sign each new law within 24 hours%') RETURNING id, tile_id` as unknown as { id: number; tile_id: number | null }[]
+    for (const l of laws) if (l.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${l.tile_id}`
+    await sql`UPDATE staff_penalties SET status = 'dismissed', note = 'Withdrawn: the laws are no longer signed' WHERE status IN ('active', 'pending') AND source = 'meta' AND reason ILIKE '%was not signed within 24 hours%'`
+  } catch (e) { console.error('drop signing failed:', e instanceof Error ? e.message : String(e)) }
+}

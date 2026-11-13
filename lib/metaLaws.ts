@@ -110,9 +110,9 @@ export async function metaTick(day: string) {
       const r = await addPoint({ staff: s, points: pts, reason: `${code ? code + ': ' : ''}${why}`, source: 'meta', ref, lawId: ids[i], by: 'system', lawCode: code ?? null, violation: why })
       if (r) { awarded++; void notifyOwners(`Automatic point: ${s}`, why) }
     }
-    // 1. signatures: 24 hours
+    // 1. signatures: dropped (2026-11-13) -- the laws are statutory, nobody signs them.
     const signed = new Set((await sql`SELECT law_id FROM law_signatures WHERE staff = ${s}`).map(r => Number(r.law_id)))
-    for (const l of laws) {
+    for (const l of [] as typeof laws) {
       if (signed.has(l.id)) continue
       const h = hours(l.live_at)
       if (h >= 24) await award(0, cSign, `sign:${l.id}`, `${l.code ?? (l.title ? `"${String(l.title).slice(0, 60)}"` : 'A law')} was not signed within 24 hours of going live`)
