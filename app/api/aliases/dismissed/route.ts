@@ -8,7 +8,7 @@ export async function GET() {
 
   try {
     await ensureDismissedAliasReviews()
-    const rows = await sql`SELECT * FROM dismissed_alias_reviews ORDER BY created_at DESC`
+    const rows = await sql`SELECT * FROM dismissed_alias_reviews ORDER BY dismissed_at DESC`
     return success(rows)
   } catch (e) {
     return handleError('aliases/dismissed', e)

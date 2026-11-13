@@ -37,6 +37,9 @@ export default function GmcPacksPage() {
   const [gmcType, setGmcType] = useState('')
   const [targetItemId, setTargetItemId] = useState<number | null>(null)
   const [unitsPack, setUnitsPack] = useState('')
+  const [reload, setReload] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,7 +71,7 @@ export default function GmcPacksPage() {
     }
 
     fetchData()
-  }, [])
+  }, [reload])
 
   if (loading) {
     return <div className="p-4 text-gray-500">Loading GMC packs...</div>
@@ -119,6 +122,21 @@ export default function GmcPacksPage() {
   const sourceItem = sourceItemId ? allItems.find(i => i.id === sourceItemId) : null
   const targetItem = targetItemId ? allItems.find(i => i.id === targetItemId) : null
   const isComplete = sourceItemId && gmcType && targetItemId && unitsPack
+  // The configuration lives on the source item (its GMC type, the item it converts to, and units per pack), so saving is an update of that item.
+  async function saveConfig() {
+    if (!isComplete || saving) return
+    const units = Number(unitsPack)
+    if (!Number.isFinite(units) || units <= 0) { setSaveMsg({ ok: false, text: 'Units per pack must be a number above 0.' }); return }
+    setSaving(true); setSaveMsg(null)
+    try {
+      const r = await fetch(`/api/items/${sourceItemId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gmc_type: gmcType, converts_to_item_id: targetItemId, units_per_pack: units }) })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setSaveMsg({ ok: false, text: d.error ?? 'Could not save the configuration.' }); return }
+      setSaveMsg({ ok: true, text: 'Saved.' })
+      setSourceItemId(null); setGmcType(''); setTargetItemId(null); setUnitsPack('')
+      setReload(n => n + 1)
+    } catch { setSaveMsg({ ok: false, text: 'Could not save. Check your connection and try again.' }) } finally { setSaving(false) }
+  }
 
   return (
     <div className="w-full h-full overflow-x-auto overflow-y-auto p-4 flex flex-col gap-4">
@@ -209,15 +227,17 @@ export default function GmcPacksPage() {
         </div>
 
         <button
-          disabled={!isComplete}
+          type="button" onClick={() => void saveConfig()}
+          disabled={!isComplete || saving}
           className={`w-full py-2 rounded-lg font-semibold transition ${
             isComplete
               ? 'bg-green-600 text-white hover:bg-green-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {isComplete ? '✓ Save Configuration' : '⚠ Complete all fields'}
+          {saving ? 'Saving…' : isComplete ? '✓ Save Configuration' : '⚠ Complete all fields'}
         </button>
+        {saveMsg && <p className={`mt-2 text-sm font-semibold ${saveMsg.ok ? 'text-green-700' : 'text-red-600'}`}>{saveMsg.text}</p>}
       </div>
 
       {/* Existing Packs Table */}

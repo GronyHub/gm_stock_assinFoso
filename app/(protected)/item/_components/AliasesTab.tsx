@@ -403,10 +403,7 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
 
   async function deleteAlias(row: LeakRow) {
     setBusy(row.alias_id)
-    const res = await fetch('/api/aliases/leaks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ alias_id: row.alias_id }),
-    })
+    const res = await fetch(`/api/aliases/${row.alias_id}`, { method: 'DELETE' })
     setBusy(null)
     if (!res.ok) return
     setRows(prev => prev.filter(r => r.alias_id !== row.alias_id))
