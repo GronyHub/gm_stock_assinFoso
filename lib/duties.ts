@@ -85,7 +85,7 @@ export async function personalDuties(): Promise<Duty[]> {
   const todayKey = today(), out: Duty[] = []
   const staff = SIGNERS.filter(n => n !== 'grony'), deciders = ['grony', 'joe']
   const mk = (key: keyof typeof PERSONAL, owner: string | null, count: number, late: boolean, extra?: string): Duty => ({ kind: 'standing', key: `s:${key}:${owner ?? 'team'}`, id: -1, title: PERSONAL[key].title, time: '', due: 24 * 60 + 1, owner, role: null,
-    category: 'Standing duty', lawType: null, lawId: null, typeLabel: PERSONAL[key].type, state: late ? 'late' : 'now', count, detail: `${PERSONAL[key].detail}${extra ? ' ' + extra : ''}` })
+    category: 'Standing duty', lawType: null, lawId: null, href: STAND_HREF[key], typeLabel: PERSONAL[key].type, state: late ? 'late' : 'now', count, detail: `${PERSONAL[key].detail}${extra ? ' ' + extra : ''}` })
   try {
     const r = await sql`SELECT LOWER(assigned_to) AS p, COUNT(*)::int AS n, MIN(substr(due_date::text, 1, 10)) AS first_due FROM custom_tasks WHERE assigned_to IS NOT NULL AND NOT COALESCE(done, false) AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${todayKey}) GROUP BY 1`
     for (const x of r) if (num(x.n) > 0) out.push(mk('mytasks', String(x.p), num(x.n), !!x.first_due && String(x.first_due) < todayKey, x.first_due && String(x.first_due) < todayKey ? 'One or more are past their due date.' : ''))
@@ -129,6 +129,9 @@ const STANDING: Record<StandingRow['kind'], { title: string; icon: string; type:
   cctv: { title: 'CCTV reviews to do', icon: '🎥', type: 'Review', detail: 'Days staff worked while Joe was not clocked in. Due within 48 hours.' },
   approve: { title: 'Clock times to approve', icon: '🕐', type: 'Decision', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out. Due within 48 hours.' },
 }
+// Where a tap on a standing duty goes (the same places Waiting for me sends the person).
+export const STAND_HREF: Record<string, string> = { sign: '/laws?sign=1', quiz: '/laws', cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws', 'pending-jobs': '/pending-jobs',
+  'clock-prev': '/my-day', 'clock-auto': '/my-day', queries: '/my-day', mytasks: '/my-day', ack: '/my-day', approve: '/todo' }
 const num = (v: unknown) => Number(v ?? 0)
 // One query set for every person: how many of each standing duty fall due on each date, and how many of those are already done.
 export async function standingRowsAll(): Promise<StandingRow[]> {
@@ -164,7 +167,7 @@ export async function standingDuties(date: string): Promise<Duty[]> {
   const out: Duty[] = []
   const mk = (r: { person: string; kind: StandingRow['kind'] }, key: string, state: DutyState, count: number, detail: string): Duty => ({
     kind: 'standing', key: `s:${r.kind}:${r.person}:${key}`, id: -1, title: STANDING[r.kind].title, time: '', due: 24 * 60, owner: r.person, role: null, category: 'Standing duty', lawType: null, lawId: null,
-    typeLabel: STANDING[r.kind].type, state, count, detail })
+    href: STAND_HREF[r.kind], typeLabel: STANDING[r.kind].type, state, count, detail })
   const group = new Map<string, StandingRow[]>()
   for (const r of rows) group.set(`${r.person}|${r.kind}`, [...(group.get(`${r.person}|${r.kind}`) ?? []), r])
   for (const list of group.values()) {
@@ -218,7 +221,7 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
   } catch { /* leave out */ }
   try {
     const jobs = await sql`SELECT id, customer, job, status FROM pending_jobs WHERE status <> 'done' AND due_on = ${date}::date` as unknown as { id: number; customer: string; job: string; status: string }[]
-    for (const j of jobs) out.push({ kind: 'job', key: `j${j.id}`, id: -1, title: `Pending job · ${j.customer}: ${j.job.slice(0, 90)}`, time: '', due: 23 * 60 + 45, owner: null, role: null, category: 'Pending jobs', lawType: null, lawId: null, typeLabel: 'Customer job',
+    for (const j of jobs) out.push({ kind: 'job', key: `j${j.id}`, id: -1, title: `Pending job · ${j.customer}: ${j.job.slice(0, 90)}`, time: '', due: 23 * 60 + 45, owner: null, role: null, category: 'Pending jobs', lawType: null, lawId: null, href: '/pending-jobs', typeLabel: 'Customer job',
       state: future ? 'plan' : isToday ? 'now' : 'miss', note: j.status === 'ready' ? 'Ready: waiting for the customer' : null })
   } catch { /* leave out */ }
   return out

@@ -59,6 +59,8 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   // Who a task falls on and how it stands come from the server (the same duties calculation Waiting for me reads).
   const whoOfDuty = (d: Duty) => (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
   // A duty with a task behind it opens that task; the rest (standing duties, one-offs, jobs) are information.
+  // A duty that is not a checklist tile (laws to sign, CCTV reviews, pending jobs...) opens the place where it is done: in the hub's frame through the hub, otherwise directly.
+  const goTo = (path: string) => { if (window.parent !== window) window.parent.postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
   const tileOf = (d: Duty) => (d.kind === 'task' || d.kind === 'periodic' ? tiles.find(t => t.id === d.id) : undefined)
   const mineOrDid = (d: Duty) => !person || d.owner === person.toLowerCase() || d.by?.toLowerCase() === person.toLowerCase()
   const typeOf = (d: Duty) => d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label
@@ -156,7 +158,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />))}
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : d.href ? () => goTo(d.href!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />))}
           </div>
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
@@ -185,7 +187,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : d.href ? () => goTo(d.href!) : undefined} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />
             ))}
           </div>
         </div>
