@@ -149,7 +149,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
   if (vertical) {
     const others = computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase())
     return (
-      <div className="flex flex-col gap-1 border-b border-white/30 px-1 py-1">
+      <div className="flex flex-col gap-1 px-1 pt-1">
         {others.map(s => {
           const k = s.staff_name.toLowerCase(), w = waitingBy?.[k], p = pts[k]
           const on = !!activeStaff && activeStaff.toLowerCase() === k

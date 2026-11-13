@@ -30,9 +30,8 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   live as small icons at the bottom of the content area (the
                   right side) instead, see below. */}
             </>}>
-            <SidePaneToggle selfActive={!!personal && personal.name.toLowerCase() === username.toLowerCase()} mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} slim={!isDesktop && outerTab === 'loss'} />
-            {/* Phone: everyone else lines up here as slim rows (was a strip across the top), so the page on the right gets the full height. */}
-            {!isDesktop && outerTab === 'loss' && <PresentStaffBar vertical roster={activeStaff} selfName={username} onOpenStaff={openPersonal} onOpenShop={() => openShop('todo')} activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />}
+            <SidePaneToggle selfActive={!!personal && personal.name.toLowerCase() === username.toLowerCase()} mode={cashDisplayMode} onChange={changeCashDisplayMode} label={session?.user?.name ?? username} username={username} sales={salesByStaff[username.toLowerCase()] ?? 0} slim={!isDesktop && outerTab === 'loss'}
+              team={!isDesktop && outerTab === 'loss' ? <PresentStaffBar vertical roster={activeStaff} selfName={username} onOpenStaff={openPersonal} onOpenShop={() => openShop('todo')} activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} /> : undefined} />
 
             {(session?.user as { impersonating?: boolean } | undefined)?.impersonating && (
               <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}

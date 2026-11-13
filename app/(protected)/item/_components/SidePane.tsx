@@ -84,14 +84,16 @@ export function paneWidthClass(mode: DisplayMode) {
 // `onHide`, when passed, floats a small "hide sidebar" button over the
 // label's own row instead of it taking a layout slot of its own -- no extra
 // border/column, it just sits on top of space the label wasn't using.
-export function SidePaneToggle({ mode, onChange, label, username, sales, onHide, selfActive, slim }: { mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string; username?: string; sales?: number; onHide?: () => void; selfActive?: boolean; slim?: boolean }) {
+export function SidePaneToggle({ mode, onChange, label, username, sales, onHide, selfActive, slim, team }: { team?: React.ReactNode; mode: DisplayMode; onChange: (mode: DisplayMode) => void; label?: string; username?: string; sales?: number; onHide?: () => void; selfActive?: boolean; slim?: boolean }) {
   return (
-    <div className="relative border-b border-white/30 bg-[var(--pane-accent)] sticky top-0 z-10">
+    // On the phone (slim) the people list sits right under my own button, and the whole block scrolls away with the menu instead of staying pinned.
+    <div className={`relative border-b border-white/30 bg-[var(--pane-accent)] ${slim ? '' : 'sticky top-0 z-10'}`}>
       {label && (
         <div className={`px-1 pt-1 ${onHide ? 'pr-6' : ''}`}>
           <MySelfChip name={label} username={username} sales={sales} active={selfActive} slim={slim} />
         </div>
       )}
+      {team}
       {onHide && (
         <button
           type="button"
