@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time: sentTime, picked, presence, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
+  const { action, time: sentTime, picked, presence, absent, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
   if (!action) return badRequest('Missing fields')
   // The time is the SERVER's clock (Ghana = UTC), never the device's: a phone or computer with a wrong clock once recorded a 7:50pm clock-out at 6:32pm
   // (James, 2026-11-13). Only a time the person deliberately picked ("Pick a different time") is taken from them, and only when it is not later than now.
@@ -232,6 +232,9 @@ export async function POST(req: NextRequest) {
       // Compulsory before clocking out: "Is any of the following staff still at the shop?" for everyone else still clocked in. No answer, no clock-out.
       if (String(username).toLowerCase() !== 'grony') {
         stillIn = await othersStillIn(String(username).toLowerCase(), today)
+        const absentList = Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()).filter((x: string) => stillIn.includes(x)) : []
+        if (stillIn.length && presence === 'no' && !absentList.length)
+          return NextResponse.json({ error: 'Choose who is not at the shop.', requires_presence: true, others: stillIn }, { status: 409 })
         if (stillIn.length && presence !== 'yes' && presence !== 'no')
           return NextResponse.json({ error: 'Answer the question before you clock out.', requires_presence: true, others: stillIn }, { status: 409 })
       }
@@ -336,7 +339,10 @@ export async function POST(req: NextRequest) {
         void recordActivity(who, 'said others are still at the shop', names.join(', '))
         void notifyManagement(me, `${who} clocked out`, `${who} says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop.`)
       } else {
-        await raiseChecks(me).catch(() => [])
+        const gone = (Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()) : []).filter((x: string) => stillIn.includes(x))
+        const here = stillIn.filter(n => !gone.includes(n)).map(n => n.charAt(0).toUpperCase() + n.slice(1))
+        if (here.length) void recordActivity(who, 'said others are still at the shop', here.join(', '))
+        await raiseChecks(me, gone).catch(() => [])
       }
     }
 

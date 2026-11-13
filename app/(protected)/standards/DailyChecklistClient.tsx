@@ -195,7 +195,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           <div className={tileGrid(density)}>
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
-                detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : undefined}
+                detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={canEdit && d.lawId ? `/laws?law=${d.lawId}` : undefined} />
             ))}

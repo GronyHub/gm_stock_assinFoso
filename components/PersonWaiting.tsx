@@ -57,7 +57,7 @@ export function PersonDayTiles({ person, date, density }: { person: string; date
         <div className={tileGrid(density)}>
           {shown.map(i => (
             <TaskTile key={i.key} density={density} icon={i.icon} time={i.time} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type}
-              mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : i.state === 'miss' ? 'miss' : undefined}
+              mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : i.state === 'miss' || i.state === 'late' ? 'miss' : undefined}
               tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.state === 'miss' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'} />))}
         </div>)}
     </div>

@@ -27,10 +27,11 @@ export async function othersStillIn(me: string, day = today()): Promise<string[]
 }
 
 // "Nobody else is here": ask each of the others to confirm.
-export async function raiseChecks(by: string): Promise<string[]> {
+export async function raiseChecks(by: string, only?: string[]): Promise<string[]> {
   await ensurePresence()
   const now = new Date()
-  const day = today(), who = await othersStillIn(by, day), asked: string[] = []
+  const day = today(), all = await othersStillIn(by, day), asked: string[] = []
+  const who = only?.length ? all.filter(n => only.map(o => o.toLowerCase()).includes(n)) : all
   for (const n of who) {
     const [open] = await sql`SELECT id FROM presence_checks WHERE day = ${day} AND staff = ${n} AND status = 'open'`
     if (open) continue
@@ -40,8 +41,8 @@ export async function raiseChecks(by: string): Promise<string[]> {
     void pushToUsers([n], `${cap(by)} says you are not at the shop`, `Open the app and confirm you are still here within ${CHECK_SECONDS} seconds, or you will be clocked out.`)
   }
   if (asked.length) {
-    void recordActivity(by, 'said nobody else is at the shop', `Asked ${asked.map(cap).join(', ')} to confirm`)
-    void notifyManagement(by, `${cap(by)} says nobody else is at the shop`, `${asked.map(cap).join(', ')} ${asked.length === 1 ? 'was' : 'were'} asked to confirm within a minute.`)
+    void recordActivity(by, 'said these staff are not at the shop', `${asked.map(cap).join(', ')} (asked to confirm within a minute)`)
+    void notifyManagement(by, `${cap(by)} says ${asked.map(cap).join(' and ')} ${asked.length === 1 ? 'is' : 'are'} not at the shop`, `${asked.map(cap).join(', ')} ${asked.length === 1 ? 'was' : 'were'} asked to confirm within a minute.`)
   }
   return asked
 }

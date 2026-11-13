@@ -82,7 +82,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       <div className={tileGrid(density)}>
         {shown.map(i => (
           <TaskTile key={i.key} density={density} icon={i.icon} time={i.time ?? (i.state ? undefined : TAG[i.urgency])} title={i.title} detail={i.detail} who={i.who} category={i.category} type={i.type} badge={i.count}
-            mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : undefined}
+            mark={i.state === 'done' ? 'done' : i.state === 'not' ? 'no' : isOver(i) ? 'miss' : undefined}
             tone={i.state === 'done' ? 'border-green-400 bg-green-50' : i.state === 'not' ? 'border-gray-300 bg-gray-100' : i.urgency === 'now' ? 'border-red-300 bg-red-50' : i.urgency === 'soon' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}
             onClick={canTap(i) ? () => go(i) : undefined} />))}
       </div>

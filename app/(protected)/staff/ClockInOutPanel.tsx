@@ -112,7 +112,8 @@ export default function ClockInOutPanel({
   const [notice, setNotice] = useState<string | null>(null)
   // Compulsory before clocking out (the server refuses without it): is any of the staff still clocked in at the shop?
   const [presenceAsk, setPresenceAsk] = useState<{ others: string[]; time: string } | null>(null)
-  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean; presence?: 'yes' | 'no' }) {
+  const [notHere, setNotHere] = useState<string[] | null>(null)   // after "No": who is not at the shop
+  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean; presence?: 'yes' | 'no'; absent?: string[] }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
     setErr('')
     setRoleBanner(null)
@@ -135,7 +136,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, picked: pickingTime || undefined, presence: opts?.presence, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
+      body: JSON.stringify({ action, time, picked: pickingTime || undefined, presence: opts?.presence, absent: opts?.absent, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
     })
     setSaving(false)
     if (res.ok) {
@@ -241,11 +242,19 @@ export default function ClockInOutPanel({
             <audio src="/sounds/presence_confirm.m4a" autoPlay preload="auto" />
             <p className="text-base font-extrabold text-[#14213D]">Is any of the following staff still at the shop?</p>
             <ul className="space-y-1">{presenceAsk.others.map(n => <li key={n} className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-900">{n.charAt(0).toUpperCase() + n.slice(1)}</li>)}</ul>
-            <p className="text-xs text-gray-600">You must answer before you can clock out. Your answer goes to Grony and Joe. If you say No, each of them is asked to confirm within a minute.</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-gray-600">You must answer before you can clock out. Your answer goes to Grony and Joe. If you say No, you tick who is not here, and each of them is asked to confirm within a minute.</p>
+            {notHere ? (<div className="space-y-2">
+              <p className="text-sm font-bold text-gray-900">Tick who is NOT at the shop:</p>
+              {presenceAsk.others.map(n => <label key={n} className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-gray-900">
+                <input type="checkbox" className="h-5 w-5" checked={notHere.includes(n)} onChange={e => setNotHere(l => e.target.checked ? [...(l ?? []), n] : (l ?? []).filter(x => x !== n))} />{n.charAt(0).toUpperCase() + n.slice(1)}</label>)}
+              <div className="flex gap-2">
+                <button type="button" disabled={saving || !notHere.length} onClick={() => { const t = presenceAsk.time, a = notHere; setPresenceAsk(null); setNotHere(null); void clock('out', { time: t, presence: 'no', absent: a }) }} className="flex-1 rounded-xl bg-red-600 py-3 text-base font-extrabold text-white disabled:opacity-40">Clock out</button>
+                <button type="button" onClick={() => setNotHere(null)} className="rounded-xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700">Back</button>
+              </div>
+            </div>) : <div className="flex gap-2">
               <button type="button" disabled={saving} onClick={() => { const t = presenceAsk.time; setPresenceAsk(null); void clock('out', { time: t, presence: 'yes' }) }} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-extrabold text-white disabled:opacity-40">Yes</button>
-              <button type="button" disabled={saving} onClick={() => { const t = presenceAsk.time; setPresenceAsk(null); void clock('out', { time: t, presence: 'no' }) }} className="flex-1 rounded-xl bg-red-600 py-3 text-base font-extrabold text-white disabled:opacity-40">No</button>
-            </div>
+              <button type="button" disabled={saving} onClick={() => setNotHere(presenceAsk.others.length === 1 ? [...presenceAsk.others] : [])} className="flex-1 rounded-xl bg-red-600 py-3 text-base font-extrabold text-white disabled:opacity-40">No</button>
+            </div>}
           </div>
         </div>
       )}

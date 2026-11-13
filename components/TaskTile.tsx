@@ -28,7 +28,7 @@ export default function TaskTile({ density, time, title, who, category, type, de
   const full = density === 'full'
   const markEl = mark && (
     <span className={`absolute right-1 top-0 font-black leading-none ${full ? 'text-base' : 'text-[12px]'} ${mark === 'done' ? 'text-green-600' : mark === 'miss' ? 'text-red-600' : 'text-gray-500'}`}
-      title={mark === 'done' ? 'Done' : mark === 'miss' ? 'Not done at all' : 'Marked not done, with a reason'}>{mark === 'done' ? '✓' : mark === 'miss' ? '✗' : '–'}</span>)
+      title={mark === 'done' ? 'Done' : mark === 'miss' ? 'Its time has passed and it is not done' : 'Marked not done, with a reason'}>{mark === 'done' ? '✓' : mark === 'miss' ? '✗' : '–'}</span>)
   const tile = (
     <button type="button" title={title} onClick={onClick} onContextMenu={e => e.preventDefault()}
       className={`relative flex select-none flex-col items-start justify-start gap-px rounded-md border text-left active:opacity-70 ${full ? 'min-h-[4.5rem] px-2 py-1.5' : 'min-h-[3.6rem] px-1 py-0.5'} ${tone}`}>
