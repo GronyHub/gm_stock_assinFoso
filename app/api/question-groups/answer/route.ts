@@ -34,6 +34,12 @@ export async function POST(req: NextRequest) {
     let complete = false
     const ansIn = Array.isArray(b.answers) ? b.answers as AnswerIn[] : []
     try { complete = (await saveAnswers(g, day, actor, ansIn)).complete } catch (e) { return badRequest(e instanceof Error ? e.message : 'Could not save.') }
+    // Every answer a person gives is told to the owner and Joe, with the answers themselves.
+    if (ansIn.length) {
+      const lines = ansIn.map(a => { const it = g.items.find(i => i.id === Number(a.item_id)); const d = String(a.detail ?? '').trim()
+        return it ? `${it.text.slice(0, 50)}: ${String(a.answer).slice(0, 60) || '-'}${d ? ` (${d.slice(0, 80)})` : ''}` : null }).filter(Boolean)
+      if (lines.length) void notifyManagement(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
+    }
     if (complete) {
       const [have] = await sql`SELECT id FROM daily_check_events WHERE tile_id = ${g.tile_id} AND day = ${day} AND value = 'Done' LIMIT 1`
       if (!have) {

@@ -2,6 +2,7 @@ import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { actorKey } from '@/lib/clockState'
 import { recordActivity } from '@/lib/logger'
+import { notifyManagement } from '@/lib/checklistAlerts'
 import { ensurePendingJobs, selectJobs } from '@/lib/pendingJobs'
 import { NextRequest } from 'next/server'
 
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
     if (refund && amt > job.paid + 0.005) return badRequest(`Only ${job.paid.toFixed(2)} was paid.`)
     const by = actorKey(session.user as never)
     await sql`INSERT INTO pending_job_payments (job_id, amount, method, kind, note, by_staff) VALUES (${id}, ${refund ? -amt : amt}, ${String(b.method ?? 'cash').slice(0, 20)}, ${refund ? 'refund' : 'balance'}, ${String(b.note ?? '').slice(0, 200) || null}, ${by})`
+    void notifyManagement(by, `${by.charAt(0).toUpperCase() + by.slice(1)}: ${refund ? 'refund' : 'payment'} on a pending job`, `${job.customer}: ${amt.toFixed(2)}`)
     void recordActivity(by, refund ? 'refunded money on a pending job' : 'took a payment on a pending job', `${job.customer}: ${amt.toFixed(2)}`)
     return success({ job: (await selectJobs(id))[0] })
   } catch (e) { return handleError('pending-job-payments POST', e) }

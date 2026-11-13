@@ -133,7 +133,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
+      body: JSON.stringify({ action, time, picked: pickingTime || undefined, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
     })
     setSaving(false)
     if (res.ok) {
@@ -239,7 +239,7 @@ export default function ClockInOutPanel({
           <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
             <p className="text-base font-extrabold text-[#14213D]">Is anyone still at the shop?</p>
             <p className="text-sm text-gray-700">{stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} {stillIn.length === 1 ? 'is' : 'are'} still clocked in. Are {stillIn.length === 1 ? 'they' : 'they'} still at the shop?</p>
-            <button type="button" onClick={() => setStillIn(null)} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">Yes, still at the shop</button>
+            <button type="button" onClick={() => { setStillIn(null); void fetch('/api/clock/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'report_present' }) }).catch(() => {}) }} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">Yes, still at the shop</button>
             <button type="button" onClick={() => void reportEmpty()} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">No, nobody is here</button>
           </div>
         </div>

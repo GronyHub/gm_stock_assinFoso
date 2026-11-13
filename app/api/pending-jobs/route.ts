@@ -4,6 +4,7 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { actorKey } from '@/lib/clockState'
 import { recordActivity } from '@/lib/logger'
+import { notifyManagement } from '@/lib/checklistAlerts'
 import { ensurePendingJobs, pendingJobCounts, selectJobs, JOB_STATUSES, type JobLine } from '@/lib/pendingJobs'
 import { NextRequest } from 'next/server'
 
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
       VALUES (${customer}, ${String(b.customer_id ?? '').trim().slice(0, 20) || null}, ${phone}, ${job}, ${JSON.stringify(lines)}::jsonb, ${total}, ${prepaid}, ${prepaid ? 'sale' : 'job'}, ${Number(b.receipt_id) || null},
               ${due}, ${String(b.note ?? '').trim().slice(0, 500) || null}, ${by}, ${by}) RETURNING id`
     if (!prepaid && dep > 0) await sql`INSERT INTO pending_job_payments (job_id, amount, method, kind, by_staff) VALUES (${row.id}, ${dep}, ${String(b.deposit?.method ?? 'cash').slice(0, 20)}, 'deposit', ${by})`
+    void notifyManagement(by, `${by.charAt(0).toUpperCase() + by.slice(1)}: ${prepaid ? 'pending job from a paid sale' : 'new pending job'}`, `${customer}: ${job.slice(0, 120)}${prepaid ? '' : ` (total ${total})`}`)
     void recordActivity(by, prepaid ? 'made a pending job from a paid sale' : 'left a pending job', `${customer}: ${job.slice(0, 80)}${prepaid ? '' : ` (total ${total}, deposit ${dep})`}`)
     const [made] = await selectJobs(row.id as number)
     return success({ id: row.id, job: made }, 201)
@@ -77,6 +79,7 @@ export async function PATCH(req: NextRequest) {
     // Collected: its goods leave stock (no sales receipt exists for them). Reopened: they come back.
     if (status === 'done' && cur.status !== 'done') await recordJobStockOut(id, by)
     else if (cur.status === 'done' && status !== 'done') await clearJobStockOut(id)
+    if (status !== cur.status) void notifyManagement(by, `${by.charAt(0).toUpperCase() + by.slice(1)}: pending job ${status === 'done' ? 'handed over' : status === 'ready' ? 'finished' : 'reopened'}`, String(cur.customer ?? '') + (cur.job ? `: ${String(cur.job).slice(0, 100)}` : ''))
     if (status !== cur.status) void recordActivity(by, status === 'done' ? 'handed over a pending job' : status === 'ready' ? 'finished a pending job' : 'reopened a pending job', `${cur.customer}: ${String(cur.job).slice(0, 100)}`)
     return success({ ok: true })
   } catch (e) { return handleError('pending-jobs PATCH', e) }

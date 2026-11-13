@@ -60,7 +60,7 @@ export default function ClockInGateModal({ onClockedIn, onSkip }: { onClockedIn:
     try {
       const res = await fetch('/api/staff-times/today', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'in', time, latitude, longitude, accuracy }),
+        body: JSON.stringify({ action: 'in', time, picked: pickingTime || undefined, latitude, longitude, accuracy }),
       })
       setSaving(false)
       if (res.ok) { onClockedIn(); return }
