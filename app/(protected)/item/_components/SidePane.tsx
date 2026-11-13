@@ -35,6 +35,7 @@ const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-16 sm:w-20',
 // subscribe() call across the whole app (not at module load, since that
 // can't await a fetch) -- every later mount just reads the already-synced
 // module-level currentMode like before.
+const SHOW_MODE_SWITCH = false
 function isDisplayMode(v: string | null): v is DisplayMode {
   return v === 'icon' || v === 'text' || v === 'both'
 }
@@ -104,7 +105,9 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide,
           ◀
         </button>
       )}
-      <div className="flex items-stretch gap-0.5 p-1">
+      {/* The icon / icon+words / words switch is hidden: it is one shared setting only an owner can save, so for staff it did nothing that lasted.
+          The saved choice (words only) still applies to everyone. Set SHOW_MODE_SWITCH to true to bring it back. */}
+      {SHOW_MODE_SWITCH && <div className="flex items-stretch gap-0.5 p-1">
         {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
           <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
             className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
@@ -112,7 +115,7 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide,
             {GLYPH[m]}
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
