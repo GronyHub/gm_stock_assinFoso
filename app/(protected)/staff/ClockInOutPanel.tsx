@@ -110,7 +110,9 @@ export default function ClockInOutPanel({
   // Without a usable GPS the person may still clock IN: the time is held for the manager, who checks the CCTV and approves or rejects it. They are told the decision.
   const [noGps, setNoGps] = useState<{ time: string; why: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean }) {
+  // Compulsory before clocking out (the server refuses without it): is any of the staff still clocked in at the shop?
+  const [presenceAsk, setPresenceAsk] = useState<{ others: string[]; time: string } | null>(null)
+  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean; presence?: 'yes' | 'no' }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
     setErr('')
     setRoleBanner(null)
@@ -133,7 +135,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, picked: pickingTime || undefined, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
+      body: JSON.stringify({ action, time, picked: pickingTime || undefined, presence: opts?.presence, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
     })
     setSaving(false)
     if (res.ok) {
@@ -151,12 +153,10 @@ export default function ClockInOutPanel({
       if (action === 'out') {
         fetch('/api/clock/presence?next=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setBye({ next: (d?.data?.next ?? d?.next) ?? null })).catch(() => setBye({ next: null }))
       }
-      if (action === 'out' && new Date().getUTCHours() >= 18) {
-        fetch('/api/clock/presence?others=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { const o = d?.data?.others ?? d?.others; if (Array.isArray(o) && o.length) setStillIn(o) }).catch(() => {})
-      }
       afterAction?.()
     } else {
       const d = await res.json().catch(() => ({}))
+      if (res.status === 409 && d.requires_presence) { setPresenceAsk({ others: Array.isArray(d.others) ? d.others : [], time }); return }
       if (d.offer_cctv && action === 'in') { setNoGps({ time, why: d.error ?? 'Your location could not be confirmed.' }) }
       else if (res.status === 409 && d.requires_closing_report) {
         // Last one out — show the closing questionnaire, then retry with answers.
@@ -232,6 +232,21 @@ export default function ClockInOutPanel({
         <div className="flex items-start justify-between gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3">
           <p className="text-sm font-semibold text-red-900">{notice}</p>
           <button type="button" onClick={() => setNotice(null)} className="shrink-0 text-xs font-bold text-red-700">OK</button>
+        </div>
+      )}
+      {presenceAsk && (
+        <div className="fixed inset-0 z-[96] flex items-end justify-center bg-black/60 sm:items-center print:hidden" role="alertdialog" aria-modal="true">
+          <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
+            {/* The owner's own recorded question, played when it appears. */}
+            <audio src="/sounds/presence_confirm.m4a" autoPlay preload="auto" />
+            <p className="text-base font-extrabold text-[#14213D]">Is any of the following staff still at the shop?</p>
+            <ul className="space-y-1">{presenceAsk.others.map(n => <li key={n} className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-900">{n.charAt(0).toUpperCase() + n.slice(1)}</li>)}</ul>
+            <p className="text-xs text-gray-600">You must answer before you can clock out. Your answer goes to Grony and Joe. If you say No, each of them is asked to confirm within a minute.</p>
+            <div className="flex gap-2">
+              <button type="button" disabled={saving} onClick={() => { const t = presenceAsk.time; setPresenceAsk(null); void clock('out', { time: t, presence: 'yes' }) }} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-extrabold text-white disabled:opacity-40">Yes</button>
+              <button type="button" disabled={saving} onClick={() => { const t = presenceAsk.time; setPresenceAsk(null); void clock('out', { time: t, presence: 'no' }) }} className="flex-1 rounded-xl bg-red-600 py-3 text-base font-extrabold text-white disabled:opacity-40">No</button>
+            </div>
+          </div>
         </div>
       )}
       {stillIn && (

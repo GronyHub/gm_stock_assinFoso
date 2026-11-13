@@ -30,7 +30,6 @@ export async function othersStillIn(me: string, day = today()): Promise<string[]
 export async function raiseChecks(by: string): Promise<string[]> {
   await ensurePresence()
   const now = new Date()
-  if (now.getUTCHours() * 60 + now.getUTCMinutes() < CHECK_FROM_MINS) return []
   const day = today(), who = await othersStillIn(by, day), asked: string[] = []
   for (const n of who) {
     const [open] = await sql`SELECT id FROM presence_checks WHERE day = ${day} AND staff = ${n} AND status = 'open'`

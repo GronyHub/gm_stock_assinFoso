@@ -1,3 +1,5 @@
+import { recordActivity } from '@/lib/logger'
+import { othersStillIn, raiseChecks } from '@/lib/presenceCheck'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
 import { logActivity } from '@/lib/logger'
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time: sentTime, picked, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
+  const { action, time: sentTime, picked, presence, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
   if (!action) return badRequest('Missing fields')
   // The time is the SERVER's clock (Ghana = UTC), never the device's: a phone or computer with a wrong clock once recorded a 7:50pm clock-out at 6:32pm
   // (James, 2026-11-13). Only a time the person deliberately picked ("Pick a different time") is taken from them, and only when it is not later than now.
@@ -196,6 +198,7 @@ export async function POST(req: NextRequest) {
   try {
     let isCloser = false
     let closerReportJustSaved = false
+    let stillIn: string[] = []
 
     // Opener = earliest actual_in of the day, and there can only be one --
     // without this, a later clock-in (real or backdated via the "pick a
@@ -225,6 +228,12 @@ export async function POST(req: NextRequest) {
       `
       if (!existing?.actual_in) {
         return badRequest('You must record Time In first')
+      }
+      // Compulsory before clocking out: "Is any of the following staff still at the shop?" for everyone else still clocked in. No answer, no clock-out.
+      if (String(username).toLowerCase() !== 'grony') {
+        stillIn = await othersStillIn(String(username).toLowerCase(), today)
+        if (stillIn.length && presence !== 'yes' && presence !== 'no')
+          return NextResponse.json({ error: 'Answer the question before you clock out.', requires_presence: true, others: stillIn }, { status: 409 })
       }
 
       // Closer = the last staff member to clock out: everyone else who clocked
@@ -319,6 +328,17 @@ export async function POST(req: NextRequest) {
       action === 'in' ? 'clocked in' : 'clocked out',
       isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time)
     )
+
+    // The presence answer: recorded in Done and told to the owner and Joe. "No" also asks each of them to confirm they are at the shop within a minute.
+    if (action === 'out' && stillIn.length) {
+      const me = String(username).toLowerCase(), who = me.charAt(0).toUpperCase() + me.slice(1), names = stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1))
+      if (presence === 'yes') {
+        void recordActivity(who, 'said others are still at the shop', names.join(', '))
+        void notifyManagement(me, `${who} clocked out`, `${who} says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop.`)
+      } else {
+        await raiseChecks(me).catch(() => [])
+      }
+    }
 
     // After a clock-in: the time written is 30+ minutes before now -> a violation (5 = 1 point); no GPS -> held for the manager to approve from the CCTV.
     let backdated: { minutes: number; count: number; pointAwarded: boolean } | null = null
