@@ -151,14 +151,14 @@ export async function seedQuestionGroupsOnce() {
     const op = await parent('Opening questions answered%')
     if (op) await saveGroup({ name: 'Opening questions', lawId: op.law_id, items: (await ticks('opener', op.id)).map(tick) }, 'seed')
     const cl = await parent('Closing questions answered in the app (Closer)%')
-    if (cl) await saveGroup({ name: 'Closing questions: the closer', lawId: cl.law_id, bridge: 'closing', items: [
+    if (cl) await saveGroup({ name: 'Closing questions (closer)', lawId: cl.law_id, bridge: 'closing', items: [
       ...(await ticks('closer', cl.id)).map(tick),
       { text: 'Select the staff who did not wear the company T-shirt today.', kind: 'persons', key: 'no_tshirt' },
       { text: 'Was the roadside advert played today?', kind: 'yesno', key: 'advert_played' },
       { text: 'Was any property spoilt or lost today?', kind: 'yesno', detail_on: 'yes', key: 'property_issue' },
       { text: 'Is the speaker and its wires brought in?', kind: 'yesno', key: 'speaker_brought_in' },
     ] }, 'seed')
-    if (cl) await saveGroup({ name: 'Closing questions: the manager', bridge: 'closing', assignment: 'managers', time: '19:05', category: 'Staff management', items: [
+    if (cl) await saveGroup({ name: 'Closing questions (manager)', bridge: 'closing', assignment: 'managers', time: '19:05', category: 'Staff management', items: [
       { text: 'Is there a new customer of interest today?', kind: 'yesno', detail_on: 'yes', key: 'new_customer' },
       { text: 'Did anything unfortunate happen today?', kind: 'yesno', detail_on: 'yes', key: 'unfortunate_event' },
     ] }, 'seed')

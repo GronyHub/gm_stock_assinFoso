@@ -176,10 +176,13 @@ export async function standingDuties(date: string): Promise<Duty[]> {
       const overdue = list.filter(r => r.due < todayKey).reduce((a, r) => a + r.n - r.done, 0)
       const dueToday = list.filter(r => r.due === todayKey)
       const left = dueToday.reduce((a, r) => a + r.n - r.done, 0), total = dueToday.reduce((a, r) => a + r.n, 0)
-      if (overdue > 0) out.push(mk(base, 'overdue', 'late', overdue, `${overdue} overdue. ${STANDING[base.kind].detail}`))
-      if (total > 0) out.push(mk(base, 'today', left > 0 ? 'now' : 'done', left, left > 0 ? `${left} of ${total} due today. ${STANDING[base.kind].detail}` : `All ${total} due today are done.`))
       const later = list.filter(r => r.due > todayKey).reduce((a, r) => a + r.n - r.done, 0)
-      if (later > 0) out.push(mk(base, 'later', 'later', later, `${later} more waiting, due on a later day. ${STANDING[base.kind].detail}`))
+      // ONE tile per person and duty: the count is everything still open, the colour follows the worst of it (overdue, then due today, then later), and the detail says how it splits.
+      const open = overdue + left + later
+      if (open === 0 && total === 0) continue
+      const parts = [overdue > 0 ? `${overdue} overdue` : '', left > 0 ? `${left} due today` : '', later > 0 ? `${later} due later` : ''].filter(Boolean).join(', ')
+      if (open === 0) { out.push(mk(base, 'today', 'done', 0, `All ${total} due today are done.`)); continue }
+      out.push(mk(base, 'open', overdue > 0 ? 'late' : left > 0 ? 'now' : 'later', open, `${parts}. ${STANDING[base.kind].detail}`))
     } else {
       const here = list.filter(r => r.due === date), total = here.reduce((a, r) => a + r.n, 0), left = here.reduce((a, r) => a + r.n - r.done, 0)
       if (total === 0) continue
