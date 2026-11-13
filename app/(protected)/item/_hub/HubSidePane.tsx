@@ -9,7 +9,6 @@ import { requestOpenChild } from '../_components/careUtils'
 import { CH_ITEMS, CH_CHILD_PERSON } from '../_components/chViewData'
 import { useUKData } from '../_components/ukViewData'
 import { SidePaneContainer, SidePaneToggle, SidePaneButton } from '../_components/SidePane'
-import SettingsPane from '../_components/SettingsPane'
 import { applyPaneOrder } from '../_components/paneOrder'
 import { GronyManageContent, StaffContent, STAFF_ROSTER, MANAGE_VIEW_KEYS, CASH_ITEMS, PANE_ACCENT, type LossView, type Item } from './hubShared'
 import type { HubCtx } from './useHubState'
@@ -150,8 +149,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
             {canSeeCash && isOwnerOrJoe && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              <SidePaneButton icon="🏷️" label="Barcode labels" mode={cashDisplayMode} divider active={embedActive('/barcode-labels')}
-                href="/barcode-labels" onClick={() => openEmbed('/barcode-labels')} />
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
@@ -249,21 +246,14 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
-              {isOwnerLevel(session?.user as any) && (
-                <SidePaneButton icon="🔔" label="Push devices" mode={cashDisplayMode} active={embedActive('/notifications')} divider
-                  href="/notifications" onClick={() => openEmbed('/notifications')} />
+              {/* Settings: the on/off switches and the private pages (team payslips and profiles, users, view as, lists, activity times, push devices, barcode labels). */}
+              {outerTab !== 'uk' && isOwnerOrJoe && canOpenSettings && (
+                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} divider active={paneActive(['settings', 'teamPayslips', 'teamProfiles', 'users', 'roles', 'viewPortalAs', 'reorderLists', 'activityDurations'].includes(lossView)) || embedActive('/notifications') || embedActive('/barcode-labels')}
+                  noNewTab onClick={() => pickLossView('settings')} />
               )}
               <SidePaneButton icon="🚪" label="Sign out" mode={cashDisplayMode} active={false} divider
                 noNewTab onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }} />
             </div>
-            {outerTab !== 'uk' && isOwnerOrJoe && canOpenSettings && (
-              <SettingsPane mode={cashDisplayMode} activeView={lossView}
-                viewingName={viewingName} myStaffName={myStaffName} staffRoster={STAFF_ROSTER}
-                pickViewing={pickViewing} pickLossView={pickLossView}
-                canSeeUsers={canSeeUsers}
-                canViewPortalAs={canViewPortalAs} canManageRoles={canManage} canManage={canManage}
-              />
-            )}
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
             <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">

@@ -5,8 +5,10 @@ import { formatACP } from '@/lib/fmtNumber'
 import CustomerBox from '../_components/CustomerBox'
 import { formatPrice, shortCountInterval, formatLoss, itemAttentionFlags, type Tap } from './hubShared'
 import type { HubCtx } from './useHubState'
+import { useFeatures } from '@/lib/useFeatures'
 
 export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
+  const features = useFeatures()   // Settings > Switches: the Who? box
   const { group, violation, liveSaleViolationFilter, items, liveInlineQtyByItemId, setLiveInlineQtyByItemId, liveInlinePriceByItemId, setLiveInlinePriceByItemId, liveInlineCIDByItemId, setLiveInlineCIDByItemId, liveLabelByKey, setLiveLabelByKey, justTappedItemIds, session, custNameRef, miOn, setRegisterFor, liveSaving, renderClickableItemName, liveCountStatus, liveLastCountDateByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLossByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSalesCounts, liveSortedCatalogueItems, liveDueCatalogueCount, recordInlineTap, openEditGridItem } = h
   return (<>{liveSortedCatalogueItems.map((item, idx) => {
                     const count = liveSalesCounts.get(item.id) ?? 0
@@ -188,7 +190,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
                                         </label>
-                                        {!miOn && (<label className="flex-[1.2] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
+                                        {!miOn && features.live_who && (<label className="flex-[1.2] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
                                           <CustomerBox
                                             disabled={!session}
                                             value={liveInlineCIDByItemId[item.id] ?? ''}

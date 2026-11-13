@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useFeatures } from '@/lib/useFeatures'
 
 type Q = { lawId: number; law: string | null; q: string; options: string[] }
 type R = { correct: boolean; right: string; why: string | null; law: string | null; text: string | null; video: { key: string; label: string; src: string } | null }
 
 // The question of the day: one question from the laws, at the bottom of the screen (it never covers the page). A wrong answer shows the right one and the law.
 export default function LawQuestion() {
+  const features = useFeatures()   // Settings > Switches
   const [q, setQ] = useState<Q | null>(null)
   const [r, setR] = useState<R | null>(null)
   const [busy, setBusy] = useState(false)
@@ -16,6 +18,7 @@ export default function LawQuestion() {
     return () => clearTimeout(t)
   }, [])
   if (!q) return null
+  if (!features.law_question) return null
   async function answer(i: number) {
     setBusy(true)
     const x = await fetch('/api/law-question', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: i }) })

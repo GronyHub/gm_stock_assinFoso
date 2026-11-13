@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { recordActivity } from '@/lib/logger'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
-import { notifyOwners, notifyManagement } from '@/lib/checklistAlerts'
+import { notifyOwners, notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { addPoint, suspendedMessage } from '@/lib/penalties'
 import { isOwnerLevel } from '@/lib/roles'
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     const what = `${String(t.title).slice(0, 120)}${reply ? ' — ' + reply.slice(0, 200) : ''}`
     if (b.value === 'Not done') void recordActivity(actor, 'marked a task not done', what)
     else void sql`INSERT INTO activity_logs (staff_name, action, details) VALUES (${actor}, 'did a task', ${what})`.catch(() => {})
-    void notifyManagement(actor, `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`, what)
+    void notifyInput(actor, `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`, what)
 
     // Mirror into the Grony Manage log that matches this tile, so that page's history keeps filling.
     if (t.log_category && logs.length) {

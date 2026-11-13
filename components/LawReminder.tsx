@@ -1,6 +1,7 @@
 'use client'
 import SnoozeChips from '@/components/SnoozeChips'
 import { useEffect, useState } from 'react'
+import { useFeatures } from '@/lib/useFeatures'
 
 type Item = { id: number; code: string | null; title: string | null; violation: string }
 const SNOOZE = 'lawReminderSnoozeUntil'
@@ -8,6 +9,7 @@ const SNOOZE = 'lawReminderSnoozeUntil'
 // Standing orders as reminders: the ones needed before work starts show after login; the ones about selling show after the person's first sale
 // of the day. The laws are statutory (nobody signs them): this is the moment they apply, and the tick only says they were read.
 export default function LawReminder() {
+  const features = useFeatures()   // Settings > Switches
   const [data, setData] = useState<{ stage: 'login' | 'first_sale' | 'midday'; laws: Item[] } | null>(null)
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -25,6 +27,7 @@ export default function LawReminder() {
     return () => { live = false; clearInterval(t) }
   }, [])
   if (!data) return null
+  if (!features.law_reminder) return null
   async function confirm() {
     if (!data) return
     setBusy(true)

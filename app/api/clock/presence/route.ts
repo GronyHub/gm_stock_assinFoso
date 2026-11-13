@@ -4,7 +4,7 @@ import { SIGNERS } from '@/lib/signers'
 import { othersStillIn, raiseChecks, openCheckFor, confirmCheck, nextShift } from '@/lib/presenceCheck'
 import { NextRequest } from 'next/server'
 import { recordActivity } from '@/lib/logger'
-import { notifyManagement } from '@/lib/checklistAlerts'
+import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 
 // GET -- my open "are you at the shop?" check (if someone said nobody is there); ?others=1 -- who else is still clocked in (asked of a person who has just clocked out after 18:00).
 // POST { action: 'report_empty' } -- "nobody else is at the shop": each person still clocked in is asked to confirm. { action: 'confirm', id } -- "I am still at the shop".
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       if (others.length) {
         const who = me.charAt(0).toUpperCase() + me.slice(1)
         void recordActivity(who, 'said others are still at the shop', others.join(', '))
-        void notifyManagement(me, `${who} clocked out`, `${who} says ${others.join(' and ')} ${others.length === 1 ? 'is' : 'are'} still at the shop.`)
+        void notifyInput(me, `${who} clocked out`, `${who} says ${others.join(' and ')} ${others.length === 1 ? 'is' : 'are'} still at the shop.`)
       }
       return success({ ok: true })
     }

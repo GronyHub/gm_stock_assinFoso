@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { useFeatures } from '@/lib/useFeatures'
 
 type V = { key: string; label: string; src: string; dueDate: string; overdue: boolean }
 const day = () => new Date().toISOString().slice(0, 10)
@@ -9,6 +10,7 @@ const LATER = () => `videoGateLater:${day()}`
 // plays to the end (recorded, so the law "Watch each tile video to the end within 7 days" is kept), or with "Later today",
 // which is allowed once a day. One video at a time, the most overdue first.
 export default function VideoGate() {
+  const features = useFeatures()   // Settings > Switches
   const [v, setV] = useState<V | null>(null)
   const [left, setLeft] = useState(0)
   const [done, setDone] = useState(false)
@@ -27,6 +29,7 @@ export default function VideoGate() {
     return () => clearTimeout(t)
   }, [])
   if (!v) return null
+  if (!features.video_gate) return null
   const ended = () => {
     setDone(true)
     void fetch('/api/law-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area: v.key, label: v.label + ' video' }) }).catch(() => {})

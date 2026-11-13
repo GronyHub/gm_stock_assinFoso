@@ -38,6 +38,7 @@ import { useUKData, UK_PEOPLE } from '../_components/ukViewData'
 import { SidePaneToggle, useSidePaneDisplayMode } from '../_components/SidePane'
 import { applyPaneOrder, flattenPaneRuns, type PaneOrderMap } from '../_components/paneOrder'
 import { loading, ExpenseOrdersPanel, ItemDetailPanel, ExpensesTab, CABTab, LossTab, ProfitLossTab, GronyManageContent, VendorsPage, CustomersPage, PurchaseOrdersPage, StaffContent, UKTab, CHTab, ReorderListsPanel, SalesTab, BillsTab, CountsTab, NewBillForm, STAFF_ROSTER, OLD_LOSSVIEW_TO_EXTRA, MANAGE_VIEW_KEYS, CH_VIEW_KEYS, OLD_TAB_TO_VIEW, REPORT_VIEWS, CASH_ITEMS, CASH_VIEW_KEYS, CASH_LABEL, ERROR_VIOLATIONS, VIOLATION_HOME, LOSSVIEW_PILL_KEYS, SALES_FLAG_TYPES, ITEMS_FLAG_TYPES, BILLS_FLAG_TYPES, VALID_TABS, VALID_ADD_FORMS, PANE_ACCENT, fmtN, formatPrice, DEFAULT_ITEM_SORT_ORDER, itemAttentionFlags, type OuterTab, type LossView, type ItemsExtraView, type Item, type LiveItem, type Tap, type ViolationType, type DueItem, type CountRecord, type ItemSortKey, type ItemsInlineExtra, type ShopTab, type LogRec, type LogRecLine } from './hubShared'
+import { useFeatures } from '@/lib/useFeatures'
 
 // All of the Items hub's state, effects and handlers (they used to sit at the top of the page component). The page and its view blocks read them from the returned object.
 export function useHubState() {
@@ -60,6 +61,7 @@ export function useHubState() {
   // Defaulting to Grony Cash's Items view instead means the full pane is
   // there immediately. Today's own feed is still one tap away, via
   // PresentStaffBar's Total chip or the Staff Members section's Home row.
+  const features = useFeatures()   // Settings > Switches
   const [outerTab, setOuterTab] = useState<OuterTab>(
     initialTab && VALID_TABS.includes(initialTab) ? initialTab : 'loss'
   )
@@ -3566,7 +3568,7 @@ export function useHubState() {
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
           customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
           customerLabel: !cidValue && labelText ? labelText : undefined,
-          requireWho: liveSaleType !== 'GMC' ? true : undefined,
+          requireWho: liveSaleType !== 'GMC' && features.live_who ? true : undefined,
           skipWhatsapp: skipWaRef.current || undefined,
         }),
         signal: controller.signal,

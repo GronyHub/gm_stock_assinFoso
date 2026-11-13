@@ -10,7 +10,7 @@ import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
-import { notifyManagement } from '@/lib/checklistAlerts'
+import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
         return badRequest('You must record Time In first')
       }
       // Compulsory before clocking out: "Is any of the following staff still at the shop?" for everyone else still clocked in. No answer, no clock-out.
-      if (String(username).toLowerCase() !== 'grony') {
+      if (String(username).toLowerCase() !== 'grony' && await (await import('@/lib/featuresServer')).featureOn('presence_question')) {
         stillIn = await othersStillIn(String(username).toLowerCase(), today)
         const absentList = Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()).filter((x: string) => stillIn.includes(x)) : []
         if (stillIn.length && presence === 'no' && !absentList.length)
@@ -337,7 +337,7 @@ export async function POST(req: NextRequest) {
       const me = String(username).toLowerCase(), who = me.charAt(0).toUpperCase() + me.slice(1), names = stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1))
       if (presence === 'yes') {
         void recordActivity(who, 'said others are still at the shop', names.join(', '))
-        void notifyManagement(me, `${who} clocked out`, `${who} says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop.`)
+        void notifyInput(me, `${who} clocked out`, `${who} says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop.`)
       } else {
         const gone = (Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()) : []).filter((x: string) => stillIn.includes(x))
         const here = stillIn.filter(n => !gone.includes(n)).map(n => n.charAt(0).toUpperCase() + n.slice(1))

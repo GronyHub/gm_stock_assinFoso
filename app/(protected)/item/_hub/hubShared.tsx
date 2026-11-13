@@ -187,7 +187,7 @@ export type LossView = 'home' | 'items' | 'sales' | 'pl' | 'cab' | 'vendors' | '
   // Settings' own non-navigation row (View Portal As) is a real content
   // destination too -- see SettingsPane.tsx, now rendered inline in the
   // main pane rather than a toggled second one.
-  | 'viewPortalAs' | 'reorderLists' | 'activityDurations'
+  | 'viewPortalAs' | 'reorderLists' | 'activityDurations' | 'settings'
   | ManageView | StaffView | CHView
 
 // Alias Wide Table and Service Matches used to be their own lossViews --
@@ -258,7 +258,7 @@ export const OLD_TAB_TO_VIEW: Partial<Record<string, LossView>> = {
 // groups/search bar of their own.
 export const REPORT_VIEWS = new Set<LossView>([
   'home', 'pl', 'cab', 'vendors', 'customers', 'expenseOrders', 'dailySummary',
-  'purchaseOrders', 'viewPortalAs', 'reorderLists', 'activityDurations', 'services',
+  'purchaseOrders', 'viewPortalAs', 'reorderLists', 'activityDurations', 'settings', 'services',
   ...MANAGE_VIEW_KEYS, ...STAFF_VIEW_KEYS, ...CH_VIEW_KEYS,
 ])
 

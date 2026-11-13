@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 import { once } from '@/lib/once'
+import { clearFeatureCache } from '@/lib/featuresServer'
 
 const ensureAppSettingsTable = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS app_settings (setting_key TEXT PRIMARY KEY, value_json TEXT NOT NULL)`.catch(() => {})
@@ -55,6 +56,7 @@ export async function PATCH(req: NextRequest) {
       INSERT INTO app_settings (setting_key, value_json) VALUES (${key}, ${valueJson})
       ON CONFLICT (setting_key) DO UPDATE SET value_json = ${valueJson}
     `
+    clearFeatureCache()
     return success({ ok: true })
   } catch (e) {
     return handleError('app-settings PATCH', e)

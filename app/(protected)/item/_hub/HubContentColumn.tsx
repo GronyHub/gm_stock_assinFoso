@@ -6,7 +6,9 @@ import PageGuide from '@/components/PageGuide'
 import { MANAGE_LIST_ITEMS, type ManageView } from '../_components/manageViewData'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
 import { type CHView } from '../_components/chViewData'
-import SettingsPane from '../_components/SettingsPane'
+import SettingsHome from '../_components/SettingsHome'
+import { STAFF_ADMIN_TEAM_ITEMS } from '../_components/staffViewData'
+import { isOwnerLevel } from '@/lib/roles'
 import { TabErrorBoundary, ExpenseOrdersPanel, Item360Page, ItemsTab, CABTab, TodayContent, NewItemForm, ItemsAnalyticsSection, ViolationsAnalyticsSection, LossTab, ProfitLossTab, DailySummaryTab, GronyManageContent, VendorsPage, CustomersPage, PurchaseOrdersPage, AliasWidePage, ServiceMatchesPage, GmcPacksPage, ViewPortalAsButton, StaffContent, StaffMemberPersonalTab, UKTab, CHTab, ReorderListsPanel, ActivityDurationsPanel, SalesTab, CountsTab, STAFF_ROSTER, MANAGE_VIEW_KEYS, isStaffView, type LossView, type Tap } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubScrollArea from './HubScrollArea'
@@ -122,6 +124,21 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
         {/* Settings' own non-navigation row (see SettingsPane.tsx) -- now a
             real content destination like everything else in Settings,
             rather than an inline widget crammed into the narrow pane itself. */}
+        {outerTab === 'loss' && lossView === 'settings' && (
+          <TabErrorBoundary>
+            <SettingsHome canEdit={isOwnerLevel(h.session?.user as never)}
+              viewing={h.myStaffName ? { names: [h.myStaffName, ...STAFF_ROSTER.filter(n => n.toLowerCase() !== h.myStaffName!.toLowerCase())], current: h.viewingName, pick: h.pickViewing } : undefined}
+              pages={[
+                ...(h.canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ icon: t.icon, label: t.label.replace('Private ', ''), detail: t.key === 'teamPayslips' ? 'Every staff member\'s pay' : 'Every staff member\'s bio and bank details', onClick: () => h.pickLossView(t.key) })) : []),
+                ...(h.canSeeUsers || h.canManage ? [{ icon: '🔐', label: 'Users & Roles', detail: 'Logins and what each role may open', onClick: () => h.pickLossView('users' as never) }] : []),
+                ...(h.canViewPortalAs ? [{ icon: '👁', label: 'View Portal As', detail: 'See the app as a staff member sees it', onClick: () => h.pickLossView('viewPortalAs') }] : []),
+                ...(h.canManage ? [{ icon: '↕️', label: 'Reorder & Rename Lists', detail: 'The order and names of the sidebar lists', onClick: () => h.pickLossView('reorderLists') },
+                  { icon: '⏱️', label: 'Activity Times', detail: 'How long each kind of work takes', onClick: () => h.pickLossView('activityDurations') }] : []),
+                ...(isOwnerLevel(h.session?.user as never) ? [{ icon: '🔔', label: 'Push devices', detail: 'Which phones and computers get notifications', onClick: () => h.openEmbed('/notifications') }] : []),
+                ...(h.canSeeCash && h.isOwnerOrJoe ? [{ icon: '🏷️', label: 'Barcode labels', detail: 'Print item barcode labels', onClick: () => h.openEmbed('/barcode-labels') }] : []),
+              ]} />
+          </TabErrorBoundary>
+        )}
         {outerTab === 'loss' && lossView === 'viewPortalAs' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm space-y-3">

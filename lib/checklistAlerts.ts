@@ -74,6 +74,12 @@ export async function notifyManagement(actor: string, title: string, body: strin
   await pushToUsers(['grony', 'joe'].filter(n => n !== actor.toLowerCase()), title, body)
 }
 
+// A staff member's own input (a tick, an answer): told to Grony and Joe unless Settings > Switches has it off.
+export async function notifyInput(actor: string, title: string, body: string) {
+  if (!(await (await import('@/lib/featuresServer')).featureOn('notify_input'))) return
+  await notifyManagement(actor, title, body)
+}
+
 // Tells the owner and Joe something needs their attention (never throws).
 export async function notifyOwners(title: string, body: string) {
   try { await send(await ownerSubs(), title, body) } catch (e) { console.error('notifyOwners failed:', e instanceof Error ? e.message : String(e)) }

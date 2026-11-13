@@ -9,7 +9,7 @@ import { groupForTile, saveAnswers, bridgeClosing, type AnswerIn } from '@/lib/q
 import { lockStateForManager } from '@/lib/managerLock'
 import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName } from '@/lib/signers'
-import { notifyManagement } from '@/lib/checklistAlerts'
+import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
 // POST { tile_id, answers: [{ item_id, answer, detail? }] } -- answers for today. When every required question has an answer the tile is recorded as done (once); answers can be changed afterwards.
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       const lines = ansIn.map(a => { const it = g.items.find(i => i.id === Number(a.item_id)); const d = String(a.detail ?? '').trim()
         return it ? `${it.text.slice(0, 50)}: ${String(a.answer).slice(0, 60) || '-'}${d ? ` (${d.slice(0, 80)})` : ''}` : null }).filter(Boolean)
       if (lines.length) {
-        void notifyManagement(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
+        void notifyInput(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
         // The answers themselves go in the Done record, not just "answered".
         void recordActivity(actor, complete ? 'answered a question group' : 'answered part of a question group', `${g.name.slice(0, 80)} — ${lines.join(' · ')}`.slice(0, 1500))
       }

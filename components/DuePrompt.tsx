@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
+import { useFeatures } from '@/lib/useFeatures'
 
 type Due = { id: number; title: string; time: string | null; kind: string }
 const day = () => new Date().toISOString().slice(0, 10)
@@ -9,6 +10,7 @@ const SNOOZE_MIN = 10
 // "It's time for ...": when one of my checklist tasks falls due, a prompt asks me to tick it Done, or Not required today (with the reason), or to be reminded in 10 minutes.
 // A task that needs more than a tick (a question, a photo, people, a question group) opens in Waiting for team instead.
 export default function DuePrompt() {
+  const features = useFeatures()   // Settings > Switches
   const [list, setList] = useState<Due[]>([])
   const [why, setWhy] = useState('')
   const [notReq, setNotReq] = useState(false)
@@ -30,6 +32,7 @@ export default function DuePrompt() {
   }, [load])
   const cur = list[0]
   if (!cur) return null
+  if (!features.due_prompt) return null
   const mark = (v: string) => { try { localStorage.setItem(KEY(cur.id), v) } catch { /* private window */ } }
   const next = () => { setList(l => l.slice(1)); setWhy(''); setNotReq(false); setErr('') }
   async function record(value: 'Done' | 'Not done', note?: string) {
