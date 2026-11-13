@@ -1,3 +1,4 @@
+import { seedDone } from '@/lib/seedGuard'
 import sql from '@/lib/db'
 
 // Drafted Company Laws for the remaining categories, promoted from the old Standards and the existing laws. They are
@@ -94,8 +95,7 @@ export const MORE_SETS: { seed: string; updates: U[]; drafts: D[] }[] = [
 export async function seedMoreLaws() {
   for (const set of MORE_SETS) {
     try {
-      const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = ${set.seed}`
-      if (n > 0) continue
+      if (await seedDone(set.seed)) continue
       for (const u of set.updates) {
         await sql`UPDATE page_laws SET law_type = COALESCE(${u.type ?? null}, law_type), frequency = COALESCE(${u.freq ?? null}, frequency), days = COALESCE(${u.days ?? null}, days),
           law_time = COALESCE(law_time, ${u.time ?? null}), minutes = COALESCE(minutes, ${u.mins ?? null}) WHERE id = ${u.id}`

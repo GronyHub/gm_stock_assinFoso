@@ -5,6 +5,7 @@ import { ensureCompanyLaws, cleanLawBody } from '@/lib/pageLaws'
 import { LAW_CATEGORIES, LAW_TYPES, DAY_CODES, LAW_FREQUENCIES } from '@/lib/lawCategories'
 import { isOwnerLevel } from '@/lib/roles'
 import { syncLawTile } from '@/lib/lawTiles'
+import { retireSeed } from '@/lib/seedGuard'
 import { NextRequest } from 'next/server'
 
 const denied = 'Only the owner and manager can change laws.'
@@ -42,7 +43,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!isOwnerLevel(session?.user as any)) return badRequest(denied)
 
   const lawId = await getIdParam(params)
-  const [gone] = await sql`DELETE FROM page_laws WHERE id = ${lawId} RETURNING tile_id`
-  if (gone?.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${gone.tile_id}`
+  const [gone] = await sql`DELETE FROM page_laws WHERE id = ${lawId} RETURNING tile_id, seed`
+  if (gone?.tile_id) await sql`UPDATE daily_check_tiles SET active = false, law_id = NULL WHERE id = ${gone.tile_id}`
+  await sql`UPDATE daily_check_tiles SET active = false, law_id = NULL WHERE law_id = ${lawId}`.catch(() => {})
+  await sql`DELETE FROM law_signatures WHERE law_id = ${lawId}`.catch(() => {})
+  await sql`UPDATE question_group_items SET active = FALSE WHERE law_id = ${lawId}`.catch(() => {})   // a question taken from this law goes with it
+  await retireSeed(gone?.seed ?? null)   // the built-in set it came from is never made again
   return success({ ok: true })
 }

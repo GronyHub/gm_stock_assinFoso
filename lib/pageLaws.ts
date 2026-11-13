@@ -1,3 +1,4 @@
+import { seedDone } from '@/lib/seedGuard'
 import { mergeCustomerServiceCode } from '@/lib/csMerge'
 import { fillLawGapsOnce } from '@/lib/lawGaps'
 import { fillQuizzesOnce } from '@/lib/lawQuizGen'
@@ -140,8 +141,7 @@ const ADVERT_DRAFTS: Draft[] = [
 ]
 async function seedAdvertsPilot() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'adverts-v1'`
-    if (n > 0) return
+    if (await seedDone('adverts-v1')) return
     // The two existing daily advert laws get the time and minutes that go with their schedule.
     await sql`UPDATE page_laws SET law_time = '11:30', minutes = 10 WHERE id = 2 AND law_time IS NULL AND law_type = 'recurring'`
     await sql`UPDATE page_laws SET law_time = '12:30', minutes = 10 WHERE id = 25 AND law_time IS NULL AND law_type = 'recurring'`
@@ -195,8 +195,7 @@ const CLEAN_DRAFTS: Draft2[] = [
 ]
 async function seedCleanPilot() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'clean-v1'`
-    if (n > 0) return
+    if (await seedDone('clean-v1')) return
     await sql`UPDATE page_laws SET law_time = '10:00', minutes = 10, dos = COALESCE(dos, 'Tell everyone before the test\nHold the test button until it is loud\nNo sound: fit a new battery and test again\nStill faulty: report it to Joe') WHERE id = 57 AND law_time IS NULL`
     for (const d of CLEAN_DRAFTS) {
       await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed, proof)
@@ -407,8 +406,7 @@ async function assignmentFromAudienceOnce() {
 
 async function seedAttendanceLaw() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'attendance-v1'`
-    if (n > 0) return
+    if (await seedDone('attendance-v1')) return
     const violations = [
       { text: 'Late for the rostered start (more than 10 minutes) without telling the shop in the app first', points: 1, by: 'staff', record: 'Added automatically at day end from the rota and the clock', how: 'Open Times and tell the shop you will be late, with the time you expect to arrive, before you arrive.' },
       { text: 'Absent on a rostered day without telling the shop in the app first', points: 2, by: 'staff', record: 'Added automatically at day end from the rota and the clock', how: 'Open Times and report the absence before your shift starts.' },
@@ -421,8 +419,7 @@ async function seedAttendanceLaw() {
 
 async function seedSanctionsLaw() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'sanctions-v1'`
-    if (n > 0) return
+    if (await seedDone('sanctions-v1')) return
     await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, dos, status, seed, points)
       VALUES ('Staff management', ${'Sanctions: every violation of the Company Laws costs penalty points (each law shows its points; for now it is 1). Your points are always shown at the top of your profile. 20 points is a 3-day suspension with 10 hours deducted. 30 points is a 1-week suspension with 20 hours deducted. 50 points is dismissal. The owner approves every sanction. After a suspension your points drop to half the level. Points reduce by 5 after a clean record for a week. Everyone clocked in shares any checklist task left undone at the end of the day (at most 3 points a day each). The first two weeks are a learning period: violations are warnings and do not count.'},
               false, 'law', 'Staff management', 'Sanctions', 'standing', ${'20 points: 3-day suspension, 10 hours deducted\n30 points: 1-week suspension, 20 hours deducted\n50 points: dismissal\nA clean week: 5 points come off'}, 'live', 'sanctions-v1', 0)`
@@ -442,8 +439,7 @@ const CASH_DRAFTS: { sub: string; type: 'recurring' | 'standing'; text: string; 
 ]
 async function seedCashLaws() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'cash-v1'`
-    if (n > 0) return
+    if (await seedDone('cash-v1')) return
     for (const d of CASH_DRAFTS) {
       await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed)
         VALUES ('Stock & records', ${d.text}, false, 'law', 'Stock & records', ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', 'cash-v1')`
@@ -478,8 +474,7 @@ const FLAG_LAWS: { type: 'recurring' | 'standing'; text: string; time?: string; 
 ]
 async function seedFlagLaws() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'flags-v2'`
-    if (n > 0) return
+    if (await seedDone('flags-v2')) return
     // The four flag laws first made are replaced by this one law (and their checklist tiles stopped).
     const old = await sql`SELECT id FROM page_laws WHERE seed = 'flags-v1'` as unknown as { id: number }[]
     if (old.length) {
@@ -636,8 +631,7 @@ const UNDERSTAND: { title: string; violation: string; how: string; chapter: stri
 ]
 async function seedUnderstandingLaws() {
   try {
-    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'understand-v1'`
-    if (n > 0) return
+    if (await seedDone('understand-v1')) return
     for (const d of UNDERSTAND) {
       const v = [{ text: d.violation, points: 1, by: 'manager', how: d.how, chapter: d.chapter, record: 'A manager asks, in the shop, and logs it with a note' }]
       await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, proof, points, violations, title)
