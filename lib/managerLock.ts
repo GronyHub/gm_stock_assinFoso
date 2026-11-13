@@ -13,8 +13,8 @@ const GMC = 'Grony Multimedia as Customer'
 
 // cash: Cash Counted not entered yet. shortage: it was entered but is LESS than the day's sales total (negative work not written), so the Sales Log has to be put right (or the cash recounted).
 // hubOpen: only the shortage is left, so the Items hub (where the Sales Log is) stays open for him; otherwise only the Before-you-continue page is.
-export type LockState = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; shortage: { receiptId: number; salesTotal: number; counted: number; short: number } | null; questions: { tileId: number } | null; hubOpen?: boolean }
-const OPEN: LockState = { locked: false, day: null, cash: null, shortage: null, questions: null }
+export type LockState = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; shortage: { receiptId: number; salesTotal: number; counted: number; short: number } | null; questions: { tileId: number } | null; approvals?: number; hubOpen?: boolean }
+const OPEN: LockState = { locked: false, day: null, cash: null, shortage: null, questions: null, approvals: 0 }
 
 // The last working day before `today` (a shop day on which somebody clocked in), looking back at most a week.
 export async function previousWorkingDay(today = dayKey()): Promise<string | null> {
@@ -39,10 +39,13 @@ export async function lockStateForManager(today = dayKey(), fresh = false): Prom
 async function computeLock(today: string): Promise<LockState> {
   try {
     await ensurePenalties(); await ensureQuestionGroups(); await ensureClosingReports()
+    // An approver may not carry on while a staff member's clock time from an EARLIER day is still waiting for their decision (requests they may decide: not their own, not one for a clock-out they set).
+    const [ap] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND COALESCE(against, '') <> 'joe' AND requested_at < ${today + 'T00:00:00Z'}::timestamptz`.catch(() => [{ n: 0 }])
+    const approvals = Number(ap?.n ?? 0)
     const day = await previousWorkingDay(today)
-    if (!day) return OPEN
+    if (!day) return { ...OPEN, locked: approvals > 0, approvals }
     const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
-    if (ex) return OPEN
+    if (ex) return { ...OPEN, locked: approvals > 0, approvals }
     const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
     const total = Number(rc?.total ?? 0)
     const cash = rc && rc.cash_counted == null ? { receiptId: Number(rc.id), salesTotal: total, counted: null } : null
@@ -53,6 +56,6 @@ async function computeLock(today: string): Promise<LockState> {
       const [old] = await sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}::date`   // answered the earlier way
       if (!old && !(await isComplete(g, day))) questions = { tileId: g.tile_id }
     }
-    return { locked: !!(cash || questions || shortage), day, cash, shortage, questions, hubOpen: !cash && !questions && !!shortage }
+    return { locked: !!(cash || questions || shortage || approvals > 0), day, cash, shortage, questions, approvals, hubOpen: !cash && !questions && approvals === 0 && !!shortage }
   } catch (e) { console.error('manager lock failed (left open):', e instanceof Error ? e.message : String(e)); return OPEN }
 }
