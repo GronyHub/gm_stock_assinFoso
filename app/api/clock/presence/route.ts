@@ -1,7 +1,7 @@
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import { actorKey } from '@/lib/clockState'
 import { SIGNERS } from '@/lib/signers'
-import { othersStillIn, raiseChecks, openCheckFor, confirmCheck } from '@/lib/presenceCheck'
+import { othersStillIn, raiseChecks, openCheckFor, confirmCheck, nextShift } from '@/lib/presenceCheck'
 import { NextRequest } from 'next/server'
 
 // GET -- my open "are you at the shop?" check (if someone said nobody is there); ?others=1 -- who else is still clocked in (asked of a person who has just clocked out after 18:00).
@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   try {
     const me = actorKey(session.user as never)
     if (!SIGNERS.includes(me) || me === 'grony') return success({ check: null, others: [] })
+    if (req.nextUrl.searchParams.get('next')) return success({ next: await nextShift(me) })
     if (req.nextUrl.searchParams.get('others')) return success({ others: await othersStillIn(me) })
     return success({ check: await openCheckFor(me) })
   } catch (e) { return handleError('clock presence GET', e) }

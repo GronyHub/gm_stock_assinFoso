@@ -97,6 +97,9 @@ export default function ClockInOutPanel({
   // After 18:00, once someone has clocked out: are the people still clocked in really still here? "No" sends each of them a prompt to confirm within a minute.
   const [stillIn, setStillIn] = useState<string[] | null>(null)
   const [asked, setAsked] = useState<string[] | null>(null)
+  // On clocking out: the next shift on the rota, and a reminder that being late or absent must be reported in the app.
+  const [bye, setBye] = useState<{ next: { date: string; in: string; out: string | null; role: string | null } | null } | null>(null)
+  function reportNow() { const d = { handled: false }; window.dispatchEvent(new CustomEvent('open-absence-report', { detail: d })); if (!d.handled) window.location.href = '/staff'; setBye(null) }
   async function reportEmpty() {
     const r = await fetch('/api/clock/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'report_empty' }) })
     const d = await r.json().catch(() => ({}))
@@ -136,6 +139,9 @@ export default function ClockInOutPanel({
       setCloserPrompt(null)
       if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today! Confirm the opening counts below to finish clocking in.')
       else if (updated.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
+      if (action === 'out') {
+        fetch('/api/clock/presence?next=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setBye({ next: (d?.data?.next ?? d?.next) ?? null })).catch(() => setBye({ next: null }))
+      }
       if (action === 'out' && new Date().getUTCHours() >= 18) {
         fetch('/api/clock/presence?others=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { const o = d?.data?.others ?? d?.others; if (Array.isArray(o) && o.length) setStillIn(o) }).catch(() => {})
       }
@@ -212,6 +218,20 @@ export default function ClockInOutPanel({
           </div>
         </div>
       )}
+      {bye && (() => {
+        const n = bye.next, d = n ? new Date(n.date + 'T00:00:00Z') : null
+        const label = d ? `${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()]} ${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}` : ''
+        return (
+          <div className="space-y-1.5 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-extrabold text-blue-900">Before you go</p>
+            <p className="text-sm text-blue-900">{n ? <>Your next shift: <b>{label}, {n.in}{n.out ? ` to ${n.out}` : ''}</b>{n.role ? ` (${n.role})` : ''}.</> : 'You have no next shift on the rota yet. Ask Joe, or check the rota.'}</p>
+            <p className="text-[12px] text-blue-900">If you will be late or absent, tell the shop in the app <b>before</b> you arrive late or before your shift starts. Late without telling is 1 penalty point; absent without notice is 2.</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={reportNow} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">Report late or absent</button>
+              <button type="button" onClick={() => setBye(null)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700">OK</button>
+            </div>
+          </div>)
+      })()}
       {asked && <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">{asked.length ? `${asked.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} ${asked.length === 1 ? 'has' : 'have'} been asked to confirm within a minute. If not confirmed, they are clocked out at their last action.` : 'Noted.'}</p>}
       {roleBanner && (
         <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">

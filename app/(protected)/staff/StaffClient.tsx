@@ -243,6 +243,8 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   const [absOpen, setAbsOpen] = useState(false)
   const [absForm, setAbsForm] = useState({ type: 'absent' as 'absent' | 'late', from: '', to: '', expected: '', reason: '' })
   const [absMsg, setAbsMsg] = useState('')
+  // "Report late or absent" from the clock-out card opens this panel.
+  useEffect(() => { const f = (e: Event) => { (e as CustomEvent).detail.handled = true; setAbsOpen(true) }; window.addEventListener('open-absence-report', f); return () => window.removeEventListener('open-absence-report', f) }, [])
   const [absences, setAbsences] = useState<{ staff_name: string; start_date: string; end_date: string }[]>([])
   useEffect(() => { fetch('/api/shop-settings').then(r => r.ok ? r.json() : null).then(d => d?.times && setDisplay(d.times)).catch(() => {}) }, [])
   useEffect(() => { try { setOwnerSeeAll(localStorage.getItem('timesOwnerSeeAll') === '1') } catch { /* private window */ } }, [])

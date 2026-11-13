@@ -44,6 +44,16 @@ export async function raiseChecks(by: string): Promise<string[]> {
   return asked
 }
 
+// The person's next shift on the rota after today (skipping a day they have reported an absence for).
+export async function nextShift(me: string, day = today()): Promise<{ date: string; in: string; out: string | null; role: string | null } | null> {
+  try {
+    const rows = await sql`SELECT rota_date::text AS d, sched_in, sched_out, role FROM staff_rota WHERE LOWER(staff_name) = ${me} AND rota_date > ${day}::date AND NOT COALESCE(is_off, false) AND sched_in IS NOT NULL AND staff_name <> '__shop_open__' ORDER BY rota_date LIMIT 14` as unknown as { d: string; sched_in: string; sched_out: string | null; role: string | null }[]
+    const abs = await sql`SELECT start_date::text AS s, end_date::text AS e FROM staff_absences WHERE LOWER(staff_name) = ${me} AND COALESCE(absence_type, '') <> 'late' AND end_date > ${day}::date`.catch(() => []) as unknown as { s: string; e: string }[]
+    const r = rows.find(x => !abs.some(a => a.s <= x.d && a.e >= x.d))
+    return r ? { date: r.d, in: r.sched_in, out: r.sched_out, role: r.role } : null
+  } catch { return null }
+}
+
 export async function openCheckFor(me: string) {
   await ensurePresence()
   const find = async () => (await sql`SELECT id, raised_by, EXTRACT(EPOCH FROM (expires_at - now()))::int AS left FROM presence_checks WHERE staff = ${me} AND status = 'open' AND day = ${today()} ORDER BY id DESC LIMIT 1`)[0]
