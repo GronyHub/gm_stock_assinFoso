@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import PushSubscriber from '@/components/PushSubscriber'
 import CaretakerGuard from '@/components/CaretakerGuard'
+import ManagerLockGuard from '@/components/ManagerLockGuard'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
@@ -52,6 +53,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <NoFrame>
         <PushSubscriber />
         <CaretakerGuard />
+        <ManagerLockGuard />
         <PhotoReminder />
         <WaitingBar />
         <LawReminder />

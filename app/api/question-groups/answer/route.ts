@@ -6,6 +6,7 @@ import { suspendedMessage } from '@/lib/penalties'
 import { recordActivity } from '@/lib/logger'
 import { clearMyDayCache } from '@/lib/myDay'
 import { groupForTile, saveAnswers, bridgeClosing, type AnswerIn } from '@/lib/questionGroups'
+import { lockStateForManager } from '@/lib/managerLock'
 import { NextRequest } from 'next/server'
 
 // POST { tile_id, answers: [{ item_id, answer, detail? }] } -- answers for today. When every required question has an answer the tile is recorded as done (once); answers can be changed afterwards.
@@ -15,10 +16,13 @@ export async function POST(req: NextRequest) {
   try {
     await ensureDailyChecks()
     const me = actorKey(session.user as never), isOwner = (session.user as { role?: string })?.role === 'owner'
-    const day = dayKey(), clock = await getClockState(day)
-    if (!isOwner && !clock.present.includes(me)) return badRequest('Clock in first. You can answer only while you are clocked in at the shop.')
-    { const msg = await suspendedMessage(me, day); if (!isOwner && msg) return badRequest(msg) }
     const b = await req.json().catch(() => ({}))
+    // The manager may answer the previous working day's closing questions (the block asks for exactly that); every other answer is for today.
+    const lock = me === 'joe' && !isOwner && b.day ? await lockStateForManager(undefined, true) : null
+    const forLockDay = !!lock?.questions && b.day === lock.day
+    const day = forLockDay ? String(b.day) : dayKey(), clock = await getClockState(dayKey())
+    if (!isOwner && !forLockDay && !clock.present.includes(me)) return badRequest('Clock in first. You can answer only while you are clocked in at the shop.')
+    { const msg = await suspendedMessage(me, day); if (!isOwner && msg) return badRequest(msg) }
     const g = await groupForTile(Number(b.tile_id))
     if (!g) return badRequest('Unknown question group.')
     const actor = getActorName(session)

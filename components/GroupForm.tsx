@@ -27,7 +27,7 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
   const done = g.items.filter(i => a[i.id]?.answer).length
   async function save() {
     setBusy(true); setErr('')
-    const r = await fetch('/api/question-groups/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tile_id: tileId, answers: g!.items.filter(i => a[i.id]?.answer).map(i => ({ item_id: i.id, answer: a[i.id].answer, detail: a[i.id].detail })) }) })
+    const r = await fetch('/api/question-groups/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tile_id: tileId, day, answers: g!.items.filter(i => a[i.id]?.answer).map(i => ({ item_id: i.id, answer: a[i.id].answer, detail: a[i.id].detail })) }) })
     const d = await r.json().catch(() => ({}))
     setBusy(false)
     if (!r.ok) { setErr(d.error ?? 'Could not save.'); return }
