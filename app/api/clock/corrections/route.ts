@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     await ensureAttendance()
     // ?history=1: every correction that was sent (newest first) with its outcome: who decided it and when. Shown under the Shop's Times grid.
     if (req.nextUrl.searchParams.get('history')) {
-      const history = await sql`SELECT id, staff, work_date, field, proposed_out, status, requested_at, decided_by, decided_at, basis, note FROM clock_corrections ORDER BY requested_at DESC, id DESC LIMIT 100`
+      const history = await sql`SELECT id, staff, work_date, field, proposed_out, status, requested_at, decided_by, decided_at, basis, note, against FROM clock_corrections ORDER BY requested_at DESC, id DESC LIMIT 100`
       return success({ history })
     }
     const me = actorKey(session.user as any)

@@ -11,7 +11,7 @@ export default function ShopTeamTimes({ username, role, canManage }: { username:
   const [log, setLog] = useState(false)
   return (
     <div className="space-y-2">
-      {log && canManage && <ClockCorrectionsLog defaultOpen onClose={() => setLog(false)} />}
+      {log && canManage && <ClockCorrectionsLog defaultOpen me={username} onClose={() => setLog(false)} />}
       {plan && canManage && <ShopRota canManage />}
       <TimesTab username={username} role={role} readOnly extraToolbar={canManage ? (<>
         <button type="button" onClick={() => setLog(l => !l)} title="Time approvals: who asked, who approved, and when" aria-label="Time approvals"
