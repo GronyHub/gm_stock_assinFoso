@@ -805,7 +805,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
             <div className={liveRootClassName + ' flex items-center justify-center'}>
               <div className="text-center space-y-2">
                 <div className="inline-block w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-                <p className="text-gray-500 text-sm">Loading Live Sale…</p>
+                <p className="text-gray-500 text-sm">Loading Live…</p>
               </div>
             </div>
           )}

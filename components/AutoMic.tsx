@@ -10,7 +10,7 @@ import type { Dest } from '@/lib/voiceCommands'
 const go = (url: string) => () => { window.location.href = url }
 const DESTS: Dest[] = [
   { label: 'Company Laws', names: ['company laws', 'laws'], run: go('/laws') }, { label: 'Waiting for team', names: ['waiting for team', 'daily checklist', 'checklist', 'to do'], run: go('/todo') },
-  { label: 'Customers', names: ['customers'], run: go('/item?view=customers') }, { label: 'Live Sale', names: ['live sale', 'items'], run: go('/item') },
+  { label: 'Customers', names: ['customers'], run: go('/item?view=customers') }, { label: 'Live', names: ['live', 'live sale', 'items'], run: go('/item') },
   { label: 'Sales Log', names: ['sales log', 'sales'], run: go('/item?view=sales') }, { label: 'Counts', names: ['counts', 'counting'], run: go('/item?view=counts') },
   { label: 'Team Times', names: ['team times', 'times'], run: go('/item?view=teamTimes') }, { label: 'How To', names: ['how to', 'help'], run: go('/how-to') },
   { label: 'Penalties', names: ['penalties', 'penalty points'], run: go('/penalties') },

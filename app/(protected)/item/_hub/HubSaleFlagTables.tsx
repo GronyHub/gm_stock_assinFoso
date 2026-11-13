@@ -107,7 +107,7 @@ export default function HubSaleFlagTables({ h }: { h: HubCtx }) {
 
             {/* Search & Controls -- rendered here only while liveExpanded (the
                 fullscreen overlay hides this component's own footer, where
-                these normally live -- see the footer's own Live Sale branch
+                these normally live -- see the footer's own Live branch
                 below). */}
             {liveExpanded && (
               <div className="px-4 py-3 border-b border-gray-200 space-y-3">

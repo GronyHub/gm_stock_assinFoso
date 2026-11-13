@@ -954,7 +954,7 @@ export function useHubState() {
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
     { label: 'System check', names: ['system check', 'integrity', 'health check'], run: () => openEmbed('/integrity') },
     { label: 'Barcode labels', names: ['barcode labels', 'labels', 'barcodes'], run: () => openEmbed('/barcode-labels') },
-    { label: 'Live Sale', names: ['live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
+    { label: 'Live', names: ['live', 'live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
     { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },
     { label: 'Customers', names: ['customers'], run: () => jumpToCustomersTab() },
     { label: 'Counts', names: ['counts', 'counting'], run: () => goCountMode() },
@@ -1559,7 +1559,7 @@ export function useHubState() {
       // as every other page search already jumps straight to. New Sale is
       // gone (dropped in favor of Sale mode's own tap-a-sale flow), so
       // there's no entry for it any more.
-      { label: 'Live Sale', action: () => jumpToLiveSaleTab('sale') },
+      { label: 'Live', action: () => jumpToLiveSaleTab('sale') },
       { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
       // Vendors/Customers/Purchase Orders/P&L/CAB aren't CASH_ITEMS entries
       // either any more (each folded into a tab/radio of its own inside

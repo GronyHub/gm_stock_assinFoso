@@ -61,7 +61,7 @@ export const MORE_SETS: { seed: string; updates: U[]; drafts: D[] }[] = [
     R(ST, 'Counts', 'daily', '12:30', 10, 'COUNT NOW items counted; warning banners cleared.', { dos: 'Tap the item, count the shelf, submit\nMissing SP, CP or group: Edit, then Save\nNegative stock: look for an unentered bill\nNet gain: check the count history for a miscount, an unrecorded receipt or a duplicate' }),
     R(ST, 'Item list', 'weekly', '11:00', 10, 'Item groups checked: every good is in the right group.', { days: 'wed' }),
     R(ST, 'Prices', 'monthly', '11:30', 10, 'The price list is current and every staff member has it.'),
-    A(ST, 'Recording', 'Every walk-in sale goes in Live Sale with WIC on (GMC only for the shop\'s own use). A customer buying several items is sold through MI: one basket, one receipt.'),
+    A(ST, 'Recording', 'Every walk-in sale goes in Live with WIC on (GMC only for the shop\'s own use). A customer buying several items is sold through MI: one basket, one receipt.'),
     A(ST, 'Recording', 'Past days are entered only with + Past sale and the right sale date. The same work is never typed twice.'),
     A(ST, 'Recording', 'Receipts are issued from MI or the Sales Log, never typed into Customer Receipts. A sale the app refuses (price below cost, not enough stock) is not forced: tell Joe.'),
     S(ST, 'Know the words', 'App words: SOH stock on hand, SP selling price, CP cost price, WIC walk-in customer, GMC Grony Multimedia as customer, CAB cash at bank. Search the Handbook before asking.'),

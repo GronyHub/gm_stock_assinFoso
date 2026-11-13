@@ -54,7 +54,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               {/* Items and Live Sale are the same screen -- one row. Lands on
                   the 'items' view (the superset: it also has the columns
                   picker) in plain Live mode, clearing any filter. */}
-              <SidePaneButton icon="🛒" label={paneLabel('items', 'Items / Live Sale')} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+              <SidePaneButton icon="🛒" label={paneLabel('items', 'Live')} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(modeActive('sale'))} badge={fl(itemsFlagsCount)}
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />

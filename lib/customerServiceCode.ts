@@ -29,7 +29,7 @@ export const CUSTOMER_SERVICE_CODE: CodeSection[] = [
   ] },
   { id: 'D', title: 'Money, privacy and receipts', rules: [
     { code: 'CS-17', text: 'No personal phone number or personal MoMo number is given to any customer. Payments go only to the company MoMo number or the till.' },
-    { code: 'CS-18', text: 'Every sale gets a receipt, and every job gets a customer or a label in Live Sale.' },
+    { code: 'CS-18', text: 'Every sale gets a receipt, and every job gets a customer or a label in Live.' },
     { code: 'CS-19', text: 'Never share or reuse customer details, files or logins. Delete or hand over customers\' documents as agreed.' },
     { code: 'CS-20', text: 'Tell the customer the total clearly and give the correct change.' },
   ] },

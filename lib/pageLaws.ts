@@ -81,6 +81,7 @@ async function ensureCompanyLawsImpl() {
   await dedupeLawsOnce()
   await (await import('./auditFixes')).auditFixesOnce()
   await (await import('./conflictFixes')).conflictFixesOnce()
+  await (await import('./renameLive')).renameLiveOnce()
   await pendingJobsConfirmOnce()
   await cashCountedLawOnce()
   await (await import('./questionGroups')).seedQuestionGroupsOnce()
@@ -471,8 +472,8 @@ async function assignLawCodes() {
 // Daily Checklist. They go live straight away (the owner asked for them).
 const FLAG_NAMES = 'No Selling Price, No Cost Price, No Group, Empty Row, Duplicate Items, Unlinked Sales, Service Violations, Unknown Quantity, GMC Pack Overage, Net Gain, Needs Review, Alias Needs Check, Ledger Notes, Negative Stock and the old alias checks'
 const FLAG_LAWS: { type: 'recurring' | 'standing'; text: string; time?: string; mins?: number; dos?: string; donts?: string; points?: number }[] = [
-  { type: 'recurring', time: '09:30', mins: 10, points: 2, text: 'Fix flags: every flag on Live Sale is fixed as soon as it appears. Open 🚩 Flags and fix what is open now. A flag is never left for the next day and never hidden by editing an item just to make it disappear. Flags: ' + FLAG_NAMES + '.',
-    dos: 'Open Items / Live Sale\nTap 🚩 Flags and open each flag\nFix it using the how-to for that flag\nA flag you cannot fix: tell Joe now', donts: 'Leave a flag open overnight\nEdit an item just to clear a flag' },
+  { type: 'recurring', time: '09:30', mins: 10, points: 2, text: 'Fix flags: every flag on Live is fixed as soon as it appears. Open 🚩 Flags and fix what is open now. A flag is never left for the next day and never hidden by editing an item just to make it disappear. Flags: ' + FLAG_NAMES + '.',
+    dos: 'Open Live\nTap 🚩 Flags and open each flag\nFix it using the how-to for that flag\nA flag you cannot fix: tell Joe now', donts: 'Leave a flag open overnight\nEdit an item just to clear a flag' },
 ]
 async function seedFlagLaws() {
   try {
@@ -497,8 +498,8 @@ type VL = { text: string; points: number; by: 'manager' | 'app'; how?: string; c
 const V = (text: string, how?: string, chapter?: string, points = 1): VL => ({ text, points, by: 'manager', ...(how ? { how } : {}), ...(chapter ? { chapter } : {}) })
 const REC = 'Find the item in Search\nCheck the quantity and the price on its card\nSay who it is for: a GM number, phone, name or label\nTap the red tick. The sale goes into the Sales Log'
 const VIOLATION_RULES: { re: RegExp; title: string; v: VL[]; not?: string }[] = [
-  { re: /Every walk-in sale goes in Live Sale/i, title: 'Record every sale as soon as it happens', not: 'Shop use recorded with the GMC button. A sale recorded a little late because the customer was still choosing.', v: [
-    V('A sale is not recorded in Live Sale as soon as it happens', REC, 'Find the item|Search the item'),
+  { re: /Every walk-in sale goes in Live/i, title: 'Record every sale as soon as it happens', not: 'Shop use recorded with the GMC button. A sale recorded a little late because the customer was still choosing.', v: [
+    V('A sale is not recorded in Live as soon as it happens', REC, 'Find the item|Search the item'),
     V('Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC', 'Keep the switch on WIC for a sale to a customer\nUse GMC only for things the shop uses itself, never for a sale', 'WIC'),
     V('A customer is not given a receipt for a sale', 'Issue the receipt from MI, or find the sale in the Sales Log and give it to the customer\nNever type a receipt by hand', 'several items|Sales Log'),
     V('Several items for one customer are recorded as separate sales and not through MI', 'Tap MI\nAdd each item to the basket\nPick the customer\nIssue one receipt for everything', 'several items'),
@@ -518,7 +519,7 @@ const VIOLATION_RULES: { re: RegExp; title: string; v: VL[]; not?: string }[] = 
   { re: /App words/i, title: 'Use the app words correctly', v: [
     V('An entry is made with the wrong term, for example shop use recorded as a sale', 'SOH is stock on hand\nSP is selling price, CP is cost price\nWIC is a walk-in customer sale, GMC is shop use\nCAB is cash at bank', 'words')] },
   { re: /^Fix flags/i, title: 'Fix flags as soon as they appear', v: [
-    V('A flag is left open overnight', 'Open Items / Live Sale, tap 🚩 Flags, open the flag and fix it with the steps for that flag', 'Now, flags', 2),
+    V('A flag is left open overnight', 'Open Live, tap 🚩 Flags, open the flag and fix it with the steps for that flag', 'Now, flags', 2),
     V('An item is edited only to make a flag disappear', 'Fix the real cause the flag points to. Never edit just to clear it', 'Now, flags', 2),
     V('A flag that cannot be fixed is not reported to Joe', 'If you cannot fix a flag, tell Joe the same day', 'Now, flags')] },
   { re: /Check the Sales Log at closing/i, title: 'Check the Sales Log at closing', v: [
@@ -559,7 +560,7 @@ async function scopeItemsLaws() {
     await sql`UPDATE page_laws SET category = 'Staff management', subcategory = 'Training', code = NULL, scope_key = 'Staff management' WHERE category = 'Stock & records' AND text ~* '^Law: app words|App words:'`
     // the "refused sale is forced" violation belongs to recording a sale, not to receipts
     const refused = 'A sale the app refused is forced through instead of telling Joe'
-    const rec = await sql`SELECT id, violations FROM page_laws WHERE text ~* 'Every walk-in sale goes in Live Sale'` as unknown as { id: number; violations: string | null }[]
+    const rec = await sql`SELECT id, violations FROM page_laws WHERE text ~* 'Every walk-in sale goes in Live'` as unknown as { id: number; violations: string | null }[]
     const rcp = await sql`SELECT id, violations FROM page_laws WHERE text ~* 'Receipts are issued from MI'` as unknown as { id: number; violations: string | null }[]
     for (const r of rcp) {
       const list = parseViolations(r.violations), keep = list.filter(v => v.text !== refused), moved = list.find(v => v.text === refused)
@@ -573,7 +574,7 @@ async function scopeItemsLaws() {
 
 // One law, one violation: the title of the law each violation line belongs to (the law is the positive form of the violation).
 const LAW_FOR: Record<string, string> = {
-  'A sale is not recorded in Live Sale as soon as it happens': 'Record every sale as soon as it happens',
+  'A sale is not recorded in Live as soon as it happens': 'Record every sale as soon as it happens',
   'Shop use is recorded as a sale (WIC), or a customer sale is recorded as GMC': 'Record shop use as GMC and a customer sale as WIC',
   'A customer is not given a receipt for a sale': 'Give the customer a receipt for every sale',
   'Several items for one customer are recorded as separate sales and not through MI': 'Sell several items to one customer through MI',
@@ -624,8 +625,8 @@ async function splitMultiViolationLaws() {
 // Three laws about knowing the Live Sale page itself (what it is for, the abbreviations, how to record a sale). They stand: a manager
 // checks by asking, and logs a violation. Live straight away (the owner asked for them).
 const UNDERSTAND: { title: string; violation: string; how: string; chapter: string }[] = [
-  { title: 'Understand what Live Sale is for', violation: 'A staff member cannot say, when a manager asks, what Live Sale is for, what it solves, and what happens when a sale is not recorded', chapter: 'What Live Sale is for|Welcome to Live Sale|This is Live Sale',
-    how: 'Live Sale is the main page of the shop\nEvery sale is recorded here, one item at a time, as it happens\nStock, cash and profit all come from what is recorded here\nA sale that is not recorded makes stock wrong and hides real profit' },
+  { title: 'Understand what Live is for', violation: 'A staff member cannot say, when a manager asks, what Live is for, what it solves, and what happens when a sale is not recorded', chapter: 'What Live is for|Welcome to Live|This is Live',
+    how: 'Live is the main page of the shop\nEvery sale is recorded here, one item at a time, as it happens\nStock, cash and profit all come from what is recorded here\nA sale that is not recorded makes stock wrong and hides real profit' },
   { title: 'Know the app abbreviations', violation: 'A staff member cannot say, when a manager asks, what SOH, SP, CP, WIC, GMC or CAB stand for, or uses one wrongly', chapter: 'WIC',
     how: 'SOH: stock on hand\nSP: selling price. CP: cost price\nWIC: walk-in customer, a real sale\nGMC: Grony Multimedia as customer, shop use and not a sale\nCAB: cash at bank' },
   { title: 'Know how to find, price and record a sale', violation: 'A staff member cannot show, when a manager asks, how to find an item, set the quantity and price, and record the sale', chapter: 'Find the item|Search the item',
@@ -646,7 +647,7 @@ async function seedUnderstandingLaws() {
 type Q = { q: string; options: string[]; answer: number; why: string }
 const q = (qq: string, a: string, b: string, c: string, why: string): Q => ({ q: qq, options: [a, b, c], answer: 0, why })
 const SHARP: { old: string; title: string; violation: string; points?: number; quiz: Q[] }[] = [
-  { old: 'Record every sale as soon as it happens', title: 'Record every sale within 5 minutes of the customer paying', violation: 'A sale is recorded in Live Sale more than 5 minutes after the customer paid', quiz: [
+  { old: 'Record every sale as soon as it happens', title: 'Record every sale within 5 minutes of the customer paying', violation: 'A sale is recorded in Live more than 5 minutes after the customer paid', quiz: [
     q('How soon must a sale be recorded after the customer pays?', 'Within 5 minutes', 'By the end of the day', 'Whenever there is time', 'Late sales make stock and cash wrong.'),
     q('What does the red tick do?', 'Records the sale and sends it to the Sales Log', 'Prints the receipt only', 'Deletes the sale', 'The tick records the sale.')] },
   { old: 'Record shop use as GMC and a customer sale as WIC', title: 'Record shop use with GMC and every customer sale with WIC, every time', violation: 'A customer sale is recorded as GMC, or shop use is recorded as a sale (WIC)', quiz: [
@@ -670,17 +671,17 @@ const SHARP: { old: string; title: string; violation: string; points?: number; q
     q('How do you correct a wrong price?', 'Open the item, Edit, type the price, Save', 'Delete the item', 'Tell the customer', 'Fix it in the item sheet.')] },
   { old: 'Never sell at an old price after the list is updated', title: 'Never sell at an out-of-date price after the list is updated', violation: 'An item is sold at an old price after the price list was updated', quiz: [
     q('What do you check on the card before the red tick?', 'The quantity and the price', 'Only the name', 'Nothing', 'A wrong price loses money on every sale.')] },
-  { old: 'Fix every flag as soon as it appears', title: 'Fix every flag on Live Sale the day it appears: none open at closing', violation: 'A flag is still open at closing time', points: 2, quiz: [
-    q('Where are all the flags on Live Sale?', 'The Flags dropdown on the toolbar', 'Under the logo', 'In the Sales Log', 'All flags are in one dropdown.'),
+  { old: 'Fix every flag as soon as it appears', title: 'Fix every flag on Live the day it appears: none open at closing', violation: 'A flag is still open at closing time', points: 2, quiz: [
+    q('Where are all the flags on Live?', 'The Flags dropdown on the toolbar', 'Under the logo', 'In the Sales Log', 'All flags are in one dropdown.'),
     q('When must a flag be fixed?', 'The same day it appears', 'Next week', 'When Joe asks', 'None may be open at closing.')] },
   { old: 'Fix the cause of a flag, never just clear it', title: 'Fix the real cause of a flag: never edit an item only to clear it', violation: 'An item is edited only to clear a flag, without fixing its cause', points: 2, quiz: [
     q('A flag says No Selling Price. What fixes it?', 'Type the real selling price and Save', 'Delete the item', 'Change its group', 'Fix the cause, never just clear the flag.')] },
   { old: 'Report a flag you cannot fix to Joe', title: 'Report any flag you cannot fix to Joe before closing', violation: 'A flag that cannot be fixed is not reported to Joe before closing', quiz: [
     q('You cannot fix a flag. What do you do?', 'Tell Joe before closing', 'Leave it', 'Edit the item at random', 'Joe must hear the same day.')] },
-  { old: 'Understand what Live Sale is for', title: 'Demonstrate strong understanding of the Live Sale concept: what it is for, what it solves, all its features and how it is used', violation: 'A staff member fails to explain, when a manager asks, what Live Sale is for, what it solves, its main features and how it is used, or scores below 80% on its quiz', quiz: [
-    q('What is Live Sale for?', 'Recording every sale as it happens', 'Ordering stock', 'Paying staff', 'It is where every sale is recorded.'),
+  { old: 'Understand what Live is for', title: 'Demonstrate strong understanding of the Live concept: what it is for, what it solves, all its features and how it is used', violation: 'A staff member fails to explain, when a manager asks, what Live is for, what it solves, its main features and how it is used, or scores below 80% on its quiz', quiz: [
+    q('What is Live for?', 'Recording every sale as it happens', 'Ordering stock', 'Paying staff', 'It is where every sale is recorded.'),
     q('What does an unrecorded sale cause?', 'Wrong stock and cash figures', 'Nothing', 'Faster work', 'It hides real profit.'),
-    q('Where do the stock, cash and profit figures come from?', 'What is recorded in Live Sale', 'Guesses', 'Customers', 'Everything comes from the sales recorded.')] },
+    q('Where do the stock, cash and profit figures come from?', 'What is recorded in Live', 'Guesses', 'Customers', 'Everything comes from the sales recorded.')] },
   { old: 'Know the app abbreviations', title: 'Demonstrate the meaning of every app abbreviation: SOH, SP, CP, WIC, GMC and CAB', violation: 'A staff member gets any one of the six abbreviations wrong when a manager asks, or uses one wrongly in an entry', quiz: [
     q('What does SOH stand for?', 'Stock on hand', 'Sales on hold', 'Shop opening hours', 'SOH is stock on hand.'),
     q('What is GMC?', 'Grony Multimedia as customer: shop use, not a sale', 'A walk-in customer', 'Cash at bank', 'GMC is shop use.'),
@@ -690,7 +691,7 @@ const SHARP: { old: string; title: string; violation: string; points?: number; q
     q('What must be said before the red tick?', 'Who the sale is for', 'Nothing', 'Only the date', 'A GM number, phone, name or label is required.')] },
 ]
 const NEW_LAWS: { title: string; violation: string; how: string; quiz: Q[] }[] = [
-  { title: 'Enter every sale in the app: no sale is ever made without an entry', violation: 'A sale is made and never entered in the app', how: 'Enter every sale as the customer pays\nUse Live Sale, or MI for several items\nNever take payment and leave the sale out', quiz: [
+  { title: 'Enter every sale in the app: no sale is ever made without an entry', violation: 'A sale is made and never entered in the app', how: 'Enter every sale as the customer pays\nUse Live, or MI for several items\nNever take payment and leave the sale out', quiz: [
     q('What is the sanction for making a sale and not entering it?', 'Dismissal', 'One penalty point', 'A warning', 'A sale left out of the app is treated as theft.'),
     q('Is a very small sale excused?', 'No, every sale is entered', 'Yes, under ₵10', 'Yes at night', 'Every sale, however small, is entered.')] },
   { title: 'Never steal or pilfer money, goods or stock belonging to the shop', violation: 'Money, goods or stock belonging to the shop is taken, hidden or kept for personal use', how: 'Never take, hide or keep shop money, goods or stock\nShop use is recorded with the GMC button, never taken quietly\nA customer overpayment or a found item is handed to Joe', quiz: [

@@ -47,7 +47,7 @@ export default function MIBasket({ onClose, onAddItem, lines, onQty, onPrice, on
       {open && (
         <div className="max-h-[62vh] space-y-2 overflow-y-auto p-3">
           <div>
-            <input value={q} onChange={e => search(e.target.value)} placeholder="Add an item: type its name (or tap ✓ on a Live Sale card)" autoComplete="off"
+            <input value={q} onChange={e => search(e.target.value)} placeholder="Add an item: type its name (or tap ✓ on a Live card)" autoComplete="off"
               className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm" />
             {hits.length > 0 && (
               <div className="mt-1 overflow-hidden rounded-lg border border-gray-200">

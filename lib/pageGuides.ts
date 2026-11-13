@@ -6,7 +6,7 @@ import { once } from '@/lib/once'
 // server's disk, see /api/page-guides/upload) or go back to the built-in one. page_guide_seen remembers, per staff
 // member, which guides they've already watched or skipped, so the first-visit notice shows once per page.
 export const PAGE_GUIDES: Record<string, string> = {
-  sale: 'Live Sale',
+  sale: 'Live',
   log: 'Sales Log',
   bills: 'Bills',
   expenses: 'Expenses',

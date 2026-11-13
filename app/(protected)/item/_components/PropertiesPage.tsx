@@ -137,7 +137,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-10">No properties classified yet -- mark an expense as a Property from its Edit form on the Expenses page, or mark a GMC tap as a property from Live Sale.</p>
+          <p className="text-xs text-gray-400 text-center py-10">No properties classified yet -- mark an expense as a Property from its Edit form on the Expenses page, or mark a GMC tap as a property from Live.</p>
         ) : filtered.map(p => (
           <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
             <div className="flex items-center justify-between gap-2">

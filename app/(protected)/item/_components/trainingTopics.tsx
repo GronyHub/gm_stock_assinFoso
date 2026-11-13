@@ -79,7 +79,7 @@ export const TOPICS: Topic[] = [
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Company Laws</strong> -- the rules of each area, with a video and a short quiz for every category.</li>
           <li><strong>Waiting for team</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
-          <li><strong>Items / Live Sale</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
+          <li><strong>Live</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
           <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong>, <strong>Team Times</strong> -- the rest of your day-to-day tools.</li>
           <li><strong>Payslips</strong> and <strong>Profile</strong> -- your own pay and your own details and photo.</li>
         </ul>
@@ -95,7 +95,7 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-2">
         <p className="text-sm text-gray-700">What each button is for:</p>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Items / Live Sale</p><p className="text-[11px] text-gray-500 mt-0.5">Tap a sale as it happens, find an item, fix its details.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Live</p><p className="text-[11px] text-gray-500 mt-0.5">Tap a sale as it happens, find an item, fix its details.</p></div>
         <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Sales Log</p><p className="text-[11px] text-gray-500 mt-0.5">Every sale by day, receipts, undo a wrong tap.</p></div>
         <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Counts</p><p className="text-[11px] text-gray-500 mt-0.5">Count what is on the shelf; records and history.</p></div>
         <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Item 360</p><p className="text-[11px] text-gray-500 mt-0.5">Everything about one item in one place.</p></div>
@@ -192,7 +192,7 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Staff</strong> -- the shop team. You use Company Laws, Waiting for team, Items / Live Sale, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
+          <li><strong>Staff</strong> -- the shop team. You use Company Laws, Waiting for team, Live, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
           <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals.</li>
         </ul>
         <Callout>Anything you cannot see is not part of your job in the app. If you think you need it, ask Joe.</Callout>
@@ -201,16 +201,16 @@ export const TOPICS: Topic[] = [
   },
   {
     id: 'overview',
-    title: 'What is Live Sale, and where is everything?',
+    title: 'What is Live, and where is everything?',
     group: 'Getting Started',
     keywords: 'overview tabs switch live log sales bills count mode',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Live Sale is where every walk-in sale is recorded, one item at a time, as it happens -- instead of writing a receipt out at the end of the day. It opens from the <strong>Items / Live Sale</strong> button in the sidebar.</p>
+        <p className="text-sm text-gray-700">Live is where every walk-in sale is recorded, one item at a time, as it happens -- instead of writing a receipt out at the end of the day. It opens from the <strong>Live</strong> button in the sidebar.</p>
         <p className="text-sm text-gray-700">Related things have their own sidebar buttons. They all work on the same data:</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { p: 'Items / Live Sale', d: 'The tap-to-sell grid -- the main screen you spend most of your time on.' },
+            { p: 'Live', d: 'The tap-to-sell grid -- the main screen you spend most of your time on.' },
             { p: 'Sales Log', d: 'Every sale you have tapped, by day, with receipts. Fix a mistake here.' },
             { p: 'Counts', d: 'What is due to be counted, count records and history.' },
             { p: 'Item 360', d: 'Everything about one item in one place.' },
@@ -218,7 +218,7 @@ export const TOPICS: Topic[] = [
             { p: 'Losses / Analytics', d: 'Where stock is lost and what sells least.' },
           ].map(r => (
             <div key={r.p} className="border border-gray-200 rounded-lg p-2">
-              <MiniPill text={r.p} tone={r.p === 'Items / Live Sale' ? 'blue' : 'gray'} />
+              <MiniPill text={r.p} tone={r.p === 'Live' ? 'blue' : 'gray'} />
               <p className="text-[11px] text-gray-500 mt-1">{r.d}</p>
             </div>
           ))}
@@ -229,7 +229,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'tapping-a-sale',
     title: 'How to record a walk-in sale',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'tap sale record wic quantity price sell customer qty checkmark inline card',
     body: (
       <div className="space-y-3">
@@ -247,7 +247,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'wic-vs-gmc',
     title: 'What does the WIC / GMC switch mean?',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'wic gmc internal use grony multimedia toggle switch customer',
     body: (
       <div className="space-y-3">
@@ -264,7 +264,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'custom-quantity',
     title: 'Selling a quantity that is not a preset button',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'custom quantity amount preset number type',
     body: (
       <p className="text-sm text-gray-700">The Qty box on each card is a plain number field -- type any amount, it does not have to match a suggested quantity. There is no separate "custom" mode or preset buttons; you always type the exact quantity being sold.</p>
@@ -273,7 +273,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'undo-a-tap',
     title: 'How to undo a tap (fix a mistake)',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'undo mistake wrong tap delete remove cancel',
     body: (
       <div className="space-y-3">
@@ -324,11 +324,11 @@ export const TOPICS: Topic[] = [
   {
     id: 'item-filter',
     title: 'Using the item filter (Loss / Gain / Low SOH / count cadence)',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'filter dropdown loss gain soh stock daily every days dormant not counted find',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">The <strong>Filter</strong> dropdown narrows the grid down to items that need attention, without leaving Live Sale:</p>
+        <p className="text-sm text-gray-700">The <strong>Filter</strong> dropdown narrows the grid down to items that need attention, without leaving Live:</p>
         <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Loss / Gain</strong> -- items whose last count came up short or over.</li>
           <li><strong>Low SOH</strong> -- items sitting at zero or negative stock.</li>
@@ -341,7 +341,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'type-group-filter',
     title: 'The type and group filters',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'type goods services group filter narrow',
     body: (
       <p className="text-sm text-gray-700"><strong>All types / Goods / Services</strong> narrows the grid to physical stock items or service items only. <strong>All groups</strong> narrows it to one category (e.g. "Stationery", "Printing") -- useful once the catalogue gets long.</p>
@@ -350,7 +350,7 @@ export const TOPICS: Topic[] = [
   {
     id: 'search-pick-item',
     title: 'Searching for and picking a specific item',
-    group: 'Items / Live Sale',
+    group: 'Live',
     keywords: 'search find pick item box magnifying',
     body: (
       <div className="space-y-3">
@@ -375,7 +375,7 @@ export const TOPICS: Topic[] = [
           <li><strong>Count settings</strong> (see "Changing how often an item is counted" and "Excluding an item from counts" below).</li>
         </ul>
         <p className="text-sm text-gray-700">Save applies immediately -- you do not need to leave the sheet.</p>
-        <Callout>Deleting an item entirely is not done from Live Sale -- that is not done from here, and only works once the item has no sales/bills/count history (otherwise it needs to be merged into another item instead).</Callout>
+        <Callout>Deleting an item entirely is not done from Live -- that is not done from here, and only works once the item has no sales/bills/count history (otherwise it needs to be merged into another item instead).</Callout>
       </div>
     ),
   },
@@ -468,7 +468,7 @@ export const TOPICS: Topic[] = [
     title: 'Analytics',
     group: 'Everywhere',
     keywords: 'analytics chart graph trend button icon',
-    body: <p className="text-sm text-gray-700">Swaps the current list for charts/trends built from the same data -- charts the lists on Items / Live Sale, the Sales Log and Counts. The sidebar also has an <strong>Analytics</strong> button with ready-made views such as the least sold goods and services. Tap it again to go back to the normal list.</p>,
+    body: <p className="text-sm text-gray-700">Swaps the current list for charts/trends built from the same data -- charts the lists on Live, the Sales Log and Counts. The sidebar also has an <strong>Analytics</strong> button with ready-made views such as the least sold goods and services. Tap it again to go back to the normal list.</p>,
   },
   {
     id: 'laws-flags',
@@ -484,7 +484,7 @@ export const TOPICS: Topic[] = [
     keywords: 'large screen expand full exit close button',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">The <MiniIconBtn>⤢</MiniIconBtn> button expands Live Sale to fill the whole screen, hiding the surrounding page -- useful on a small window. A small floating <MiniIconBtn tone="red">✕</MiniIconBtn> button appears in the top-right corner while expanded; tap it to exit back to the normal layout.</p>
+        <p className="text-sm text-gray-700">The <MiniIconBtn>⤢</MiniIconBtn> button expands Live to fill the whole screen, hiding the surrounding page -- useful on a small window. A small floating <MiniIconBtn tone="red">✕</MiniIconBtn> button appears in the top-right corner while expanded; tap it to exit back to the normal layout.</p>
       </div>
     ),
   },

@@ -68,7 +68,7 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
               {(() => {
                 type Row = { label: string; n: number; go: () => void }
                 const groups: { title: string; rows: Row[] }[] = [
-                  { title: 'Live Sale / Items', rows: liveSaleFlagList.map(f => ({ label: f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
+                  { title: 'Live / Items', rows: liveSaleFlagList.map(f => ({ label: f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
                   { title: 'Counts', rows: [
                     { label: 'Count due daily', n: violationCounts['daily'] ?? 0, go: () => goCountMode() }, { label: 'Count due every 7 days', n: violationCounts['7day'] ?? 0, go: () => goCountMode() },
                     { label: 'Count due every 15 days', n: violationCounts['15day'] ?? 0, go: () => goCountMode() } ] },

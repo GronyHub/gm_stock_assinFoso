@@ -85,7 +85,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
       GROUP BY sr.receipt_date::date
     ),
     daily_converted_in_time AS (
-      -- The actual clock time the conversion was tapped in Live Sale, for
+      -- The actual clock time the conversion was tapped in Live, for
       -- display next to the CNV column -- undone taps are excluded (they
       -- carry no qty in daily_converted_in above either) and a day with more
       -- than one tap shows the latest one. Only live-sale-tapped conversions
@@ -272,7 +272,7 @@ export async function getItemDayRows(id: number): Promise<ItemDayRow[]> {
     ),
     daily_below_cost AS (
       -- Same condition as /api/flags' costGteSell check (the item-level
-      -- "ACP > SP" violation shown on Live Sale) -- compares each WIC sale
+      -- "ACP > SP" violation shown on Live) -- compares each WIC sale
       -- line against this item's ACP as of that sale's date (reusing
       -- daily_vcp_source/vcp_bill_groups above, since all_dates already
       -- covers every date this item sold on), not today's catalog value.
