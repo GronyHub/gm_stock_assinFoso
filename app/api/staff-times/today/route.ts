@@ -143,6 +143,10 @@ export async function POST(req: NextRequest) {
   const { action, time, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
   if (!action || !time) return badRequest('Missing fields')
   if (!['in', 'out'].includes(action)) return badRequest('Invalid action')
+  // A clock time can never be in the future (Ghana = UTC). The time comes from the phone or computer, and a wrong device clock once recorded
+  // a 7:50pm clock-out at 6:32pm (James, 2026-11-13). Allow 5 minutes for a slow clock.
+  { const tm = parseTimeMins(String(time)), n = new Date(), nowM = n.getUTCHours() * 60 + n.getUTCMinutes()
+    if (tm != null && tm > nowM + 5) return badRequest(`That time (${time}) is later than now. Check the clock on this device and try again.`) }
   if (action === 'in' && sessionUser?.role !== 'owner') {
     const msg = await suspendedMessage(String(sessionUser?.username ?? sessionUser?.name ?? ''), new Date().toISOString().slice(0, 10))
     if (msg) return badRequest(msg)

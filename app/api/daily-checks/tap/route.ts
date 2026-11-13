@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { recordActivity } from '@/lib/logger'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
-import { notifyOwners } from '@/lib/checklistAlerts'
+import { notifyOwners, notifyManagement } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { addPoint, suspendedMessage } from '@/lib/penalties'
 import { isOwnerLevel } from '@/lib/roles'
@@ -78,7 +78,12 @@ export async function POST(req: NextRequest) {
       RETURNING id, tile_id, day, value, note, extra, recorded_by, recorded_at`
 
     clearMyDayCache()
-    void recordActivity(actor, b.value === 'Not done' ? 'marked a task not done' : 'did a task', `${String(t.title).slice(0, 120)}${note ? ' — ' + note.slice(0, 80) : ''}`)
+    // A tick is activity by a person, so the owner and Joe get a push. A Done tick is already in the Done record as "Daily checklist: ..." (creditWork below),
+    // so it is not written there a second time; a Not done is (it earns no credit row).
+    const what = `${String(t.title).slice(0, 120)}${note ? ' — ' + note.slice(0, 80) : ''}`
+    if (b.value === 'Not done') void recordActivity(actor, 'marked a task not done', what)
+    else void sql`INSERT INTO activity_logs (staff_name, action, details) VALUES (${actor}, 'did a task', ${what})`.catch(() => {})
+    void notifyManagement(actor, `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`, what)
 
     // Mirror into the Grony Manage log that matches this tile, so that page's history keeps filling.
     if (t.log_category && logs.length) {
