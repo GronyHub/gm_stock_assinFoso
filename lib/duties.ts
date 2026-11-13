@@ -140,7 +140,8 @@ export async function standingRowsAll(): Promise<StandingRow[]> {
   try {
     // Signing laws was dropped (2026-11-13): the laws are statutory, so there is no "laws to sign" duty.
   } catch { /* leave out */ }
-  try {
+  // Law quizzes were dropped as a duty (2026-11-13): 176 quizzes each could never be cleared. The daily law question asks one a day instead.
+  if (false as boolean) try {
     const quiz = await sql`SELECT p.n AS person, (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '7 days')::date::text AS due, COUNT(*)::int AS n,
         COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = p.n AND m.score::float / NULLIF(m.total, 0) >= 0.75))::int AS done
       FROM unnest(${people}::text[]) AS p(n) JOIN page_laws l ON l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND p.n = ANY(${managers}::text[])))

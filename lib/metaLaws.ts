@@ -124,7 +124,8 @@ export async function metaTick(day: string) {
       if (!inArea.length) continue
       const first = inArea.map(l => l.live_at).sort()[0], d = hours(first) / 24
       if (d < REMIND_FRACTION - 1) continue
-      if (a.training) {
+      // Quizzes: dropped (2026-11-13) -- the daily law question replaces them, so no reminder and no point.
+      if (a.training && (false as boolean)) {
         const [p] = await sql`SELECT 1 FROM law_quiz_results WHERE staff = ${s} AND category = ${a.training} AND passed LIMIT 1`
         if (!p) { if (d >= 7) await award(1, cQuiz, `quiz:${a.key}`, `The ${a.label} quiz was not passed within 7 days`); else if (await claim(`quizrem:${a.key}:${s}`)) void reminder([s], 'Quiz due tomorrow', `Pass the ${a.label} quiz in Company Laws.`) }
       }

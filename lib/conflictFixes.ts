@@ -75,6 +75,17 @@ export async function dropSigningOnce() {
   } catch (e) { console.error('drop signing failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// The law quiz duty is dropped (2026-11-13): its law is retired and any quiz points are withdrawn. The daily law question replaces it.
+export async function dropQuizOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('drop-quiz-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const laws = await sql`UPDATE page_laws SET status = 'retired' WHERE (title = 'Pass each law quiz within 7 days' OR text ILIKE 'Pass each law quiz within 7 days%') RETURNING id, tile_id` as unknown as { id: number; tile_id: number | null }[]
+    for (const l of laws) if (l.tile_id) await sql`UPDATE daily_check_tiles SET active = false WHERE id = ${l.tile_id}`
+    await sql`UPDATE staff_penalties SET status = 'dismissed', note = 'Withdrawn: law quizzes are no longer a duty' WHERE status IN ('active', 'pending') AND source = 'meta' AND reason ILIKE '%quiz was not passed within 7 days%'`
+  } catch (e) { console.error('drop quiz failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Laws at the moment they apply (2026-11-13): the attendance laws are shown before work (the login moment), with the other "before work" laws.
 export async function lawMomentsOnce() {
   try {
