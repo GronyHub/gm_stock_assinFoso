@@ -8,6 +8,7 @@ import ManagerLockGuard from '@/components/ManagerLockGuard'
 import PresenceCheck from '@/components/PresenceCheck'
 import LawQuestion from '@/components/LawQuestion'
 import DuePrompt from '@/components/DuePrompt'
+import VideoGate from '@/components/VideoGate'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
@@ -60,6 +61,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <PresenceCheck />
         <LawQuestion />
         <DuePrompt />
+        <VideoGate />
         <PhotoReminder />
         <WaitingBar />
         <LawReminder />

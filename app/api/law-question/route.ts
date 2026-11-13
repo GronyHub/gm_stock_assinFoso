@@ -3,6 +3,7 @@ import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { actorKey } from '@/lib/clockState'
 import { SIGNERS } from '@/lib/signers'
+import { videoForLaw } from '@/lib/videoDue'
 
 // ONE QUESTION A DAY. Each staff member gets one multiple-choice question a day, taken from the laws' own quizzes. A law they broke in the last two weeks is asked first, so the
 // question is about what they actually got wrong. A wrong answer shows the right one and the law. No points: it is how the laws are learnt, not signed.
@@ -54,11 +55,11 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({}))
     const [row] = await sql`SELECT law_id, qi, correct FROM law_daily_questions WHERE day = ${day} AND staff = ${me}`
     if (!row) return badRequest('No question for you today.')
-    const [l] = await sql`SELECT title, text, quiz FROM page_laws WHERE id = ${row.law_id}`
+    const [l] = await sql`SELECT title, text, quiz, category, subcategory FROM page_laws WHERE id = ${row.law_id}`
     const q = parse(l?.quiz)[Number(row.qi)]
     if (!q) return badRequest('That question is no longer there.')
     const correct = Number(b.answer) === q.answer
     if (row.correct == null) await sql`UPDATE law_daily_questions SET correct = ${correct}, answered_at = now() WHERE day = ${day} AND staff = ${me}`
-    return success({ correct, right: q.options[q.answer], why: q.why ?? null, law: l?.title ?? null, text: l?.text ?? null })
+    return success({ correct, right: q.options[q.answer], why: q.why ?? null, law: l?.title ?? null, text: l?.text ?? null, video: correct || !l ? null : videoForLaw({ category: l.category ?? null, subcategory: l.subcategory ?? null }) })
   } catch (e) { return handleError('law question POST', e) }
 }

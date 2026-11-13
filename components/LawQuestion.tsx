@@ -2,13 +2,14 @@
 import { useEffect, useState } from 'react'
 
 type Q = { lawId: number; law: string | null; q: string; options: string[] }
-type R = { correct: boolean; right: string; why: string | null; law: string | null; text: string | null }
+type R = { correct: boolean; right: string; why: string | null; law: string | null; text: string | null; video: { key: string; label: string; src: string } | null }
 
 // The question of the day: one question from the laws, at the bottom of the screen (it never covers the page). A wrong answer shows the right one and the law.
 export default function LawQuestion() {
   const [q, setQ] = useState<Q | null>(null)
   const [r, setR] = useState<R | null>(null)
   const [busy, setBusy] = useState(false)
+  const [play, setPlay] = useState(false)
   useEffect(() => {
     if (window.location.pathname.startsWith('/login')) return
     const t = setTimeout(() => { fetch('/api/law-question', { cache: 'no-store' }).then(x => x.ok ? x.json() : null).then(d => setQ(d?.question ?? null)).catch(() => {}) }, 20000)   // after the login reminders
@@ -31,6 +32,9 @@ export default function LawQuestion() {
         <p className="font-bold">{r.correct ? 'Right.' : `Not quite. The answer is: ${r.right}`}</p>
         {r.why && <p>{r.why}</p>}
         {!r.correct && r.text && <p className="text-[12px] text-gray-800"><b>The law:</b> {r.text}</p>}
+        {!r.correct && r.video && !play && <button type="button" onClick={() => setPlay(true)} className="mr-3 rounded-lg bg-indigo-600 px-2.5 py-1 text-[12px] font-bold text-white">▶ Watch the {r.video.label} video</button>}
+        {play && r.video && <video src={r.video.src} autoPlay controls playsInline className="max-h-[45vh] w-full rounded-lg bg-black"
+          onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area: r.video!.key, label: r.video!.label + ' video' }) }).catch(() => {})} />}
         <a href={`/laws?law=${q.lawId}`} className="text-[12px] font-bold text-blue-700 underline">Open the law</a>
       </div>)}
       {r && <button type="button" onClick={() => setQ(null)} className="w-full rounded-xl bg-[#14213D] py-2 text-sm font-bold text-white">OK</button>}
