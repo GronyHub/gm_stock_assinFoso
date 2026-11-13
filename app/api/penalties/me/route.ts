@@ -22,12 +22,12 @@ export async function GET(req: NextRequest) {
     const entries = await sql`
       SELECT id, points, kind, reason, source, day, counted, status, law_code, violation, dispute_note, ack_at, withdraw_reason FROM staff_penalties
       WHERE staff = ${me} AND status <> 'reversed' ORDER BY day DESC, id DESC LIMIT 40`
-    const [w] = await sql`SELECT COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${me} AND status = 'active' AND NOT counted AND kind = 'violation'`
+    const [w] = await sql`SELECT COUNT(*)::int AS n, COALESCE(SUM(points), 0)::int AS t FROM staff_penalties WHERE staff = ${me} AND status = 'active' AND NOT counted AND kind = 'violation'`
     const [lr] = await sql`SELECT MAX(day) FILTER (WHERE kind IN ('violation', 'fade') AND counted AND status = 'active') AS last FROM staff_penalties WHERE staff = ${me}`
     const sanctions = await sql`SELECT id, tier, status, days, hours, start_date, end_date FROM penalty_sanctions WHERE staff = ${me} AND status IN ('proposed', 'approved') ORDER BY id DESC LIMIT 3`
     const next = TIERS.find(t => points < t.points) ?? null
     const learning = today() < st.startCounting
     const fadeIn = points > 0 && lr?.last ? Math.max(0, FADE_DAYS - daysBetween(String(lr.last), today())) : null
-    return success({ points, learning, countingFrom: st.startCounting, warnings: Number(w?.n ?? 0), next, fadeIn, entries, sanctions })
+    return success({ points, learning, countingFrom: st.startCounting, warnings: Number(w?.n ?? 0), pilotPoints: Number(w?.t ?? 0), next, fadeIn, entries, sanctions })
   } catch (e) { return handleError('penalties me', e) }
 }

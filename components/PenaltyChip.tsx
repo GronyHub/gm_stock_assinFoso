@@ -4,7 +4,7 @@ import WithMic from '@/components/WithMic'
 import { TIERS } from '@/lib/penaltyRules'
 
 export type PenaltyMe = {
-  points: number; learning: boolean; countingFrom: string; warnings: number; fadeIn: number | null
+  points: number; pilotPoints?: number; learning: boolean; countingFrom: string; warnings: number; fadeIn: number | null
   next: { points: number; days: number; hours: number; label: string } | null
   entries: { id: number; points: number; kind: string; reason: string; day: string; counted: boolean; status: string; source?: string; law_code?: string | null; violation?: string | null; dispute_note?: string | null; ack_at?: string | null; withdraw_reason?: string | null }[]
   sanctions: { id: number; tier: number; status: string; days: number; hours: number; start_date: string | null; end_date: string | null }[]
@@ -32,9 +32,9 @@ export function PenaltyChip({ className = '' }: { className?: string }) {
   if (!p) return null
   const b = band(p.points)
   return (
-    <a href="/profile" title={p.learning ? `Pilot until ${p.countingFrom}: ${p.warnings} pilot point entr${p.warnings === 1 ? 'y' : 'ies'}, none count yet` : 'Your penalty points'}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none ${b.cls} ${className}`}>
-      ⚖ {p.points}{p.learning && p.warnings > 0 ? ` · ${p.warnings}w` : ''}
+    <a href="/profile" title={p.learning ? `Pilot until ${p.countingFrom}: ${p.pilotPoints ?? 0} pilot points; none count yet` : 'Your penalty points'}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none ${p.learning ? 'bg-blue-100 text-blue-900' : b.cls} ${className}`}>
+      ⚖ {p.learning ? p.pilotPoints ?? 0 : p.points}
     </a>
   )
 }
