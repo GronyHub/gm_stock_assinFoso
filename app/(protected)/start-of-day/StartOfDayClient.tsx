@@ -45,6 +45,10 @@ export default function StartOfDayClient() {
           <p className="text-sm font-bold text-green-800">All done. The previous day is closed.</p>
           <a href="/item" className="block rounded-xl bg-green-600 py-2.5 text-center text-sm font-bold text-white">Go to the app</a>
         </div>)}
+      {l.locked && !lock.owner && (
+        <button type="button" onClick={() => { try { localStorage.setItem(`managerLockSkip:${new Date().toISOString().slice(0, 10)}`, '1') } catch { /* ignore */ }
+          void fetch('/api/manager-lock', { method: 'PUT' }).finally(() => { window.location.href = '/item' }) }}
+          className="w-full rounded-xl bg-gray-200 py-2.5 text-sm font-bold text-gray-800">Skip for today (Grony is told)</button>)}
       {l.locked && !lock.owner && <p className="text-xs text-gray-600">The app opens once {(l.approvals ?? 0) > 0 ? 'you have decided the clock times below' : ''}{(l.approvals ?? 0) > 0 && l.day ? ' and ' : ''}{l.day ? `${l.day} is closed (its Cash Counted entered and your closing questions answered)` : ''}. Until then you can only do this.</p>}
 
       {(l.approvals ?? 0) > 0 && !lock.owner && (

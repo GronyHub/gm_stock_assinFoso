@@ -1,6 +1,6 @@
 // ON/OFF SWITCHES for features the owner can turn off without a code change (Settings > Switches). Stored in app_settings under
 // 'featureSwitches' as { key: boolean }; a key that was never set uses its default (on). The server and every screen read the same values.
-export type FeatureKey = 'live_who' | 'sale_needs_clockin' | 'presence_question' | 'due_prompt' | 'video_gate' | 'law_question' | 'law_reminder' | 'notify_input'
+export type FeatureKey = 'live_who' | 'sale_needs_clockin' | 'presence_question' | 'due_prompt' | 'video_gate' | 'law_question' | 'law_reminder' | 'notify_input' | 'manager_block'
 export const FEATURES: { key: FeatureKey; label: string; detail: string; group: string }[] = [
   { key: 'live_who', group: 'Live', label: 'Ask who a sale is for', detail: 'The "Who?" box on each Live tile (a customer, a phone number or a label like "man in white shirt"). Off: the box is hidden and a sale is recorded without it.' },
   { key: 'sale_needs_clockin', group: 'Live', label: 'Sales only while clocked in', detail: 'Staff can record a sale only while they are clocked in at the shop.' },
@@ -9,6 +9,7 @@ export const FEATURES: { key: FeatureKey; label: string; detail: string; group: 
   { key: 'video_gate', group: 'Laws', label: 'Tile videos at login', detail: 'An unwatched tile video is shown after login; it closes when watched to the end, or "Later today" once a day.' },
   { key: 'law_question', group: 'Laws', label: 'Question of the day', detail: 'One question a day from the laws, at the bottom of the screen. A wrong answer shows the law and offers its video.' },
   { key: 'law_reminder', group: 'Laws', label: 'Laws shown at login', detail: 'The laws for the start of work are shown after login and confirmed with "I have read these laws".' },
+  { key: 'manager_block', group: 'Clock', label: 'Manager block at the start of the day', detail: 'Joe sees "Before you continue" until the previous day is closed and earlier clock times are decided. He can skip it (you are told); off: it is not shown at all.' },
   { key: 'notify_input', group: 'Notifications', label: 'Notify me of staff answers and ticks', detail: 'A push to Grony and Joe for every task tick, question-group answer, question of the day and presence answer.' },
 ]
 export const SWITCHES_KEY = 'featureSwitches'

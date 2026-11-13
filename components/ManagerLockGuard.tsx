@@ -2,6 +2,10 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useFeatures } from '@/lib/useFeatures'
+
+export const skipKey = () => `managerLockSkip:${new Date().toISOString().slice(0, 10)}`
+const skipped = () => { try { return !!localStorage.getItem(skipKey()) } catch { return false } }
 
 // The manager block: while the previous working day is not closed (Cash Counted, manager closing questions), the manager's every page is "Before you continue". It is a screen
 // guard (like the caretaker's); the owner can excuse a day from that page.
@@ -13,8 +17,9 @@ export default function ManagerLockGuard() {
   const u = session?.user as { role?: string; username?: string; name?: string } | undefined
   const isJoe = u?.role !== 'owner' && (u?.username ?? u?.name ?? '').toLowerCase() === 'joe'
   const [short, setShort] = useState<{ day: string; short: number } | null>(null)
+  const features = useFeatures()   // Settings > Switches: manager_block
   useEffect(() => {
-    if (!isJoe || FREE.some(p => pathname === p || pathname.startsWith(p + '/'))) { setShort(null); return }
+    if (!features.manager_block || skipped() || !isJoe || FREE.some(p => pathname === p || pathname.startsWith(p + '/'))) { setShort(null); return }
     let off = false
     fetch('/api/manager-lock?fresh=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
       if (off) return
@@ -24,7 +29,7 @@ export default function ManagerLockGuard() {
       router.replace('/start-of-day')
     }).catch(() => {})
     return () => { off = true }
-  }, [isJoe, pathname, router])
+  }, [isJoe, pathname, router, features.manager_block])
   if (!short) return null
   return (
     <a href="/start-of-day" className="fixed inset-x-0 bottom-0 z-[80] block bg-red-600 px-3 py-2 text-center text-xs font-bold text-white print:hidden">

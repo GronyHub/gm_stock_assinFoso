@@ -30,3 +30,17 @@ export async function POST(req: NextRequest) {
     return success({ ok: true })
   } catch (e) { return handleError('manager lock excuse', e) }
 }
+
+// PUT -- the manager skips the block for today: recorded and told to the owner. What was waiting stays waiting.
+export async function PUT() {
+  const { session, error } = await requireAuth()
+  if (error) return error
+  try {
+    const st = await lockStateForManager(undefined, true)
+    const what = [st.approvals ? `${st.approvals} clock time${st.approvals === 1 ? '' : 's'} to decide` : '', st.cash ? `Cash Counted for ${st.day}` : '', st.shortage ? `a cash shortage on ${st.day}` : '', st.questions ? `closing questions for ${st.day}` : ''].filter(Boolean).join(', ')
+    void recordActivity(getActorName(session), 'skipped the start-of-day block', what || 'nothing was waiting')
+    const { pushToUsers } = await import('@/lib/checklistAlerts')
+    void pushToUsers(['grony'], 'Joe skipped the start-of-day block', what ? `Still waiting: ${what}.` : 'Nothing was waiting.')
+    return success({ ok: true })
+  } catch (e) { return handleError('manager lock skip', e) }
+}
