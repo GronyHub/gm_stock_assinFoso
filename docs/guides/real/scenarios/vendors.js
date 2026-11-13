@@ -42,7 +42,7 @@ module.exports = {
       } },
 
     { caption: 'Or <b>search</b> by name',
-      say: 'Or search for a vendor by name. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { const s = page.getByPlaceholder(/Search .* vendors/); await h.tap(s); await h.type(s, 'toner'); await h.wait(1500); await s.fill(''); await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+      say: 'Or search for a vendor by name. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { const s = page.getByPlaceholder(/Search .* vendors/); await h.tap(s); await h.type(s, 'toner'); await h.wait(1500); await s.fill(''); await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

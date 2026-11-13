@@ -17,7 +17,7 @@ module.exports = {
       run: async (h, page) => { await h.wait(2500) } },
 
     { caption: 'New customers are registered while you <b>sell</b>',
-      say: 'New customers are registered while you sell. In Live Sale, type a new phone number in the Who box, and the customer form opens. Fill it in and save.',
+      say: 'New customers are registered while you sell. In Live, type a new phone number in the Who box, and the customer form opens. Fill it in and save.',
       run: async (h, page) => { await h.wait(3000) } },
 
     { caption: 'Find a customer: <b>search</b> by name, phone or GM number',
@@ -44,8 +44,8 @@ module.exports = {
       say: 'Tap View or print beside any receipt to see it again, or print it.',
       run: async (h, page) => { await h.point(page.getByRole('link', { name: 'View / print' }).first()) } },
 
-    { caption: 'Play this guide any time with <b>▶ Guide</b>',
-      say: 'That is Customers. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+    { caption: 'The laws and this video: <b>📜 Laws</b>',
+      say: 'That is Customers. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()); await h.wait(1200) } },
   ],
 }

@@ -45,7 +45,7 @@ module.exports = {
       run: async (h, page) => { await h.tap(page.getByRole('button', { name: 'Confirm Receipt' }).first()); await h.wait(2500) } },
 
     { caption: '<b>Check vs Bills</b>: order against the supplier\'s bill',
-      say: 'Check versus Bills compares an order with the supplier\'s bill, item by item, and lists any differences to report to the supplier. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+      say: 'Check versus Bills compares an order with the supplier\'s bill, item by item, and lists any differences to report to the supplier. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

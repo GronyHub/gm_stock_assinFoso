@@ -1,0 +1,45 @@
+{
+ "chapters": [
+  {
+   "t": 4,
+   "title": "Counts: checking the stock on the shelves",
+   "text": "This is Counts, where stock counts are recorded, to check that what is on the shelf matches the records. Every count is listed, newest first."
+  },
+  {
+   "t": 15,
+   "title": "Tap + Manual Count",
+   "text": "To record a count, tap plus Manual Count."
+  },
+  {
+   "t": 20,
+   "title": "Search the item and tap it",
+   "text": "Search for the item you counted, and tap it."
+  },
+  {
+   "t": 28,
+   "title": "Count them on the shelf. Type the number",
+   "text": "Count the item on the shelf, and type the number you counted. Add a note if there is something to explain."
+  },
+  {
+   "t": 37,
+   "title": "Tap Save",
+   "text": "Then tap Save. If your count is lower than the records expect, the app will ask why, so always give the real reason."
+  },
+  {
+   "t": 47,
+   "title": "History: every count ever made",
+   "text": "History lists every count ever made, and who made it."
+  },
+  {
+   "t": 53,
+   "title": "Law: COUNT NOW items are counted every day",
+   "text": "Company law: the items marked COUNT NOW are counted every day, and their warning banners cleared. Counts are separate from flags: the manager records at least ten counts a day.",
+   "lawRe": "COUNT NOW"
+  },
+  {
+   "t": 65,
+   "title": "The laws and this video: 📜 Laws",
+   "text": "Breaking a law costs penalty points, and the owner approves every sanction. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

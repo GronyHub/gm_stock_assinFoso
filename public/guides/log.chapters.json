@@ -1,0 +1,83 @@
+{
+ "chapters": [
+  {
+   "t": 5,
+   "title": "Sales Log: every sale, day by day",
+   "text": "This is the Sales Log. It lists every sale, day by day, newest first. The green row is today."
+  },
+  {
+   "t": 16,
+   "title": "At closing: tap + CC and type the cash you counted",
+   "text": "At closing, count the cash. Tap plus C C, type the amount, and press Enter."
+  },
+  {
+   "t": 24,
+   "title": "WNW = cash counted minus sales",
+   "text": "W N W shows the difference between the cash and the sales written down. Orange means there is more cash than sales recorded. Red means the cash is short."
+  },
+  {
+   "t": 37,
+   "title": "Each sale: customer, price, cost, profit",
+   "text": "Under it, each sale shows the customer, the price, the cost and the profit. A tick in W A means the WhatsApp message was sent."
+  },
+  {
+   "t": 48,
+   "title": "Tap a receipt number to view or reprint it",
+   "text": "When a sale is on a receipt, its number shows under the customer. Tap it to view or reprint the receipt."
+  },
+  {
+   "t": 58,
+   "title": "Wrong sale? Tap undo",
+   "text": "To cancel a wrong sale, tap the undo arrow. The sale turns red and is marked cancelled."
+  },
+  {
+   "t": 67,
+   "title": "Older sales: pick a Period",
+   "text": "To see older sales, tap Period and pick a year, then a month. The Sales Log goes back to twenty twenty three."
+  },
+  {
+   "t": 76,
+   "title": "Grey REC rows are older records (view only)",
+   "text": "Older records show in grey, marked R E C. They can be viewed, but not changed. A paperclip means a photo of that day's form is attached. Tap it to see it."
+  },
+  {
+   "t": 91,
+   "title": "Back to the last 90 days",
+   "text": "To come back to recent sales, pick Last ninety days."
+  },
+  {
+   "t": 97,
+   "title": "Receipt…, + Past sale and the chart",
+   "text": "On the bar, Receipt makes one receipt from sales you tick. Plus Past sale records a sale from an earlier day. And the chart button opens analytics."
+  },
+  {
+   "t": 109,
+   "title": "Law: check the Sales Log at closing",
+   "text": "Now the laws of the Sales Log. Check the Sales Log at closing: every sale of the day is there, the cash is counted and matches, and any difference is written down and told to Joe before leaving. One point.",
+   "lawRe": "at closing|cash is counted"
+  },
+  {
+   "t": 125,
+   "title": "Wrong tap: undo it the same day. 3 points",
+   "text": "A wrong tap is undone in the Sales Log the same day. Never delete or hide a sale to make a figure match. Three points.",
+   "lawRe": "wrong tap|delete or hide"
+  },
+  {
+   "t": 136,
+   "title": "Receipts from MI or the Sales Log",
+   "text": "Receipts come from M I or the Sales Log, never retyped into Customer Receipts. One point.",
+   "lawRe": "Customer Receipts|retyped"
+  },
+  {
+   "t": 145,
+   "title": "Past days: + Past sale and the right date",
+   "text": "Past days only with plus Past sale and the right date. Never type the same sale twice. One point.",
+   "lawRe": "Past days|Past sale"
+  },
+  {
+   "t": 156,
+   "title": "The laws and this video: 📜 Laws",
+   "text": "Breaking a law costs penalty points, and the owner approves every sanction. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

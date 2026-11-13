@@ -1,0 +1,44 @@
+{
+ "chapters": [
+  {
+   "t": 5,
+   "title": "Customers: everyone who buys from us",
+   "text": "This is Customers, everyone who buys from us, each with a G M number."
+  },
+  {
+   "t": 12,
+   "title": "New customers are registered while you sell",
+   "text": "New customers are registered while you sell. In Live, type a new phone number in the Who box, and the customer form opens. Fill it in and save."
+  },
+  {
+   "t": 24,
+   "title": "Find a customer: search by name, phone or GM number",
+   "text": "To find a customer, search by name, phone number or G M number."
+  },
+  {
+   "t": 31,
+   "title": "Flags: customers missing a location, contact or email",
+   "text": "Use Flags to find customers who are missing a location, a contact number or an email, so you can complete them."
+  },
+  {
+   "t": 41,
+   "title": "Tap a customer to open their record",
+   "text": "Tap a customer to open their record. Here you can correct their phone number, location and other details, then tap Save Changes."
+  },
+  {
+   "t": 51,
+   "title": "Cancel or Save to see their receipts",
+   "text": "When you are done, tap Cancel or Save Changes. The customer's summary shows how much they have bought, and all their receipts, newest first."
+  },
+  {
+   "t": 62,
+   "title": "View / print any receipt",
+   "text": "Tap View or print beside any receipt to see it again, or print it."
+  },
+  {
+   "t": 69,
+   "title": "The laws and this video: 📜 Laws",
+   "text": "That is Customers. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

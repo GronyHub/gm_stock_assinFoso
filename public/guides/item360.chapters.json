@@ -1,0 +1,41 @@
+{
+ "chapters": [
+  {
+   "t": 3,
+   "title": "Item 360: everything about one item",
+   "text": "This is Item 360. Search any item, to see everything about it in one place: stock, prices, and its history."
+  },
+  {
+   "t": 15,
+   "title": "Type the item name or group",
+   "text": "Type part of the item name, or its group, in the search box."
+  },
+  {
+   "t": 21,
+   "title": "Tap the item",
+   "text": "Each result shows the group, the stock on hand, and the selling price. Tap the one you want."
+  },
+  {
+   "t": 30,
+   "title": "Stock, prices and history",
+   "text": "Here is the full detail: the stock on hand, the prices, and the loss and gain history. Owners can also edit the item here."
+  },
+  {
+   "t": 41,
+   "title": "← Back to results",
+   "text": "Tap Back to results to look up another item."
+  },
+  {
+   "t": 46,
+   "title": "Law: find the cause in Item 360 first",
+   "text": "Company law: when an item shows a loss, negative stock or a wrong price, open Item 360 and find the cause, a bill, a count, a sale or an edit, before changing anything.",
+   "lawRe": "find the cause"
+  },
+  {
+   "t": 61,
+   "title": "Change item details only to fix a real mistake",
+   "text": "Item details are changed only to fix a real mistake, never to hide a loss or make a count match. Breaking a law costs penalty points, and the owner approves every sanction. The laws and this video are on the Laws button.",
+   "lawRe": "real mistake|hide a loss"
+  }
+ ]
+}

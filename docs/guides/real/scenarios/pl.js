@@ -36,8 +36,8 @@ module.exports = {
       say: 'Then each day. It shows the cash counted, the bills and expenses paid, the total cash out, and the day\'s stock losses. The last column is the profit or loss for the day.',
       run: async (h, page) => { await page.mouse.wheel(0, 600); await h.wait(3500) } },
 
-    { caption: 'Play this guide any time with <b>▶ Guide</b>',
-      say: 'Enter the cash counted every day, so these figures are right. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await page.mouse.wheel(0, -2000); await h.wait(600); await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+    { caption: 'The laws and this video: <b>📜 Laws</b>',
+      say: 'Enter the cash counted every day, so these figures are right. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await page.mouse.wheel(0, -2000); await h.wait(600); await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

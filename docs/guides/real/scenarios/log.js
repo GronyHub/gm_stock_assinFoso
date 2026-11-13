@@ -53,14 +53,30 @@ module.exports = {
       run: async (h, page) => { await h.pick(page.locator('select[title^="Period"]'), ''); await h.wait(1200) } },
 
     { caption: '<b>Receipt…</b>, <b>+ Past sale</b> and the chart',
-      say: 'On the bar, Receipt makes one receipt from sales you tick. Plus Past sale records a sale from an earlier day. And the chart button opens analytics, with totals for every day and month.',
+      say: 'On the bar, Receipt makes one receipt from sales you tick. Plus Past sale records a sale from an earlier day. And the chart button opens analytics.',
       run: async (h, page) => {
         await h.point(page.getByRole('button', { name: 'Receipt…' }))
         await h.point(page.getByRole('button', { name: '+ Past sale' }))
       } },
 
-    { caption: 'Play this guide any time with <b>▶ Guide</b>',
-      say: 'That is the Sales Log. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+    { caption: 'Law: check the Sales Log at <b>closing</b>', lawRe: 'at closing|cash is counted',
+      say: 'Now the laws of the Sales Log. Check the Sales Log at closing: every sale of the day is there, the cash is counted and matches, and any difference is written down and told to Joe before leaving. One point.',
+      run: async (h, page) => { await h.point(page.getByText(/^WNW/).first()); await h.wait(1500) } },
+
+    { caption: 'Wrong tap: <b>undo</b> it the same day. <b>3 points</b>', lawRe: 'wrong tap|delete or hide',
+      say: 'A wrong tap is undone in the Sales Log the same day. Never delete or hide a sale to make a figure match. Three points.',
+      run: async (h, page) => { await h.point(page.locator('button[title="Undo"]').nth(1)); await h.wait(1000) } },
+
+    { caption: 'Receipts from <b>MI</b> or the <b>Sales Log</b>', lawRe: 'Customer Receipts|retyped',
+      say: 'Receipts come from M I or the Sales Log, never retyped into Customer Receipts. One point.',
+      run: async (h, page) => { await h.point(page.getByRole('button', { name: 'Receipt…' })); await h.wait(800) } },
+
+    { caption: 'Past days: <b>+ Past sale</b> and the right date', lawRe: 'Past days|Past sale',
+      say: 'Past days only with plus Past sale and the right date. Never type the same sale twice. One point.',
+      run: async (h, page) => { await h.point(page.getByRole('button', { name: '+ Past sale' })); await h.wait(800) } },
+
+    { caption: 'The laws and this video: <b>📜 Laws</b>',
+      say: 'Breaking a law costs penalty points, and the owner approves every sanction. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()); await h.wait(1500) } },
   ],
 }

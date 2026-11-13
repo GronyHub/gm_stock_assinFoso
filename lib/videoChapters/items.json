@@ -1,87 +1,83 @@
 {
  "chapters": [
   {
-   "t": 4,
-   "title": "Live Sale: Search the item, check quantity and price",
-   "text": "This is Live Sale. Find the item in Search, and check the quantity and the price."
+   "t": 3,
+   "title": "Live: find the item, check quantity and price",
+   "text": "This is Live, where every sale is recorded as it happens. You must be clocked in to record a sale. Find the item in Search, then check the quantity and the price."
   },
   {
-   "t": 15,
+   "t": 17,
    "title": "Who is it for? Then tap the red ✓",
-   "text": "Say who it is for: a G M number, a phone number, a name, or a short label. Then tap the red tick, and the sale goes into the Sales Log."
+   "text": "Say who it is for: a G M number, a phone, a name, or a short label. Tap the red tick, and the sale goes into the Sales Log."
   },
   {
-   "t": 27,
-   "title": "WIC = a sale. GMC = shop use. Several items = MI",
-   "text": "When one customer buys several items, tap M I and add each to the basket. Company law: every walk-in sale goes in Live Sale with W I C on. G M C is only for the shop's own use, and it is not a sale. A customer buying several items is sold through M I: one basket, one receipt. Breaking it costs one penalty point. It exists so that every sale is recorded and every receipt is complete.",
-   "lawRe": "walk-in sale|several items"
+   "t": 29,
+   "title": "Left sidebar: you and the team, points and today's sales",
+   "text": "At the top of the left sidebar: your row, then the team, each with penalty points and today's sales."
   },
   {
-   "t": 59,
-   "title": "Wrong sale? Undo it in the Sales Log",
-   "text": "If you record a sale by mistake, undo it in the Sales Log. Law: receipts are issued from M I or the Sales Log, never typed into Customer Receipts. A sale the app refuses, such as a price below cost or not enough stock, is not forced: tell Joe. Breaking it costs one penalty point. A receipt typed by hand, or a forced sale, makes the books untrue.",
-   "lawRe": "receipts? (are|is)|typed into Customer"
+   "t": 38,
+   "title": "Know the words: SOH, SP, CP, WIC, GMC, MI, CAB",
+   "text": "Know what Live is for, how to record a sale, and the app words. S O H is stock on hand. S P, selling price. C P, cost price. W I C, walk-in customer. G M C, Grony Multimedia as customer. M I, several items in one basket. And C A B, cash at bank. One point each.",
+   "lawRe": "abbreviation|what Live is for|find, price and record"
   },
   {
-   "t": 85,
-   "title": "Past days: + Past sale and the right date",
-   "text": "Law: past days are entered only with plus Past sale and the right sale date. The same work is never typed twice. Breaking it costs one penalty point. Wrong dates break the daily figures, and then the Sales Log cannot be trusted.",
-   "lawRe": "Past days|Past sale"
+   "t": 68,
+   "title": "Walk-in sale with WIC on. Several items: MI",
+   "text": "Company law: every walk-in sale goes in Live with W I C on. G M C is only for the shop's own use. A customer buying several items is sold through M I: one basket, one receipt. Record shop use as G M C, and a customer sale as W I C. One point each.",
+   "lawRe": "walk-in sale|several items|shop use"
   },
   {
-   "t": 103,
-   "title": "🚩 Flags: every problem on this page, and how many",
-   "text": "Now, flags. A flag is the app telling you a record is wrong. Every flag on Live Sale is in the Flags dropdown, with how many are open."
+   "t": 91,
+   "title": "A receipt for every sale. Never force a refused sale",
+   "text": "Give the customer a receipt for every sale. Never force a sale the app refuses: tell Joe. One point each.",
+   "lawRe": "receipt for every sale|force a sale"
   },
   {
-   "t": 115,
-   "title": "Pick a flag: what it means, why, and the steps",
-   "text": "Pick a flag, and a strip under the toolbar says what it means, why it matters, and the steps to clear it."
+   "t": 102,
+   "title": "Every sale in the app. 20 points",
+   "text": "Enter every sale in the app: no sale is ever made without an entry. Twenty points. Never steal or pilfer money, goods or stock belonging to the shop. Twenty points. All sales, bills and expenses are recorded in the G M app. Written work forms are no longer used. One point.",
+   "lawRe": "without an entry|steal|pilfer|GM app"
   },
   {
-   "t": 124,
-   "title": "Follow the steps: tap the item, Edit, price, Save",
-   "text": "Follow the steps. Tap the item, tap Edit, type the selling price, and tap Save. The flag clears at once."
+   "t": 127,
+   "title": "Attachments: mark what you have entered first",
+   "text": "Before uploading the attachments, mark those you have entered. One point.",
+   "lawRe": "attachments"
   },
   {
-   "t": 167,
-   "title": "Law: fix every flag as soon as it appears",
-   "text": "This is company law: every flag on Live Sale is fixed as soon as it appears. It is never left for the next day, and never hidden by editing the item to make it disappear. Breaking it costs two penalty points. Open flags make prices wrong and stock untrue, and the real problem becomes harder to find.",
-   "lawRe": "Every flag on Live Sale"
+   "t": 134,
+   "title": "A printed item list: every item, its SP and Count",
+   "text": "Always have a printed list of items, with their S P and count. Every sellable item at the shop must be on the item list. One point each.",
+   "lawRe": "printed list|on the item list"
   },
   {
-   "t": 190,
-   "title": "The Daily Checklist asks about flags 3 times a day",
-   "text": "Three flag checks are company law, and each costs one penalty point. Morning flag check: open Flags on Live Sale. Every open flag is fixed now, using the steps shown. Answer all good, or report what you could not fix. Afternoon flag check: open Flags on Live Sale and fix any new flag. Answer all good, or report what you could not fix. Closing flag check: no Live Sale flag is left open. Answer all good, or tell Joe which flag is still open and why. They exist so that no flag survives the day.",
-   "lawRe": "flag check"
+   "t": 146,
+   "title": "Weekly: every good in the right group",
+   "text": "Weekly: item groups are checked, and every good is in the right group. Leave no item in the wrong group, or in no group. One point.",
+   "lawRe": "item groups|right group"
   },
   {
-   "t": 230,
-   "title": "Item list: every good in the right group",
-   "text": "Law: once a week, item groups are checked: every good is in the right group. Breaking it costs one penalty point. Reports, filters and counts all depend on the group, and a wrongly grouped item hides in the wrong report.",
-   "lawRe": "Item groups|right group"
+   "t": 159,
+   "title": "Monthly: the price list is current",
+   "text": "Monthly: the price list is current, and every staff member has it. Never sell at an old price after the list is updated. One point.",
+   "lawRe": "price list|old price"
   },
   {
-   "t": 246,
-   "title": "Prices: everyone sells at the current price",
-   "text": "Law: once a month, the price list is checked: it is current, and every staff member has it. Breaking it costs one penalty point. A wrong price loses money on every sale of that item.",
-   "lawRe": "price list|Prices"
+   "t": 172,
+   "title": "Flags: on the Flags page. Tasks: Waiting for team",
+   "text": "Flags are on the Flags page, and the manager clears them. Your tasks are in Waiting for team, and It's time for pops up when one falls due.",
+   "lawRe": "Flags page"
   },
   {
-   "t": 262,
-   "title": "Know the words: SOH, SP, CP, WIC, GMC, CAB",
-   "text": "Law: app words. S O H is stock on hand. S P is selling price. C P is cost price. W I C is walk-in customer. G M C is Grony Multimedia as customer. C A B is cash at bank. Search the Handbook before asking. Breaking it costs one penalty point. A misunderstood word becomes a wrong entry.",
-   "lawRe": "App words"
-  },
-  {
-   "t": 290,
+   "t": 184,
    "title": "Everything for this page: 📜 Laws",
-   "text": "Everything about this page, the laws, the sanctions, why each law exists, and how to do things, is on the Laws button, with this video and its written transcript. Tap any line to jump to that part."
+   "text": "The laws, and this video with its transcript, are on the Laws button."
   },
   {
-   "t": 306,
-   "title": "Sign each law. Penalty points: the owner approves",
-   "text": "Every law on this page has a code, and you sign each one to show you have read it and will follow it. Breaking a law costs penalty points: twenty is a three day suspension, thirty is one week, and fifty is dismissal. The owner approves every sanction."
+   "t": 222,
+   "title": "Penalty points: 20 = 3 days, 30 = 1 week, 50 = dismissal",
+   "text": "The laws are statutory. Breaking one costs penalty points: twenty is a three day suspension, thirty is one week, and fifty is dismissal. The owner approves every sanction. Each day you get one law question; a wrong answer offers the video."
   }
  ]
 }

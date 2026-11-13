@@ -32,7 +32,15 @@ module.exports = {
       run: async (h, page) => { await page.mouse.wheel(0, 300); await h.wait(2500) } },
 
     { caption: '<b>← Back to results</b>',
-      say: 'Tap Back to results to look up another item. And tap the Guide button any time to watch this again.',
+      say: 'Tap Back to results to look up another item.',
       run: async (h, page) => { await page.mouse.wheel(0, -600); await h.wait(500); await h.tap(page.getByRole('button', { name: /Back to results/ })); await h.wait(1500) } },
+
+    { caption: 'Law: find the <b>cause</b> in Item 360 first', lawRe: 'find the cause',
+      say: 'Company law: when an item shows a loss, negative stock or a wrong price, open Item 360 and find the cause, a bill, a count, a sale or an edit, before changing anything.',
+      run: async (h, page) => { await h.point(page.getByPlaceholder(/Item 360: search/)); await h.wait(1500) } },
+
+    { caption: 'Change item details only to fix a <b>real mistake</b>', lawRe: 'real mistake|hide a loss',
+      say: 'Item details are changed only to fix a real mistake, never to hide a loss or make a count match. Breaking a law costs penalty points, and the owner approves every sanction. The laws and this video are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()); await h.wait(1500) } },
   ],
 }

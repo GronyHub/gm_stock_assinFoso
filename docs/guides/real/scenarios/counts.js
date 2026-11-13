@@ -39,8 +39,12 @@ module.exports = {
       say: 'History lists every count ever made, and who made it.',
       run: async (h, page) => { await h.point(page.getByRole('button', { name: 'History' })) } },
 
-    { caption: '<b>Analytics</b>: losses and gains over time',
-      say: 'Analytics shows losses and gains over time. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+    { caption: 'Law: <b>COUNT NOW</b> items are counted every day', lawRe: 'COUNT NOW',
+      say: 'Company law: the items marked COUNT NOW are counted every day, and their warning banners cleared. Counts are separate from flags: the manager records at least ten counts a day.',
+      run: async (h, page) => { await h.point(page.getByRole('button', { name: '+ Manual Count' })); await h.wait(1500) } },
+
+    { caption: 'The laws and this video: <b>📜 Laws</b>',
+      say: 'Breaking a law costs penalty points, and the owner approves every sanction. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()); await h.wait(1200) } },
   ],
 }

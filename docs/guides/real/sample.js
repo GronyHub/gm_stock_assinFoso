@@ -36,10 +36,10 @@ const mkTap = (day, hm, itemId, qty, price, who, extra = {}) => {
 const label = n => ({ buyer_name: n })
 const todayTaps = [
   mkTap(today, '15:40', 6, 3, 5, label('Lady in red')),
-  mkTap(today, '14:12', 4, 1, 55, { ...cust.kofi, wa_sent_at: at(today, '14:13') }),
+  mkTap(today, '14:12', 4, 1, 55, { ...cust.kofi, wa_sent_at: at(today, '14:13') }, { staff_name: 'joe' }),
   mkTap(today, '12:30', 10, 2, 15, label('Man in blue shirt')),
   mkTap(today, '11:05', 1, 2, 70, { ...cust.ama, invoice_id: 801, invoice_number: 'RCT-261107-04121', wa_sent_at: at(today, '11:06') }),
-  mkTap(today, '09:48', 3, 1, 20, label('Boy with school bag')),
+  mkTap(today, '09:48', 3, 1, 20, label('Boy with school bag'), { staff_name: 'bino' }),
   mkTap(today, '08:55', 2, 40, 1, label('Teacher')),
 ]
 const pastTaps = [
@@ -132,4 +132,17 @@ const flags = () => ({
 })
 const guide = (page, title) => ({ page, title, video_url: `/guides/${page}.mp4`, custom: false, seen: true, can_replace: false })
 
-module.exports = { flagItems, allItems, flags, today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at, vendors, customers, bills, billLines, expenses, pos, counts }
+// The phone sidebar's staff rows: the roster must use the app's staff usernames to be shown, but the photos are invented
+// silhouettes and no name is ever on screen. Points and hours are made up.
+const avatar = bg => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${bg}"/><circle cx="32" cy="25" r="12" fill="#fff" opacity=".9"/><ellipse cx="32" cy="60" rx="21" ry="17" fill="#fff" opacity=".9"/></svg>`)
+const staffRoster = [['joe', '#2563eb'], ['bino', '#9333ea'], ['james', '#16a34a'], ['grony', '#db2777']].map(([username, c]) => ({ username, active: true, photo_url: avatar(c) }))
+const hm = n => { const d = new Date(Date.now() - n * 3600000); return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') }
+const workedToday = () => [
+  { staff_name: 'joe', actual_in: hm(5), actual_out: null, on_break: false, worked_seconds: 3.5 * 3600 },
+  { staff_name: 'bino', actual_in: hm(4), actual_out: null, on_break: true, worked_seconds: 2.4 * 3600 },
+  { staff_name: 'demo', actual_in: hm(4), actual_out: null, on_break: false, worked_seconds: 3 * 3600 },
+]
+const staffPoints = { joe: 0, bino: 0, james: 0, grony: 0, demo: 0 }
+const penaltyMe = { points: 0, pilotPoints: 0, learning: false, countingFrom: dayAgo(60), warnings: 0, fadeIn: null, next: null, entries: [], sanctions: [] }
+
+module.exports = { avatar, staffRoster, workedToday, staffPoints, penaltyMe, flagItems, allItems, flags, today, dayAgo, items, todayTaps, pastTaps, sumToday, rec2024, cust, guide, at, vendors, customers, bills, billLines, expenses, pos, counts }

@@ -232,7 +232,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             </>) : l.law_type === 'app' ? (
               <p className="text-[10px] leading-snug text-gray-800">⚙ The app enforces it itself.</p>
             ) : (
-              <p className="text-[10px] leading-snug text-gray-800">{l.reminder === 'login' ? 'Always. Staff are reminded after login and tick once to agree.' : l.reminder === 'first_sale' ? 'Always. Staff are reminded after the first sale (and from 13:30) and tick once to agree.' : 'Always. Staff sign once to agree; no task or tile.'}</p>
+              <p className="text-[10px] leading-snug text-gray-800">{l.reminder === 'login' ? 'Always. Staff are reminded after login (Got it).' : l.reminder === 'first_sale' ? 'Always. Staff are reminded after the first sale (and from 13:30) (Got it).' : 'Always. A standing law; no task or tile.'}</p>
             )}
           </div>
           <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 5, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>

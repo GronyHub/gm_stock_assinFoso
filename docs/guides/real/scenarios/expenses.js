@@ -45,7 +45,7 @@ module.exports = {
       run: async (h, page) => { const s = page.getByPlaceholder('Search…').last(); await h.tap(s); await h.type(s, 'rent'); await h.wait(1500); await s.fill(''); await h.wait(500) } },
 
     { caption: '<b>Filter</b>: other views, history and analytics',
-      say: 'The Filter menu opens other views, such as history and analytics, and the flags show expenses that need fixing. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+      say: 'The Filter menu opens other views, such as history and analytics, and the Flags page shows expenses that need fixing. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

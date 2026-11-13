@@ -18,13 +18,13 @@ const VOICE = process.env.VOICE
 const WORK = process.env.WORK_DIR || path.join(__dirname, 'tmp')
 fs.mkdirSync(WORK, { recursive: true })
 const VIEW = { width: 405, height: 720 }          // phone-shaped; scaled up to 720x1280 when the video is made
-const withHidden = u => u + (u.includes('?') ? '&' : '?') + 'sidebarHidden=1'   // the sidebar is hidden the way staff on phones usually have it
+const withHidden = u => u   // the phone layout keeps the left sidebar open: the staff profiles are slim rows at its top
 const overlay = fs.readFileSync(path.join(__dirname, 'overlay.js'), 'utf8')
 
 const json = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 
 // Answers every data request the pages make. Unknown GETs get an empty list; unknown writes get { ok: true }.
-const TITLES = { sale: 'Live Sale', log: 'Sales Log', bills: 'Bills', expenses: 'Expenses', purchase_orders: 'Purchase Orders', vendors: 'Vendors', customers: 'Customers', counts: 'Counts', item360: 'Item 360', pl: 'P&L', cab: 'CAB (Cash at Bank)' }
+const TITLES = { sale: 'Live', log: 'Sales Log', bills: 'Bills', expenses: 'Expenses', purchase_orders: 'Purchase Orders', vendors: 'Vendors', customers: 'Customers', counts: 'Counts', item360: 'Item 360', pl: 'P&L', cab: 'CAB (Cash at Bank)' }
 function mocks(page, sc) {
   const titles = TITLES
   return page.route('**/api/**', async route => { try {
@@ -55,8 +55,15 @@ function mocks(page, sc) {
     if (p === '/api/flags') return json(route, {})
     if (p === '/api/user-permissions') return json(route, { demo: { cash: true, manage: true, pl: true } })
     if (p === '/api/pane-order' || p === '/api/pane-labels' || p === '/api/pane-groups' || p === '/api/pane-hidden' || p === '/api/app-settings') return json(route, {})
+    // The sidebar's staff rows (photo, points, cedis; no names). Invented photos; nobody's real data.
+    if (p === '/api/staff/status') return json(route, S.staffRoster)
+    if (p === '/api/staff-times/worked-today') return json(route, { staff: S.workedToday() })
+    if (p === '/api/penalties/summary') return json(route, { points: S.staffPoints, pilot: false })
+    if (p === '/api/penalties/me') return json(route, S.penaltyMe)
+    if (p === '/api/profile') return json(route, { display_name: 'demo', username: 'demo', photo_url: S.avatar('#0f766e') })   // no "add your photo" pop-up in the video
     if (p === '/api/stock/count-progress') return json(route, { total: 0, doneToday: 0 })
-    if (p === '/api/staff-times/today') return json(route, { today: [], mine: null, recent: [], opener: null, openerConfirmed: null, closer: null })
+    // The demo staff member is clocked in (no sale can be recorded otherwise).
+    if (p === '/api/staff-times/today') return json(route, { today: [], mine: { actual_in: new Date(Date.now() - 4 * 3600000).toISOString() }, recent: [], opener: null, openerConfirmed: null, closer: null })
     if (p === '/api/presence' || p === '/api/push/heartbeat' || m !== 'GET') return json(route, { ok: true })
     return json(route, [])
   } catch (e) { console.error('MOCK ERROR', route.request().url(), e.message); route.fulfill({ status: 500, body: 'mock error' }) } })
@@ -78,13 +85,11 @@ async function main() {
   const browser = await chromium.launch()
   const cookie = [{ name: 'authjs.session-token', value: TOKEN, url: BASE }]
 
-  // Warm-up (not recorded): hide the sidebar, the way staff on phones usually have it, and keep that for the recording.
+  // Warm-up (not recorded): load the page once so the app's own first-visit state is saved, and keep that for the recording.
   const warm = await browser.newContext({ ...devices['Pixel 7'], viewport: VIEW, serviceWorkers: 'block', permissions: ['geolocation'], geolocation: { latitude: 5.6977, longitude: -1.2788 } })
   await warm.addCookies(cookie)
   const wp = await warm.newPage(); await mocks(wp, sc)
   await wp.goto(BASE + withHidden(sc.url), { waitUntil: 'networkidle' }); await wp.waitForTimeout(1500)
-  const hide = wp.locator('button[title="Hide sidebar"], button[title="Hide"]').first()
-  if (await hide.count()) await hide.click().catch(() => {})
   await wp.waitForTimeout(500)
   const state = await warm.storageState(); await warm.close()
 

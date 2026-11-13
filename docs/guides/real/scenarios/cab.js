@@ -44,8 +44,8 @@ module.exports = {
       say: 'Then confirm it. The difference shows anything that does not match, and weeks not yet confirmed still need checking.',
       run: async (h, page) => { await h.tap(page.getByRole('button', { name: /Verify|Save|Confirm/ }).first()); await h.wait(2500) } },
 
-    { caption: 'Play this guide any time with <b>▶ Guide</b>',
-      say: 'You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+    { caption: 'The laws and this video: <b>📜 Laws</b>',
+      say: 'The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

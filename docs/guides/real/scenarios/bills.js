@@ -62,7 +62,7 @@ module.exports = {
       } },
 
     { caption: 'Keep every bill complete',
-      say: 'Keep every bill complete: a vendor, an item list, its receipt attached, and its related expense. The flags show any bill that is missing one of these, so it can be fixed. You can play this guide again any time with the Guide button.',
-      run: async (h, page) => { await h.point(page.getByRole('button', { name: '▶ Guide' })) } },
+      say: 'Keep every bill complete: a vendor, an item list, its receipt attached, and its related expense. The Flags page shows any bill that is missing one of these, so it can be fixed. The laws of this page, and this video, are on the Laws button.',
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

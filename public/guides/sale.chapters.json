@@ -1,0 +1,83 @@
+{
+ "chapters": [
+  {
+   "t": 3,
+   "title": "Live: find the item, check quantity and price",
+   "text": "This is Live, where every sale is recorded as it happens. You must be clocked in to record a sale. Find the item in Search, then check the quantity and the price."
+  },
+  {
+   "t": 17,
+   "title": "Who is it for? Then tap the red ✓",
+   "text": "Say who it is for: a G M number, a phone, a name, or a short label. Tap the red tick, and the sale goes into the Sales Log."
+  },
+  {
+   "t": 29,
+   "title": "Left sidebar: you and the team, points and today's sales",
+   "text": "At the top of the left sidebar: your row, then the team, each with penalty points and today's sales."
+  },
+  {
+   "t": 38,
+   "title": "Know the words: SOH, SP, CP, WIC, GMC, MI, CAB",
+   "text": "Know what Live is for, how to record a sale, and the app words. S O H is stock on hand. S P, selling price. C P, cost price. W I C, walk-in customer. G M C, Grony Multimedia as customer. M I, several items in one basket. And C A B, cash at bank. One point each.",
+   "lawRe": "abbreviation|what Live is for|find, price and record"
+  },
+  {
+   "t": 68,
+   "title": "Walk-in sale with WIC on. Several items: MI",
+   "text": "Company law: every walk-in sale goes in Live with W I C on. G M C is only for the shop's own use. A customer buying several items is sold through M I: one basket, one receipt. Record shop use as G M C, and a customer sale as W I C. One point each.",
+   "lawRe": "walk-in sale|several items|shop use"
+  },
+  {
+   "t": 91,
+   "title": "A receipt for every sale. Never force a refused sale",
+   "text": "Give the customer a receipt for every sale. Never force a sale the app refuses: tell Joe. One point each.",
+   "lawRe": "receipt for every sale|force a sale"
+  },
+  {
+   "t": 102,
+   "title": "Every sale in the app. 20 points",
+   "text": "Enter every sale in the app: no sale is ever made without an entry. Twenty points. Never steal or pilfer money, goods or stock belonging to the shop. Twenty points. All sales, bills and expenses are recorded in the G M app. Written work forms are no longer used. One point.",
+   "lawRe": "without an entry|steal|pilfer|GM app"
+  },
+  {
+   "t": 127,
+   "title": "Attachments: mark what you have entered first",
+   "text": "Before uploading the attachments, mark those you have entered. One point.",
+   "lawRe": "attachments"
+  },
+  {
+   "t": 134,
+   "title": "A printed item list: every item, its SP and Count",
+   "text": "Always have a printed list of items, with their S P and count. Every sellable item at the shop must be on the item list. One point each.",
+   "lawRe": "printed list|on the item list"
+  },
+  {
+   "t": 146,
+   "title": "Weekly: every good in the right group",
+   "text": "Weekly: item groups are checked, and every good is in the right group. Leave no item in the wrong group, or in no group. One point.",
+   "lawRe": "item groups|right group"
+  },
+  {
+   "t": 159,
+   "title": "Monthly: the price list is current",
+   "text": "Monthly: the price list is current, and every staff member has it. Never sell at an old price after the list is updated. One point.",
+   "lawRe": "price list|old price"
+  },
+  {
+   "t": 172,
+   "title": "Flags: on the Flags page. Tasks: Waiting for team",
+   "text": "Flags are on the Flags page, and the manager clears them. Your tasks are in Waiting for team, and It's time for pops up when one falls due.",
+   "lawRe": "Flags page"
+  },
+  {
+   "t": 184,
+   "title": "Everything for this page: 📜 Laws",
+   "text": "The laws, and this video with its transcript, are on the Laws button."
+  },
+  {
+   "t": 222,
+   "title": "Penalty points: 20 = 3 days, 30 = 1 week, 50 = dismissal",
+   "text": "The laws are statutory. Breaking one costs penalty points: twenty is a three day suspension, thirty is one week, and fifty is dismissal. The owner approves every sanction. Each day you get one law question; a wrong answer offers the video."
+  }
+ ]
+}
