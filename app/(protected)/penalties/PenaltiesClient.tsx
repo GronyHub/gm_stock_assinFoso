@@ -84,16 +84,26 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
           </div>
         )}
 
-        <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Latest entries</p>
-        <div className="space-y-1">
-          {d.recent.map(e => (
-            <div key={e.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs ${e.status === 'reversed' || e.status === 'dismissed' ? 'bg-gray-100 text-gray-400 line-through' : e.points < 0 ? 'bg-green-50' : e.counted ? 'bg-red-50' : 'bg-gray-50'}`}>
-              <span className="min-w-0 flex-1"><b>{cap(e.staff)}</b> · {e.points > 0 ? `+${e.points}` : e.points} · {dlabel(e.day)} · {e.reason}{e.points > 0 && !e.counted && e.status === 'active' ? (counting ? ' (warning)' : ' (pilot)') : ''}{e.status === 'pending' ? ' (pending)' : ''}</span>
-              {(e.status === 'active') && e.kind === 'violation' && <button type="button" onClick={() => { if (confirm('Take this point back?')) void call(`/api/penalties/${e.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'reverse' }) }, 'Point reversed') }} className="shrink-0 font-bold text-red-700 underline">Reverse</button>}
-            </div>
-          ))}
-          {d.recent.length === 0 && <p className="text-sm text-gray-400">No entries yet.</p>}
-        </div>
+        {/* Two lists: violations that add to a person's penalty points, and violations that are recorded without adding any (a 0-point one that counts towards
+            a later point, a pilot or warning one from before points started counting). Both are on record. */}
+        {(() => {
+          const live = (e: Entry) => e.status === 'active' || e.status === 'pending'
+          const costs = (e: Entry) => e.points !== 0 && e.counted
+          const why = (e: Entry) => e.points === 0 ? (e.source === 'backdate' ? 'counts towards a point (every 5th costs 1)' : 'recorded, no point') : !e.counted ? (counting ? 'warning, no point' : 'pilot, before points started counting') : ''
+          const row = (e: Entry) => (
+            <div key={e.id} className={`flex items-start gap-2 rounded-lg px-2 py-1.5 text-xs ${!live(e) ? 'bg-gray-100 text-gray-400 line-through' : e.points < 0 ? 'bg-green-50' : costs(e) ? 'bg-red-50' : 'bg-gray-50'}`}>
+              <span className="min-w-0 flex-1"><b>{cap(e.staff)}</b> · {e.points > 0 ? `+${e.points}` : e.points} · {dlabel(e.day)} · {e.reason}{!costs(e) && why(e) ? <i className="text-gray-500"> ({why(e)})</i> : null}{e.status === 'pending' ? ' (pending)' : ''}</span>
+              {(e.status === 'active') && e.kind === 'violation' && e.points !== 0 && <button type="button" onClick={() => { if (confirm('Take this point back?')) void call(`/api/penalties/${e.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ action: 'reverse' }) }, 'Point reversed') }} className="shrink-0 font-bold text-red-700 underline">Reverse</button>}
+            </div>)
+          const a = d.recent.filter(costs), b = d.recent.filter(e => !costs(e))
+          return (<>
+            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Violations that add penalty points ({a.length})</p>
+            <div className="mb-4 space-y-1">{a.map(row)}{a.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
+            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Violations recorded without points ({b.length})</p>
+            <p className="mb-1 text-[11px] text-gray-500">On record, but they add nothing to the total: ones that count towards a later point, and pilot or warning ones from before points started counting.</p>
+            <div className="space-y-1">{b.map(row)}{b.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
+          </>)
+        })()}
       </>)}
       {rt && (
         <div className="mt-6">

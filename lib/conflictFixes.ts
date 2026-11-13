@@ -86,6 +86,17 @@ export async function dropQuizOnce() {
   } catch (e) { console.error('drop quiz failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// Joe's two early clock-in times written before the rule went live (owner's decision, 2026-11-13): recorded as violations like any new one (no point; they count towards the 5).
+export async function joeBackdatesOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('joe-backdates-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { recordBackdate } = await import('./clockViolations')
+    await recordBackdate('joe', '2026-11-12', '12:23pm', 254)   // clocked in at 4:36pm, then wrote 12:23pm at 4:37pm
+    await recordBackdate('joe', '2026-11-13', '9:12am', 79)     // wrote 9:12am at 10:31am
+  } catch (e) { console.error('joe backdates failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Laws at the moment they apply (2026-11-13): the attendance laws are shown before work (the login moment), with the other "before work" laws.
 export async function lawMomentsOnce() {
   try {
