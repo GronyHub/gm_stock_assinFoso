@@ -76,18 +76,7 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                     ))}
                   </select>
                   </>)}
-                  {/* Flags: one menu with each flag and its count (Negative Stock among them). Staff see only Negative Stock (flags are for the managers), managers see them all. */}
-                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (() => {
-                    const flags = h.liveSaleFlagList.filter(f => f.n > 0 && (h.showFlags || f.key === 'neg_soh'))
-                    if (!flags.length && !activeFlagValue) return null
-                    const total = flags.reduce((n, f) => n + f.n, 0)
-                    return (
-                      <select value={activeFlagValue} onChange={e => pickLiveFlag(e.target.value)} title="Flags: pick one to see the items it covers"
-                        className={`${COMPACT_SELECT_CLS} shrink-0 ${activeFlagValue ? 'border-red-600 bg-red-600 text-white' : 'border-red-400 bg-red-50 text-red-700'} font-extrabold`} style={COMPACT_SELECT_STYLE}>
-                        <option value="">🚩 Flags ({total})</option>
-                        {flags.map(f => <option key={f.value} value={f.value}>{f.key === 'neg_soh' ? '🔻 ' : ''}{f.label} ({f.n})</option>)}
-                      </select>)
-                  })()}
+                  {/* No flags on the Grony Cash pages: they all live on the Flags page in the left sidebar (Negative Stock first). */}
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {

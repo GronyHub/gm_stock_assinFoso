@@ -48,15 +48,10 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                     className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logShowG ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>G</button>
                   <button type="button" onClick={() => setLogBarsOnly(v => !v)} title="Show only each day's row (totals, cash counted, WNW, photos)"
                     className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logBarsOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Bars only</button>
-                  <select value={logFlag} onChange={e => setLogFlag(e.target.value)} title="Flags and history"
-                    className={`shrink-0 max-w-[150px] rounded border px-1 py-0.5 text-[10px] font-semibold ${logFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
-                    <option value="">🚩 Flags{salesFlagsCount ? ` (${salesFlagsCount})` : ''}</option>
-                    {([['no_cash', 'No cash counted', 'noCash'], ['high_wnw', 'High WNW', 'highWnw'], ['sold_below_cost', 'Sold below cost', 'costGteSell'], ['missing_days', 'Missing days', 'missingDays'], ['dup_receipt', 'Duplicate receipts', 'dupReceipts']] as const).map(([k, label, dk]) => {
-                      const list = logFlagsData?.[dk] as unknown[] | undefined
-                      return <option key={k} value={k}>{label}{list ? ` (${list.length})` : ''}</option>
-                    })}
-                    <option value="history">History (changes)</option>
-                  </select>
+                  {/* The Log's flags are on the Flags page (left sidebar); only the change history stays here. A flag opened from the Flags page still filters the Log. */}
+                  <button type="button" onClick={() => setLogFlag(logFlag === 'history' ? '' : 'history')} title="Changes made to the Log"
+                    className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-bold ${logFlag === 'history' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}>History</button>
+                  {logFlag && logFlag !== 'history' && <button type="button" onClick={() => setLogFlag('')} className="shrink-0 rounded bg-red-600 px-1.5 py-1 text-[10px] font-bold text-white">Flag filter on ✕</button>}
                   {isOwnerLevel(session?.user as any) && (
                     <button
                       type="button"

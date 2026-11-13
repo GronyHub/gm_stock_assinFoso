@@ -4842,7 +4842,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     const assignee = assignments['flags']
     return (
       <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
-        <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Flags</span>
+        <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Counted today</span>
         <span>({liveCountProgress.doneToday}/{liveCountProgress.total})</span>
         {assignee && <span className="capitalize">— {assignee}</span>}
       </div>

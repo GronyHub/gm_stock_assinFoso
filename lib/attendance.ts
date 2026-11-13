@@ -167,6 +167,13 @@ export async function attendanceTick(now = new Date()) {
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
   const min = now.getUTCMinutes(), hr = now.getUTCHours()
   if (hr >= 18) await (await import('./presenceCheck')).expireDue().catch(() => {})   // presence checks nobody confirmed in time
+  // The daily flags law: the morning list at 08:00, reminders to the manager through the day, the check at 19:25.
+  if (['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '19:25'].includes(hm) && await claim(`flags:${hm}:${day}`)) {
+    const fq = await import('./flagQuota')
+    if (hm === '08:00') await fq.snapshot(day).catch(() => {})
+    else if (hm === '19:25') await fq.assess(day).catch(e => console.error('flags assess failed:', e instanceof Error ? e.message : String(e)))
+    else await fq.remind(day).catch(() => {})
+  }
   if (hm === '19:00' && await claim(`stillhere:${day}`)) {
     await ensureAttendance()
     const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]

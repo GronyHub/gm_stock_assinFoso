@@ -22,6 +22,11 @@ export async function GET() {
     // What the manager decided about a clock time of mine (a clock-in held for CCTV review, a corrected time out) in the last three days.
     const dec = await sql`SELECT id, work_date, field, proposed_out, status, decided_by FROM clock_corrections WHERE staff = ${me} AND status IN ('approved', 'rejected') AND decided_at > now() - interval '3 days' ORDER BY decided_at DESC LIMIT 4`.catch(() => []) as unknown as { id: number; work_date: string; field: string | null; proposed_out: string; status: string; decided_by: string | null }[]
     for (const c of dec) out.push({ key: `clk${c.id}`, tone: c.status === 'approved' ? 'blue' : 'red', title: `Clock time ${c.status === 'approved' ? 'approved' : 'not approved'}`, text: `Your time ${c.field === 'in' ? 'in' : 'out'} for ${c.work_date} (${c.proposed_out}) was ${c.status === 'approved' ? 'approved' : 'not approved'}${c.decided_by ? ` by ${c.decided_by.charAt(0).toUpperCase() + c.decided_by.slice(1)}` : ''}.` })
+    if (me === 'joe') {
+      const fq = await import('@/lib/flagQuota')
+      const p = await fq.progress(today).catch(() => null)
+      if (p && p.fixed < p.needed) out.unshift({ key: 'flags', tone: 'red', title: 'Fix today\'s flags', text: fq.progressText(p) })
+    }
     const items = await myDay(me, user, {}).catch(() => [])
     const late = items.filter(i => i.urgency === 'now' && i.state == null).reduce((a, i) => a + (i.count || 1), 0)
     if (late > 0) out.push({ key: 'waiting', tone: 'amber', title: 'Waiting for you', text: `${late} thing${late === 1 ? ' is' : 's are'} due now. Open Waiting for team (it opens on your name).` })

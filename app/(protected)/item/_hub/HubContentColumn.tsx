@@ -1,4 +1,5 @@
 'use client'
+import FlagQuotaLine from '../_components/FlagQuotaLine'
 import { MyAssignmentsSummary } from '../_components/MyAssignmentsSummary'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
@@ -64,11 +65,12 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
           <TabErrorBoundary>
             <div className="h-full overflow-y-auto px-3 pb-24 pt-3">
               <p className="mb-1 text-lg font-bold text-[#14213D]">🚩 Flags</p>
-              <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900">👔 Managers and owners only. Staff never see flags. Company law: every flag is fixed the day it appears. Tap a flag to open it where it is fixed.</p>
+              <FlagQuotaLine />
+              <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900">👔 Managers and owners only. Staff never see flags. Company law: the manager fixes at least 5 flags a day, starting with the negative stock. Tap a flag to open it where it is fixed.</p>
               {(() => {
                 type Row = { label: string; n: number; go: () => void }
                 const groups: { title: string; rows: Row[] }[] = [
-                  { title: 'Live / Items', rows: liveSaleFlagList.map(f => ({ label: f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
+                  { title: 'Live / Items', rows: [...liveSaleFlagList].sort((x, y) => (x.key === 'neg_soh' ? -1 : y.key === 'neg_soh' ? 1 : 0)).map(f => ({ label: f.key === 'neg_soh' ? '🔻 Negative Stock (start here)' : f.label, n: f.n, go: () => { pickLossView('items'); pickLiveFlag(f.value) } })) },
                   { title: 'Counts', rows: [
                     { label: 'Count due daily', n: violationCounts['daily'] ?? 0, go: () => goCountMode() }, { label: 'Count due every 7 days', n: violationCounts['7day'] ?? 0, go: () => goCountMode() },
                     { label: 'Count due every 15 days', n: violationCounts['15day'] ?? 0, go: () => goCountMode() } ] },

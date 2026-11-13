@@ -67,23 +67,16 @@ export default function HubSaleFlagTables({ h }: { h: HubCtx }) {
                           selectEl.value = ''
                         }
                       }}
-                      title="Flags & Views"
+                      title="Views, help and settings"
                       className={`${COMPACT_SELECT_CLS} border-white text-gray-800 bg-white/80 hover:bg-white shrink-0 w-14`}
                       style={COMPACT_SELECT_STYLE}
                     >
-                      <option value="">⚖️ Flags</option>
+                      <option value="">⚙ Views</option>
                       <optgroup label="Help">
                         <option value="help:help">❓ Help Guide</option>
                       </optgroup>
                       <optgroup label="Settings">
                         <option value="settings:sortorder">⇅ Arrange Item Order</option>
-                      </optgroup>
-                      <optgroup label={liveMode === 'sale' || liveMode === 'log' ? 'Items' : (liveMode === 'sales' ? 'Sales' : 'Bills')}>
-                        {liveComputedFlags.filter(f => f.key.startsWith('flag_') || f.key.startsWith('violation_')).map(f => (
-                          <option key={f.key} value={`violation:${f.key}`}>
-                            {f.label} ({f.count})
-                          </option>
-                        ))}
                       </optgroup>
                       <optgroup label="Views">
                         <option value="view:lossByItem">Loss by Item</option>
@@ -98,9 +91,6 @@ export default function HubSaleFlagTables({ h }: { h: HubCtx }) {
                     <input type="checkbox" checked={liveShowCountDue} onChange={() => setLiveShowCountDue(d => !d)} className="cursor-pointer" />
                     🔄 Due for Count
                   </label>
-                  <div className="flex gap-1 flex-wrap px-0">
-                    {renderLiveItemFlagsFilter()}
-                  </div>
                 </div>
             </div>
             )}

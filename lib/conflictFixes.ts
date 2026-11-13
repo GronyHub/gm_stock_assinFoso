@@ -23,3 +23,20 @@ export async function conflictFixesOnce() {
       VALUES ('Staff management', ${CLOCKIN}, false, 'law', 'Staff management', 'Attendance', 'standing', 'live', 'clockin-v1', 1, ${JSON.stringify(CLOCKIN_V)}, 'Clock in at the shop, at the real time', now())`
   } catch (e) { console.error('conflict fixes failed:', e instanceof Error ? e.message : String(e)) }
 }
+
+// The daily flags law (2026-11-13): the manager fixes at least 5 flags a day, starting with the negative stock.
+export async function flagsLawOnce() {
+  try {
+    const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'flagquota-v1'`
+    const [r] = await sql`SELECT 1 FROM law_migrations WHERE key = 'seed-retired:flagquota-v1'`
+    if (n || r) return
+    // The older "every flag is fixed as soon as it appears" law (everyone, 09:30) contradicts this one, and staff no longer see flags: it is replaced.
+    const { deleteLaw } = await import('@/lib/lawDelete')
+    const old = await sql`SELECT id FROM page_laws WHERE text ILIKE 'Fix flags: every flag on Live% is fixed as soon as it appears%'` as unknown as { id: number }[]
+    for (const o of old) await deleteLaw(o.id)
+    const text = 'Every working day the manager fixes at least 5 flags (all of them, if there are fewer), starting with the negative stock. Flags are on the Flags page in the left sidebar only, never on the Grony Cash pages. The app writes down the open flags in the morning, counts how many are fixed by 19:25, and reminds the manager through the day. Each day fewer than 5 are fixed costs the manager 1 penalty point. Anyone may fix a flag; making sure 5 are fixed is the manager\'s duty.'
+    const v = [{ text: 'Fewer than 5 flags fixed in a working day (or fewer than all, when there were fewer than 5)', points: 1, by: 'app', record: 'Added automatically by the app at 19:25', how: 'Open Flags in the left sidebar\nStart with Negative Stock: count the items and correct them\nThen fix any other flag until 5 are done' }]
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, status, seed, points, violations, title, audience, live_at)
+      VALUES ('Stock & records', ${text}, false, 'law', 'Stock & records', 'Flags', 'standing', 'live', 'flagquota-v1', 1, ${JSON.stringify(v)}, 'Fix at least 5 flags a day', 'managers', now())`
+  } catch (e) { console.error('flags law failed:', e instanceof Error ? e.message : String(e)) }
+}
