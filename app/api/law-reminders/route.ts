@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     if (!ids.length) return badRequest('Nothing to confirm.')
     if (b.stage === 'midday') for (const id of ids) await sql`INSERT INTO law_reminder_repeats (day, staff, law_id) VALUES (${today()}, ${me}, ${id}) ON CONFLICT DO NOTHING`
     else for (const id of ids) await sql`INSERT INTO law_reminder_confirms (day, staff, law_id) VALUES (${today()}, ${me}, ${id}) ON CONFLICT DO NOTHING`
-    void notifyOwners(`${cap(me)} agreed to the ${b.stage === 'midday' ? 'mid-day' : b.stage === 'first_sale' ? 'first-sale' : 'morning'} law reminders`, `${ids.length} law${ids.length === 1 ? '' : 's'} read and agreed to.`)
+    void notifyOwners(`${cap(me)} read the ${b.stage === 'midday' ? 'mid-day' : b.stage === 'first_sale' ? 'first-sale' : 'morning'} law reminders`, `${ids.length} law${ids.length === 1 ? '' : 's'} read.`)
     return success({ confirmed: ids.length })
   } catch (e) { return handleError('law-reminders POST', e) }
 }

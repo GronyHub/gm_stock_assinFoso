@@ -39,6 +39,12 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   try {
+    // A sale is recorded only by someone clocked in at the shop (the owner, who is not at the shop, is exempt). Enforced here, not just on screen.
+    if ((session.user as { role?: string })?.role !== 'owner') {
+      const { getClockState, actorKey } = await import('@/lib/clockState')
+      const me = actorKey(session.user as never), st = await getClockState(new Date().toISOString().slice(0, 10))
+      if (!st.present.includes(me)) return badRequest('Clock in first. Sales are recorded only while you are clocked in at the shop.')
+    }
     const { itemId, quantity, customPrice, isGMC, tapTime, customerIdCode: bodyCustomerIdCode, customerPhone, customerName: typedName, customerLabel, requireWho, skipWhatsapp } = await req.json()
     let customerIdCode: string | undefined = bodyCustomerIdCode || undefined
     // A description only (e.g. "Girl in yellow shirt"): names who did the work, nothing else.

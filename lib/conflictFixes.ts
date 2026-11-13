@@ -74,3 +74,13 @@ export async function dropSigningOnce() {
     await sql`UPDATE staff_penalties SET status = 'dismissed', note = 'Withdrawn: the laws are no longer signed' WHERE status IN ('active', 'pending') AND source = 'meta' AND reason ILIKE '%was not signed within 24 hours%'`
   } catch (e) { console.error('drop signing failed:', e instanceof Error ? e.message : String(e)) }
 }
+
+// Laws at the moment they apply (2026-11-13): the attendance laws are shown before work (the login moment), with the other "before work" laws.
+export async function lawMomentsOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('law-moments-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS reminder TEXT`.catch(() => {})
+    await sql`UPDATE page_laws SET reminder = 'login' WHERE status = 'live' AND law_type = 'standing' AND (seed IN ('attendance-v1', 'clockin-v1') OR title = 'Tell the shop if you are late or absent')`
+  } catch (e) { console.error('law moments failed:', e instanceof Error ? e.message : String(e)) }
+}

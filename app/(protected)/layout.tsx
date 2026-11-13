@@ -6,6 +6,7 @@ import PushSubscriber from '@/components/PushSubscriber'
 import CaretakerGuard from '@/components/CaretakerGuard'
 import ManagerLockGuard from '@/components/ManagerLockGuard'
 import PresenceCheck from '@/components/PresenceCheck'
+import LawQuestion from '@/components/LawQuestion'
 import ImpersonationBar from '@/components/ImpersonationBar'
 import MainContainer from '@/components/MainContainer'
 import PhotoReminder from '@/components/PhotoReminder'
@@ -56,6 +57,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <CaretakerGuard />
         <ManagerLockGuard />
         <PresenceCheck />
+        <LawQuestion />
         <PhotoReminder />
         <WaitingBar />
         <LawReminder />
