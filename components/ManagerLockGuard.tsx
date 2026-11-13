@@ -16,7 +16,7 @@ export default function ManagerLockGuard() {
   useEffect(() => {
     if (!isJoe || FREE.some(p => pathname === p || pathname.startsWith(p + '/'))) { setShort(null); return }
     let off = false
-    fetch('/api/manager-lock', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
+    fetch('/api/manager-lock?fresh=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
       if (off) return
       if (!d?.locked) { setShort(null); return }
       // Only the cash shortage left: the Items hub (Sales Log) stays open; everything else is the Before-you-continue page.

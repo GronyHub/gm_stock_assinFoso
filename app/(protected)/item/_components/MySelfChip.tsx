@@ -42,7 +42,7 @@ export default function MySelfChip({ name, username, sales = 0, active = false, 
         <PenaltyChip />
       </span>
       {!slim && <span className="w-full truncate text-[10px] font-extrabold leading-tight text-white">{name.charAt(0).toUpperCase() + name.slice(1)}</span>}
-      <span title="Sales you have recorded today" className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">₵{sales.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+      <span title="Sales you have recorded today" className="text-[14px] font-extrabold leading-tight text-green-300 tabular-nums">₵{sales.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
       {!slim && row && total != null && <span className="text-[8px] leading-tight text-blue-200">{fmt(row.worked_seconds / 60)}/{fmt(total)}</span>}
     </button>
   )

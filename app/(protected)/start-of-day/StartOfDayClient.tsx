@@ -51,8 +51,10 @@ export default function StartOfDayClient() {
         <div className="space-y-2 rounded-xl border-2 border-red-300 bg-red-50 p-3">
           <p className="text-sm font-extrabold text-gray-900">Clock times to decide ({l.approvals})</p>
           <p className="text-[12px] text-gray-700">These were sent on an earlier day. Approve or reject each one before you carry on.</p>
-          {pend.filter(p => p.requested_at < new Date().toISOString().slice(0, 10)).map(p => (
-            <div key={p.id} className="rounded-lg bg-white p-2"><ClockRequestRow p={p} onDone={() => { void loadPend(); void load() }} /></div>))}
+          {(() => { const earlier = pend.filter(p => String(p.requested_at ?? '').slice(0, 10) < new Date().toISOString().slice(0, 10)), list = earlier.length ? earlier : pend
+            return list.length ? list.map(p => (
+              <div key={p.id} className="rounded-lg bg-white p-2"><ClockRequestRow p={p} onDone={() => { void loadPend(); void load() }} /></div>))
+              : <p className="rounded-lg bg-white p-2 text-xs text-gray-700">Loading the clock times… If nothing appears, <button type="button" onClick={() => { void loadPend(); void load() }} className="font-bold text-blue-700 underline">tap to reload</button>.</p> })()}
           {msg && <p className="text-xs font-semibold text-red-700">{msg}</p>}
         </div>)}
 

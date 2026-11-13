@@ -30,6 +30,7 @@ export default function VideoGate() {
   }, [])
   if (!v) return null
   if (!features.video_gate) return null
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/start-of-day')) return null   // never cover the manager's "Before you continue" page
   const ended = () => {
     setDone(true)
     void fetch('/api/law-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area: v.key, label: v.label + ' video' }) }).catch(() => {})

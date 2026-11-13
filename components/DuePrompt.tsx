@@ -33,6 +33,7 @@ export default function DuePrompt() {
   const cur = list[0]
   if (!cur) return null
   if (!features.due_prompt) return null
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/start-of-day')) return null   // never cover the manager's "Before you continue" page
   const mark = (v: string) => { try { localStorage.setItem(KEY(cur.id), v) } catch { /* private window */ } }
   const next = () => { setList(l => l.slice(1)); setWhy(''); setNotReq(false); setErr('') }
   async function record(value: 'Done' | 'Not done', note?: string) {

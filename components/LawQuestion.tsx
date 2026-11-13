@@ -19,6 +19,7 @@ export default function LawQuestion() {
   }, [])
   if (!q) return null
   if (!features.law_question) return null
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/start-of-day')) return null   // never cover the manager's "Before you continue" page
   async function answer(i: number) {
     setBusy(true)
     const x = await fetch('/api/law-question', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answer: i }) })

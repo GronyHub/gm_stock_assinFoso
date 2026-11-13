@@ -22,7 +22,7 @@ const MODE_LABEL: Record<DisplayMode, string> = { icon: 'Icons only', both: 'Ico
 // "Urgent" or "Ghana" had nowhere to go but one character per line once
 // SidePaneButton's label span was fixed to wrap inside its box instead of
 // overflowing it.
-const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-16 sm:w-20', text: 'w-20 sm:w-24' }
+const WIDTH: Record<DisplayMode, string> = { icon: 'w-14', both: 'w-20 sm:w-24', text: 'w-24 sm:w-28' }   // wide enough for the large, bold labels
 
 // A module-level store (not per-component state) so every left pane on
 // screen at once -- Grony Manage's, and Staff's several nested ones --
@@ -203,7 +203,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
       onMouseDown={noNewTab ? undefined : e => { if (e.button === 1) e.preventDefault() }}
       onAuxClick={noNewTab ? undefined : e => { if (e.button === 1) { e.preventDefault(); openNewTab() } }}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-start justify-center gap-0.5 px-1 py-1 [@media(pointer:coarse)]:min-h-[40px] touch-manipulation text-[10px] font-medium leading-tight text-left transition
+      className={`relative flex flex-col items-start justify-center gap-0 px-1.5 py-[3px] [@media(pointer:coarse)]:min-h-[34px] touch-manipulation text-[14px] font-bold leading-[1.1] text-left transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : shared ? 'text-yellow-300 hover:bg-white/10' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (

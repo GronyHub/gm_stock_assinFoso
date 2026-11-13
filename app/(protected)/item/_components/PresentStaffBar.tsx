@@ -162,15 +162,15 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
                 <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
                 {p !== undefined && <span className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{p}</span>}
               </span>
-              <span className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">₵{((salesBy ?? {})[k] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              <span className="text-[14px] font-extrabold leading-tight text-green-300 tabular-nums">₵{((salesBy ?? {})[k] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </button>
           )
         })}
         {/* Just the shop's total for today: Waiting for team and Shop have their own buttons in the menu below. */}
         <div title={`The shop today: total sales · worked ${fmtHrMin(totalWorkedMins)} of ${fmtHrMin(totalPresentMins)} present`}
           className="flex w-full min-w-0 flex-col items-start gap-px rounded-lg bg-white/5 px-1 py-0.5 text-left">
-          <span className="text-[10px] font-bold leading-tight text-white">🏪 Shop</span>
-          {salesTotal && <span className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">{salesTotal}</span>}
+          <span className="text-[14px] font-bold leading-tight text-white">🏪 Shop</span>
+          {salesTotal && <span className="text-[14px] font-extrabold leading-tight text-green-300 tabular-nums">{salesTotal}</span>}
         </div>
       </div>
     )
