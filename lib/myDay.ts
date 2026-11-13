@@ -1,3 +1,4 @@
+import { fallsOn } from '@/lib/dutyFilter'
 import { hasClosingGroups } from '@/lib/questionGroups'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
@@ -66,7 +67,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
 
   // Waiting for me is the Waiting for team list cut down to one person: every duty that falls on them (and the ones meant for everyone), from the same calculation.
   const all = await allDutiesForDate(day, { includeManagerLaws: true, canSee: p => p === me })
-  const mine = all.filter(d => d.owner === me || (d.owner === null && (d.kind === 'oneoff' || d.kind === 'periodic' || d.kind === 'job' || (d.kind === 'standing' && isStaff))))
+  const mine = all.filter(d => fallsOn(d, me) && (d.owner !== null || d.kind !== 'standing' || isStaff))
   const urg = (d: Duty): MyDayItem['urgency'] => (d.state === 'late' ? 'now' : d.state === 'now' ? 'soon' : 'later')
 
   // The closing report is answered in Waiting for team by whoever closes; it is shown here to whoever is at work until it is answered.
@@ -139,7 +140,7 @@ export async function personDay(me: string, date: string, _user?: unknown): Prom
   const cap1 = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
   const all = await allDutiesForDate(date, { includeManagerLaws: true, canSee: p => p === me })
   // Duties for everyone (a one-off for the whole team, a weekly law nobody is named for) are on each person's list too.
-  const mine = all.filter(d => d.owner === me || (d.owner === null && (d.kind === 'oneoff' || d.kind === 'periodic' || d.kind === 'job')))
+  const mine = all.filter(d => fallsOn(d, me))
   return mine.map(d => {
     const hh = d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}` : d.time || undefined
     const base = { key: `${d.state}-${d.key}`, title: d.title, time: hh, who: cap1(me), category: d.category ?? undefined, type: d.typeLabel ?? lawTypeLabel(d.lawType), count: 0, urgency: 'later' as const }

@@ -1,10 +1,13 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Duty } from '@/lib/duties'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DailyChecklistClient from '@/app/(protected)/standards/DailyChecklistClient'
 import ClockApprovals from '@/components/ClockApprovals'
 import PendingJobsDue from '@/components/PendingJobsDue'
+import { fallsOn } from '@/lib/dutyFilter'
+import ClockNotices from '@/components/ClockNotices'
+import PenaltyDecisions from '@/components/PenaltyDecisions'
 import DateStrip from '@/components/DateStrip'
 import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
 import { LAW_TYPES } from '@/lib/lawCategories'
@@ -32,6 +35,10 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const [viewable, setViewable] = useState<string[]>([])
   const [self, setSelf] = useState('')
   useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { setViewable(Array.isArray(d?.people) ? d.people : []); setSelf(String(d?.self ?? '')) }).catch(() => {}) }, [])
+  // Staff open this page on their own name; the owner and Joe start on Everyone. (Waiting for me is this page filtered to one person, so there is no separate list to keep in step.)
+  const whoTouched = useRef(false)
+  useEffect(() => { if (!canManage && self && !whoTouched.current) setWho(self) }, [canManage, self])
+  const [refresh, setRefresh] = useState(0)
   const [sel, setSel] = useState(today)
   const [ahead, setAhead] = useState(31)
   const [fduties, setFduties] = useState<Duty[] | null>(null)
@@ -65,7 +72,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
   const chipNames = sel === today ? [...ACTIVE_STAFF] : ACTIVE_STAFF.filter(n => n === self || viewable.includes(n))
   const person = who && chipNames.includes(who) ? who : ''
   // With a person chosen, only what falls on them (and what is for everyone).
-  const mine = (d: Duty) => !person || d.owner === person || (d.owner === null && (d.kind === 'oneoff' || d.kind === 'periodic' || d.kind === 'job'))
+  const mine = (d: Duty) => fallsOn(d, person)
   const minDate = today
   const more = () => setAhead(a => a + 31)
   return (
@@ -79,7 +86,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
       {chipNames.length > 0 && (
         <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
           {['', ...chipNames].map(n => (
-            <button key={n || 'all'} type="button" onClick={() => setWho(n)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
+            <button key={n || 'all'} type="button" onClick={() => { whoTouched.current = true; setWho(n) }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
           ))}
         </div>)}
       </div>
@@ -95,9 +102,11 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           <button type="button" disabled={!form.title.trim() || !form.date} onClick={() => void add()} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Add to the list</button>
         </div>
       )}
+      {/* The answers that belong to the signed-in person (a missing clock time, a supervisor's question, a decision) sit here, on this page, when their own name (or Everyone) is in focus. */}
+      {sel === today && (!person || person === self) && <div className="mt-2 space-y-2 px-2"><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} /></div>}
       <div className="mt-2">
         {sel <= today
-          ? <DailyChecklistClient key={sel} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
+          ? <DailyChecklistClient key={`${sel}-${refresh}`} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
               extras={<>{canManage && <ClockApprovals density={density} />}<PendingJobsDue density={density} /></>} />
           : (
             <div className="space-y-1 px-2">

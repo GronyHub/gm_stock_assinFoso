@@ -2,6 +2,7 @@
 import { cap } from '@/lib/strings'
 import WithMic from '@/components/WithMic'
 import ClosingReportCard from '@/components/ClosingReportCard'
+import { fallsOn } from '@/lib/dutyFilter'
 import GroupForm from '@/components/GroupForm'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES, LAW_TYPES } from '@/lib/lawCategories'
@@ -62,7 +63,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   // A duty that is not a checklist tile (laws to sign, CCTV reviews, pending jobs...) opens the place where it is done: in the hub's frame through the hub, otherwise directly.
   const goTo = (path: string) => { if (window.parent !== window) window.parent.postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
   const tileOf = (d: Duty) => (d.kind === 'task' || d.kind === 'periodic' ? tiles.find(t => t.id === d.id) : undefined)
-  const mineOrDid = (d: Duty) => !person || d.owner === person.toLowerCase() || d.by?.toLowerCase() === person.toLowerCase()
+  const mineOrDid = (d: Duty) => fallsOn(d, person.toLowerCase()) || d.by?.toLowerCase() === person.toLowerCase()
   const typeOf = (d: Duty) => d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label
   const [pastFilter, setPastFilter] = useState<'all' | 'done' | 'no' | 'miss'>('all')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)

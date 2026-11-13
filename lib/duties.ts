@@ -131,7 +131,7 @@ const STANDING: Record<StandingRow['kind'], { title: string; icon: string; type:
 }
 // Where a tap on a standing duty goes (the same places Waiting for me sends the person).
 export const STAND_HREF: Record<string, string> = { sign: '/laws?sign=1', quiz: '/laws', cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws', 'pending-jobs': '/pending-jobs',
-  'clock-prev': '/my-day', 'clock-auto': '/my-day', queries: '/my-day', mytasks: '/my-day', ack: '/my-day', approve: '/todo?approve=1' }
+  'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1' }
 const num = (v: unknown) => Number(v ?? 0)
 // One query set for every person: how many of each standing duty fall due on each date, and how many of those are already done.
 export async function standingRowsAll(): Promise<StandingRow[]> {
