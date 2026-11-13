@@ -7,6 +7,8 @@ import { recordActivity } from '@/lib/logger'
 import { clearMyDayCache } from '@/lib/myDay'
 import { groupForTile, saveAnswers, bridgeClosing, type AnswerIn } from '@/lib/questionGroups'
 import { lockStateForManager } from '@/lib/managerLock'
+import { isOwnerLevel } from '@/lib/roles'
+import { isManagerName } from '@/lib/signers'
 import { NextRequest } from 'next/server'
 
 // POST { tile_id, answers: [{ item_id, answer, detail? }] } -- answers for today. When every required question has an answer the tile is recorded as done (once); answers can be changed afterwards.
@@ -25,6 +27,8 @@ export async function POST(req: NextRequest) {
     { const msg = await suspendedMessage(me, day); if (!isOwner && msg) return badRequest(msg) }
     const g = await groupForTile(Number(b.tile_id))
     if (!g) return badRequest('Unknown question group.')
+    { const [tl] = await sql`SELECT assignment FROM daily_check_tiles WHERE id = ${g.tile_id}`
+      if (tl?.assignment === 'managers' && !isOwner && !isOwnerLevel(session.user as never) && !isManagerName(me)) return badRequest('This one is for the manager. Ask Joe or Bino.') }
     const actor = getActorName(session)
     let complete = false
     try { complete = (await saveAnswers(g, day, actor, Array.isArray(b.answers) ? b.answers as AnswerIn[] : [])).complete } catch (e) { return badRequest(e instanceof Error ? e.message : 'Could not save.') }

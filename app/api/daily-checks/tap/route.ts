@@ -6,6 +6,8 @@ import { ensureManageLogs } from '@/lib/manageLogs'
 import { notifyOwners } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { addPoint, suspendedMessage } from '@/lib/penalties'
+import { isOwnerLevel } from '@/lib/roles'
+import { isManagerName } from '@/lib/signers'
 import { NextRequest } from 'next/server'
 import { clearMyDayCache } from '@/lib/myDay'
 
@@ -27,8 +29,10 @@ export async function POST(req: NextRequest) {
     { const msg = await suspendedMessage(actorKey(session.user as any), dayKey()); if ((session.user as { role?: string })?.role !== 'owner' && msg) return badRequest(msg) }
     const b = await req.json().catch(() => ({}))
     const id = Number(b.tile_id)
-    const [t] = await sql`SELECT id, title, minutes, kind, log_category, needs_photo, section FROM daily_check_tiles WHERE id = ${id} AND active`
+    const [t] = await sql`SELECT id, title, minutes, kind, log_category, needs_photo, section, assignment FROM daily_check_tiles WHERE id = ${id} AND active`
     if (!t) return badRequest('Unknown tile.')
+    // Anyone clocked in may do a tile that is not named for them (it counts as done for the day); only a tile reserved for the managers needs a manager.
+    if (t.assignment === 'managers' && !isOwnerLevel(session.user as never) && !isManagerName(actorKey(session.user as never))) return badRequest('This one is for the manager. Ask Joe or Bino.')
     const actor = getActorName(session)
     const now = new Date()
     const doneAt = typeof b.done_at === 'string' && HM.test(b.done_at) && Number(b.done_at.slice(0, 2)) * 60 + Number(b.done_at.slice(3)) <= now.getUTCHours() * 60 + now.getUTCMinutes() ? b.done_at : null
