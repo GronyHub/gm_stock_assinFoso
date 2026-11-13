@@ -69,6 +69,11 @@ export async function pushToShop(title: string, body: string) {
   } catch (e) { console.error('pushToShop failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// Tells the owner and Joe about something a staff member just did (never throws). The person who did it is never notified of their own action (Joe's own go to the owner only).
+export async function notifyManagement(actor: string, title: string, body: string) {
+  await pushToUsers(['grony', 'joe'].filter(n => n !== actor.toLowerCase()), title, body)
+}
+
 // Tells the owner and Joe something needs their attention (never throws).
 export async function notifyOwners(title: string, body: string) {
   try { await send(await ownerSubs(), title, body) } catch (e) { console.error('notifyOwners failed:', e instanceof Error ? e.message : String(e)) }

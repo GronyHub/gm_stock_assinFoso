@@ -4,7 +4,7 @@ import { SIGNERS } from '@/lib/signers'
 import { recordActivity } from '@/lib/logger'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { ensureAttendance, lastActivity, setClockOut, to12h } from '@/lib/attendance'
-import { pushToUsers } from '@/lib/checklistAlerts'
+import { pushToUsers, notifyManagement } from '@/lib/checklistAlerts'
 
 // PRESENCE CHECK. From 18:00, when someone clocks out and says nobody else is still at the shop, every other person still clocked in is asked to confirm they are there. They have
 // CHECK_SECONDS to confirm. If they do not, they are clocked out at the time of their last shop-only action (the same law as the 7pm "still at the shop?" and the next-day clock-out).
@@ -40,7 +40,10 @@ export async function raiseChecks(by: string): Promise<string[]> {
     // An activity of the person who clocked out, so a push is right: it reaches a phone that is in a pocket.
     void pushToUsers([n], `${cap(by)} says you are not at the shop`, `Open the app and confirm you are still here within ${CHECK_SECONDS} seconds, or you will be clocked out.`)
   }
-  if (asked.length) void recordActivity(by, 'said nobody else is at the shop', `Asked ${asked.map(cap).join(', ')} to confirm`)
+  if (asked.length) {
+    void recordActivity(by, 'said nobody else is at the shop', `Asked ${asked.map(cap).join(', ')} to confirm`)
+    void notifyManagement(by, `${cap(by)} says nobody else is at the shop`, `${asked.map(cap).join(', ')} ${asked.length === 1 ? 'was' : 'were'} asked to confirm within a minute.`)
+  }
   return asked
 }
 
@@ -87,6 +90,7 @@ export async function expireDue(): Promise<number> {
       await sql`UPDATE presence_checks SET result_out = ${out} WHERE id = ${c.id}`
       n++
       void recordActivity('app', 'clocked someone out after no confirmation', `${cap(c.staff)} at ${out} (last action at the shop)`)
+      void notifyManagement(c.staff, `${cap(c.staff)} was clocked out`, `${cap(c.raised_by)} said nobody else was at the shop and ${cap(c.staff)} did not confirm. Time out ${out} (last action).`)
       void pushToUsers([c.staff], 'You were clocked out', `You did not confirm you were at the shop. Your time out is ${out}, your last action. Open the app to tap OK or send the correct time.`)
     } catch (e) { console.error('presence expiry failed:', e instanceof Error ? e.message : String(e)) }
   }

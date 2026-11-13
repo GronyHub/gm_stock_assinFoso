@@ -8,7 +8,7 @@ import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
-import { notifyOwners } from '@/lib/checklistAlerts'
+import { notifyManagement } from '@/lib/checklistAlerts'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -241,8 +241,11 @@ export async function POST(req: NextRequest) {
     // Avoid relying on a specific ON CONFLICT target constraint existing —
     // check for an existing row first, then UPDATE or INSERT accordingly.
     const [existingRow] = await sql`
-      SELECT id FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
+      SELECT id, actual_in, actual_out FROM staff_times WHERE staff_name = ${username} AND work_date = ${today}
     `
+    // Once only: a time in or a time out already recorded for the day cannot be recorded again (that would be a way to change it).
+    if (action === 'in' && existingRow?.actual_in) return badRequest(`You already clocked in today at ${existingRow.actual_in}. To correct it, ask Joe or Grony.`)
+    if (action === 'out' && existingRow?.actual_out) return badRequest(`You already clocked out today at ${existingRow.actual_out}. To correct it, ask Joe or Grony.`)
 
     await ensureSourceCols()
 
@@ -317,13 +320,17 @@ export async function POST(req: NextRequest) {
       const who = String(username).toLowerCase(), wm = parseTimeMins(time), nowM = new Date().getUTCHours() * 60 + new Date().getUTCMinutes()
       if (wm != null && nowM - wm >= BACKDATE_MINUTES) {
         const r = await recordBackdate(who, today, time, nowM - wm).catch(() => null)
-        if (r) backdated = { minutes: nowM - wm, ...r }
+        if (r) {
+          backdated = { minutes: nowM - wm, ...r }
+          const nm = who.charAt(0).toUpperCase() + who.slice(1)
+          void notifyManagement(who, `${nm} wrote an earlier clock-in time`, `Wrote ${time}, ${nowM - wm} minutes before it was recorded. Violation ${r.count % 5 === 0 ? 5 : r.count % 5} of 5${r.pointAwarded ? ': 1 penalty point added' : ''}.`)
+        }
       }
       if (unverified) {
         await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${who} AND work_date = ${today} AND field = 'in' AND status = 'pending'`.catch(() => {})
         await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, field) VALUES (${who}, ${today}, 'entered', ${time}, ${'No GPS: the manager checks the CCTV and approves the time in'}, 'in')`.catch(() => {})
         pendingApproval = true
-        void notifyOwners(`${who.charAt(0).toUpperCase() + who.slice(1)} clocked in without GPS`, `Time in ${time}. Check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon).`)
+        void notifyManagement(who, `${who.charAt(0).toUpperCase() + who.slice(1)} clocked in without GPS`, `Time in ${time}. Check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon).`)
       }
     }
 

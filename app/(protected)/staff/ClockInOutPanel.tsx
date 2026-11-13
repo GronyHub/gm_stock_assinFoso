@@ -305,7 +305,7 @@ export default function ClockInOutPanel({
           </div>
         </div>
 
-        {!pickingTime ? (
+        {!(mine?.actual_in && mine?.actual_out) && (!pickingTime ? (
           <button onClick={() => setPickingTime(true)}
             className="w-full text-center text-xs text-blue-600 font-medium py-0.5">
             Not now? Tap to pick a different time →
@@ -322,18 +322,22 @@ export default function ClockInOutPanel({
               </button>
             </div>
           </div>
-        )}
+        ))}
 
         {err && <p className="text-xs text-red-500">{err}</p>}
+        {/* Clock in once, clock out once: only the button that applies is shown. */}
         <div className="flex gap-2">
-          <button onClick={() => clock('in')} disabled={saving}
-            className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
-            {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
-          </button>
-          <button onClick={() => clock('out')} disabled={saving}
-            className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
-            {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
-          </button>
+          {!mine?.actual_in && (
+            <button onClick={() => clock('in')} disabled={saving}
+              className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
+              {saving ? '…' : `Clock In${pickingTime ? '' : ' (Now)'}`}
+            </button>)}
+          {mine?.actual_in && !mine?.actual_out && (
+            <button onClick={() => clock('out')} disabled={saving}
+              className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-40 text-white text-sm font-semibold rounded-xl py-2 transition">
+              {saving ? '…' : `Clock Out${pickingTime ? '' : ' (Now)'}`}
+            </button>)}
+          {mine?.actual_in && mine?.actual_out && <p className="flex-1 rounded-xl bg-gray-100 py-2 text-center text-sm font-semibold text-gray-700">You have clocked in and out for today.</p>}
         </div>
         {/* Only makes sense once actually clocked in for the day, and not
             after clocking out again -- see /api/staff-times/break's own

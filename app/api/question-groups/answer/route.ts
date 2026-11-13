@@ -9,6 +9,7 @@ import { groupForTile, saveAnswers, bridgeClosing, type AnswerIn } from '@/lib/q
 import { lockStateForManager } from '@/lib/managerLock'
 import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName } from '@/lib/signers'
+import { notifyManagement } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
 // POST { tile_id, answers: [{ item_id, answer, detail? }] } -- answers for today. When every required question has an answer the tile is recorded as done (once); answers can be changed afterwards.
@@ -31,10 +32,16 @@ export async function POST(req: NextRequest) {
       if (tl?.assignment === 'managers' && !isOwner && !isOwnerLevel(session.user as never) && !isManagerName(me)) return badRequest('This one is for the manager. Ask Joe or Bino.') }
     const actor = getActorName(session)
     let complete = false
-    try { complete = (await saveAnswers(g, day, actor, Array.isArray(b.answers) ? b.answers as AnswerIn[] : [])).complete } catch (e) { return badRequest(e instanceof Error ? e.message : 'Could not save.') }
+    const ansIn = Array.isArray(b.answers) ? b.answers as AnswerIn[] : []
+    try { complete = (await saveAnswers(g, day, actor, ansIn)).complete } catch (e) { return badRequest(e instanceof Error ? e.message : 'Could not save.') }
     if (complete) {
       const [have] = await sql`SELECT id FROM daily_check_events WHERE tile_id = ${g.tile_id} AND day = ${day} AND value = 'Done' LIMIT 1`
       if (!have) {
+      // A "yes, something happened" answer with its explanation (lost property, an unfortunate event, a new customer...) is told to the owner and Joe straight away.
+      for (const a of ansIn) {
+        const it = g.items.find(i => i.id === Number(a.item_id))
+        if (it && it.kind === 'yesno' && it.detail_on && String(a.answer) === it.detail_on && String(a.detail ?? '').trim().length >= 3) void notifyManagement(me, `${g.name}: ${it.text.slice(0, 60)}`, `${actor}: ${String(a.detail).trim().slice(0, 140)}`)
+      }
         const [row] = await sql`INSERT INTO daily_check_events (tile_id, day, value, note, extra, recorded_by) VALUES (${g.tile_id}, ${day}, 'Done', NULL, ${JSON.stringify({ group: g.id })}::jsonb, ${actor}) RETURNING id`
         void recordActivity(actor, 'answered a question group', g.name.slice(0, 120))
         await creditWork(actor, g.name, Number(g.minutes ?? 5), Number(row.id))
