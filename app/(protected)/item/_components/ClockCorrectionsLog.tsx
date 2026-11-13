@@ -47,7 +47,8 @@ export default function ClockCorrectionsLog({ defaultOpen = false, onClose, me =
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] leading-snug text-gray-900"><b>{cap(r.staff)}</b> · {short(r.work_date)} · <b>{r.field === 'in' ? 'In' : 'Out'} {r.proposed_out}</b></p>
                 <p className="text-[10px] leading-snug text-gray-500">Asked {short(r.requested_at)} {hm(r.requested_at)}{r.basis || r.note ? ` · ${[r.basis, r.note].filter(Boolean).join(' · ')}` : ''}</p>
-                {r.status === 'pending' && (r.staff === me.toLowerCase() || (r.against ?? '') === me.toLowerCase()) && <p className="text-[10px] font-semibold leading-snug text-amber-800">Someone else decides this one{r.staff === 'joe' ? ' (Grony)' : ''}.</p>}
+                {r.status === 'pending' && r.staff === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">Your own time: {r.staff === 'joe' ? 'Grony' : 'Joe or Grony'} decides it.</p>}
+                {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">You clocked {cap(r.staff)} out, so you cannot approve this one.</p>}
                 {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') !== me.toLowerCase() && (
                   <div className="mt-1 flex flex-wrap items-center gap-1">
                     <input type="time" value={pick[r.id] ?? ''} onChange={e => setPick(x => ({ ...x, [r.id]: e.target.value }))} title="Optional: approve an earlier time instead" className="w-[5.5rem] rounded-md border border-gray-300 p-1 text-[11px]" />
