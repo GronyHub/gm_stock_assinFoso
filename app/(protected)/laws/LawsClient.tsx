@@ -82,6 +82,24 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   // Waiting for me opens the exact law: /laws?law=ID (&quiz=1 opens its quiz straight away)
   const deepLaw = useRef(false)
+  const [focusLaw, setFocusLaw] = useState<number | null>(null)
+  // Once the category is showing, scroll to that exact law (opening any collapsed group around it) and ring it for a few seconds.
+  useEffect(() => {
+    if (!focusLaw) return
+    let tries = 0
+    const t = setInterval(() => {
+      const el = document.getElementById(`law-${focusLaw}`)
+      if (el) {
+        clearInterval(t)
+        for (let p = el.parentElement; p; p = p.parentElement) if (p instanceof HTMLDetailsElement) p.open = true
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-4', 'ring-blue-500')
+        setTimeout(() => el.classList.remove('ring-4', 'ring-blue-500'), 5000)
+        setFocusLaw(null)
+      } else if (++tries > 30) { clearInterval(t); setFocusLaw(null) }
+    }, 150)
+    return () => clearInterval(t)
+  }, [focusLaw])
   useEffect(() => {
     if (deepLaw.current || !laws) return
     const q = new URLSearchParams(window.location.search); const id = Number(q.get('law'))
@@ -90,6 +108,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const l = laws.find(x => x.id === id); if (!l) return
     const a = l.category ? areaForCategory(l.category) : null
     setView('topic'); setCat(a ? a.key : (l.category || UNCATEGORISED))
+    setFocusLaw(id)
     if (q.get('quiz') && (l.quiz_n ?? 0) > 0) setQuizFor(l)
   }, [laws])
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
@@ -169,7 +188,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div className={`min-w-[980px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div id={`law-${l.id}`} className={`min-w-[980px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[10px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
         <div className={`grid ${COLS}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
