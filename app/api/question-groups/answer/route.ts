@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
     if (ansIn.length) {
       const lines = ansIn.map(a => { const it = g.items.find(i => i.id === Number(a.item_id)); const d = String(a.detail ?? '').trim()
         return it ? `${it.text.slice(0, 50)}: ${String(a.answer).slice(0, 60) || '-'}${d ? ` (${d.slice(0, 80)})` : ''}` : null }).filter(Boolean)
-      if (lines.length) void notifyManagement(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
+      if (lines.length) {
+        void notifyManagement(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
+        // The answers themselves go in the Done record, not just "answered".
+        void recordActivity(actor, complete ? 'answered a question group' : 'answered part of a question group', `${g.name.slice(0, 80)} — ${lines.join(' · ')}`.slice(0, 1500))
+      }
     }
     if (complete) {
       const [have] = await sql`SELECT id FROM daily_check_events WHERE tile_id = ${g.tile_id} AND day = ${day} AND value = 'Done' LIMIT 1`
@@ -49,7 +53,6 @@ export async function POST(req: NextRequest) {
         if (it && it.kind === 'yesno' && it.detail_on && String(a.answer) === it.detail_on && String(a.detail ?? '').trim().length >= 3) void notifyManagement(me, `${g.name}: ${it.text.slice(0, 60)}`, `${actor}: ${String(a.detail).trim().slice(0, 140)}`)
       }
         const [row] = await sql`INSERT INTO daily_check_events (tile_id, day, value, note, extra, recorded_by) VALUES (${g.tile_id}, ${day}, 'Done', NULL, ${JSON.stringify({ group: g.id })}::jsonb, ${actor}) RETURNING id`
-        void recordActivity(actor, 'answered a question group', g.name.slice(0, 120))
         await creditWork(actor, g.name, Number(g.minutes ?? 5), Number(row.id))
       }
       await bridgeClosing(day).catch(e => console.error('closing bridge failed:', e instanceof Error ? e.message : String(e)))

@@ -80,7 +80,9 @@ export async function POST(req: NextRequest) {
     clearMyDayCache()
     // A tick is activity by a person, so the owner and Joe get a push. A Done tick is already in the Done record as "Daily checklist: ..." (creditWork below),
     // so it is not written there a second time; a Not done is (it earns no credit row).
-    const what = `${String(t.title).slice(0, 120)}${note ? ' — ' + note.slice(0, 80) : ''}`
+    const persons = extra.persons ? Object.entries(extra.persons as Record<string, string>).map(([n, v]) => `${n} ${v === 'ok' ? 'yes' : 'NO'}`).join(', ') : ''
+    const reply = [t.kind === 'question' ? (extra.answer === 'issue' ? 'Issue' : 'All good') : '', persons, note ?? '', photo ? 'photo attached' : ''].filter(Boolean).join(' — ')
+    const what = `${String(t.title).slice(0, 120)}${reply ? ' — ' + reply.slice(0, 200) : ''}`
     if (b.value === 'Not done') void recordActivity(actor, 'marked a task not done', what)
     else void sql`INSERT INTO activity_logs (staff_name, action, details) VALUES (${actor}, 'did a task', ${what})`.catch(() => {})
     void notifyManagement(actor, `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`, what)
@@ -105,7 +107,8 @@ export async function POST(req: NextRequest) {
       await addPoint({ staff: aboutStaff, reason: `Behaviour report: ${String(note ?? '').slice(0, 140)}`, source: 'behaviour', ref: `behaviour:${row.id}`, day: dayKey(now), status: 'pending', by: actor }).catch(() => {})
     }
     if (problem) void notifyOwners(`Checklist: ${String(t.title).split(':')[0]}`, `${actor} reported: ${problem}`)
-    if (row.value === 'Done') await creditWork(actor, String(t.title), Number(t.minutes ?? 5), Number(row.id))
+    // The answer (a typed reply, the people picked, a photo's caption) goes in the Done record with the task, not only its title.
+    if (row.value === 'Done') await creditWork(actor, reply ? `${String(t.title)} — ${reply.slice(0, 400)}` : String(t.title), Number(t.minutes ?? 5), Number(row.id))
     return success(row, 201)
   } catch (e) { return handleError('daily-checks tap', e) }
 }
