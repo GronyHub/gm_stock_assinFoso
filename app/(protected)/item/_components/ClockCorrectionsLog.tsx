@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { decider, waited } from '@/lib/clockResponsible'
 
 type Row = { id: number; staff: string; work_date: string; field: string | null; proposed_out: string; status: string; requested_at: string; decided_by: string | null; decided_at: string | null; basis: string | null; note: string | null; against?: string | null }
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
@@ -47,6 +48,7 @@ export default function ClockCorrectionsLog({ defaultOpen = false, onClose, me =
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] leading-snug text-gray-900"><b>{cap(r.staff)}</b> · {short(r.work_date)} · <b>{r.field === 'in' ? 'In' : 'Out'} {r.proposed_out}</b></p>
                 <p className="text-[10px] leading-snug text-gray-500">Asked {short(r.requested_at)} {hm(r.requested_at)}{r.basis || r.note ? ` · ${[r.basis, r.note].filter(Boolean).join(' · ')}` : ''}</p>
+                {r.status === 'pending' && (() => { const w = waited(r.requested_at), who = decider(r.staff); return <p className={`text-[10px] font-bold leading-snug ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue ? ` · ${who} has not decided in 2 days${who === 'Joe' ? ': you can step in' : ''}` : ''}</p> })()}
                 {r.status === 'pending' && r.staff === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">Your own time: {r.staff === 'joe' ? 'Grony' : 'Joe or Grony'} decides it.</p>}
                 {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">You clocked {cap(r.staff)} out, so you cannot approve this one.</p>}
                 {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') !== me.toLowerCase() && (

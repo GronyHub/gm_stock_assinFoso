@@ -2,8 +2,9 @@
 import { cap } from '@/lib/strings'
 import { useEffect, useRef, useState } from 'react'
 import TaskTile, { type TileDensity } from '@/components/TaskTile'
+import { decider, waited } from '@/lib/clockResponsible'
 
-type P = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; estimated: string | null }
+type P = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; estimated: string | null; requested_at?: string }
 // For Grony and Joe only: clock-out times staff entered after forgetting, waiting for approval. Not a tile on the Daily Checklist.
 export default function ClockApprovals({ density = 'compact' }: { density?: TileDensity }) {
   const [list, setList] = useState<P[]>([])
@@ -66,6 +67,7 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
           {list.map(p => (
             <div key={p.id} className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-900">
               <span className="min-w-0 flex-1"><b>{cap(p.staff)}</b> · {p.work_date} · in {p.actual_in ?? '?'} · says {p.field === 'in' ? 'in' : 'out'} <b>{p.proposed_out}</b>{p.field !== 'in' && p.estimated ? <span className="text-gray-600"> (app estimate {p.estimated})</span> : null}</span>
+              {p.requested_at && (() => { const w = waited(p.requested_at), who = decider(p.staff); return <span className={`basis-full text-[11px] font-bold ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue && who === 'Joe' ? ' · Joe has not decided in 2 days: you can step in' : ''}</span> })()}
               <input type="time" value={pick[p.id] ?? ''} onChange={e => setPick(x => ({ ...x, [p.id]: e.target.value }))} title="Optional: approve an earlier time instead" className="w-24 rounded-lg border p-1 text-xs" />
               <button type="button" onClick={() => void act(p.id, 'approve')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button>
               <button type="button" onClick={() => void act(p.id, 'reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800">Reject</button>

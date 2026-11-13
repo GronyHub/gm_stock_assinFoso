@@ -22,6 +22,11 @@ export async function GET() {
     const items = await myDay(me, user, {}).catch(() => [])
     const late = items.filter(i => i.urgency === 'now' && i.state == null).reduce((a, i) => a + (i.count || 1), 0)
     if (late > 0) out.push({ key: 'waiting', tone: 'amber', title: 'Waiting for you', text: `${late} thing${late === 1 ? ' is' : 's are'} due now in Waiting for me.` })
+    if ((user as { role?: string }).role === 'owner') {
+      // Joe decides Bino's and James's clock times; after 48 hours unanswered the owner is told (on screen, never pushed).
+      const [od] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND requested_at < now() - interval '48 hours'`.catch(() => [{ n: 0 }])
+      if (Number(od?.n ?? 0) > 0) out.unshift({ key: 'clock-overdue', tone: 'red', title: 'Joe has not decided', text: `${od.n} staff clock time${od.n === 1 ? ' has' : 's have'} waited over 2 days for Joe. Open Shop > Times > the clock icon: you can approve them yourself.` })
+    }
     out.push({ key: 'late-rule', tone: 'blue', title: 'Late or absent?', text: 'Tell the shop in the app first (Times > report). Late without telling = 1 point; absent without notice = 2 points.' })
     return success({ reminders: out })
   } catch (e) { return handleError('login reminders', e) }
