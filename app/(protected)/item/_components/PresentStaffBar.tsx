@@ -166,11 +166,12 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
             </button>
           )
         })}
-        <button type="button" data-keep-embed onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title={`The Shop: today's total sales · ${fmtHrMin(totalWorkedMins)}/${fmtHrMin(totalPresentMins)}`}
-          className={`flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${shopActive ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'}`}>
+        {/* Just the shop's total for today: Waiting for team and Shop have their own buttons in the menu below. */}
+        <div title={`The shop today: total sales · worked ${fmtHrMin(totalWorkedMins)} of ${fmtHrMin(totalPresentMins)} present`}
+          className="flex w-full min-w-0 flex-col items-start gap-px rounded-lg bg-white/5 px-1 py-0.5 text-left">
           <span className="text-[10px] font-bold leading-tight text-white">🏪 Shop</span>
           {salesTotal && <span className="text-[10px] font-extrabold leading-tight text-green-300 tabular-nums">{salesTotal}</span>}
-        </button>
+        </div>
       </div>
     )
   }

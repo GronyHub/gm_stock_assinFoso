@@ -1619,7 +1619,7 @@ export function useHubState() {
   // up at the same time as Settings -- still two things selected at once,
   // just the wrong two.
   // While a page or a person's page is open in the right pane, only that page's button is lit.
-  const paneActive = (cond: boolean) => cond && !settingsOpen && !embedUrl && !personal
+  const paneActive = (cond: boolean) => cond && !settingsOpen && !embedUrl && !personal && !shop
   const embedActive = (path: string) => !!embedUrl && (embedUrl === path || embedUrl.startsWith(path + '/') || embedUrl.startsWith(path + '?'))
   const paneAccent = PANE_ACCENT[outerTab]
   // Hide the side pane -- toggled from the small button floating over

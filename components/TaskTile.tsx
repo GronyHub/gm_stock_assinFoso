@@ -37,7 +37,7 @@ export default function TaskTile({ density, time, title, who, category, type, de
       <span className={`break-words font-semibold text-gray-900 ${full ? 'text-[12px] leading-snug' : 'line-clamp-3 text-[8px] leading-[1.1]'}`}>{full ? title : shortTitle(title)}</span>
       {full && detail ? <span className="text-[11px] leading-snug text-gray-600">{detail}</span> : null}
       {full && (category || type) ? <span className="text-[10px] font-semibold leading-tight text-gray-500">{[category, type].filter(Boolean).join(' · ')}</span> : null}
-      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${full ? 'truncate pt-0.5 text-[11px]' : 'truncate text-[7px]'}`}>{who}</span> : null}
+      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${lawHref ? (full ? 'pr-9' : 'pr-5') : ''} ${full ? 'truncate pt-0.5 text-[11px]' : 'truncate text-[7px]'}`}>{who}</span> : null}
     </button>
   )
   if (!lawHref) return tile
