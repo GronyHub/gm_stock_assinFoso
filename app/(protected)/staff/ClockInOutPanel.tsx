@@ -94,6 +94,15 @@ export default function ClockInOutPanel({
   const [closerPrompt, setCloserPrompt] = useState<{ time: string; present: string[] } | null>(null)
   const [confirmingCount, setConfirmingCount] = useState(false)
   const [confirmCountErr, setConfirmCountErr] = useState('')
+  // After 18:00, once someone has clocked out: are the people still clocked in really still here? "No" sends each of them a prompt to confirm within a minute.
+  const [stillIn, setStillIn] = useState<string[] | null>(null)
+  const [asked, setAsked] = useState<string[] | null>(null)
+  async function reportEmpty() {
+    const r = await fetch('/api/clock/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'report_empty' }) })
+    const d = await r.json().catch(() => ({}))
+    setStillIn(null); setAsked(Array.isArray(d?.data?.asked ?? d?.asked) ? (d?.data?.asked ?? d.asked) : [])
+    setTimeout(() => setAsked(null), 9000)
+  }
 
   async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
@@ -127,6 +136,9 @@ export default function ClockInOutPanel({
       setCloserPrompt(null)
       if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today! Confirm the opening counts below to finish clocking in.')
       else if (updated.is_closer) setRoleBanner('🌙 You are the Closer for today — closing report received. Thank you, and good night!')
+      if (action === 'out' && new Date().getUTCHours() >= 18) {
+        fetch('/api/clock/presence?others=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { const o = d?.data?.others ?? d?.others; if (Array.isArray(o) && o.length) setStillIn(o) }).catch(() => {})
+      }
       afterAction?.()
     } else {
       const d = await res.json().catch(() => ({}))
@@ -190,6 +202,17 @@ export default function ClockInOutPanel({
           onCancel={() => setCloserPrompt(null)}
         />
       )}
+      {stillIn && (
+        <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 sm:items-center print:hidden">
+          <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 sm:rounded-3xl">
+            <p className="text-base font-extrabold text-[#14213D]">Is anyone still at the shop?</p>
+            <p className="text-sm text-gray-700">{stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} {stillIn.length === 1 ? 'is' : 'are'} still clocked in. Are {stillIn.length === 1 ? 'they' : 'they'} still at the shop?</p>
+            <button type="button" onClick={() => setStillIn(null)} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">Yes, still at the shop</button>
+            <button type="button" onClick={() => void reportEmpty()} className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">No, nobody is here</button>
+          </div>
+        </div>
+      )}
+      {asked && <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">{asked.length ? `${asked.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} ${asked.length === 1 ? 'has' : 'have'} been asked to confirm within a minute. If not confirmed, they are clocked out at their last action.` : 'Noted.'}</p>}
       {roleBanner && (
         <div className="flex items-start justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
           <p className="text-sm font-semibold text-blue-800">{roleBanner}</p>

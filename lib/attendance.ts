@@ -166,6 +166,7 @@ export async function attendanceTick(now = new Date()) {
   if (!(await isShopDay(day))) return
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
   const min = now.getUTCMinutes(), hr = now.getUTCHours()
+  if (hr >= 18) await (await import('./presenceCheck')).expireDue().catch(() => {})   // presence checks nobody confirmed in time
   if (hm === '19:00' && await claim(`stillhere:${day}`)) {
     await ensureAttendance()
     const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
