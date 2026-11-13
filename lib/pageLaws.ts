@@ -79,6 +79,7 @@ async function ensureCompanyLawsImpl() {
   await pendingJobsLawsOnce()
   await absenceLawOnce()
   await dedupeLawsOnce()
+  await (await import('./auditFixes')).auditFixesOnce()
   await pendingJobsConfirmOnce()
   await cashCountedLawOnce()
   await (await import('./questionGroups')).seedQuestionGroupsOnce()

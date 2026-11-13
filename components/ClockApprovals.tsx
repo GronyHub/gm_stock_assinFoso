@@ -2,7 +2,7 @@
 import { cap } from '@/lib/strings'
 import { useEffect, useRef, useState } from 'react'
 import TaskTile, { type TileDensity } from '@/components/TaskTile'
-import { decider, waited } from '@/lib/clockResponsible'
+import ClockRequestRow from '@/components/ClockRequestRow'
 
 type P = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; estimated: string | null; requested_at?: string; basis?: string | null }
 // For Grony and Joe only: clock-out times staff entered after forgetting, waiting for approval. Not a tile on the Daily Checklist.
@@ -40,11 +40,6 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
     }
     window.addEventListener('wft-focus-ready', f); return () => window.removeEventListener('wft-focus-ready', f)
   }, [])
-  const [pick, setPick] = useState<Record<number, string>>({})
-  async function act(id: number, action: 'approve' | 'reject') {
-    await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action, time: action === 'approve' ? pick[id] : undefined }) })
-    load()
-  }
   const [me, setMe] = useState('')
   const [sent, setSent] = useState('')
   useEffect(() => { fetch('/api/auth/session').then(r => r.json()).then(d => setMe(String(d?.user?.username ?? d?.user?.name ?? '').toLowerCase())).catch(() => {}) }, [])
@@ -64,15 +59,7 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
       {list.length > 0 && (
         <div ref={boxRef} className="col-span-full rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-extrabold text-amber-900">Clock-in and clock-out times to approve</p>
-          {list.map(p => (
-            <div key={p.id} className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-900">
-              <span className="min-w-0 flex-1"><b>{cap(p.staff)}</b> · {p.work_date} · in {p.actual_in ?? '?'} · says {p.field === 'in' ? 'in' : 'out'} <b>{p.proposed_out}</b>{p.field !== 'in' && p.estimated ? <span className="text-gray-600"> (app estimate {p.estimated})</span> : null}</span>
-              {p.basis && /CCTV/.test(p.basis) && <span className="basis-full text-[11px] font-bold text-red-800">🎥 {p.basis}</span>}
-              {p.requested_at && (() => { const w = waited(p.requested_at), who = decider(p.staff); return <span className={`basis-full text-[11px] font-bold ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue && who === 'Joe' ? ' · Joe has not decided in 2 days: you can step in' : ''}</span> })()}
-              <input type="time" value={pick[p.id] ?? ''} onChange={e => setPick(x => ({ ...x, [p.id]: e.target.value }))} title="Optional: approve an earlier time instead" className="w-24 rounded-lg border p-1 text-xs" />
-              <button type="button" onClick={() => void act(p.id, 'approve')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button>
-              <button type="button" onClick={() => void act(p.id, 'reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800">Reject</button>
-            </div>))}
+          {list.map(p => <div key={p.id} className="mt-2"><ClockRequestRow p={p} onDone={load} /></div>)}
         </div>)}
     </>
   )

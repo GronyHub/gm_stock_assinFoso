@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import GroupForm from '@/components/GroupForm'
+import ClockRequestRow from '@/components/ClockRequestRow'
 
 type Lock = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; shortage: { receiptId: number; salesTotal: number; counted: number; short: number } | null; questions: { tileId: number } | null; approvals?: number; owner?: boolean; joe?: Lock }
 const money = (v: number) => v.toLocaleString('en-GH', { maximumFractionDigits: 2 })
@@ -14,13 +15,7 @@ export default function StartOfDayClient() {
   // Clock times from earlier days waiting for this person's decision (the same list as the approval box).
   type Pend = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; requested_at: string }
   const [pend, setPend] = useState<Pend[]>([])
-  const [pick, setPick] = useState<Record<number, string>>({})
   const loadPend = useCallback(() => fetch('/api/clock/corrections', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPend(Array.isArray(d?.pending) ? d.pending : [])).catch(() => {}), [])
-  async function decideTime(id: number, action: 'approve' | 'reject') {
-    const r = await fetch('/api/clock/corrections', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action, time: action === 'approve' ? pick[id] : undefined }) })
-    if (!r.ok) { const d = await r.json().catch(() => ({})); setMsg(d.error ?? 'Could not save.'); return }
-    void loadPend(); void load()
-  }
   const load = useCallback(() => fetch('/api/manager-lock?fresh=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setLock(d)).catch(() => {}), [])
   useEffect(() => { void load(); void loadPend() }, [load, loadPend])
   if (!lock) return <p className="p-4 text-sm text-gray-500">Loading…</p>
@@ -57,12 +52,7 @@ export default function StartOfDayClient() {
           <p className="text-sm font-extrabold text-gray-900">Clock times to decide ({l.approvals})</p>
           <p className="text-[12px] text-gray-700">These were sent on an earlier day. Approve or reject each one before you carry on.</p>
           {pend.filter(p => p.requested_at < new Date().toISOString().slice(0, 10)).map(p => (
-            <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white p-2 text-sm text-gray-900">
-              <span className="min-w-0 flex-1"><b>{p.staff.charAt(0).toUpperCase() + p.staff.slice(1)}</b> · {p.work_date} · in {p.actual_in ?? '?'} · says {p.field === 'in' ? 'in' : 'out'} <b>{p.proposed_out}</b></span>
-              <input type="time" value={pick[p.id] ?? ''} onChange={e => setPick(x => ({ ...x, [p.id]: e.target.value }))} title="Optional: approve an earlier time instead" className="w-24 rounded-lg border p-1 text-xs" />
-              <button type="button" onClick={() => void decideTime(p.id, 'approve')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Approve</button>
-              <button type="button" onClick={() => void decideTime(p.id, 'reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800">Reject</button>
-            </div>))}
+            <div key={p.id} className="rounded-lg bg-white p-2"><ClockRequestRow p={p} onDone={() => { void loadPend(); void load() }} /></div>))}
           {msg && <p className="text-xs font-semibold text-red-700">{msg}</p>}
         </div>)}
 
