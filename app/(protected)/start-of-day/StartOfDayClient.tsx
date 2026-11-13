@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import GroupForm from '@/components/GroupForm'
 
-type Lock = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; questions: { tileId: number } | null; owner?: boolean; joe?: Lock }
+type Lock = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; shortage: { receiptId: number; salesTotal: number; counted: number; short: number } | null; questions: { tileId: number } | null; owner?: boolean; joe?: Lock }
 const money = (v: number) => v.toLocaleString('en-GH', { maximumFractionDigits: 2 })
 
 // "Before you continue": the manager closes the previous working day here (Cash Counted, then the manager's closing questions). Nothing else in the app opens until both are done.
@@ -17,9 +17,10 @@ export default function StartOfDayClient() {
 
   async function saveCash(l: Lock) {
     const v = parseFloat(val)
-    if (!l.cash || isNaN(v) || v < 0) { setMsg('Enter the cash you counted.'); return }
+    const rid = l.cash?.receiptId ?? l.shortage?.receiptId
+    if (!rid || isNaN(v) || v < 0) { setMsg('Enter the cash you counted.'); return }
     setBusy(true); setMsg('')
-    const r = await fetch(`/api/sales/${l.cash.receiptId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cash_counted: v }) })
+    const r = await fetch(`/api/sales/${rid}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cash_counted: v }) })
     setBusy(false)
     if (!r.ok) { setMsg('Could not save. Try again.'); return }
     setVal(''); void load()
@@ -52,9 +53,23 @@ export default function StartOfDayClient() {
           {msg && <p className="text-xs font-semibold text-red-700">{msg}</p>}
         </div>)}
 
+      {l.shortage && (
+        <div className="space-y-2 rounded-xl border-2 border-red-300 bg-red-50 p-3">
+          <p className="text-sm font-extrabold text-gray-900">{l.cash ? '2' : '1'}. Cash is short for {l.day}</p>
+          <p className="text-[12px] text-gray-700">Cash counted <b>{money(l.shortage.counted)}</b> is <b>{money(l.shortage.short)}</b> less than the sales written down (<b>{money(l.shortage.salesTotal)}</b>): negative work not written. Open the Sales Log and put the day right (a wrong or doubled sale, a missing customer), or recount the cash. The app unlocks once the cash counted is not less than the sales.</p>
+          {!lock.owner && <>
+            <a href="/item?view=sales" className="block rounded-xl bg-blue-600 py-2.5 text-center text-sm font-bold text-white">Open the Sales Log</a>
+            <div className="flex gap-2">
+              <input type="number" inputMode="decimal" value={val} onChange={e => setVal(e.target.value)} placeholder="Recount: cash counted" className="min-w-0 flex-1 rounded-lg border border-gray-300 p-2 text-sm" />
+              <button type="button" disabled={busy} onClick={() => void saveCash(l)} className="rounded-xl bg-gray-700 px-4 text-sm font-bold text-white disabled:opacity-40">Save</button>
+            </div>
+            {msg && <p className="text-xs font-semibold text-red-700">{msg}</p>}
+          </>}
+        </div>)}
+
       {l.questions && l.day && !lock.owner && (
         <div className="space-y-2 rounded-xl border-2 border-red-300 bg-red-50 p-3">
-          <p className="text-sm font-extrabold text-gray-900">{l.cash ? '2' : '1'}. Closing questions for {l.day}</p>
+          <p className="text-sm font-extrabold text-gray-900">{(l.cash ? 1 : 0) + (l.shortage ? 1 : 0) + 1}. Closing questions for {l.day}</p>
           <GroupForm tileId={l.questions.tileId} day={l.day} editable canEdit={false} onSaved={() => void load()} onClose={() => void load()} />
         </div>)}
     </div>

@@ -11,8 +11,10 @@ import { ensurePenalties } from '@/lib/penalties'
 export const LOCK_FROM = '2026-11-13'
 const GMC = 'Grony Multimedia as Customer'
 
-export type LockState = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; questions: { tileId: number } | null }
-const OPEN: LockState = { locked: false, day: null, cash: null, questions: null }
+// cash: Cash Counted not entered yet. shortage: it was entered but is LESS than the day's sales total (negative work not written), so the Sales Log has to be put right (or the cash recounted).
+// hubOpen: only the shortage is left, so the Items hub (where the Sales Log is) stays open for him; otherwise only the Before-you-continue page is.
+export type LockState = { locked: boolean; day: string | null; cash: { receiptId: number; salesTotal: number; counted: number | null } | null; shortage: { receiptId: number; salesTotal: number; counted: number; short: number } | null; questions: { tileId: number } | null; hubOpen?: boolean }
+const OPEN: LockState = { locked: false, day: null, cash: null, shortage: null, questions: null }
 
 // The last working day before `today` (a shop day on which somebody clocked in), looking back at most a week.
 export async function previousWorkingDay(today = dayKey()): Promise<string | null> {
@@ -42,13 +44,15 @@ async function computeLock(today: string): Promise<LockState> {
     const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
     if (ex) return OPEN
     const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
-    const cash = rc && rc.cash_counted == null ? { receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0), counted: null } : null
+    const total = Number(rc?.total ?? 0)
+    const cash = rc && rc.cash_counted == null ? { receiptId: Number(rc.id), salesTotal: total, counted: null } : null
+    const shortage = rc && rc.cash_counted != null && Number(rc.cash_counted) < total - 0.005 ? { receiptId: Number(rc.id), salesTotal: total, counted: Number(rc.cash_counted), short: Math.round((total - Number(rc.cash_counted)) * 100) / 100 } : null
     const g = (await listGroups()).find(x => x.bridge === 'closing' && x.assignment === 'managers')
     let questions: LockState['questions'] = null
     if (g && g.tile_id != null) {
       const [old] = await sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}::date`   // answered the earlier way
       if (!old && !(await isComplete(g, day))) questions = { tileId: g.tile_id }
     }
-    return { locked: !!(cash || questions), day, cash, questions }
+    return { locked: !!(cash || questions || shortage), day, cash, shortage, questions, hubOpen: !cash && !questions && !!shortage }
   } catch (e) { console.error('manager lock failed (left open):', e instanceof Error ? e.message : String(e)); return OPEN }
 }

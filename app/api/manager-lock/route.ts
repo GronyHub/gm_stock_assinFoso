@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
   try {
     const fresh = req.nextUrl.searchParams.get('fresh') === '1'
     const me = actorKey(session.user as never), owner = (session.user as { role?: string })?.role === 'owner'
-    if (owner) return success({ locked: false, day: null, cash: null, questions: null, owner: true, joe: await lockStateForManager(undefined, fresh) })
-    if (me !== 'joe') return success({ locked: false, day: null, cash: null, questions: null })
+    if (owner) return success({ locked: false, day: null, cash: null, shortage: null, questions: null, owner: true, joe: await lockStateForManager(undefined, fresh) })
+    if (me !== 'joe') return success({ locked: false, day: null, cash: null, shortage: null, questions: null })
     return success(await lockStateForManager(undefined, fresh))
   } catch (e) { return handleError('manager lock', e) }
 }
