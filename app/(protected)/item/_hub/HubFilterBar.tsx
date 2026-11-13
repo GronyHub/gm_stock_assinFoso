@@ -76,10 +76,18 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                     ))}
                   </select>
                   </>)}
-                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && liveNegSohCount > 0 && (
-                    <button type="button" onClick={() => pickLiveFlag(activeFlagValue === 'violation:neg_soh' ? '' : 'violation:neg_soh')} title="Items whose stock has gone below zero: count them"
-                      className={`shrink-0 rounded border px-1.5 py-1 text-[9px] font-extrabold ${activeFlagValue === 'violation:neg_soh' ? 'border-red-600 bg-red-600 text-white' : 'border-red-400 bg-red-50 text-red-700'}`}>🔻 Negative stock ({liveNegSohCount})</button>
-                  )}
+                  {/* Flags: one menu with each flag and its count (Negative Stock among them). Staff see only Negative Stock (flags are for the managers), managers see them all. */}
+                  {(lossView === 'sales' || lossView === 'items') && liveMode === 'sale' && (() => {
+                    const flags = h.liveSaleFlagList.filter(f => f.n > 0 && (h.showFlags || f.key === 'neg_soh'))
+                    if (!flags.length && !activeFlagValue) return null
+                    const total = flags.reduce((n, f) => n + f.n, 0)
+                    return (
+                      <select value={activeFlagValue} onChange={e => pickLiveFlag(e.target.value)} title="Flags: pick one to see the items it covers"
+                        className={`${COMPACT_SELECT_CLS} shrink-0 ${activeFlagValue ? 'border-red-600 bg-red-600 text-white' : 'border-red-400 bg-red-50 text-red-700'} font-extrabold`} style={COMPACT_SELECT_STYLE}>
+                        <option value="">🚩 Flags ({total})</option>
+                        {flags.map(f => <option key={f.value} value={f.value}>{f.key === 'neg_soh' ? '🔻 ' : ''}{f.label} ({f.n})</option>)}
+                      </select>)
+                  })()}
                   <select
                     value={liveGmcTypeFilter ? `gmc:${liveGmcTypeFilter}` : liveSaleFilter ? liveSaleFilter.kind === 'interval' ? `interval:${liveSaleFilter.label}` : liveSaleFilter.kind === 'flag' ? `flag:${liveSaleFilter.key}` : liveSaleFilter.kind : liveCurrentView?.kind === 'violation' ? `violation:${liveCurrentView.key}` : liveCurrentView?.kind === 'aliasWide' ? 'view:aliasWide' : liveCurrentView?.kind === 'serviceMatches' ? 'view:serviceMatches' : liveCurrentView?.kind === 'gmcPacks' ? 'view:gmcPacks' : liveCurrentView?.kind === 'newItem' ? 'view:newItem' : ''}
                     onChange={e => {
