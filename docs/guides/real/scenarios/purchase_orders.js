@@ -2,6 +2,7 @@
 const S = require('../sample')
 module.exports = {
   key: 'purchase_orders',
+  nav: '📑 Purchase Orders',
   url: '/item?tab=loss&view=purchaseOrders',
   mock(p, m, q, body) {
     if (p === '/api/purchase-orders' && m === 'GET') return S.pos

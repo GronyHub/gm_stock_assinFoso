@@ -2,6 +2,7 @@
 const S = require('../sample')
 module.exports = {
   key: 'bills',
+  nav: '📥 Bills',
   url: '/item?tab=loss&mode=bills',
   mock(p, m, q, body) {
     if (p === '/api/bills' && m === 'GET') return S.bills

@@ -1,0 +1,39 @@
+{
+ "chapters": [
+  {
+   "t": 5,
+   "title": "Expenses: money spent running the shop",
+   "text": "This is Expenses, for money spent on running the shop, such as transport, repairs, electricity and rent."
+  },
+  {
+   "t": 14,
+   "title": "Tap + New",
+   "text": "To record an expense, tap plus New."
+  },
+  {
+   "t": 19,
+   "title": "Say what it was for, and the category",
+   "text": "Check the date. Describe what the money was spent on, and pick or type a category, such as transport or rent."
+  },
+  {
+   "t": 31,
+   "title": "Type the amount, then Save Expense",
+   "text": "Type the amount, and tap Save Expense."
+  },
+  {
+   "t": 40,
+   "title": "Find an expense: filter by account",
+   "text": "To find an expense, filter by account, such as Transport, or by type."
+  },
+  {
+   "t": 48,
+   "title": "Or search by words",
+   "text": "Or search by words in the description."
+  },
+  {
+   "t": 55,
+   "title": "Filter: other views, history and analytics",
+   "text": "The Filter menu opens other views, such as history and analytics, and the Flags page shows expenses that need fixing. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

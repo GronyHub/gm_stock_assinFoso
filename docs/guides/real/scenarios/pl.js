@@ -7,6 +7,7 @@ const daily = [3820, 2740, 3105, 1990, 2860, 3410, 2255, 3650, 2480, 2975, 3180,
 const sum = k => daily.reduce((s, d) => s + d[k], 0)
 module.exports = {
   key: 'pl',
+  nav: '💰 P&L',
   url: '/item?tab=loss&view=pl',
   mock(p, m, q, body) {
     if (p === '/api/analysis/profit-loss') return {

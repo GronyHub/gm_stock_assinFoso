@@ -11,6 +11,7 @@ const rows = Array.from({ length: 14 }, (_, i) => {
 })
 module.exports = {
   key: 'cab',
+  nav: '🏦 CAB',
   url: '/item?tab=loss&view=cab',
   mock(p, m, q, body) {
     if (p === '/api/cash-at-bank' && m === 'GET') return rows

@@ -1,0 +1,39 @@
+{
+ "chapters": [
+  {
+   "t": 7,
+   "title": "Vendors: the suppliers we buy from",
+   "text": "This is Vendors, the list of suppliers we buy from. It shows what we have billed with each, what we have paid, and what is still outstanding."
+  },
+  {
+   "t": 19,
+   "title": "Tap + New Vendor",
+   "text": "To add a supplier, tap plus New Vendor."
+  },
+  {
+   "t": 24,
+   "title": "Type their name and phone",
+   "text": "Type the supplier's name and their phone number. The company, email and notes are optional."
+  },
+  {
+   "t": 38,
+   "title": "Tap Save Vendor",
+   "text": "Then tap Save Vendor."
+  },
+  {
+   "t": 43,
+   "title": "Tap a vendor to see their bills and payments",
+   "text": "Tap any vendor to see their bills and payments, and how much is still outstanding."
+  },
+  {
+   "t": 51,
+   "title": "🚩 No contact: vendors to complete",
+   "text": "The red flag button lists vendors with no contact number or location, so you can complete them. Tap it again to see everyone."
+  },
+  {
+   "t": 61,
+   "title": "Or search by name",
+   "text": "Or search for a vendor by name. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

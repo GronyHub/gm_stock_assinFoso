@@ -1,0 +1,29 @@
+{
+ "chapters": [
+  {
+   "t": 7,
+   "title": "Profit &amp; Loss: did the shop make money?",
+   "text": "This is Profit and Loss. It shows whether the shop made money. Only the owner and Joe can open it."
+  },
+  {
+   "t": 17,
+   "title": "At the top: totals for all the time",
+   "text": "At the top are the totals: the cash counted, the bills and expenses paid, the stock losses, and the profit."
+  },
+  {
+   "t": 27,
+   "title": "Then each month",
+   "text": "Below them, each month is shown the same way, so you can see which months did well."
+  },
+  {
+   "t": 34,
+   "title": "And each day: cash, bills, expenses, losses, P/L",
+   "text": "Then each day. It shows the cash counted, the bills and expenses paid, the total cash out, and the day's stock losses. The last column is the profit or loss for the day."
+  },
+  {
+   "t": 49,
+   "title": "The laws and this video: 📜 Laws",
+   "text": "Enter the cash counted every day, so these figures are right. The laws of this page, and this video, are on the Laws button."
+  }
+ ]
+}

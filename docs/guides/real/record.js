@@ -107,6 +107,8 @@ async function main() {
   await mocks(page, sc)
   await page.goto(BASE + withHidden(sc.url), { waitUntil: 'networkidle' })
   await page.waitForTimeout(1200)
+  // Owner pages: a typed link can land on Live while the session is still loading, so open the page from its sidebar button.
+  if (sc.nav) { await page.locator('button', { hasText: new RegExp('^[^A-Za-z]*' + sc.nav.replace(/[^A-Za-z&\s]/g, '').trim() + '\\s*$') }).first().click(); await page.waitForLoadState('networkidle').catch(() => {}); await page.waitForTimeout(1500) }
 
   const h = {
     page,
