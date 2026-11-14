@@ -623,7 +623,7 @@ function LawQuiz({ law, onClose, onDone }: { law: Law; onClose: () => void; onDo
             {res && <p className="mt-1 text-[11px] text-gray-600">{res.results[i].correct ? '✓ Right. ' : '✗ '}{res.results[i].why}</p>}
           </div>
         ))}
-        {res ? <p className={`rounded-xl p-2 text-center text-sm font-bold ${res.score === res.total ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>Your mark: {res.score}/{res.total}. It now shows in your signature column.</p>
+        {res ? <p className={`rounded-xl p-2 text-center text-sm font-bold ${res.score === res.total ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>Your mark: {res.score}/{res.total}. This is practice; it is optional.</p>
           : qs && <button type="button" disabled={busy || answers.filter(a => a !== undefined).length < qs.length} onClick={() => void submit()} className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-bold text-white disabled:opacity-40">Submit my answers</button>}
         <button type="button" onClick={onClose} className="w-full rounded-xl bg-gray-100 py-2 text-sm font-bold text-gray-700">Close</button>
       </div>

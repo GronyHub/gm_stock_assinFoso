@@ -203,7 +203,7 @@ const claim = async (key: string) => (await sql`INSERT INTO penalty_claims (key)
 export async function penaltiesTick(now = new Date()) {
   if (process.env.PENALTIES === 'off') return
   // One-time pilot start (2026-11-12): lateness and absence points are charged from yesterday, and every pilot point is practice that never counts;
-  // the real phase starts on Monday 2026-11-16.
+  // counting starts on the date the owner sets on the Penalty Points page (21 Nov 2026).
   await ensurePenalties()
   if (await claim('attendance-pilot-2026-11-12')) {
     await sql`INSERT INTO penalty_settings (key, value) VALUES ('start_counting', '2026-11-16') ON CONFLICT (key) DO UPDATE SET value = '2026-11-16'`.catch(() => {})
@@ -219,9 +219,9 @@ export async function penaltiesTick(now = new Date()) {
       const st = await getSettings()
       if (day < st.startCounting) {
         const left = Math.max(0, Math.round((Date.parse(st.startCounting) - Date.parse(day)) / 86400000))
-        await reminder('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation will cost 1 point. ${firstTier.points} points = a ${firstTier.label}. Follow the laws and finish the checklist.`)
+        await reminder('Penalty points: learning period', `Points start counting on ${st.startCounting} (${left} days). Each violation costs the points shown on its law (most cost 1). ${firstTier.points} points = a ${firstTier.label}. Follow the laws and finish the checklist.`)
       } else if (day === st.startCounting || (Date.parse(day) - Date.parse(st.startCounting)) / 86400000 < 7) {
-        await reminder('Penalty points are now counting', `Each violation costs 1 point. ${tiersText()}. A clean week removes ${FADE_POINTS} points.`)
+        await reminder('Penalty points are now counting', `Each violation costs the points shown on its law (most cost 1). ${tiersText()}. A clean week removes ${FADE_POINTS} points.`)
       }
     }
   }

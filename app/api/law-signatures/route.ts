@@ -7,7 +7,6 @@ import { actorKey } from '@/lib/clockState'
 import { SIGNERS, isManagerName } from '@/lib/signers'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { NextRequest } from 'next/server'
-import { notifyOwners } from '@/lib/checklistAlerts'
 
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_signatures (
@@ -56,7 +55,7 @@ export async function POST(req: NextRequest) {
     const codes = await sql`SELECT code FROM page_laws WHERE id = ANY(${rows.map(r => Number(r.id))})`
     for (const r of rows) await sql`INSERT INTO law_signatures (law_id, staff, law_hash) VALUES (${r.id}, ${me}, ${r.h}) ON CONFLICT (law_id, staff) DO UPDATE SET law_hash = ${r.h}, signed_at = now()`
     if (rows.length) void recordActivity(me, 'signed laws', `${rows.length} law${rows.length === 1 ? '' : 's'}${codes.length ? ': ' + codes.map(c => c.code).filter(Boolean).slice(0, 4).join(', ') : ''}`)
-    if (rows.length) void notifyOwners(`${cap(me)} signed ${rows.length} law${rows.length === 1 ? '' : 's'}`, codes.map(c => c.code).filter(Boolean).slice(0, 6).join(', ') + (rows.length > 6 ? ` and ${rows.length - 6} more` : ''))
+    // No push: signing was dropped (14 Nov 2026).
     return success({ signed: rows.length })
   } catch (e) { return handleError('law-signatures POST', e) }
 }

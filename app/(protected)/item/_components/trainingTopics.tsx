@@ -110,7 +110,7 @@ export const TOPICS: Topic[] = [
     keywords: 'home feed announcements photos voice notes news',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Tap <strong>Shop</strong> in the sidebar; it opens on <strong>Done</strong> (what was done today): announcements, photos and voice notes, newest first.</p>
+        <p className="text-sm text-gray-700">Tap <strong>Shop</strong> in the sidebar; it opens on <strong>Done</strong>, the record of what was done today: a read-only feed of announcements and the activity log.</p>
       </div>
     ),
   },
@@ -236,7 +236,7 @@ export const TOPICS: Topic[] = [
         <Steps items={[
           <>Find the item in the grid (use the search box or the type/group filters if the list is long).</>,
           <>Tap the <strong>Qty</strong> box on its card and type how many were sold. The <strong>Price</strong> box is already filled in with the normal selling price -- only change it if this sale is at a different price.</>,
-          <>A green <strong>✓</strong> appears next to the boxes once you've typed a quantity -- tap it (or press Enter) to record the sale.</>,
+          <>A red <strong>✓</strong> appears next to the boxes once you've typed a quantity -- tap it to record the sale.</>,
         ]} />
         <p className="text-sm text-gray-700">Every walk-in sale you tap this way lands on <strong>one combined receipt for the day</strong> -- you don't need to open a separate receipt per customer.</p>
         <Callout>Tapping the item <strong>name</strong> instead of the boxes opens its full details (price history, stock, edit) -- that's the only thing that still opens a separate screen.</Callout>
@@ -256,7 +256,7 @@ export const TOPICS: Topic[] = [
           <li><strong>GMC</strong> (Grony Multimedia as Customer) -- for stock the shop takes for its <strong>own internal use</strong>, not a real sale. It is excluded from revenue and profit, and it is how the system explains stock that left the shelf without a walk-in sale (e.g. taking a pack of paper to print in-house). Tapping this shows a loud red warning banner across the top the whole time GMC is selected, precisely so it is hard to leave on by accident.</li>
         </ul>
         <Callout kind="warn">Only use GMC for genuine internal use. A GMC tap that should have been a real sale under-reports revenue; a real sale tapped as GMC does the same in reverse.</Callout>
-        <p className="text-sm text-gray-700">While GMC is selected, the grid also only shows items that already have some GMC history -- a brand-new item can not be GMC-taken for the very first time from here (it needs a normal restock/bill first).</p>
+        <p className="text-sm text-gray-700">While GMC is selected, the grid shows only goods with stock on hand. Services and 'GMC only, no service' items cannot be taken from here.</p>
       </div>
     ),
   },
@@ -294,7 +294,7 @@ export const TOPICS: Topic[] = [
           <p className="text-sm text-gray-700"><strong>How pack conversions work:</strong></p>
           <Steps items={[
             <>You buy a pack (e.g. 1 ream of photo paper). The pack stock goes +1.</>,
-            <>You GMC the pack -- the system knows a pack always converts to its singles, so it automatically credits the singles item instead (e.g. +500 sheets of photo paper). The pack stock goes back to -1 (undo the purchase), and the singles inventory grows.</>,
+            <>You GMC the pack -- the system knows a pack always converts to its singles, so it automatically credits the singles item instead (e.g. +500 sheets of photo paper). The pack stock goes back down by 1 (so the purchase is undone), and the singles inventory grows.</>,
             <>You can now sell the singles individually without ever buying a pack per sale -- the inventory is already there, and GMC-ing the pack was how it got there.</>,
           ]} />
         </div>
@@ -374,7 +374,7 @@ export const TOPICS: Topic[] = [
           <li><strong>Count settings</strong> (see "Changing how often an item is counted" and "Excluding an item from counts" below).</li>
         </ul>
         <p className="text-sm text-gray-700">Save applies immediately -- you do not need to leave the sheet.</p>
-        <Callout>Deleting an item entirely is not done from Live -- that is not done from here, and only works once the item has no sales/bills/count history (otherwise it needs to be merged into another item instead).</Callout>
+        <Callout>Only Grony and Joe can delete an item, and only when it has no sales, bills or count history. Otherwise merge it into another item.</Callout>
       </div>
     ),
   },
@@ -685,7 +685,7 @@ export const TOPICS: Topic[] = [
     keywords: 'neon compute hours free tier suspend polling slow presence staff online bar cost budget',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">The database runs on Neon's <strong>free tier</strong>, which includes a monthly allowance of compute hours -- and Neon only stops billing compute time once the database has sat fully idle (no queries at all) for about <strong>5 minutes straight</strong>.</p>
+        <p className="text-sm text-gray-700">The database is on Neon's <strong>paid plan</strong> (about $7 a month), with polling and caching tuned to keep compute hours down. Neon only stops billing compute time once the database has sat fully idle (no queries at all) for about <strong>5 minutes straight</strong>.</p>
         <p className="text-sm text-gray-700">Several background features used to poll far faster than that -- most notably the "who's online" presence heartbeat (every 15 seconds, from every open tab) and the staff bar's worked-today poll -- which meant the database effectively never got a clean 5-minute gap to suspend during business hours, even when nobody was actively using the app.</p>
         <div className="space-y-1.5 text-sm text-gray-700">
           <p><strong>What changed:</strong></p>
