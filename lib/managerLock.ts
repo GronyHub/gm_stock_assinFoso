@@ -29,8 +29,13 @@ export async function previousWorkingDay(today = dayKey()): Promise<string | nul
 }
 
 // Cash Counted still missing for the previous working day (not excused), or null. Used to make it compulsory before the manager clocks in.
+// The oldest day in the last 7 that still has no Cash Counted (owner, 14 Nov 2026: the manager must enter any missing day), else the previous working day.
+async function dayToCount(today: string): Promise<string | null> {
+  const [m] = await sql`SELECT receipt_date::date::text AS d FROM sales_receipts WHERE customer_name = ${GMC} AND cash_counted IS NULL AND receipt_date::date < ${today}::date AND receipt_date::date >= (${today}::date - 7) ORDER BY receipt_date, id LIMIT 1`.catch(() => [])
+  return m?.d ? String(m.d) : await previousWorkingDay(today)
+}
 export async function missingCashCounted(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
-  const day = await previousWorkingDay(today)
+  const day = await dayToCount(today)
   if (!day) return null
   await ensurePenalties()
   const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
@@ -60,7 +65,7 @@ async function computeLock(today: string): Promise<LockState> {
     // An approver may not carry on while a staff member's clock time from an EARLIER day is still waiting for their decision (requests they may decide: not their own, not one for a clock-out they set).
     const [ap] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND COALESCE(against, '') <> 'joe' AND requested_at < ${today + 'T00:00:00Z'}::timestamptz`.catch(() => [{ n: 0 }])
     const approvals = Number(ap?.n ?? 0)
-    const day = await previousWorkingDay(today)
+    const day = await dayToCount(today)
     if (!day) return { ...OPEN, locked: approvals > 0, approvals }
     const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
     if (ex) return { ...OPEN, locked: approvals > 0, approvals }
