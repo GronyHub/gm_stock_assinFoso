@@ -89,8 +89,8 @@ module.exports = {
       say: 'Give the customer a receipt for every sale. Never force a sale the app refuses: tell Joe. One point each.',
       run: async (h, page) => { await h.point(page.getByRole('button', { name: /Record sale for/ }).first()); await h.wait(800) } },
 
-    { caption: 'Every sale in the app. <b>20 points</b>', lawRe: 'without an entry|steal|pilfer|GM app',
-      say: 'Enter every sale in the app: no sale is ever made without an entry. Twenty points. Never steal or pilfer money, goods or stock belonging to the shop. Twenty points. All sales, bills and expenses are recorded in the G M app. Written work forms are no longer used. One point.',
+    { caption: 'Every sale in the app. <b>Dismissal</b>', lawRe: 'without an entry|steal|pilfer|GM app',
+      say: 'Enter every sale in the app: no sale is ever made without an entry. That is dismissal. Never steal or pilfer money, goods or stock belonging to the shop. That is dismissal too. All sales, bills and expenses are recorded in the G M app. Written work forms are no longer used. One point.',
       run: async (h, page) => { await h.point(page.locator('a[title^="Sales Log"], button:has-text("Sales Log")').first()); await h.wait(1500) } },
 
     { caption: 'Attachments: <b>mark</b> what you have entered first', lawRe: 'attachments',
@@ -121,7 +121,7 @@ module.exports = {
         await page.locator('video').first().scrollIntoViewIfNeeded().catch(() => {}); await h.wait(1500) } },
 
     { caption: 'Penalty points: <b>20</b> = 3 days, <b>30</b> = 1 week, <b>50</b> = dismissal',
-      say: 'The laws are statutory. Breaking one costs penalty points: twenty is a three day suspension, thirty is one week, and fifty is dismissal. The owner approves every sanction. Each day you get one law question; a wrong answer offers the video.',
+      say: 'The laws are statutory. Breaking one costs penalty points: twenty is a three day suspension, thirty is one week, and fifty is dismissal. Not entering a sale, and stealing, are dismissal with no points. The owner approves every sanction. Each day you get one law question; a wrong answer offers the video.',
       run: async (h, page) => {
         const code = page.getByText(/^LS-2\b/).first()
         if (await code.count()) { await code.evaluate(el => el.scrollIntoView({ block: 'center' })); await h.wait(1200); await h.point(code) }
