@@ -3556,8 +3556,8 @@ export function useHubState() {
 
     const cidValue = inlineCidRef.current ?? liveCID
     const labelText = (inlineCidRef.current !== null ? curLabelRef.current : (liveLabelByKey.main ?? '')).trim()
-    // Every Live Sale must say who it is for: a customer (GM number, phone or name) or a label.
-    if (liveSaleType !== 'GMC' && !cidValue && !labelText) {
+    // Every Live sale says who it is for (unless that switch is off): a customer (GM number, phone or name) or a label.
+    if (liveSaleType !== 'GMC' && features.live_who && !cidValue && !labelText) {   // Settings > Switches: 'Ask who a sale is for'
       const msg = 'Say who this sale is for: a customer (GM number, phone or name) or a label such as "Man on motor" or "Policeman".'
       setLiveTapError(msg); showToast(msg, 'error'); setLiveSaving(false)
       return
