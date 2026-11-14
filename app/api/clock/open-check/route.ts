@@ -4,11 +4,12 @@ import sql from '@/lib/db'
 import { actorKey } from '@/lib/clockState'
 import { SIGNERS } from '@/lib/signers'
 import { parseTimeMins } from '@/lib/staffTimes'
-import { ensureAttendance, openRecords, lastActivityMins, setClockOut, to12h, hhmmTo12h, CLOSING_MINS } from '@/lib/attendance'
+import { ensureAttendance, openRecords, lastActivity, setClockOut, to12h, hhmmTo12h, CLOSING_MINS } from '@/lib/attendance'
 import { notifyOwners, pushToUsers } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 
 const today = () => new Date().toISOString().slice(0, 10)
+const NO_ACTIVITY = 'No activity found that day: enter the time you left.'
 
 // GET -- do I owe an answer? { askNow } after 19:00 while I am still clocked in and have not answered; { previous } earlier days I never clocked out of.
 export async function GET() {
@@ -65,8 +66,10 @@ export async function POST(req: NextRequest) {
 
     if (b.action === 'left') {
       if (rec.actual_out) return badRequest('You are already clocked out.')
-      const mins = await lastActivityMins(me, date, inMins)
-      const out = to12h(mins)
+      // With no shop action after the clock-in there is nothing to base a time on: ask for it rather than set a day of no length.
+      const a = await lastActivity(me, date, inMins)
+      if (!a.found) return badRequest(NO_ACTIVITY)
+      const out = to12h(a.mins)
       await setClockOut(me, date, out, 'estimated', 'system')
       await sql`INSERT INTO clock_prompts (day, staff, answer) VALUES (${date === day ? day : date}, ${me}, 'left') ON CONFLICT DO NOTHING`
       return success({ out, basis: 'your last activity in the app' })
@@ -80,7 +83,8 @@ export async function POST(req: NextRequest) {
       if (mins > 23 * 60 + 59) return badRequest('That is not a valid time.')
       const t12 = hhmmTo12h(String(b.time))
       // Until an owner approves, the app's own last-activity time stands in, so the day is never left open.
-      if (!rec.actual_out) await setClockOut(me, date, to12h(await lastActivityMins(me, date, inMins)), 'estimated', 'system')
+      // With no shop action to go on, the time sent stands in (never a day of no length).
+      if (!rec.actual_out) { const a = await lastActivity(me, date, inMins); await setClockOut(me, date, a.found ? to12h(a.mins) : t12, a.found ? 'estimated' : 'entered', a.found ? 'system' : me) }
       await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${me} AND work_date = ${date} AND status = 'pending'`
       const [auto] = await sql`SELECT by_user FROM clock_autos WHERE staff = ${me} AND work_date = ${date}`.catch(() => [])
       const against = auto?.by_user ? String(auto.by_user) : null // a supervisor clocked this person out: they cannot approve the claim against their own action

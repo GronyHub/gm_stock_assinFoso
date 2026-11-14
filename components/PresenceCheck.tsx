@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 type Check = { id: number; by: string; secondsLeft: number }
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
-// After 18:00, when a colleague clocks out and says nobody else is at the shop, the people still clocked in get this prompt: confirm you are here within a minute, or be clocked out at
-// your last action. It looks for a check every 15 seconds while the app is open and visible (after 18:00 only), and a push reaches a phone that is in a pocket.
+// At any time of day, when a colleague clocks out and says nobody else is at the shop, the people still clocked in get this prompt: confirm you are here within a minute, or be clocked out at
+// your last action. It looks for a check every 15 seconds while the app is open and visible, and a push reaches a phone that is in a pocket.
 export default function PresenceCheck() {
   const [check, setCheck] = useState<Check | null>(null)
   const [left, setLeft] = useState(0)
@@ -14,7 +14,7 @@ export default function PresenceCheck() {
   const ended = useRef(false)
   useEffect(() => {
     const look = () => {
-      if (document.visibilityState !== 'visible' || new Date().getUTCHours() < 18) return
+      if (document.visibilityState !== 'visible') return
       fetch('/api/clock/presence', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
         const c: Check | null = d?.check ?? null
         if (c) { ended.current = false; setCheck(c); setLeft(c.secondsLeft) }

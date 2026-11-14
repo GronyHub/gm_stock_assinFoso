@@ -84,7 +84,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const meta = (d: Duty) => ({ who: me1, category: d.category ?? undefined, type: d.typeLabel ?? lawTypeLabel(d.lawType) })
   for (const d of late.slice(0, cap)) {
     const mins = nowMin - d.due
-    add({ key: `task-${d.id}`, icon: '⏳', title: d.title, time: hhmm(d.due), ...meta(d), detail: `Due ${hhmm(d.due)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}. Left undone at day end it costs a point.`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${d.id}` })
+    add({ key: `task-${d.id}`, icon: '⏳', title: d.title, time: hhmm(d.due), ...meta(d), detail: `Due ${hhmm(d.due)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}.${d.lawId != null ? ' Left undone at day end it costs a point.' : ''}`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${d.id}` })
   }
   if (late.length > cap) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - cap} more tasks to do now`, detail: 'Open Waiting for team to see them all.', count: late.length - cap, urgency: 'now', href: '/todo' })
   if (opts.lens === 'notdone') return items.sort((a, b) => (a.urgency === b.urgency ? 0 : a.urgency === 'now' ? -1 : 1))

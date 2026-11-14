@@ -4,7 +4,6 @@ import type { Duty } from '@/lib/duties'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DailyChecklistClient from '@/app/(protected)/standards/DailyChecklistClient'
 import ClockApprovals from '@/components/ClockApprovals'
-import PendingJobsDue from '@/components/PendingJobsDue'
 import { fallsOn } from '@/lib/dutyFilter'
 import ClockNotices from '@/components/ClockNotices'
 import PenaltyDecisions from '@/components/PenaltyDecisions'
@@ -119,7 +118,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
       <div className="mt-2">
         {sel <= today
           ? <DailyChecklistClient key={`${sel}-${refresh}`} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
-              extras={<PendingJobsDue density={density} />} />
+              inlineFor={sel === today && (!person || person === self) ? self : null} />
           : (
             <div className="space-y-1 px-2">
               {fduties === null && <p className="text-sm text-gray-400">Loading…</p>}

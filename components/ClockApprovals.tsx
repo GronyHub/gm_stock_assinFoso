@@ -1,17 +1,15 @@
 'use client'
 import { cap } from '@/lib/strings'
 import { useEffect, useRef, useState } from 'react'
-import TaskTile, { type TileDensity } from '@/components/TaskTile'
+import type { TileDensity } from '@/components/TaskTile'
 import ClockRequestRow from '@/components/ClockRequestRow'
 
 type P = { id: number; staff: string; work_date: string; field?: string; proposed_out: string; actual_in: string | null; estimated: string | null; requested_at?: string; basis?: string | null }
 // For Grony and Joe only: clock-out times staff entered after forgetting, waiting for approval. Not a tile on the Daily Checklist.
-export default function ClockApprovals({ density = 'compact' }: { density?: TileDensity }) {
+export default function ClockApprovals(_props: { density?: TileDensity }) {
   const [list, setList] = useState<P[]>([])
-  const [pendingReviews, setPendingReviews] = useState(0)
   const load = () => {
     fetch('/api/clock/corrections', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setList(d?.pending ?? [])).catch(() => {})
-    fetch('/api/cctv-review?summary=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => setPendingReviews((d?.pending || d?.all || 0))).catch(() => {})
   }
   // Kept fresh: a time sent while this page is open shows up without reloading.
   useEffect(() => {
@@ -44,17 +42,11 @@ export default function ClockApprovals({ density = 'compact' }: { density?: Tile
   const [sent, setSent] = useState('')
   useEffect(() => { fetch('/api/auth/session').then(r => r.json()).then(d => setMe(String(d?.user?.username ?? d?.user?.name ?? '').toLowerCase())).catch(() => {}) }, [])
   async function nudge() { const r = await fetch('/api/clock/nudge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const d = await r.json().catch(() => ({})); setSent(d?.sent ? 'Joe has been prompted.' : 'Nothing is waiting for Joe.') }
-  if (!list.length && !pendingReviews && me !== 'grony') return null
+  if (!list.length && me !== 'grony') return null
   return (
     <>
-      {pendingReviews > 0 && (
-        <div className="flex flex-col gap-1">
-          <TaskTile density={density} icon="🎥" time="48h" title={`CCTV reviews: ${pendingReviews} waiting`} detail="Staff worked while Joe was not clocked in." category="Standing duty" type="Review" who="Joe" tone="border-red-300 bg-red-50"
-            onClick={() => { const ev = { path: '/cctv-review', handled: false }; window.dispatchEvent(new CustomEvent('hub-open', { detail: ev })); if (!ev.handled) window.location.href = '/cctv-review' }} />
-          {me === 'grony' && <button type="button" onClick={() => void nudge()} className="rounded-md bg-[#14213D] px-2 py-1 text-[10px] font-bold text-white">🔔 Prompt Joe</button>}
-          {sent && <span className="text-[10px] text-gray-600">{sent}</span>}
-        </div>)}
-      {pendingReviews === 0 && me === 'grony' && (
+      {/* CCTV reviews show as the "CCTV reviews to do" duty tile, not here. */}
+      {me === 'grony' && (
         <div className="col-span-full flex items-center gap-2"><button type="button" onClick={() => void nudge()} className="rounded-md bg-[#14213D] px-2.5 py-1 text-[11px] font-bold text-white">🔔 Prompt Joe to check</button>{sent && <span className="text-[11px] text-gray-600">{sent}</span>}</div>)}
       {list.length > 0 && (
         <div ref={boxRef} className="col-span-full rounded-xl border-2 border-amber-300 bg-amber-50 p-3">

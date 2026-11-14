@@ -1,5 +1,6 @@
 import sql from '@/lib/db'
 import { addPoint, ensurePenalties } from '@/lib/penalties'
+import { managerWorked } from '@/lib/flagQuota'
 
 // THE DAILY COUNTS LAW (standalone, not a flag). Every working day the manager (Joe) makes sure at least COUNTS_PER_DAY items are counted (a stock count saved
 // in Counts, by anyone). Each day fewer are counted costs the manager 1 penalty point, checked at 19:25.
@@ -14,6 +15,7 @@ export const countsText = (n: number) => `${n} of ${COUNTS_PER_DAY} items counte
 
 export async function assessCounts(day: string) {
   await ensurePenalties()
+  if (!(await managerWorked(day, MANAGER))) return   // no point for a day the manager did not work
   const n = await countsToday(day)
   if (n >= COUNTS_PER_DAY) return
   await addPoint({ staff: MANAGER, points: 1, reason: `Only ${n} of ${COUNTS_PER_DAY} items counted on ${day} (the law: at least ${COUNTS_PER_DAY} counts a day)`, source: 'counts', ref: `counts:${day}`, day, by: 'system' })

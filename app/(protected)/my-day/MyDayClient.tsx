@@ -44,7 +44,8 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
     if (who) { const t = taskId(i); if (t) open(`/todo?tile=${t}`); else if (i.href) open(i.href); return }
     if (i.hub) window.parent.postMessage({ type: 'open-personal', tab: i.hub }, window.location.origin); else if (i.href) window.location.href = i.href
   }
-  const everything = items?.filter(i => !(i.inline && !who && lens !== 'notdone')) ?? []
+  // CCTV reviews keep their duty tile (no separate card any more).
+  const everything = items?.filter(i => !(i.inline && !who && lens !== 'notdone' && !i.key.startsWith('cctv-'))) ?? []
   // "Done" holds only what was really finished; an "all clear" tile (nothing waiting) is not work done.
   const isDone = (i: MyDayItem) => (i.state === 'done' || i.state === 'not') && !i.clear
   const isOver = (i: MyDayItem) => !i.state && i.count > 0 && (i.key.startsWith('task-') || i.key === 'tasks-more' || i.urgency === 'now')

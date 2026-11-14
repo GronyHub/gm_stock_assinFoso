@@ -358,7 +358,7 @@ export default function CustomersPage({
 
   return (
     <div className="space-y-2 pb-10">
-      {/* One compact row: flags and location are dropdowns, then search and the columns picker. On a computer it
+      {/* One compact row: missing details and location are dropdowns, then search and the columns picker. On a computer it
           sits on the top bar beside the staff names (PageToolbar), so the table starts at the very top. Totals
           live in the table's own Sales / Outstanding / Receipts columns. */}
       <PageToolbar>
@@ -366,7 +366,7 @@ export default function CustomersPage({
         <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
           title="Show only customers missing something"
           className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
-          <option value="">🚩 Flags ({FLAG_TYPES.reduce((n, f) => n + (flagCounts[f.key] > 0 ? 1 : 0), 0)})</option>
+          <option value="">Missing details ▾</option>
           {FLAG_TYPES.map(({ key, label }) => (
             <option key={key} value={key} disabled={flagCounts[key] === 0}>{label} ({flagCounts[key]})</option>
           ))}

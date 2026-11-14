@@ -6,9 +6,8 @@ import { parseTimeMins } from '@/lib/staffTimes'
 import { ensureAttendance, lastActivity, setClockOut, to12h } from '@/lib/attendance'
 import { pushToUsers, notifyManagement } from '@/lib/checklistAlerts'
 
-// PRESENCE CHECK. From 18:00, when someone clocks out and says nobody else is still at the shop, every other person still clocked in is asked to confirm they are there. They have
+// PRESENCE CHECK. At any time of day, when someone clocks out and says nobody else is still at the shop, every other person still clocked in is asked to confirm they are there. They have
 // CHECK_SECONDS to confirm. If they do not, they are clocked out at the time of their last shop-only action (the same law as the 7pm "still at the shop?" and the next-day clock-out).
-export const CHECK_FROM_MINS = 18 * 60
 export const CHECK_SECONDS = 60
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 const today = () => new Date().toISOString().slice(0, 10)
@@ -27,7 +26,8 @@ export async function othersStillIn(me: string, day = today()): Promise<string[]
 }
 
 // "Nobody else is here": ask each of the others to confirm.
-export async function raiseChecks(by: string, only?: string[]): Promise<string[]> {
+// quiet: the caller sends one push of its own with this in it (the clock-out push).
+export async function raiseChecks(by: string, only?: string[], quiet = false): Promise<string[]> {
   await ensurePresence()
   const now = new Date()
   const day = today(), all = await othersStillIn(by, day), asked: string[] = []
@@ -42,7 +42,7 @@ export async function raiseChecks(by: string, only?: string[]): Promise<string[]
   }
   if (asked.length) {
     void recordActivity(by, 'said these staff are not at the shop', `${asked.map(cap).join(', ')} (asked to confirm within a minute)`)
-    void notifyManagement(by, `${cap(by)} says ${asked.map(cap).join(' and ')} ${asked.length === 1 ? 'is' : 'are'} not at the shop`, `${asked.map(cap).join(', ')} ${asked.length === 1 ? 'was' : 'were'} asked to confirm within a minute.`)
+    if (!quiet) void notifyManagement(by, `${cap(by)} says ${asked.map(cap).join(' and ')} ${asked.length === 1 ? 'is' : 'are'} not at the shop`, `${asked.map(cap).join(', ')} ${asked.length === 1 ? 'was' : 'were'} asked to confirm within a minute.`)
   }
   return asked
 }

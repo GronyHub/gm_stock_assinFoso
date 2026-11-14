@@ -57,16 +57,15 @@ export async function progress(day: string) {
 
 const msg = (p: Awaited<ReturnType<typeof progress>>) => `${p.fixed} of ${p.needed} flags fixed today. ${p.negOpen > 0 ? `Start with the negative stock: ${p.negOpen} item${p.negOpen === 1 ? '' : 's'} below zero. ` : ''}Open Flags in the left sidebar.`
 
-// During the day: a reminder to the manager while fewer than the needed number are fixed (sent by the minute tick at set times).
-export async function remind(day: string) {
-  const p = await progress(day)
-  if (p.fixed >= p.needed) return
-  await pushToUsers([FLAG_MANAGER], 'Fix today\'s flags', msg(p))
+// Whether the manager clocked in on the day (the daily flags and counts laws apply only to a day he worked).
+export async function managerWorked(day: string, who = FLAG_MANAGER): Promise<boolean> {
+  return (await sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${who} AND work_date = ${day} AND actual_in IS NOT NULL LIMIT 1`.catch(() => [])).length > 0
 }
 
 // Day end: 1 point to the manager if fewer than the needed number were fixed.
 export async function assess(day: string) {
   await ensureFlagQuota()
+  if (!(await managerWorked(day))) return   // no point for a day the manager did not work
   const [done] = await sql`SELECT assessed_at FROM flag_quota WHERE day = ${day}`
   if (done?.assessed_at) return
   const p = await progress(day)

@@ -7,7 +7,6 @@ import { SIGNERS, isManagerName } from '@/lib/signers'
 import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { parseViolations } from '@/lib/lawViolations'
 import { NextRequest } from 'next/server'
-import { notifyOwners } from '@/lib/checklistAlerts'
 
 const ensure = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS law_reminder_confirms (day TEXT NOT NULL, staff TEXT NOT NULL, law_id INTEGER NOT NULL, confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (day, staff, law_id))`.catch(() => {})

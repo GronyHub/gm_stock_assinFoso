@@ -1,9 +1,9 @@
 import sql from '@/lib/db'
 import { addPoint } from '@/lib/penalties'
-import { notifyOwners, reminder } from '@/lib/checklistAlerts'
-import { SIGNERS, OWNER_SIGNERS } from '@/lib/signers'
-import { LAW_AREAS, lawInArea } from '@/lib/lawAreas'
-import { AREA_VIDEO } from '@/lib/lawVideo'
+import { notifyOwners } from '@/lib/checklistAlerts'
+import { SIGNERS, OWNER_SIGNERS, isManagerName } from '@/lib/signers'
+import { videosDue } from '@/lib/videoDue'
+import { featureOn } from '@/lib/featuresServer'
 
 // Laws about the laws. Each is checked by the app once a day (19:25) and costs 1 point. Penalties already treats the first two weeks
 // as a learning period (a warning, not a point), so these start counting then. A law's clock starts when it went live (page_laws.live_at).
@@ -17,7 +17,7 @@ export const META_JOE = [
   { title: 'Complete each CCTV review within 48 hours', violation: 'A CCTV review of a day staff worked without the manager clocked in is still not done 48 hours after it was raised', how: 'Open the CCTV review from the pop-up or Waiting for team\nWatch the times shown, confirm sales and laws, and complete it' },
   { title: 'Decide waiting approvals within 48 hours', violation: 'A clock-out time, sanction or violation waiting for the manager is still undecided 48 hours after it was raised', how: 'Open Waiting for team (Today, Everyone) and the Shop Penalty Points tab\nApprove or reject each one, or ask the staff member a question' },
 ]
-const SEED = 'meta-v1', REMIND_FRACTION = 5 // quiz and video: reminder on day 5 of 7
+const SEED = 'meta-v1'
 
 export async function seedMetaLaws() {
   try {
@@ -49,7 +49,7 @@ export async function seedMetaJoe() {
 // Plain rules the app follows itself. They carry no penalty (points 0): they are written down so staff can read and sign them.
 const RULES = [
   { title: 'Clock out when you leave', audience: 'staff', violation: 'You leave without clocking out. No penalty: the app clocks you out at the time of your last action at the shop (a Live tap or a checklist tick, even after 7pm), tells you, and you tap OK, send the correct time for approval, or tap Remind me later',
-    how: 'Clock out when you leave the shop. You clock in once and out once a day\nFrom 6pm, when a colleague clocks out and says nobody else is at the shop, you have 1 minute to confirm you are still there, or you are clocked out at your last action\nAt 7pm the app asks: are you still at the shop?\nIf you forget, the app clocks you out using your last shop-only action and sends you a prompt\nA time you send is approved by Joe (Joe\'s is approved by Grony)\nWith no shop action to go on, you must enter your time out before you carry on' },
+    how: 'Clock out when you leave the shop. You clock in once and out once a day\nWhen a colleague clocks out, they are asked whether you are still at the shop. If they say No, you have 1 minute to confirm, or you are clocked out at your last action\nAt 7pm the app asks: are you still at the shop?\nIf you forget, the app clocks you out using your last shop-only action and sends you a prompt\nA time you send is approved by Joe (Joe\'s is approved by Grony)\nWith no shop action to go on, you must enter your time out before you carry on' },
   { title: 'Review the CCTV when staff work without the manager', audience: 'managers', violation: 'Days when staff were at work and the manager had not clocked in are not reviewed on CCTV. No penalty here: the 48-hour law carries the point',
     how: 'The app lists the days and the times staff worked without the manager\nWatch the CCTV for those times\nConfirm that every sale was entered and every law was kept\nIf not, log a violation or send a question to the staff member' },
 ]
@@ -73,17 +73,13 @@ export async function metaTickJoe(day: string) {
   const reviews = await sql`SELECT work_date::text AS d FROM cctv_reviews WHERE status = 'pending' AND created_at < now() - interval '48 hours'` as unknown as { d: string }[]
   for (const r of reviews) await addPoint({ staff: 'joe', reason: `${cctv.code ?? ''}: the CCTV review of ${r.d} was not done within 48 hours`, source: 'meta', ref: `cctv:${r.d}`, lawId: cctv.id, lawCode: cctv.code, violation: 'CCTV review not done within 48 hours', by: 'system', day })
   const waiting = [
-    ...(await sql`SELECT 'clock:' || id AS k, 'a clock-out time' AS w FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND requested_at < now() - interval '48 hours'`),
+    ...(await sql`SELECT 'clock:' || id AS k, 'a clock-out time' AS w FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND COALESCE(against, '') <> 'joe' AND requested_at < now() - interval '48 hours'`),
     ...(await sql`SELECT 'sanction:' || id AS k, 'a sanction' AS w FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe' AND created_at < now() - interval '48 hours'`),
     ...(await sql`SELECT 'viol:' || id AS k, 'a violation' AS w FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe' AND created_at < now() - interval '48 hours'`),
   ] as unknown as { k: string; w: string }[]
   let n = 0
   for (const x of waiting) { if (n >= 3) break; if (await addPoint({ staff: 'joe', reason: `${dec.code ?? ''}: ${x.w} was left waiting for more than 48 hours`, source: 'meta', ref: x.k, lawId: dec.id, lawCode: dec.code, violation: 'Approval left waiting 48 hours', by: 'system', day })) n++ }
 }
-
-const claim = async (key: string) => (await sql`INSERT INTO penalty_claims (key) VALUES (${key}) ON CONFLICT DO NOTHING RETURNING key`).length > 0
-const hours = (since: string | Date) => (Date.now() - new Date(since).getTime()) / 3600000
-type L = { id: number; code: string | null; title: string | null; category: string | null; subcategory: string | null; live_at: string }
 
 export async function metaTick(day: string) {
   try {
@@ -95,9 +91,10 @@ export async function metaTick(day: string) {
     await sql`CREATE TABLE IF NOT EXISTS penalty_claims (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`
   } catch (e) { console.error('meta tick setup failed:', e instanceof Error ? e.message : String(e)); return }
   const staff = SIGNERS.filter(s => !OWNER_SIGNERS.includes(s))
-  const laws = await sql`SELECT id, code, title, category, subcategory, live_at FROM page_laws WHERE status = 'live' AND audience = 'staff' AND seed IS DISTINCT FROM ${SEED} AND live_at IS NOT NULL` as unknown as L[]
+  // A prompt switched off in Settings > Switches is never shown, so it cannot cost a point.
+  const [loginOn, videoOn] = [await featureOn('law_reminder'), await featureOn('video_gate')]
   const metaCode = async (i: number) => (await sql`SELECT code FROM page_laws WHERE seed = ${SEED} ORDER BY id OFFSET ${i} LIMIT 1`)[0]?.code as string | undefined
-  const [cSign, cQuiz, cVid, cLogin] = [await metaCode(0), await metaCode(1), await metaCode(2), await metaCode(3)]
+  const [cVid, cLogin] = [await metaCode(2), await metaCode(3)]
   const metaId = async (i: number) => Number((await sql`SELECT id FROM page_laws WHERE seed = ${SEED} ORDER BY id OFFSET ${i} LIMIT 1`)[0]?.id) || null
   const ids = [await metaId(0), await metaId(1), await metaId(2), await metaId(3)]
   await metaTickJoe(day).catch(e => console.error('meta joe failed:', e instanceof Error ? e.message : String(e)))
@@ -110,32 +107,13 @@ export async function metaTick(day: string) {
       const r = await addPoint({ staff: s, points: pts, reason: `${code ? code + ': ' : ''}${why}`, source: 'meta', ref, lawId: ids[i], by: 'system', lawCode: code ?? null, violation: why })
       if (r) { awarded++; void notifyOwners(`Automatic point: ${s}`, why) }
     }
-    // 1. signatures: dropped (2026-11-13) -- the laws are statutory, nobody signs them.
-    const signed = new Set((await sql`SELECT law_id FROM law_signatures WHERE staff = ${s}`).map(r => Number(r.law_id)))
-    for (const l of [] as typeof laws) {
-      if (signed.has(l.id)) continue
-      const h = hours(l.live_at)
-      if (h >= 24) await award(0, cSign, `sign:${l.id}`, `${l.code ?? (l.title ? `"${String(l.title).slice(0, 60)}"` : 'A law')} was not signed within 24 hours of going live`)
-      else if (h >= 16 && await claim(`signrem:${l.id}:${s}`)) void reminder([s], 'Sign the new law', `${l.code ?? ''} ${l.title ?? ''} must be signed within 24 hours. Open Company Laws.`)
+    // 1. signatures and 2. quizzes: dropped (2026-11-13) -- the laws are statutory, nobody signs them; the daily law question replaces the quizzes.
+    // 3. videos: only the tile videos the person is actually shown (videosDue: staff tiles with a video, not owner-only), overdue 7 days after going live.
+    if (videoOn) {
+      for (const v of await videosDue(s)) if (v.overdue) await award(2, cVid, `video:${v.key}`, `The ${v.label} video was not watched to the end within 7 days`)
     }
-    // 2 + 3. quiz and video per tile, 7 days after the tile's first law went live
-    for (const a of LAW_AREAS) {
-      const inArea = laws.filter(l => lawInArea(a, l))
-      if (!inArea.length) continue
-      const first = inArea.map(l => l.live_at).sort()[0], d = hours(first) / 24
-      if (d < REMIND_FRACTION - 1) continue
-      // Quizzes: dropped (2026-11-13) -- the daily law question replaces them, so no reminder and no point.
-      if (a.training && (false as boolean)) {
-        const [p] = await sql`SELECT 1 FROM law_quiz_results WHERE staff = ${s} AND category = ${a.training} AND passed LIMIT 1`
-        if (!p) { if (d >= 7) await award(1, cQuiz, `quiz:${a.key}`, `The ${a.label} quiz was not passed within 7 days`); else if (await claim(`quizrem:${a.key}:${s}`)) void reminder([s], 'Quiz due tomorrow', `Pass the ${a.label} quiz in Company Laws.`) }
-      }
-      if (AREA_VIDEO[a.key] || a.video || a.training) {
-        const [w] = await sql`SELECT 1 FROM law_video_views WHERE staff = ${s} AND area = ${a.key} LIMIT 1`
-        if (!w) { if (d >= 7) await award(2, cVid, `video:${a.key}`, `The ${a.label} video was not watched to the end within 7 days`); else if (await claim(`videorem:${a.key}:${s}`)) void reminder([s], 'Video due tomorrow', `Watch the ${a.label} video to the end in Company Laws.`) }
-      }
-    }
-    // 4. login reminders on a day worked
-    const login = await sql`SELECT id FROM page_laws WHERE status = 'live' AND audience = 'staff' AND reminder = 'login'` as unknown as { id: number }[]
+    // 4. login reminders on a day worked: the same laws the reminder screen shows this person (app/api/law-reminders GET).
+    const login = loginOn ? await sql`SELECT id FROM page_laws WHERE status = 'live' AND law_type = 'standing' AND reminder = 'login' AND (audience <> 'managers' OR ${isManagerName(s)}) ORDER BY id` as unknown as { id: number }[] : []
     if (login.length) {
       const done = new Set((await sql`SELECT law_id FROM law_reminder_confirms WHERE staff = ${s} AND day = ${day}`).map(r => Number(r.law_id)))
       if (login.some(l => !done.has(l.id))) await award(3, cLogin, `login:${day}`, `The login law reminder was not confirmed on ${day}`)

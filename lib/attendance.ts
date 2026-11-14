@@ -4,7 +4,7 @@ import { recordActivity } from '@/lib/logger'
 import { isShopDay } from '@/lib/rota'
 import { once } from '@/lib/once'
 import { parseTimeMins } from '@/lib/staffTimes'
-import { notifyOwners, pushToUsers, reminder } from '@/lib/checklistAlerts'
+import { pushToUsers, reminder } from '@/lib/checklistAlerts'
 import { SIGNERS } from '@/lib/signers'
 import { CHECKLIST_START } from '@/lib/dailyChecksShared'
 import { metaTick } from '@/lib/metaLaws'
@@ -159,73 +159,32 @@ export async function detectReviews(throughDay: string, includeToday: boolean) {
 
 const claim = async (key: string) => { await sql`CREATE TABLE IF NOT EXISTS penalty_claims (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`; return (await sql`INSERT INTO penalty_claims (key) VALUES (${key}) ON CONFLICT DO NOTHING RETURNING key`).length > 0 }
 
-// Once a minute (instrumentation.ts): 19:00 still-at-the-shop push; 19:40 review detection; reminders for the owners every 2 hours.
+// Once a minute (instrumentation.ts): presence-check expiry; the flags and counts laws; 19:40 review detection; the clock-out catch-ups.
+// Timed reminders are shown on screen only (owner's rule: a push is only for something a person did), so nothing here pushes.
 export async function attendanceTick(now = new Date()) {
   if (process.env.ATTENDANCE === 'off') return
   const day = now.toISOString().slice(0, 10)
   if (!(await isShopDay(day))) return
   const hm = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`
-  const min = now.getUTCMinutes(), hr = now.getUTCHours()
-  if (hr >= 18) await (await import('./presenceCheck')).expireDue().catch(() => {})   // presence checks nobody confirmed in time
-  // The daily flags law: the morning list at 08:00, reminders to the manager through the day, the check at 19:25.
-  if (['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '19:25'].includes(hm) && await claim(`flags:${hm}:${day}`)) {
+  await (await import('./presenceCheck')).expireDue().catch(() => {})   // presence checks nobody confirmed in time (raised at any hour)
+  // The daily flags law: the morning list at 08:00 and the check at 19:25. Progress through the day is on screen only (no timed push).
+  // The 7pm "are you still at the shop?" question is on screen too (GET /api/clock/open-check).
+  if (['08:00', '19:25'].includes(hm) && await claim(`flags:${hm}:${day}`)) {
     const fq = await import('./flagQuota'), cq = await import('./countQuota')
     if (hm === '08:00') await fq.snapshot(day).catch(() => {})
-    else if (hm === '19:25') {
+    else {
       await fq.assess(day).catch(e => console.error('flags assess failed:', e instanceof Error ? e.message : String(e)))
       await cq.assessCounts(day).catch(e => console.error('counts assess failed:', e instanceof Error ? e.message : String(e)))
-    } else {
-      // One reminder to the manager covering both daily laws, only for the ones still short.
-      const p = await fq.progress(day).catch(() => null), n = await cq.countsToday(day)
-      const parts = [p && p.fixed < p.needed ? `Flags: ${fq.progressText(p)}` : '', n < cq.COUNTS_PER_DAY ? `Counts: ${cq.countsText(n)}` : ''].filter(Boolean)
-      if (parts.length) await (await import('./checklistAlerts')).pushToUsers(['joe'], 'Today\'s flags and counts', parts.join(' ')).catch(() => {})
     }
-  }
-  if (hm === '19:00' && await claim(`stillhere:${day}`)) {
-    await ensureAttendance()
-    const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
-    const who = rows.map(r => r.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
-    if (who.length) await reminder(who, 'Are you still at the shop?', 'It is 7pm and you have not clocked out. Open the app and tell us.')
   }
   if (hm === '19:40' && await claim(`cctv:${day}`)) { await detectReviews(day, true) }
-  if (hm === '08:15' && await claim(`joeheads:${day}`)) {
-    await reminder(['joe'], 'Today: what earns a penalty point', 'Every checklist task left undone, a CCTV review or a decision waiting more than 48 hours, and a law not signed or confirmed. The app adds these itself.')
-  }
-  if (hm === '18:30' && await claim(`closingrem:${day}`)) {
-    // Nudge whoever is at the shop if the closing report (Waiting for team) is still not answered.
-    const [r] = await sql`SELECT 1 FROM closing_reports WHERE work_date = ${day}`.catch(() => [])
-    if (!r) {
-      const rows = await sql`SELECT LOWER(staff_name) AS n FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__'` as unknown as { n: string }[]
-      const who = rows.map(x => x.n).filter(n => SIGNERS.includes(n) && n !== 'grony')
-      if (who.length) await reminder(who, 'Closing report', 'The closing report is not answered yet. Open Waiting for team and tap Answer now.')
-    }
-  }
   if (hm === '19:25' && await claim(`meta:${day}`)) { await metaTick(day).catch(e => console.error('meta tick failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '07:00' && await claim(`cctvcatch:${day}`)) { await detectReviews(day, false) }
   // Every morning: anyone with an earlier day still open is asked to enter their time out (they cannot go on in the app until they do).
   if (hm === '07:10' && await claim(`autoclock:${day}`)) { await autoClockOut(day).catch(e => console.error('auto clock-out failed:', e instanceof Error ? e.message : String(e))) }
   if (hm === '23:30' && await claim(`autoclocktoday:${day}`)) { await autoClockOut(day, true).catch(() => {}) }
   if (await claim('autoretro-v1')) { await autoClockOut(day).catch(e => console.error('auto clock-out retro failed:', e instanceof Error ? e.message : String(e))) }
-  if (hm === '07:30' && await claim(`openprev:${day}`)) {
-    await ensureAttendance()
-    for (const n of SIGNERS.filter(x => x !== 'grony')) {
-      const open = (await openRecords(n)).filter(r => r.d < day)
-      if (open.length) await reminder([n], 'You did not clock out', `${open.length} day${open.length === 1 ? '' : 's'} without a time out (${open.slice(0, 3).map(o => o.d).join(', ')}). Open the app and enter your time out.`)
-    }
-  }
-  if (min === 0 && hr >= 8 && hr <= 20 && hr % 2 === 0) {
-    await ensureAttendance()
-    if (await claim(`remind:${day}:${hr}`)) {
-      const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe'`
-      if (Number(n) > 0) await notifyOwners('Clock-out times to approve', `${n} correction${Number(n) === 1 ? '' : 's'} waiting for you. Open your profile (Waiting for me).`)
-      const [{ j }] = await sql`SELECT COUNT(*)::int AS j FROM clock_corrections WHERE status = 'pending' AND staff = 'joe'`
-      if (Number(j) > 0) await reminder(['grony'], 'Joe\'s clock-out time to approve', 'Open your profile (Waiting for me).')
-      const [{ sn }] = await sql`SELECT COUNT(*)::int AS sn FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe'`.catch(() => [{ sn: 0 }])
-      const [{ dp }] = await sql`SELECT COUNT(*)::int AS dp FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe'`.catch(() => [{ dp: 0 }])
-      if (Number(sn) + Number(dp) > 0) await reminder(['joe'], 'Decisions waiting for you', `${Number(sn) ? sn + ' sanction(s) to approve. ' : ''}${Number(dp) ? dp + ' violation(s) to confirm or review.' : ''} Open Penalties.`)
-      const [{ r }] = await sql`SELECT COUNT(*)::int AS r FROM cctv_reviews WHERE status = 'pending' AND work_date < ${day}`
-      if (Number(r) > 0) await reminder(['joe'], 'CCTV review still due', `${r} day${Number(r) === 1 ? '' : 's'} waiting for your review.`)
-    }
-  }
+  // The 08:15 heads-up, the 07:30 "you did not clock out", the 18:30 closing report, the 7pm question and the 2-hourly "waiting for you" lines
+  // are shown on screen (Waiting for me, the clock cards), not pushed, so the tick does nothing for them.
 }
 export { cap }

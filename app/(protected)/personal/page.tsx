@@ -1,6 +1,6 @@
-'use client'
-import PersonalTab from '../item/_components/PersonalTab'
+import { redirect } from 'next/navigation'
 
+// Personal (Payslips, Profile) is each person's own page in the hub now.
 export default function PersonalPage() {
-  return <PersonalTab />
+  redirect('/item?me=payslips')
 }

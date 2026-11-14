@@ -877,20 +877,27 @@ export function useHubState() {
     if (path === '/staff-times') return { tab: 'times', src: path }
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
-  const openEmbed = (path: string) => { setPersonal(null); const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
+  // Old standalone pages that are now a tab of the signed-in person's own page (they redirect to /item?me=<tab>).
+  const MINE_PATHS: Record<string, string> = { '/my-day': 'waiting', '/profile': 'profile', '/payslips': 'payslips', '/personal': 'payslips', '/staff': 'times' }
   const usernameRef = useRef('')
-  const wantMyDay = useRef(false)
+  const wantMine = useRef<string | null>(null)
+  // Opens my own page on a tab; before the signed-in name is known it waits (see the [username] effect below).
+  const openMine = (tab: string) => { setEmbedUrl(null); setShop(null); if (usernameRef.current) setPersonal({ name: usernameRef.current, tab }); else wantMine.current = tab }
+  const openEmbed = (path: string) => { setPersonal(null); const mine = MINE_PATHS[path.split('?')[0]]; if (mine) { openMine(mine); return } const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
-    const open = new URLSearchParams(window.location.search).get('open')
+    const qs = new URLSearchParams(window.location.search)
+    const open = qs.get('open'), me = qs.get('me')
     if (doneTabLink) setShop({ tab: 'home' })
-    if (open === '/my-day') wantMyDay.current = true   // opened below, once the signed-in name is known (the session is often still loading at this moment)
+    // ?me=<tab> opens my own page on that tab (e.g. /item?me=payslips), once the signed-in name is known.
+    if (me) wantMine.current = me
+    else if (open && MINE_PATHS[open]) wantMine.current = MINE_PATHS[open]
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
-    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) { const r = shopRoute(e.data.path); if (r) { setEmbedUrl(null); setPersonal(null); setShop(r) } else { setShop(null); setPersonal(null); setEmbedUrl(e.data.path) } }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
-    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; if (d.path === '/my-day') { setEmbedUrl(null); setShop(null); setPersonal({ name: usernameRef.current, tab: 'waiting' }) } else { setPersonal(null); const r = shopRoute(d.path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(d.path) } } }
+    const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; openEmbed(d.path) }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
     return () => { window.removeEventListener('message', msg); window.removeEventListener('open-staff-member', own); window.removeEventListener('hub-open', hubOpen) }
   }, [])
@@ -1033,6 +1040,7 @@ export function useHubState() {
     // to stay explicit, or a bare /item on refresh would land back on Loss
     // instead of wherever Today's own state actually was.
     if (outerTab !== 'loss') params.set('tab', outerTab); else params.delete('tab')
+    params.delete('me')   // ?me= is a one-time "open my page" link
     // Alias Wide Table/Service Matches/Name Conflicts are sub-views of
     // Items itself (lossView stays 'items') -- they still need their own
     // ?view= entry, or leaving/refreshing on one of them silently drops
@@ -1310,8 +1318,10 @@ export function useHubState() {
   const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
   usernameRef.current = username
   // "Open my page" requested before the session had loaded (a link to /item?open=/my-day): open it as soon as the name is known, never with an empty name
-  useEffect(() => { if (wantMyDay.current && username) { wantMyDay.current = false; setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab: 'waiting' }) } }, [username])
+  useEffect(() => { if (wantMine.current && username) { const tab = wantMine.current; wantMine.current = null; setEmbedUrl(null); setShop(null); setPersonal({ name: username, tab }) } }, [username])
   const isOwnerOrJoe = role === 'owner' || username.toLowerCase() === 'joe'
+  // The Shop's Penalty Points tab is the owner's and Joe's list; anyone else sees their own points on their page.
+  useEffect(() => { if (shop?.tab === 'penalties' && session?.user && username && !isOwnerOrJoe) openPersonal(username, 'violations') }, [shop, session, username, isOwnerOrJoe]) // eslint-disable-line react-hooks/exhaustive-deps
   // Flags are for managers only: the owners and Bino. Everyone else never sees a flag (except Negative Stock on Live Sale).
   const showFlags = isOwnerOrJoe || isManagerName(username)
   const fl = (n: number) => showFlags ? n : undefined

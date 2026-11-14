@@ -39,7 +39,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
-      {/* Inside the Shop's Violations tab the tab already names the page, so the header goes. */}
+      {/* Inside the Shop's Penalty Points tab the tab already names the page, so the header goes. */}
       {!inShop && <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Penalty points</h1>
@@ -97,9 +97,9 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
             </div>)
           const a = d.recent.filter(costs), b = d.recent.filter(e => !costs(e))
           return (<>
-            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Violations that add penalty points ({a.length})</p>
+            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Penalty points that count ({a.length})</p>
             <div className="mb-4 space-y-1">{a.map(row)}{a.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
-            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Violations recorded without points ({b.length})</p>
+            <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Recorded without points ({b.length})</p>
             <p className="mb-1 text-[11px] text-gray-500">On record, but they add nothing to the total: ones that count towards a later point, and pilot or warning ones from before points started counting.</p>
             <div className="space-y-1">{b.map(row)}{b.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
           </>)

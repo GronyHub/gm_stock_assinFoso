@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-// Replaced by the Items hub (sidebar + staff bar stay on screen): old links and bookmarks land on the matching hub view.
+// Payslips is a tab on each person's own page in the hub.
 export default function Page() {
-  redirect('/item?view=staffPayslips')
+  redirect('/item?me=payslips')
 }

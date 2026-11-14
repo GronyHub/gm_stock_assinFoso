@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const b = await req.json().catch(() => ({}))
     const custom = String(b.what ?? '').trim().slice(0, 200)
     const [{ r }] = await sql`SELECT COUNT(*)::int AS r FROM cctv_reviews WHERE status = 'pending'`
-    const [{ c }] = await sql`SELECT COUNT(*)::int AS c FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe'`
+    const [{ c }] = await sql`SELECT COUNT(*)::int AS c FROM clock_corrections WHERE status = 'pending' AND staff <> 'joe' AND COALESCE(against, '') <> 'joe'`
     const [{ sn }] = await sql`SELECT COUNT(*)::int AS sn FROM penalty_sanctions WHERE status = 'proposed' AND staff <> 'joe'`.catch(() => [{ sn: 0 }])
     const [{ dp }] = await sql`SELECT COUNT(*)::int AS dp FROM staff_penalties WHERE status IN ('pending', 'disputed') AND staff <> 'joe'`.catch(() => [{ dp: 0 }])
     const parts = [custom, Number(sn) ? `${sn} sanction${Number(sn) === 1 ? '' : 's'} to approve` : '', Number(dp) ? `${dp} violation${Number(dp) === 1 ? '' : 's'} to confirm or review` : '', Number(r) ? `${r} CCTV review${Number(r) === 1 ? '' : 's'}` : '', Number(c) ? `${c} clock-out time${Number(c) === 1 ? '' : 's'} to approve` : ''].filter(Boolean)

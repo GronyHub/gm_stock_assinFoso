@@ -27,15 +27,23 @@ export function usePenalty(): PenaltyMe | null {
 export const band = (p: number) => p >= 20 ? { name: 'red', cls: 'bg-red-600 text-white' } : p >= 10 ? { name: 'amber', cls: 'bg-amber-400 text-gray-900' } : { name: 'green', cls: 'bg-green-500 text-white' }
 
 // Small pill with the signed-in person's penalty points; shown at the top of the sidebar and the profile.
-export function PenaltyChip({ className = '' }: { className?: string }) {
+// A tap opens the person's own page on its Penalty Points tab (inside the hub), else /profile.
+export function PenaltyChip({ className = '', name }: { className?: string; name?: string }) {
   const p = usePenalty()
   if (!p) return null
   const b = band(p.points)
+  const open = (e: React.SyntheticEvent) => {
+    e.stopPropagation(); e.preventDefault()
+    const d = { name: name ?? '', tab: 'violations', handled: false }
+    if (name) window.dispatchEvent(new CustomEvent('open-staff-member', { detail: d }))
+    if (!d.handled) window.location.href = '/profile'
+  }
   return (
-    <a href="/profile" title={p.learning ? `Pilot until ${p.countingFrom}: ${p.pilotPoints ?? 0} pilot points; none count yet` : 'Your penalty points'}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none ${p.learning ? 'bg-blue-100 text-blue-900' : b.cls} ${className}`}>
+    <span role="button" tabIndex={0} onClick={open} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') open(e) }}
+      title={p.learning ? `Pilot until ${p.countingFrom}: ${p.pilotPoints ?? 0} pilot points; none count yet` : 'Your penalty points'}
+      className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full px-1.5 py-px text-[9px] font-extrabold leading-none ${p.learning ? 'bg-blue-100 text-blue-900' : b.cls} ${className}`}>
       ⚖ {p.learning ? p.pilotPoints ?? 0 : p.points}
-    </a>
+    </span>
   )
 }
 
@@ -55,22 +63,24 @@ export function PenaltyCard({ staff }: { staff?: string } = {}) {
     await reloadPenalty()
   }
   if (!p) return null
-  const b = band(p.points)
+  // During the pilot the practice points are shown (they reset when counting starts).
+  const shown = p.learning ? p.pilotPoints ?? 0 : p.points
+  const b = band(shown)
   const target = p.next?.points ?? 50
-  const pct = Math.min(100, Math.round((p.points / target) * 100))
+  const pct = Math.min(100, Math.round((shown / target) * 100))
   const live = p.sanctions.find(s => s.status === 'approved' && s.end_date && s.end_date >= new Date().toISOString().slice(0, 10))
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-center gap-3">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl font-extrabold ${b.cls}`}>{p.points}</div>
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl font-extrabold ${p.learning ? 'bg-blue-100 text-blue-900' : b.cls}`}>{shown}</div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-gray-900">Penalty points</p>
+          <p className="text-sm font-bold text-gray-900">{p.learning ? 'Pilot penalty points' : 'Penalty points'}</p>
           <p className="text-[11px] text-gray-500">{p.next ? `At ${p.next.points}: ${p.next.label}${p.next.hours ? ` (${p.next.hours} hours deducted)` : ''}` : 'Dismissal level reached'}</p>
         </div>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-100"><div className={`h-full ${b.name === 'red' ? 'bg-red-500' : b.name === 'amber' ? 'bg-amber-400' : 'bg-green-500'}`} style={{ width: `${pct}%` }} /></div>
       <p className="mt-1 text-[10px] text-gray-500">Levels: {TIERS.map(t => `${t.points} = ${t.label}${t.hours ? ` (${t.hours} hours deducted)` : ''}`).join(' · ')}</p>
-      {p.learning && <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-800">Learning period until {dlabel(p.countingFrom)}. Violations are warnings for now and do not count. You have {p.warnings} warning{p.warnings === 1 ? '' : 's'}. After that date each violation costs 1 point.</p>}
+      {p.learning && <p className="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-semibold text-blue-800">PILOT until {dlabel(p.countingFrom)}: these points are practice and reset. From then each violation costs the points shown on its law.</p>}
       {!p.learning && p.points > 0 && p.fadeIn != null && <p className="mt-2 text-[11px] font-semibold text-green-700">Keep a clean record: 5 points come off in {p.fadeIn === 0 ? 'a day or less' : `${p.fadeIn} day${p.fadeIn === 1 ? '' : 's'}`}.</p>}
       {live && <p className="mt-2 rounded-lg bg-red-50 p-2 text-[11px] font-bold text-red-700">Suspended from {live.start_date} to {live.end_date}, with {live.hours} hours deducted.</p>}
       {p.sanctions.some(s => s.status === 'proposed') && <p className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] font-bold text-amber-800">A sanction has been recommended and is waiting for the owner&apos;s decision.</p>}

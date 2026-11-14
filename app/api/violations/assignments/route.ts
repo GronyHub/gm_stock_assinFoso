@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
         const label = violation_label || violation_type
         const deadlineNote = deadline ? ` (deadline ${deadline})` : ''
         await logActivity(actor, 'assigned task', `'${label}' to ${staff_name}${deadlineNote}`)
+        // The person given the task is told (a person did it: Joe or the owner assigned it).
+        void (await import('@/lib/checklistAlerts')).pushToUsers([String(staff_name).toLowerCase()], 'A task for you', `${actor} gave you '${label}'${deadlineNote}.`)
       } else {
         await sql`DELETE FROM violation_assignments WHERE violation_type = ${violation_type}`
       }

@@ -22,10 +22,9 @@ export async function getClockState(day: string): Promise<ClockState> {
     const i = parseTimeMins(r.actual_in); if (i != null && i < openMin) { openMin = i; opener = r.name }
     const o = r.actual_out ? parseTimeMins(r.actual_out) : null; if (o != null && o >= outMin) { outMin = o; lastOut = r.name }
   }
-  // The rota names the Opener and the Closer when it can: a person who is on the rota for that role and actually clocked in carries it.
+  // The Opener is the first to clock in (owner, 14 Nov 2026). The rota still names the Closer when it can: a person on the rota as Closer who clocked in carries it.
   const rr = await rotaRolesFor(day)
   const everIn = rows.map(r => r.name)
-  if (rr?.opener && everIn.includes(rr.opener)) opener = rr.opener
   if (rr?.closer && everIn.includes(rr.closer)) lastOut = rr.closer
   // Until anyone has clocked out the rota's Closer carries the closing tasks (before this they showed on everyone's list).
   else if (lastOut == null && rr?.closer) lastOut = rr.closer

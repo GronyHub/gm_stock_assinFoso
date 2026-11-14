@@ -360,8 +360,9 @@ export async function POST(req: NextRequest) {
       } else {
         const gone = (Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()) : []).filter((x: string) => stillIn.includes(x))
         const here = stillIn.filter(n => !gone.includes(n)).map(n => n.charAt(0).toUpperCase() + n.slice(1))
-        if (here.length) void recordActivity(who, 'said others are still at the shop', here.join(', '))
-        await raiseChecks(me, gone).catch(() => [])
+        if (here.length) { void recordActivity(who, 'said others are still at the shop', here.join(', ')); extra.push(`says ${here.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} ${here.length === 1 ? 'is' : 'are'} still at the shop`) }
+        const asked = await raiseChecks(me, gone, true).catch(() => [] as string[])
+        if (asked.length) extra.push(`says ${asked.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' and ')} ${asked.length === 1 ? 'is' : 'are'} NOT at the shop (asked to confirm within a minute)`)
       }
     }
 

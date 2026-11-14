@@ -79,7 +79,7 @@ export async function addPoint(a: Add) {
 export async function afterChange(staff: string, before: number, after: number) {
   for (const lvl of WARN_AT) {
     if (before < lvl && after >= lvl) {
-      void pushToUsers([staff], `You have ${after} penalty points`, `At ${firstTier.points} points the sanction is a ${firstTier.label}. Keep the laws and the checklist.`)
+      void pushToUsers([staff], `You have ${after} penalty points`, `At ${firstTier.points} points the sanction is a ${firstTier.label}. Keep the laws and the tasks in Waiting for team.`)
       void notifyDeciders(staff, `${cap(staff)} reached ${after} penalty points`, `Early warning: ${firstTier.points} points means a ${firstTier.label}.`)
     }
   }
@@ -132,7 +132,7 @@ export async function confirmPending(id: number, by: string) {
   await sql`UPDATE staff_penalties SET status = 'active', counted = ${counted}, created_by = ${by} WHERE id = ${id}`
   void recordActivity(by, 'confirmed a violation', `${cap(String(p.staff))} (${p.points})`)
   if (counted) await afterChange(String(p.staff), before, before + Number(p.points))
-  else void pushToUsers([String(p.staff)], 'Penalty point warning (learning period)', 'A report about you was confirmed. After the learning period this will cost a point.')
+  else void pushToUsers([String(p.staff)], 'Penalty point recorded (pilot)', 'A report about you was confirmed. From the start date points count: this would cost the points on its law.')
   return true
 }
 export async function reversePoint(id: number, by: string) {

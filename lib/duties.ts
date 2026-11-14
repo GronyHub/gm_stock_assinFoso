@@ -68,15 +68,15 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
   return out.sort((x, y) => x.due - y.due || x.id - y.id)
 }
 
-// ---- Personal items that have no date of their own and wait until dealt with: tasks a manager assigned, questions, violations to acknowledge, clock matters, decisions, drafts, pending jobs.
+// ---- Personal items that have no date of their own and wait until dealt with: tasks a manager assigned, questions, penalty points to acknowledge, clock matters, decisions, drafts, pending jobs.
 const PERSONAL: Record<string, { title: string; icon: string; type: string; detail: string }> = {
   mytasks: { title: 'Tasks assigned', icon: '📌', type: 'Assigned task', detail: 'Tasks a manager gave them.' },
   queries: { title: 'Questions waiting for an answer', icon: '❓', type: 'Question', detail: 'A supervisor asked about a day they were at work.' },
-  ack: { title: 'Violations to acknowledge', icon: '⚖', type: 'Violation', detail: 'Acknowledge each one, or dispute it with a note.' },
+  ack: { title: 'Penalty points to acknowledge', icon: '⚖', type: 'Violation', detail: 'Acknowledge each one, or dispute it with a note.' },
   'clock-prev': { title: 'A time out is missing', icon: '🕐', type: 'Clock', detail: 'Earlier days without a time out.' },
   'clock-auto': { title: 'Check the clock times', icon: '🕐', type: 'Clock', detail: 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' },
   sanctions: { title: 'Sanctions to approve', icon: '⚖', type: 'Decision', detail: 'A staff member reached a points level.' },
-  violations: { title: 'Violations to confirm or review', icon: '⚖', type: 'Decision', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.' },
+  violations: { title: 'Penalty points to confirm or review', icon: '⚖', type: 'Decision', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.' },
   drafts: { title: 'Draft laws to approve', icon: '📜', type: 'Decision', detail: 'Approving creates the checklist tasks.' },
   'pending-jobs': { title: 'Pending jobs overdue', icon: '🧾', type: 'Customer job', detail: 'Jobs customers left are past the promised date. Finish them, or call the customer.' },
 }
@@ -87,7 +87,9 @@ export async function personalDuties(): Promise<Duty[]> {
   const mk = (key: keyof typeof PERSONAL, owner: string | null, count: number, late: boolean, extra?: string): Duty => ({ kind: 'standing', key: `s:${key}:${owner ?? 'team'}`, id: -1, title: PERSONAL[key].title, time: '', due: 24 * 60 + 1, owner, role: null,
     category: 'Standing duty', lawType: null, lawId: null, href: STAND_HREF[key], typeLabel: PERSONAL[key].type, state: late ? 'late' : 'now', count, detail: `${PERSONAL[key].detail}${extra ? ' ' + extra : ''}` })
   try {
-    const r = await sql`SELECT LOWER(assigned_to) AS p, COUNT(*)::int AS n, MIN(substr(due_date::text, 1, 10)) AS first_due FROM custom_tasks WHERE assigned_to IS NOT NULL AND NOT COALESCE(done, false) AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${todayKey}) GROUP BY 1`
+    // A one-off to-do due today has its own tile (otherDuties), so it is not counted here too.
+    const r = await sql`SELECT LOWER(assigned_to) AS p, COUNT(*)::int AS n, MIN(substr(due_date::text, 1, 10)) AS first_due FROM custom_tasks WHERE assigned_to IS NOT NULL AND NOT COALESCE(done, false) AND (due_date IS NULL OR substr(due_date::text, 1, 10) <= ${todayKey})
+      AND NOT (COALESCE(submenu, '') = 'To do' AND substr(due_date::text, 1, 10) = ${todayKey}) GROUP BY 1`
     for (const x of r) if (num(x.n) > 0) out.push(mk('mytasks', String(x.p), num(x.n), !!x.first_due && String(x.first_due) < todayKey, x.first_due && String(x.first_due) < todayKey ? 'One or more are past their due date.' : ''))
   } catch { /* leave out */ }
   try { const r = await sql`SELECT staff AS p, COUNT(*)::int AS n FROM staff_queries WHERE status = 'open' GROUP BY 1`; for (const x of r) if (num(x.n) > 0) out.push(mk('queries', String(x.p), num(x.n), true)) } catch { /* leave out */ }
@@ -122,32 +124,19 @@ export async function personalDuties(): Promise<Duty[]> {
 
 // ---- Everything else that is due on a date: standing duties, weekly and monthly laws, one-off to-dos, pending jobs. Read by the same screens as the tasks above.
 
-type StandingRow = { person: string; kind: 'sign' | 'quiz' | 'cctv' | 'approve'; due: string; n: number; done: number }
+// Signing laws and law quizzes were dropped (2026-11-13); the daily law question replaces the quizzes.
+type StandingRow = { person: string; kind: 'cctv' | 'approve'; due: string; n: number; done: number }
 const STANDING: Record<StandingRow['kind'], { title: string; icon: string; type: string; detail: string }> = {
-  sign: { title: 'Company Laws to sign', icon: '✍', type: 'Law to sign', detail: 'Each law is due 24 hours after it goes live.' },
-  quiz: { title: 'Law quizzes to pass', icon: '📝', type: 'Law quiz', detail: 'Pass each quiz (75% or more) within 7 days of its law going live.' },
   cctv: { title: 'CCTV reviews to do', icon: '🎥', type: 'Review', detail: 'Days staff worked while Joe was not clocked in. Due within 48 hours.' },
   approve: { title: 'Clock times to approve', icon: '🕐', type: 'Decision', detail: 'Corrections staff sent after a forgotten or supervisor clock-in or clock-out. Due within 48 hours.' },
 }
 // Where a tap on a standing duty goes (the same places Waiting for me sends the person).
-export const STAND_HREF: Record<string, string> = { sign: '/laws?sign=1', quiz: '/laws', cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws', 'pending-jobs': '/pending-jobs',
+export const STAND_HREF: Record<string, string> = { cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws', 'pending-jobs': '/pending-jobs',
   'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1' }
 const num = (v: unknown) => Number(v ?? 0)
 // One query set for every person: how many of each standing duty fall due on each date, and how many of those are already done.
 export async function standingRowsAll(): Promise<StandingRow[]> {
   const out: StandingRow[] = []
-  const people = SIGNERS.filter(n => n !== 'grony'), managers = ['joe', 'bino']
-  try {
-    // Signing laws was dropped (2026-11-13): the laws are statutory, so there is no "laws to sign" duty.
-  } catch { /* leave out */ }
-  // Law quizzes were dropped as a duty (2026-11-13): 176 quizzes each could never be cleared. The daily law question asks one a day instead.
-  if (false as boolean) try {
-    const quiz = await sql`SELECT p.n AS person, (COALESCE(l.live_at, '2000-01-01'::timestamptz) + interval '7 days')::date::text AS due, COUNT(*)::int AS n,
-        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM law_quiz_marks m WHERE m.law_id = l.id AND m.staff = p.n AND m.score::float / NULLIF(m.total, 0) >= 0.75))::int AS done
-      FROM unnest(${people}::text[]) AS p(n) JOIN page_laws l ON l.status = 'live' AND (l.audience = 'staff' OR (l.audience = 'managers' AND p.n = ANY(${managers}::text[])))
-        AND l.quiz IS NOT NULL AND l.quiz <> '' AND l.quiz <> '[]' GROUP BY 1, 2`
-    for (const r of quiz) out.push({ person: String(r.person), kind: 'quiz', due: String(r.due), n: num(r.n), done: num(r.done) })
-  } catch { /* leave out */ }
   try {
     const cctv = await sql`SELECT (created_at + interval '48 hours')::date::text AS due, COUNT(*)::int AS n, COUNT(*) FILTER (WHERE status <> 'pending')::int AS done FROM cctv_reviews GROUP BY 1`
     for (const r of cctv) out.push({ person: 'joe', kind: 'cctv', due: String(r.due), n: num(r.n), done: num(r.done) })

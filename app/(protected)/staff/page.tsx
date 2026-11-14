@@ -1,9 +1,6 @@
-import { auth } from '@/lib/auth'
-import StaffClient from './StaffClient'
+import { redirect } from 'next/navigation'
 
-export default async function StaffPage() {
-  const session = await auth()
-  const role = (session?.user as any)?.role ?? 'staff'
-  const username = (session?.user as any)?.username ?? session?.user?.name ?? ''
-  return <StaffClient role={role} username={username} />
+// The old Staff page: times, payslips and profile are tabs on each person's own page in the hub.
+export default function StaffPage() {
+  redirect('/item?me=times')
 }

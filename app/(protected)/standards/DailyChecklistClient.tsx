@@ -38,7 +38,10 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
 }
 
-export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null, density = 'compact', person = '' }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null; density?: TileDensity; person?: string }) {
+// Standing duties answered by a card on the same page (clock notices, questions, approvals, decisions): like Waiting for me, their tile is hidden.
+const INLINE_DUTIES = new Set(['approve', 'queries', 'clock-prev', 'clock-auto', 'sanctions', 'violations'])
+
+export default function DailyChecklistClient({ canManage, embedded = false, extras, dayParam = null, density = 'compact', person = '', inlineFor = null }: { canManage: boolean; embedded?: boolean; extras?: React.ReactNode; dayParam?: string | null; density?: TileDensity; person?: string; inlineFor?: string | null }) {
   const canEdit = canManage
   const [tiles, setTiles] = useState<CheckTile[]>([])
   const [events, setEvents] = useState<CheckEvent[]>([])
@@ -68,7 +71,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
     const k = dutyKind(d)
     if (k === 'approve') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
-    if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window) window.parent.postMessage(m, window.location.origin); else window.location.href = '/profile' }
+    if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window) window.parent.postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }
     return d.href ? () => goTo(d.href!) : undefined
   }
   const tileOf = (d: Duty) => (d.kind === 'task' || d.kind === 'periodic' ? tiles.find(t => t.id === d.id) : undefined)
@@ -139,7 +142,8 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const [showLate, setShowLate] = useState(false)
   const [todayFilter, setTodayFilter] = useState<'all' | 'waiting' | 'overdue' | 'done'>('all')
   // Every timed task of today in time order, each with how it stands (the server's duties).
-  const dayList = isToday ? duties.filter(d => (d.kind !== 'task' || !!tileOf(d)) && mineOrDid(d))
+  const shownInline = (d: Duty) => !!inlineFor && d.kind === 'standing' && INLINE_DUTIES.has(dutyKind(d)) && d.owner?.toLowerCase() === inlineFor.toLowerCase()
+  const dayList = isToday ? duties.filter(d => (d.kind !== 'task' || !!tileOf(d)) && mineOrDid(d) && !shownInline(d))
     .map(d => ({ d, st: (d.state === 'done' || d.state === 'no' || d.state === 'late' || d.state === 'now' ? d.state : 'later') as 'done' | 'no' | 'late' | 'now' | 'later' })) : []
 
   return (

@@ -24,7 +24,7 @@ export { ALL_STAFF_NAMES }
 const AccessPage = dynamic(() => import('./AccessPage'), {
   ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
-const LogsPage = dynamic(() => import('../../logs/page'), {
+const LogsPage = dynamic(() => import('../../logs/LogsClient'), {
   ssr: false, loading: () => <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>,
 })
 
