@@ -276,7 +276,7 @@ export function ColumnsPickerButton<K extends string>({
   return (
     <div className="relative shrink-0" ref={ref}>
       {hideTrigger ? null : radioStyle ? (
-        <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+        <label className="flex items-center gap-0.5 text-[12px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
           <input type="radio" checked={open || anyExtraActive} onClick={() => setOpen(o => !o)} onChange={() => {}}
             className="cursor-pointer w-2.5 h-2.5" />
           Columns
@@ -297,7 +297,7 @@ export function ColumnsPickerButton<K extends string>({
           ${dark ? 'left-0' : 'right-0'}`}>
           {extraToggles && extraToggles.length > 0 && (
             <div className="border-b border-gray-100 pb-0.5 mb-0.5">
-              <p className="px-2.5 pt-1.5 pb-0.5 text-[9px] font-bold text-gray-400 uppercase tracking-wide">Views</p>
+              <p className="px-2.5 pt-1.5 pb-0.5 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Views</p>
               {extraToggles.map(t => (
                 <label key={t.key}
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-700 cursor-pointer select-none hover:bg-gray-50">

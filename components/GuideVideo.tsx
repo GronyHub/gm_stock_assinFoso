@@ -43,9 +43,9 @@ export default function GuideVideo({ page, videoRef, onEnded }: { page: string; 
       <video ref={videoRef} onEnded={onEnded} key={info.video_url} src={info.video_url} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />
       {info.can_replace && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <button type="button" disabled={!!upload} onClick={() => fileRef.current?.click()} className="rounded bg-blue-600 px-2 py-1 text-[11px] font-bold text-white disabled:opacity-40">{upload ? `Uploading ${upload.pct}%…` : 'Replace with my recording'}</button>
-          {info.custom && <button type="button" onClick={() => void reset()} className="rounded bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-700">Use the built-in video</button>}
-          {msg && <span className="text-[10px] font-semibold text-blue-700">{msg}</span>}
+          <button type="button" disabled={!!upload} onClick={() => fileRef.current?.click()} className="rounded bg-blue-600 px-2 py-1 text-[12px] font-bold text-white disabled:opacity-40">{upload ? `Uploading ${upload.pct}%…` : 'Replace with my recording'}</button>
+          {info.custom && <button type="button" onClick={() => void reset()} className="rounded bg-gray-100 px-2 py-1 text-[12px] font-bold text-gray-700">Use the built-in video</button>}
+          {msg && <span className="text-[12px] font-semibold text-blue-700">{msg}</span>}
           <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) replace(f); e.target.value = '' }} />
         </div>
       )}

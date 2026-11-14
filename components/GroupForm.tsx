@@ -47,8 +47,8 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
     const v = a[i.id]
     return (
       <div key={i.id} className="space-y-1.5 rounded-xl border border-gray-200 p-2.5">
-        <p className="text-sm font-semibold text-gray-900">{n}. {i.text}{!i.required && <span className="ml-1 text-[10px] font-bold text-gray-400">optional</span>}
-          {canEdit && i.law_id && <a href={`/laws?law=${i.law_id}`} className="ml-2 rounded bg-blue-600 px-1 py-0.5 text-[9px] font-extrabold text-white">Law</a>}</p>
+        <p className="text-sm font-semibold text-gray-900">{n}. {i.text}{!i.required && <span className="ml-1 text-[12px] font-bold text-gray-400">optional</span>}
+          {canEdit && i.law_id && <a href={`/laws?law=${i.law_id}`} className="ml-2 rounded bg-blue-600 px-1 py-0.5 text-[12px] font-extrabold text-white">Law</a>}</p>
         {i.kind === 'tick' && <button type="button" disabled={!editable} onClick={() => set(i.id, { answer: v?.answer === 'yes' ? '' : 'yes' })} className={btn(v?.answer === 'yes', 'border-green-600 bg-green-600 text-white')}>{v?.answer === 'yes' ? '✓ Done' : 'Tap when done'}</button>}
         {i.kind === 'yesno' && (<>
           <div className="flex gap-2">
@@ -63,7 +63,7 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
           const sel = (v?.answer ?? '').split(',').filter(s => s && s !== 'none')
           const toggle = (n: string) => { const next = sel.includes(n) ? sel.filter(x => x !== n) : [...sel, n]; set(i.id, { answer: next.length ? next.join(',') : 'none' }) }
           return (<div className="space-y-1">
-            <p className="text-[11px] text-gray-500">Tick the people who did NOT. Leave everyone unticked if all did, then press &quot;Nobody&quot;.</p>
+            <p className="text-[12px] text-gray-500">Tick the people who did NOT. Leave everyone unticked if all did, then press &quot;Nobody&quot;.</p>
             <div className="flex flex-wrap gap-1.5">
               {present.map(n => <button key={n} type="button" disabled={!editable} onClick={() => toggle(n)} className={`rounded-full border px-3 py-1 text-xs font-bold ${sel.includes(n) ? 'border-red-500 bg-red-500 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{cap(n)}</button>)}
               <button type="button" disabled={!editable} onClick={() => set(i.id, { answer: 'none' })} className={`rounded-full border px-3 py-1 text-xs font-bold ${v?.answer === 'none' ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>Nobody</button>
@@ -74,7 +74,7 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
   }
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-bold uppercase text-gray-500">{done} of {g.items.length} answered</p>
+      <p className="text-[12px] font-bold uppercase text-gray-500">{done} of {g.items.length} answered</p>
       {g.items.map((i, n) => row(i, n + 1))}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {editable && <button type="button" disabled={busy} onClick={() => void save()} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save answers</button>}

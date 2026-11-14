@@ -77,7 +77,7 @@ export default function MyDayClient({ onNavigate, forName = '', lens = 'todo', t
       {!team && lens !== 'notdone' && items && (
         <div className="flex flex-nowrap gap-1 overflow-x-auto">
           {([['all', 'Everything', everything.length], ['waiting', 'Waiting', everything.filter(isOpen).length], ['overdue', 'Overdue', everything.filter(isOver).length], ['done', 'Done', everything.filter(isDone).length]] as const).map(([k, label, n]) => (
-            <button key={k} type="button" onClick={() => setFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+            <button key={k} type="button" onClick={() => setFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${filter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
           ))}
         </div>)}
       <div className={tileGrid(density)}>

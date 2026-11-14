@@ -57,7 +57,7 @@ export default function CareRoutineEditor({ canEdit = false }: { canEdit?: boole
             <span className="w-12 shrink-0 text-sm font-bold tabular-nums">{i.time}</span>
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-900">{i.title}</p>
-              <p className="text-[11px] text-gray-500">{i.scope === 'all' ? 'Every child (a tile for each)' : i.scope}{i.important ? ' · Important' : ''}</p>
+              <p className="text-[12px] text-gray-500">{i.scope === 'all' ? 'Every child (a tile for each)' : i.scope}{i.important ? ' · Important' : ''}</p>
             </div>
             {canEdit && <button type="button" onClick={() => setEditing(i)} className="text-xs font-bold text-blue-600">Edit</button>}
             {canEdit && <button type="button" onClick={() => void remove(i.id)} className="text-xs font-bold text-red-600">Remove</button>}

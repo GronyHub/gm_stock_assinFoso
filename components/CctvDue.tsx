@@ -8,7 +8,7 @@ export default function CctvDue() {
   if (n <= 0) return null
   return (
     <a href="/cctv-review" className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-2 py-1">
-      <span className="text-lg leading-none">🎥</span><span className="shrink-0 text-[10px] font-bold text-gray-500">48h</span><span className="flex-1 text-[11px] font-semibold leading-tight text-gray-900">{n} CCTV review{n === 1 ? '' : 's'} to do<span className="ml-1 rounded bg-indigo-100 px-1 text-[10px] font-bold text-indigo-800">Joe</span></span><span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">Open</span>
+      <span className="text-lg leading-none">🎥</span><span className="shrink-0 text-[12px] font-bold text-gray-500">48h</span><span className="flex-1 text-[12px] font-semibold leading-tight text-gray-900">{n} CCTV review{n === 1 ? '' : 's'} to do<span className="ml-1 rounded bg-indigo-100 px-1 text-[12px] font-bold text-indigo-800">Joe</span></span><span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">Open</span>
     </a>
   )
 }

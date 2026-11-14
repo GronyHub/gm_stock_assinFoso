@@ -6,7 +6,7 @@ import { useMemo, useState, useEffect, type ReactNode, Fragment } from 'react'
    actual page, without depending on live data (this modal has none) -- */
 function MiniBanner({ text, bg }: { text: string; bg: string }) {
   return (
-    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold text-white tracking-wide ${bg}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-[12px] font-extrabold text-white tracking-wide ${bg}`}>
       {text}
     </span>
   )
@@ -94,12 +94,12 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-2">
         <p className="text-sm text-gray-700">What each button is for:</p>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Live</p><p className="text-[11px] text-gray-500 mt-0.5">Tap a sale as it happens, find an item, fix its details.</p></div>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Sales Log</p><p className="text-[11px] text-gray-500 mt-0.5">Every sale by day, receipts, undo a wrong tap.</p></div>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Counts</p><p className="text-[11px] text-gray-500 mt-0.5">Count what is on the shelf; records and history.</p></div>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Item 360</p><p className="text-[11px] text-gray-500 mt-0.5">Everything about one item in one place.</p></div>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Losses and Analytics</p><p className="text-[11px] text-gray-500 mt-0.5">Where stock is lost, and what sells least.</p></div>
-        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Customers</p><p className="text-[11px] text-gray-500 mt-0.5">Register and find customers and their receipts.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Live</p><p className="text-[12px] text-gray-500 mt-0.5">Tap a sale as it happens, find an item, fix its details.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Sales Log</p><p className="text-[12px] text-gray-500 mt-0.5">Every sale by day, receipts, undo a wrong tap.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Counts</p><p className="text-[12px] text-gray-500 mt-0.5">Count what is on the shelf; records and history.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Item 360</p><p className="text-[12px] text-gray-500 mt-0.5">Everything about one item in one place.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Losses and Analytics</p><p className="text-[12px] text-gray-500 mt-0.5">Where stock is lost, and what sells least.</p></div>
+        <div className="border border-gray-200 rounded-lg p-2"><p className="text-xs font-bold text-gray-800">Customers</p><p className="text-[12px] text-gray-500 mt-0.5">Register and find customers and their receipts.</p></div>
       </div>
     ),
   },
@@ -218,7 +218,7 @@ export const TOPICS: Topic[] = [
           ].map(r => (
             <div key={r.p} className="border border-gray-200 rounded-lg p-2">
               <MiniPill text={r.p} tone={r.p === 'Live' ? 'blue' : 'gray'} />
-              <p className="text-[11px] text-gray-500 mt-1">{r.d}</p>
+              <p className="text-[12px] text-gray-500 mt-1">{r.d}</p>
             </div>
           ))}
         </div>

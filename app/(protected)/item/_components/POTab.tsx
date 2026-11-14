@@ -80,19 +80,19 @@ function StatusBadge({ status }: { status: PO['status'] }) {
   const cls = status === 'draft' ? 'bg-gray-100 text-gray-600'
     : status === 'sent' ? 'bg-blue-50 text-blue-600'
     : 'bg-red-50 text-red-500'
-  return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{status.toUpperCase()}</span>
+  return <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded ${cls}`}>{status.toUpperCase()}</span>
 }
 
 function ProgressBadge({ lines }: { lines: POLine[] }) {
   const state = receivingState(lines)
-  if (state === 'complete') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600">RECEIVED</span>
+  if (state === 'complete') return <span className="text-[12px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600">RECEIVED</span>
   // Sent to the vendor but never received against -- no bill has ever been
   // created for it, flagged rather than left blank so it isn't mistaken
   // for "nothing to report yet" (a draft, or a PO that just hasn't shipped).
-  if (state === 'not_started') return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600">NOT BILLED</span>
+  if (state === 'not_started') return <span className="text-[12px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600">NOT BILLED</span>
   const ordered = lines.reduce((s, l) => s + parseFloat(l.qty_ordered), 0)
   const received = lines.reduce((s, l) => s + parseFloat(l.qty_received), 0)
-  return <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600">{fmt(received)}/{fmt(ordered)}</span>
+  return <span className="text-[12px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-600">{fmt(received)}/{fmt(ordered)}</span>
 }
 
 // Flagged set for the header count/filter below -- a sent PO (draft/
@@ -110,7 +110,7 @@ function isDraftPo(p: PO): boolean {
   return p.status === 'draft'
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 // Date stays sticky/always-visible (first column); these two are the only
 // ones the picker can hide/reorder/rename.
@@ -131,8 +131,8 @@ function CheckCell({ line, onSet }: { line: POLine; onSet: (status: 'same' | 'di
   if (!line.check_status) {
     return (
       <div className="flex gap-1">
-        <button type="button" onClick={() => onSet('same')} className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">Same</button>
-        <button type="button" onClick={() => onSet('different', remaining)} className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Different</button>
+        <button type="button" onClick={() => onSet('same')} className="rounded bg-green-100 px-1.5 py-0.5 text-[12px] font-bold text-green-700">Same</button>
+        <button type="button" onClick={() => onSet('different', remaining)} className="rounded bg-amber-100 px-1.5 py-0.5 text-[12px] font-bold text-amber-700">Different</button>
       </div>
     )
   }
@@ -141,19 +141,19 @@ function CheckCell({ line, onSet }: { line: POLine; onSet: (status: 'same' | 'di
   return (
     <div className="space-y-0.5">
       {line.check_status === 'same'
-        ? <p className="whitespace-nowrap text-[9px] font-bold text-green-700">✓ Same ({fmt(String(remaining))})</p>
+        ? <p className="whitespace-nowrap text-[12px] font-bold text-green-700">✓ Same ({fmt(String(remaining))})</p>
         : (
           <div className="flex items-center gap-1">
             <input type="number" min={0} inputMode="decimal" value={val} onChange={e => setVal(e.target.value)}
               onBlur={() => { if (Number(val) !== got && val !== '') onSet('different', Number(val)) }}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-              className="w-14 rounded border border-amber-300 bg-white px-1 py-0.5 text-[10px]" aria-label="Number received" />
-            <span className={`whitespace-nowrap text-[9px] font-bold ${diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>
+              className="w-14 rounded border border-amber-300 bg-white px-1 py-0.5 text-[12px]" aria-label="Number received" />
+            <span className={`whitespace-nowrap text-[12px] font-bold ${diff === 0 ? 'text-green-700' : diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>
               {diff === 0 ? 'same' : diff < 0 ? `short ${fmt(String(-diff))}` : `extra ${fmt(String(diff))}`}
             </span>
           </div>
         )}
-      <button type="button" onClick={() => onSet(null)} className="text-[9px] font-semibold text-gray-400 underline">undo</button>
+      <button type="button" onClick={() => onSet(null)} className="text-[12px] font-semibold text-gray-400 underline">undo</button>
     </div>
   )
 }
@@ -435,11 +435,11 @@ export default function POTab({ search }: Props) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-        <span className="text-[9px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-[12px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
         <div className="flex items-center gap-1.5">
           {draftCount > 0 && (
             <label title="Still in draft -- never sent to the vendor at all"
-              className="flex items-center gap-1 text-[9px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
               <input type="checkbox" checked={draftOnly} onChange={e => setDraftOnly(e.target.checked)}
                 className="cursor-pointer w-2.5 h-2.5" />
               Draft ({draftCount})
@@ -447,7 +447,7 @@ export default function POTab({ search }: Props) {
           )}
           {notBilledCount > 0 && (
             <label title="Sent to the vendor but never received against -- no bill exists for it yet"
-              className="flex items-center gap-1 text-[9px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
               <input type="checkbox" checked={notBilledOnly} onChange={e => setNotBilledOnly(e.target.checked)}
                 className="cursor-pointer w-2.5 h-2.5" />
               Not Billed ({notBilledCount})
@@ -464,16 +464,16 @@ export default function POTab({ search }: Props) {
                 void loadList()
               } catch { alert('Could not check. Try again.') }
             }}
-            className="text-[9px] font-bold text-blue-700 whitespace-nowrap">Check vs Bills</button>
+            className="text-[12px] font-bold text-blue-700 whitespace-nowrap">Check vs Bills</button>
           <ColumnsPickerButton prefs={colPrefs} />
           <Link href="/purchase-orders/new"
-            className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+            className="text-[12px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
             + New PO
           </Link>
         </div>
       </div>
       <div className="flex-1 overflow-auto min-h-0">
-        <table className="border-collapse text-[10px]" style={{
+        <table className="border-collapse text-[12px]" style={{
           tableLayout: 'fixed',
           width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
         }}>
@@ -514,26 +514,26 @@ export default function POTab({ search }: Props) {
                   <tr className="bg-white">
                     <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 border-b border-gray-200">
                       {detailLoading || !detail ? (
-                        <p className="text-[10px] text-gray-400 text-center py-6">Loading…</p>
+                        <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
                       ) : (
             <div>
               <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200 space-y-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold text-gray-900">{detail.vendor_name ?? 'Unknown vendor'}</p>
-                    <p className="text-[9px] text-gray-400">{fmtShort(detail.order_date)} · {detail.po_number}</p>
+                    <p className="text-[12px] font-bold text-gray-900">{detail.vendor_name ?? 'Unknown vendor'}</p>
+                    <p className="text-[12px] text-gray-400">{fmtShort(detail.order_date)} · {detail.po_number}</p>
                   </div>
                   <StatusBadge status={detail.status} />
                 </div>
                 {detail.expected_date && (
-                  <p className="text-[9px] text-gray-400">Expected: {fmtShort(detail.expected_date)}</p>
+                  <p className="text-[12px] text-gray-400">Expected: {fmtShort(detail.expected_date)}</p>
                 )}
-                {detail.notes && <p className="text-[9px] text-gray-500 italic">{detail.notes}</p>}
+                {detail.notes && <p className="text-[12px] text-gray-500 italic">{detail.notes}</p>}
                 {!editMode && (
                   <div className="flex gap-1 pt-1 flex-wrap">
                     {detail.status === 'draft' && (
                       <button onClick={() => setStatus('sent')} disabled={busy}
-                        className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
+                        className="text-[12px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded hover:bg-blue-700 disabled:opacity-40">
                         Send
                       </button>
                     )}
@@ -548,37 +548,37 @@ export default function POTab({ search }: Props) {
                         redo from there instead, same as Delete already is. */}
                     {(detail.status === 'draft' || detail.status === 'sent') && receivingState(detail.lines) === 'not_started' && (
                       <button onClick={startEdit} disabled={busy}
-                        className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
+                        className="text-[12px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
                         ✏️ Edit
                       </button>
                     )}
                     {detail.status === 'draft' && (
                       <button onClick={deleteDraft} disabled={busy}
-                        className="text-[9px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
+                        className="text-[12px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded hover:bg-red-100 disabled:opacity-40">
                         Delete
                       </button>
                     )}
                     {detail.status === 'sent' && receivingState(detail.lines) !== 'complete' && (
                       <button onClick={openReceive} disabled={busy}
-                        className="text-[9px] font-bold text-white bg-green-600 px-2 py-0.5 rounded hover:bg-green-700 disabled:opacity-40">
+                        className="text-[12px] font-bold text-white bg-green-600 px-2 py-0.5 rounded hover:bg-green-700 disabled:opacity-40">
                         Receive Items
                       </button>
                     )}
                     {(detail.status === 'draft' || detail.status === 'sent') && receivingState(detail.lines) !== 'complete' && (
                       <button onClick={() => setStatus('cancelled')} disabled={busy}
-                        className="text-[9px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 disabled:opacity-40">
+                        className="text-[12px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200 disabled:opacity-40">
                         Cancel
                       </button>
                     )}
                     {detail.status === 'cancelled' && (
                       <button onClick={() => setStatus('sent')} disabled={busy}
                         title="Reopens this PO as Sent -- the same status it's in right before receiving items"
-                        className="text-[9px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
+                        className="text-[12px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100 disabled:opacity-40">
                         ↺ Reopen
                       </button>
                     )}
                     <a href={`/purchase-orders/${detail.id}/print`} target="_blank" rel="noopener noreferrer"
-                      className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">
+                      className="text-[12px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">
                       🖨️ Print / Download
                     </a>
                   </div>
@@ -587,19 +587,19 @@ export default function POTab({ search }: Props) {
 
               {editMode && (
                 <div className="p-2 bg-blue-50 border-b border-blue-100 space-y-2">
-                  <p className="text-[10px] font-bold text-blue-800">Edit Purchase Order</p>
+                  <p className="text-[12px] font-bold text-blue-800">Edit Purchase Order</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     <div>
-                      <p className="text-[9px] text-gray-500 mb-0.5">Order Date</p>
+                      <p className="text-[12px] text-gray-500 mb-0.5">Order Date</p>
                       <input type="date" value={editOrderDate} onChange={e => setEditOrderDate(e.target.value)} className={inputCls} />
                     </div>
                     <div>
-                      <p className="text-[9px] text-gray-500 mb-0.5">Expected Delivery</p>
+                      <p className="text-[12px] text-gray-500 mb-0.5">Expected Delivery</p>
                       <input type="date" value={editExpectedDate} onChange={e => setEditExpectedDate(e.target.value)} className={inputCls} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Vendor</p>
+                    <p className="text-[12px] text-gray-500 mb-0.5">Vendor</p>
                     <select value={editVendorId} onChange={e => { setEditVendorId(e.target.value); if (e.target.value) setEditVendorName('') }} className={inputCls}>
                       <option value="">Select vendor…</option>
                       {vendors.map(v => <option key={v.id} value={v.id}>{v.display_name}</option>)}
@@ -607,12 +607,12 @@ export default function POTab({ search }: Props) {
                   </div>
                   {!editVendorId && (
                     <div>
-                      <p className="text-[9px] text-gray-500 mb-0.5">Or enter vendor name</p>
+                      <p className="text-[12px] text-gray-500 mb-0.5">Or enter vendor name</p>
                       <input value={editVendorName} onChange={e => setEditVendorName(e.target.value)} placeholder="Vendor name" className={inputCls} />
                     </div>
                   )}
 
-                  <table className="w-full border-collapse text-[10px]">
+                  <table className="w-full border-collapse text-[12px]">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-200">
                         <th className="text-left px-1 py-0.5 font-semibold text-gray-500">Item</th>
@@ -628,11 +628,11 @@ export default function POTab({ search }: Props) {
                           <td className="px-1 py-0.5 text-gray-800">{l.itemName}</td>
                           <td className="px-1 py-0.5">
                             <input type="number" min="0" step="any" value={l.qty} onChange={e => updateEditLine(idx, 'qty', e.target.value)}
-                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5">
                             <input type="number" min="0" step="any" value={l.price} onChange={e => updateEditLine(idx, 'price', e.target.value)}
-                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5 text-right text-gray-700">
                             {((parseFloat(l.qty) || 0) * (parseFloat(l.price) || 0)).toFixed(0)}
@@ -660,7 +660,7 @@ export default function POTab({ search }: Props) {
                       <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto">
                         {editResults.map(item => (
                           <button key={item.id} onClick={() => addEditLine(item)}
-                            className="w-full text-left px-2 py-1 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                            className="w-full text-left px-2 py-1 text-[12px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                             {item.name}
                             <span className="text-gray-400 ml-1.5">{item.group}</span>
                           </button>
@@ -670,32 +670,32 @@ export default function POTab({ search }: Props) {
                   </div>
 
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Notes</p>
+                    <p className="text-[12px] text-gray-500 mb-0.5">Notes</p>
                     <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className={inputCls} />
                   </div>
 
-                  {editError && <p className="text-[10px] text-red-500 font-medium">{editError}</p>}
+                  {editError && <p className="text-[12px] text-red-500 font-medium">{editError}</p>}
                   <div className="flex gap-1">
                     <button onClick={saveEdit} disabled={editSaving}
-                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                      className="flex-1 bg-green-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                       {editSaving ? 'Saving…' : 'Save'}
                     </button>
                     <button onClick={() => setEditMode(false)} disabled={editSaving}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                   </div>
                 </div>
               )}
 
               {!editMode && receiveOpen && (
                 <div className="p-2 bg-green-50 border-b border-green-100 space-y-2">
-                  <p className="text-[10px] font-bold text-green-800">Receive Items</p>
+                  <p className="text-[12px] font-bold text-green-800">Receive Items</p>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Date received (pick any past day)</p>
+                    <p className="text-[12px] text-gray-500 mb-0.5">Date received (pick any past day)</p>
                     <input type="date" value={receiveDate} max={new Date().toISOString().slice(0, 10)} onChange={e => setReceiveDate(e.target.value)} className={inputCls} />
                     <div className="mt-1 flex gap-1">
                       {[['Today', 0], ['Yesterday', 1], ['2 days ago', 2]].map(([label, n]) => (
                         <button key={label as string} type="button" onClick={() => setReceiveDate(new Date(Date.now() - (n as number) * 86400000).toISOString().slice(0, 10))}
-                          className="rounded bg-white px-1.5 py-0.5 text-[9px] font-semibold text-green-800 border border-green-200">{label}</button>
+                          className="rounded bg-white px-1.5 py-0.5 text-[12px] font-semibold text-green-800 border border-green-200">{label}</button>
                       ))}
                     </div>
                   </div>
@@ -704,15 +704,15 @@ export default function POTab({ search }: Props) {
                     if (remaining <= 0.001) return null
                     return (
                       <div key={l.id} className="bg-white border border-green-100 rounded p-1.5">
-                        <p className="text-[10px] text-gray-800 font-medium mb-1">{l.item_name} <span className="text-gray-400 font-normal">({remaining} left)</span></p>
+                        <p className="text-[12px] text-gray-800 font-medium mb-1">{l.item_name} <span className="text-gray-400 font-normal">({remaining} left)</span></p>
                         <div className="grid grid-cols-2 gap-1.5">
                           <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Qty received</p>
+                            <p className="text-[12px] text-gray-400 mb-0.5">Qty received</p>
                             <input type="number" min="0" max={remaining} step="any" value={receiveQtys[l.id] ?? ''}
                               onChange={e => setReceiveQtys(q => ({ ...q, [l.id]: e.target.value }))} className={inputCls} />
                           </div>
                           <div>
-                            <p className="text-[9px] text-gray-400 mb-0.5">Unit price</p>
+                            <p className="text-[12px] text-gray-400 mb-0.5">Unit price</p>
                             <input type="number" min="0" step="any" value={receivePrices[l.id] ?? ''}
                               onChange={e => setReceivePrices(q => ({ ...q, [l.id]: e.target.value }))} className={inputCls} />
                           </div>
@@ -720,21 +720,21 @@ export default function POTab({ search }: Props) {
                       </div>
                     )
                   })}
-                  {receiveError && <p className="text-[10px] text-red-500 font-medium">{receiveError}</p>}
+                  {receiveError && <p className="text-[12px] text-red-500 font-medium">{receiveError}</p>}
                   <div className="flex gap-1">
                     <button onClick={submitReceive} disabled={busy}
-                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                      className="flex-1 bg-green-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                       {busy ? 'Saving…' : 'Confirm Receipt'}
                     </button>
                     <button onClick={() => setReceiveOpen(false)}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                   </div>
                 </div>
               )}
 
               {!editMode && (
                 <>
-                  <table className="w-full border-collapse text-[10px]">
+                  <table className="w-full border-collapse text-[12px]">
                     <thead>
                       <tr>
                         <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">item</th>
@@ -760,7 +760,7 @@ export default function POTab({ search }: Props) {
                             {fmt(l.qty_received)}
                           </td>
                           <td className="px-1.5 py-0 text-right text-gray-700">{fmt(l.unit_price)}</td>
-                          <td className="px-1.5 py-0 text-right whitespace-nowrap text-[9px] font-bold">
+                          <td className="px-1.5 py-0 text-right whitespace-nowrap text-[12px] font-bold">
                             {parseFloat(l.qty_received) >= parseFloat(l.qty_ordered) - 0.001
                               ? <span className="text-green-600">Received</span>
                               : parseFloat(l.qty_received) > 0.001
@@ -795,12 +795,12 @@ export default function POTab({ search }: Props) {
                     const diffs = checked.filter(l => l.check_status === 'different' && Math.abs(Number(l.check_qty ?? 0) - (parseFloat(l.qty_ordered) - parseFloat(l.qty_received))) > 0.0001)
                     return (
                       <div className="space-y-1 border-t border-gray-200 bg-green-50 p-2">
-                        <p className="text-[10px] font-bold text-green-800">Delivery check: {checked.length} of {open.length} lines ticked{diffs.length ? ` · ${diffs.length} difference${diffs.length === 1 ? '' : 's'}` : ''}</p>
+                        <p className="text-[12px] font-bold text-green-800">Delivery check: {checked.length} of {open.length} lines ticked{diffs.length ? ` · ${diffs.length} difference${diffs.length === 1 ? '' : 's'}` : ''}</p>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[9px] text-gray-500">Date received</span>
+                          <span className="text-[12px] text-gray-500">Date received</span>
                           <input type="date" value={confirmDate} max={new Date().toISOString().slice(0, 10)} onChange={e => setConfirmDate(e.target.value)} className={inputCls + ' !w-auto'} />
                           <button onClick={() => void confirmChecked()} disabled={busy || checked.length === 0}
-                            className="text-[10px] font-bold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40">
+                            className="text-[12px] font-bold text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 disabled:opacity-40">
                             Confirm receipt{detail.status === 'draft' ? ' (marks the order as sent)' : ''}
                           </button>
                         </div>
@@ -813,15 +813,15 @@ export default function POTab({ search }: Props) {
                     const text = reportText(open)
                     return (
                       <div className="space-y-1 border-t border-gray-200 bg-red-50 p-2">
-                        <p className="text-[10px] font-bold text-red-700">Differences to report to the supplier</p>
+                        <p className="text-[12px] font-bold text-red-700">Differences to report to the supplier</p>
                         {open.map(x => {
                           const diff = parseFloat(x.diff)
-                          return <p key={x.id} className="text-[10px] text-gray-800"><b>{x.item_name}</b>: ordered {fmt(x.expected)}, received {fmt(x.received)} <span className={`font-bold ${diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>({diff < 0 ? `short by ${fmt(-diff)}` : `extra ${fmt(diff)}`})</span></p>
+                          return <p key={x.id} className="text-[12px] text-gray-800"><b>{x.item_name}</b>: ordered {fmt(x.expected)}, received {fmt(x.received)} <span className={`font-bold ${diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>({diff < 0 ? `short by ${fmt(-diff)}` : `extra ${fmt(diff)}`})</span></p>
                         })}
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          <button onClick={() => { void navigator.clipboard?.writeText(text); alert('Report copied.') }} className="text-[9px] font-bold text-gray-700 bg-white border border-gray-300 px-2 py-0.5 rounded">Copy report</button>
-                          <a href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-white bg-green-600 px-2 py-0.5 rounded">Send on WhatsApp</a>
-                          <button onClick={() => void markReported(open.map(x => x.id), true)} className="text-[9px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded">Mark as reported</button>
+                          <button onClick={() => { void navigator.clipboard?.writeText(text); alert('Report copied.') }} className="text-[12px] font-bold text-gray-700 bg-white border border-gray-300 px-2 py-0.5 rounded">Copy report</button>
+                          <a href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noopener noreferrer" className="text-[12px] font-bold text-white bg-green-600 px-2 py-0.5 rounded">Send on WhatsApp</a>
+                          <button onClick={() => void markReported(open.map(x => x.id), true)} className="text-[12px] font-bold text-white bg-blue-600 px-2 py-0.5 rounded">Mark as reported</button>
                         </div>
                       </div>
                     )
@@ -829,9 +829,9 @@ export default function POTab({ search }: Props) {
 
                   {detail.receipts.length > 0 && (
                     <div className="border-t border-gray-200">
-                      <p className="text-[9px] font-bold text-gray-500 px-1.5 py-0.5 bg-gray-50">Receiving History</p>
+                      <p className="text-[12px] font-bold text-gray-500 px-1.5 py-0.5 bg-gray-50">Receiving History</p>
                       {detail.receipts.map(r => (
-                        <div key={r.id} className="px-1.5 py-0.5 border-b border-gray-100 text-[9px]">
+                        <div key={r.id} className="px-1.5 py-0.5 border-b border-gray-100 text-[12px]">
                           <p className="text-gray-700">
                             <span className="font-semibold text-gray-900">{fmtShort(r.received_date)}</span>
                             {r.received_by && <span className="text-gray-400"> · {r.received_by}</span>}
@@ -861,7 +861,7 @@ export default function POTab({ search }: Props) {
             <button onClick={() => { setLoading(true); void loadList(3) }}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
           </div>
-        ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No purchase orders</p>}
+        ) : filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No purchase orders</p>}
       </div>
       {viewingItemId != null && (
         <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />

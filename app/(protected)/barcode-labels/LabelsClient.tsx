@@ -41,9 +41,9 @@ export default function LabelsClient() {
       <div className="grid grid-cols-3 gap-2 print:gap-1">
         {labels.map(l => (
           <div key={l.code} className="break-inside-avoid rounded border border-gray-300 p-2 text-center">
-            <p className="truncate text-[10px] font-bold leading-tight text-gray-900">{l.name}</p>
+            <p className="truncate text-[12px] font-bold leading-tight text-gray-900">{l.name}</p>
             <Bars code={l.code} />
-            <p className="text-[10px] font-semibold text-gray-700">₵{l.price}</p>
+            <p className="text-[12px] font-semibold text-gray-700">₵{l.price}</p>
           </div>))}
       </div>
     </div>

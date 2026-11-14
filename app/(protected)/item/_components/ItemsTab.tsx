@@ -97,11 +97,11 @@ function computeRows(rows: DayRow[]): ComputedRow[] {
   return result.reverse()
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 function Badge({ n }: { n: number }) {
   if (!n) return null
-  return <span className="ml-1 bg-red-100 text-red-600 text-[9px] font-bold px-1 py-0.5 rounded-full">{n}</span>
+  return <span className="ml-1 bg-red-100 text-red-600 text-[12px] font-bold px-1 py-0.5 rounded-full">{n}</span>
 }
 
 function RecentMergeFix({ r, onUnmerged }: { r: any; onUnmerged: () => void }) {
@@ -129,21 +129,21 @@ function RecentMergeFix({ r, onUnmerged }: { r: any; onUnmerged: () => void }) {
     <FixRow label={`"${r.loser_original_name}" ← "${r.winner_name || 'Unknown'}"`} sub={`Merged ${fmtDate(r.merged_at)} by ${r.merged_by || 'Unknown'}`}>
       {confirmDialog ? (
         <>
-          <p className="text-[10px] text-gray-600">Are you sure? This will restore the original item and separate its merged data.</p>
+          <p className="text-[12px] text-gray-600">Are you sure? This will restore the original item and separate its merged data.</p>
           <div className="grid grid-cols-2 gap-1.5">
             <button onClick={() => setConfirmDialog(false)} disabled={unmerging}
-              className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
               Cancel
             </button>
             <button onClick={undoMerge} disabled={unmerging}
-              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
               {unmerging ? 'Unmerging…' : 'Confirm Undo'}
             </button>
           </div>
         </>
       ) : (
         <button onClick={() => setConfirmDialog(true)} disabled={unmerging}
-          className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+          className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
           Undo Merge
         </button>
       )}
@@ -189,20 +189,20 @@ function DuplicateFix({ r, onFixed, onOpenItem360 }: { r: any; onFixed: (id1: nu
 
   return (
     <FixRow label={nameLink(r.id1, r.name1)} sub={<>vs. {nameLink(r.id2, r.name2)}</>}>
-      <p className="text-[10px] text-gray-500">Same item? Pick the name to keep — the other merges into it.</p>
+      <p className="text-[12px] text-gray-500">Same item? Pick the name to keep — the other merges into it.</p>
       <div className="grid grid-cols-2 gap-1.5">
         <button onClick={() => mergeSame(r.id1, r.id2)} disabled={busy}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 px-1 transition truncate">
+          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 px-1 transition truncate">
           {merging === r.id1 ? 'Saving…' : `Keep "${r.name1}"`}
         </button>
         <button onClick={() => mergeSame(r.id2, r.id1)} disabled={busy}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 px-1 transition truncate">
+          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 px-1 transition truncate">
           {merging === r.id2 ? 'Saving…' : `Keep "${r.name2}"`}
         </button>
       </div>
-      <p className="text-[10px] text-gray-500">Tap <strong>Different</strong> if these are genuinely separate items.</p>
+      <p className="text-[12px] text-gray-500">Tap <strong>Different</strong> if these are genuinely separate items.</p>
       <button onClick={markDifferent} disabled={busy}
-        className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        className="w-full bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
         {saving ? 'Saving…' : 'Different — Not a Duplicate'}
       </button>
     </FixRow>
@@ -236,7 +236,7 @@ function NoGroupFix({ r, groupNames, onFixed }: { r: any; groupNames: string[]; 
           onChange={e => setCustom(e.target.value)} className={inputCls} />
       )}
       <button onClick={save} disabled={!group || saving}
-        className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
         {saving ? 'Saving…' : 'Assign Group'}
       </button>
     </FixRow>
@@ -256,9 +256,9 @@ function UnlinkedFix({ r, onFixed }: { r: any; onFixed: (item_name: string) => v
   }
   return (
     <FixRow label={r.item_name} sub={`${r.line_count} sale${r.line_count !== 1 ? 's' : ''} not linked`}>
-      <p className="text-[10px] text-gray-500">These sales match this item by name but were never linked to it — their quantity and revenue are missing from its activity.</p>
+      <p className="text-[12px] text-gray-500">These sales match this item by name but were never linked to it — their quantity and revenue are missing from its activity.</p>
       <button onClick={linkNow} disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+        className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
         {saving ? 'Linking…' : `Link ${r.line_count} sale${r.line_count !== 1 ? 's' : ''} to this item`}
       </button>
     </FixRow>
@@ -301,8 +301,8 @@ function NameResolveRow({ name, count, items, onResolved }: {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5 mx-2 mb-1.5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-medium text-gray-900 leading-snug">{name}</p>
-        <span className="shrink-0 text-[9px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{count}</span>
+        <p className="text-[12px] font-medium text-gray-900 leading-snug">{name}</p>
+        <span className="shrink-0 text-[12px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{count}</span>
       </div>
       <div ref={ref} className="relative">
         <input value={search}
@@ -315,7 +315,7 @@ function NameResolveRow({ name, count, items, onResolved }: {
             {filtered.map(item => (
               <button key={item.id} onMouseDown={e => e.preventDefault()}
                 onClick={() => { setSelected(item); setSearch(item.canonical_name); setOpen(false) }}
-                className="w-full text-left px-2 py-1.5 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                className="w-full text-left px-2 py-1.5 text-[12px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                 {item.canonical_name}
               </button>
             ))}
@@ -324,7 +324,7 @@ function NameResolveRow({ name, count, items, onResolved }: {
       </div>
       {selected && (
         <button onClick={save} disabled={saving}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
           {saving ? 'Saving…' : `Map → ${selected.canonical_name}`}
         </button>
       )}
@@ -630,16 +630,16 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex flex-col h-full min-h-0">
         {!violation && (
           <button onClick={() => setFlagsSummary('summary')}
-            className="shrink-0 self-start mx-2 mt-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="shrink-0 self-start mx-2 mt-1 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
         )}
-        <p className="shrink-0 text-[10px] text-gray-400 px-2 py-1">
+        <p className="shrink-0 text-[12px] text-gray-400 px-2 py-1">
           {violationLabel ? `${violationLabel} - ` : ''}
           {violatedItems.length} item{violatedItems.length !== 1 ? 's' : ''}
         </p>
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <table className="w-full table-fixed border-collapse text-[8px]">
+          <table className="w-full table-fixed border-collapse text-[12px]">
             <colgroup>
               <col style={{width:'30%'}} />
               <col style={{width:'15%'}} />
@@ -650,7 +650,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
               <col style={{width:'10%'}} />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-              <tr className="text-[8px] font-bold text-gray-500">
+              <tr className="text-[12px] font-bold text-gray-500">
                 <th className="text-left pl-2 py-0.5">Item</th>
                 <th className="text-left py-0.5">Group</th>
                 <th className="text-center py-0.5">SOH</th>
@@ -685,11 +685,11 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                       <td className="text-center py-0">
                         {isEditing ? (
                           <div className="flex gap-0.5 justify-center">
-                            <button onClick={saveEdit} disabled={saving} className="text-[8px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
-                            <button onClick={() => setEditingId(null)} className="text-[8px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
+                            <button onClick={saveEdit} disabled={saving} className="text-[12px] font-bold text-white bg-green-600 px-1.5 py-0.5 rounded disabled:opacity-50">{saving ? '…' : 'Save'}</button>
+                            <button onClick={() => setEditingId(null)} className="text-[12px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">✕</button>
                           </div>
                         ) : (
-                          <button onClick={() => startEdit(item)} className="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">Edit</button>
+                          <button onClick={() => startEdit(item)} className="text-[12px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">Edit</button>
                         )}
                       </td>
                     </tr>
@@ -715,22 +715,22 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
         {!violation && (
           <button onClick={() => setFlagsSummary('summary')}
-            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="mx-2 mb-1 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
         )}
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {lossSummaryLoading || !lossSummary
             ? 'Loading…'
             : `${serviceViolations.length} service item${serviceViolations.length !== 1 ? 's' : ''} with count/GMC/bill activity`}
         </p>
         {!lossSummaryLoading && lossSummary && (serviceViolations.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No service items have count/GMC/bill activity.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No service items have count/GMC/bill activity.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {serviceViolations.map((r: any) => (
                 <div key={r.item_id} className="px-2 py-1.5">
-                  <p className="text-[10px] font-semibold text-gray-900 truncate">{r.item_name}</p>
-                  <p className="text-[9px] text-gray-400 mt-0.5">
+                  <p className="text-[12px] font-semibold text-gray-900 truncate">{r.item_name}</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">
                     {Number(r.cnt) !== 0 && <span className="mr-2">CNT: {r.cnt}</span>}
                     {Number(r.gmc) !== 0 && <span className="mr-2">GMC: {r.gmc}</span>}
                     {Number(r.bl) !== 0 && <span>BL: {r.bl}</span>}
@@ -748,15 +748,15 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
         {!violation && (
           <button onClick={() => setFlagsSummary('summary')}
-            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="mx-2 mb-1 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
         )}
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.noGroup.length} item${flags.noGroup.length !== 1 ? 's' : ''} with no group`}
         </p>
         {!flagsLoading && flags && (flags.noGroup.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">All items have a group.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">All items have a group.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {flags.noGroup.map((r: any) => (
                 <NoGroupFix key={r.id} r={r} groupNames={flags.groupNames ?? []} onFixed={id =>
@@ -774,13 +774,13 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
         {!violation && (
           <button onClick={() => setFlagsSummary('summary')}
-            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="mx-2 mb-1 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
         )}
         {!recentMergesLoading && recentMerges.length > 0 && (
           <div className="px-2 mb-2">
-            <p className="text-[10px] text-gray-400 mb-1">Recent merges (can be undone):</p>
+            <p className="text-[12px] text-gray-400 mb-1">Recent merges (can be undone):</p>
             <div className="bg-white border border-orange-200 rounded-lg divide-y divide-orange-100 overflow-hidden">
               {recentMerges.map((r: any) => (
                 <RecentMergeFix key={r.id} r={r} onUnmerged={() => {
@@ -792,7 +792,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
           </div>
         )}
         <div className="flex items-center justify-between px-2 mb-1 gap-2">
-          <p className="text-[10px] text-gray-400">
+          <p className="text-[12px] text-gray-400">
             {flagsLoading || !flags ? 'Loading…' : `${activeDups.length} possible duplicate pair${activeDups.length !== 1 ? 's' : ''}`}
           </p>
           {!flagsLoading && flags && activeDups.length > 0 && (
@@ -811,13 +811,13 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                 setMarkingAllDups(false)
               }}
               disabled={markingAllDups}
-              className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition">
+              className="shrink-0 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 transition">
               {markingAllDups ? 'Saving…' : 'Mark All as Different'}
             </button>
           )}
         </div>
         {!flagsLoading && flags && (activeDups.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate item names found.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No duplicate item names found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {activeDups.map((r: any) => (
                 <DuplicateFix key={`${r.id1}-${r.id2}`} r={r} onOpenItem360={setViewingItemId} onFixed={(id1, id2) => {
@@ -836,12 +836,12 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex-1 overflow-y-auto min-h-0 py-2 h-full">
         {!violation && (
           <button onClick={() => setFlagsSummary('summary')}
-            className="mx-2 mb-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="mx-2 mb-1 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back to Flags
           </button>
         )}
         <div className="flex items-center justify-between px-2 mb-1 gap-2">
-          <p className="text-[10px] text-gray-400">
+          <p className="text-[12px] text-gray-400">
             {flagsLoading || !flags ? 'Loading…' : `${flags.unlinkedNamed.length} unlinked item name${flags.unlinkedNamed.length !== 1 ? 's' : ''}`}
           </p>
           {!flagsLoading && flags && flags.unlinkedNamed.length > 0 && (
@@ -856,13 +856,13 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                 setLinkingAllUnlinked(false)
               }}
               disabled={linkingAllUnlinked}
-              className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-40 transition">
+              className="shrink-0 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-40 transition">
               {linkingAllUnlinked ? 'Linking…' : 'Link All'}
             </button>
           )}
         </div>
         {!flagsLoading && flags && (flags.unlinkedNamed.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No unlinked sales found.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No unlinked sales found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {flags.unlinkedNamed.map((r: any) => (
                 <UnlinkedFix key={r.item_name} r={r} onFixed={(item_name: string) => {
@@ -906,21 +906,21 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div className="flex flex-col h-full min-h-0">
         <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
           <button onClick={() => setFlagsSummary(null)}
-            className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
+            className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-red-600 text-white transition">
             ← Back
           </button>
-          <span className="text-[9px] font-semibold text-red-700">🚩 Items Flags</span>
+          <span className="text-[12px] font-semibold text-red-700">🚩 Items Flags</span>
         </div>
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {rows.map(r => (
             <div key={r.type} className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[12px] text-gray-400">
                   {r.loading ? 'Loading…' : `${r.count} ${r.label}`}
                 </p>
                 {r.viewable && (
                   <button onClick={() => setFlagsSummary(r.type)}
-                    className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
+                    className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition">
                     View
                   </button>
                 )}
@@ -939,9 +939,9 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div ref={leftPaneRef} className="w-1/3 border-r-4 border-blue-600 overflow-y-auto min-h-0">
         <div className="border-b border-gray-100 bg-gray-50 sticky top-0 z-10 space-y-1 px-2 py-1">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] text-gray-400">{filteredItems.length} items</span>
+            <span className="text-[12px] text-gray-400">{filteredItems.length} items</span>
             <button onClick={() => setFlagsSummary('summary')} title="Item flags -- assign who's responsible for each"
-              className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
+              className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-700 transition">
               🚩
             </button>
           </div>
@@ -949,7 +949,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
             <select
               value={productType}
               onChange={e => onProductTypeChange?.(e.target.value as 'all' | 'goods' | 'services')}
-              className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="text-[12px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
               <option value="all">All types</option>
               <option value="goods">Goods</option>
@@ -958,7 +958,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
             <select
               value={group || ''}
               onChange={e => onGroupChange?.(e.target.value || null)}
-              className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="text-[12px] px-1.5 py-0.5 rounded border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
               <option value="">All groups</option>
               {groups.map(g => (
@@ -972,14 +972,14 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
           return (
             <div key={item.id} data-left-item={item.id} onClick={() => { scrollingFromClick.current = true; jumpTo(item); setTimeout(() => { scrollingFromClick.current = false }, 1000) }}
               className={`cursor-pointer border-b-2 border-black px-2 py-1.5 transition ${selectedId === item.id ? 'bg-blue-600 text-white' : 'hover:bg-gray-50'}`}>
-              <p className={`text-[10px] font-semibold truncate leading-tight ${selectedId === item.id ? 'text-white' : 'text-gray-900'}`}>{item.item_name}</p>
-              <div className="flex gap-2 text-[9px] mt-0.5">
+              <p className={`text-[12px] font-semibold truncate leading-tight ${selectedId === item.id ? 'text-white' : 'text-gray-900'}`}>{item.item_name}</p>
+              <div className="flex gap-2 text-[12px] mt-0.5">
                 <span className={selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>{item.cf_group || 'No group'}</span>
                 <span className={item.product_type === 'service' ? (selectedId === item.id ? 'text-purple-200' : 'text-purple-500') : (selectedId === item.id ? 'text-teal-200' : 'text-teal-600')}>
                   {item.product_type === 'service' ? 'Service' : 'Good'}
                 </span>
               </div>
-              <div className="flex gap-2 text-[9px] mt-0.5">
+              <div className="flex gap-2 text-[12px] mt-0.5">
                 <span className={soh <= 0 ? 'text-red-300 font-bold' : selectedId === item.id ? 'text-blue-100' : 'text-gray-500'}>SOH:{soh % 1 === 0 ? soh : soh.toFixed(2)}</span>
                 <span className={selectedId === item.id ? 'text-blue-200' : 'text-blue-500'}>SP:{item.selling_rate ? fmt(item.selling_rate) : '—'}</span>
                 <span className={selectedId === item.id ? 'text-green-200' : 'text-green-500'}>VCP:{item.purchase_rate ? fmt(item.purchase_rate) : '—'}</span>
@@ -988,7 +988,7 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
           )
         })}
         {filteredItems.length === 0 && (
-          <p className="text-[10px] text-gray-400 text-center py-10">No items</p>
+          <p className="text-[12px] text-gray-400 text-center py-10">No items</p>
         )}
       </div>
 
@@ -996,15 +996,15 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
       <div ref={rightPaneRef} className="w-2/3 overflow-y-auto min-h-0 bg-white pr-2">
         {showAdd && (
           <div className="p-2 space-y-2 border-b border-gray-200">
-            <p className="text-[10px] font-bold text-gray-600">New Item</p>
+            <p className="text-[12px] font-bold text-gray-600">New Item</p>
             <ItemForm form={addForm} onChange={setAddForm} groups={groupNames} />
             <div className="flex gap-1">
               <button onClick={saveAdd} disabled={adding || !addForm.item_name.trim()}
-                className="flex-1 bg-blue-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                className="flex-1 bg-blue-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                 {adding ? 'Saving…' : 'Save'}
               </button>
               <button onClick={() => onCloseAdd?.()}
-                className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
             </div>
           </div>
         )}
@@ -1016,23 +1016,23 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
               className={`border-b border-gray-200 transition ${selectedId === item.id ? 'bg-blue-50/40' : ''}`}>
               {editingId === item.id ? (
                 <div className="p-2 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-600">Edit Item</p>
+                  <p className="text-[12px] font-bold text-gray-600">Edit Item</p>
                   <ItemForm form={editForm} onChange={setEditForm} groups={groupNames} />
                   <div className="flex gap-1">
                     <button onClick={saveEdit} disabled={saving}
-                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                      className="flex-1 bg-green-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                       {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button onClick={() => setEditingId(null)}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                   </div>
                 </div>
               ) : (
                 <>
                   <div data-item-id={item.id} className="flex items-center justify-between px-2 py-1 bg-blue-600 border-b border-blue-700 sticky top-0 z-10">
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold text-white truncate">{item.item_name}</p>
-                      <p className="text-[9px] text-blue-200">
+                      <p className="text-[12px] font-bold text-white truncate">{item.item_name}</p>
+                      <p className="text-[12px] text-blue-200">
                         {item.cf_group ?? 'No group'}{item.product_type !== 'service' && <> · SOH: {Number(item.calculated_soh)}</>} ·{' '}
                         <span className={item.product_type === 'service' ? 'text-purple-200' : 'text-teal-200'}>
                           {item.product_type === 'service' ? 'Service' : 'Good'}
@@ -1041,20 +1041,20 @@ function ItemsTab({ items, group, productType, search, violation, violationLabel
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button type="button" onClick={() => setViewingItemId(item.id)}
-                        className="text-[9px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
+                        className="text-[12px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
                         360°
                       </button>
                       <button onClick={() => startEdit(item)}
-                        className="text-[9px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
+                        className="text-[12px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded hover:bg-blue-50">
                         Edit
                       </button>
                     </div>
                   </div>
                   {lossRows.length === 0 ? (
-                    <p className="text-[10px] text-gray-400 text-center py-4">No activity.</p>
+                    <p className="text-[12px] text-gray-400 text-center py-4">No activity.</p>
                   ) : (
                     <div>
-                      <table className="w-full border-collapse text-[8px]">
+                      <table className="w-full border-collapse text-[12px]">
                         <thead className="sticky top-[28px] z-[9]">
                           <tr className="bg-amber-400">
                             <th className="text-left pr-1 py-0.5 font-bold text-gray-800 border-b-2 border-gray-400">DATE</th>

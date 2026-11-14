@@ -78,7 +78,7 @@ export function AliasPicker({ itemId, current, onChange }: {
       {current.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
           {(showAll ? current : current.slice(0, VISIBLE_COUNT)).map(a => (
-            <span key={a.id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
+            <span key={a.id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[12px] font-semibold px-1.5 py-0.5 rounded-full">
               {a.name}
               <button onClick={() => remove(a)} disabled={busy} className="text-blue-400 hover:text-red-500 font-bold">×</button>
             </span>
@@ -86,7 +86,7 @@ export function AliasPicker({ itemId, current, onChange }: {
           {current.length > VISIBLE_COUNT && (
             <button
               onClick={() => setShowAll(v => !v)}
-              className="text-[8px] font-semibold text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
+              className="text-[12px] font-semibold text-blue-600 hover:text-blue-800 underline whitespace-nowrap">
               {showAll ? 'Show less' : `+${current.length - VISIBLE_COUNT} more`}
             </button>
           )}
@@ -94,14 +94,14 @@ export function AliasPicker({ itemId, current, onChange }: {
       )}
       <input value={query} onChange={e => setQuery(e.target.value)}
         placeholder="Search unresolved names to attach…"
-        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
       {query.trim() && (
         <div className="border border-gray-200 rounded bg-white max-h-28 overflow-y-auto">
           {candidates.length === 0 ? (
-            <p className="text-[8px] text-gray-400 px-1.5 py-1">No matching unresolved names</p>
+            <p className="text-[12px] text-gray-400 px-1.5 py-1">No matching unresolved names</p>
           ) : candidates.map(c => (
             <button key={`${c.source}-${c.name}`} onClick={() => add(c.name, c.source)} disabled={busy}
-              className="w-full text-left px-1.5 py-1 text-[8px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-center justify-between">
+              className="w-full text-left px-1.5 py-1 text-[12px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 flex items-center justify-between">
               <span className="truncate">{c.name}</span>
               <span className="text-gray-400 shrink-0 ml-1">{c.source} · {c.cnt}</span>
             </button>
@@ -159,7 +159,7 @@ export function MatchPicker({ itemId, itemName, isService, current, candidatePoo
       {current.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {current.map(m => (
-            <span key={m.id} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[8px] font-semibold px-1.5 py-0.5 rounded-full">
+            <span key={m.id} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 text-[12px] font-semibold px-1.5 py-0.5 rounded-full">
               {m.name}
               <button onClick={() => remove(m)} disabled={busy} className="text-purple-400 hover:text-red-500 font-bold">×</button>
             </span>
@@ -168,14 +168,14 @@ export function MatchPicker({ itemId, itemName, isService, current, candidatePoo
       )}
       <input value={query} onChange={e => setQuery(e.target.value)}
         placeholder={`Search ${isService ? 'goods' : 'services'} to attach…`}
-        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+        className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
       {query.trim() && (
         <div className="border border-gray-200 rounded bg-white max-h-28 overflow-y-auto">
           {candidates.length === 0 ? (
-            <p className="text-[8px] text-gray-400 px-1.5 py-1">No matching {isService ? 'goods' : 'services'}</p>
+            <p className="text-[12px] text-gray-400 px-1.5 py-1">No matching {isService ? 'goods' : 'services'}</p>
           ) : candidates.map(c => (
             <button key={c.item_id} onClick={() => add(c.item_name)} disabled={busy}
-              className="w-full text-left px-1.5 py-1 text-[8px] text-gray-800 hover:bg-purple-50 border-b border-gray-100 last:border-0 truncate">
+              className="w-full text-left px-1.5 py-1 text-[12px] text-gray-800 hover:bg-purple-50 border-b border-gray-100 last:border-0 truncate">
               {c.item_name}
             </button>
           ))}
@@ -239,15 +239,15 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
           onChange={e => { setSearch(e.target.value); setTarget(null); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="Search items to merge with…"
-          className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+          className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
         {open && filtered.length > 0 && (
           <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-32 overflow-y-auto">
             {filtered.map(s => (
               <button key={s.item_id} onMouseDown={e => e.preventDefault()}
                 onClick={() => { setTarget(s); setSearch(s.item_name); setOpen(false) }}
-                className="w-full text-left px-1.5 py-1 text-[9px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 truncate">
+                className="w-full text-left px-1.5 py-1 text-[12px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0 truncate">
                 {s.item_name}
-                <span className={`ml-1 text-[7px] font-semibold ${s.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}>
+                <span className={`ml-1 text-[12px] font-semibold ${s.product_type === 'service' ? 'text-purple-500' : 'text-teal-600'}`}>
                   ({s.product_type === 'service' ? 'service' : 'good'})
                 </span>
               </button>
@@ -257,26 +257,26 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
       </div>
       {target && (
         <div className="space-y-1 bg-white border border-gray-200 rounded p-1.5">
-          <p className="text-[8px] font-bold text-gray-500">Final name for the merged {typeLabel}:</p>
-          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+          <p className="text-[12px] font-bold text-gray-500">Final name for the merged {typeLabel}:</p>
+          <label className="flex items-center gap-1 text-[12px] text-gray-700">
             <input type="radio" checked={finalChoice === 'this'} onChange={() => setFinalChoice('this')} />
             <span className="truncate">{itemName}</span>
           </label>
-          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+          <label className="flex items-center gap-1 text-[12px] text-gray-700">
             <input type="radio" checked={finalChoice === 'other'} onChange={() => setFinalChoice('other')} />
             <span className="truncate">{target.item_name}</span>
           </label>
-          <label className="flex items-center gap-1 text-[9px] text-gray-700">
+          <label className="flex items-center gap-1 text-[12px] text-gray-700">
             <input type="radio" checked={finalChoice === 'custom'} onChange={() => setFinalChoice('custom')} />
             <span>A different name…</span>
           </label>
           {finalChoice === 'custom' && (
             <input value={customName} onChange={e => setCustomName(e.target.value)}
               placeholder={`Type the final ${typeLabel} name`}
-              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[9px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+              className="w-full bg-gray-100 border border-gray-300 rounded px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
           )}
           <button onClick={merge} disabled={merging || !finalName}
-            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[9px] font-bold rounded py-1 transition">
+            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[12px] font-bold rounded py-1 transition">
             {merging ? 'Merging…' : `Merge — combined history becomes "${finalName || '…'}"`}
           </button>
         </div>
@@ -641,7 +641,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       {countLossPrompt && <LossDialog prompt={countLossPrompt} onClose={() => setCountLossPrompt(null)} />}
       {parentPackName && (
         <div className="px-3 py-1.5 border-b border-gray-200 bg-blue-50">
-          <p className="text-[8px] font-semibold text-blue-700">
+          <p className="text-[12px] font-semibold text-blue-700">
             <span className="text-gray-500">Derived from pack:</span> {parentPackName}
           </p>
         </div>
@@ -649,11 +649,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
 
       {needsReview && reviewVerdict !== 'correct' && (
         <div className="px-3 py-2 border-b border-gray-200 bg-fuchsia-50 space-y-1.5">
-          <p className="text-[8px] font-bold text-fuchsia-800">🔍 Created from an unidentified pre-Zoho ledger name -- please confirm this is a real, standalone item.</p>
+          <p className="text-[12px] font-bold text-fuchsia-800">🔍 Created from an unidentified pre-Zoho ledger name -- please confirm this is a real, standalone item.</p>
           {item.description && (
-            <p className="text-[8px] text-gray-600 whitespace-pre-wrap break-words">{item.description}</p>
+            <p className="text-[12px] text-gray-600 whitespace-pre-wrap break-words">{item.description}</p>
           )}
-          <div className="flex flex-wrap items-center gap-3 text-[9px]">
+          <div className="flex flex-wrap items-center gap-3 text-[12px]">
             <label className="flex items-center gap-1 cursor-pointer">
               <input type="radio" name={`needs-review-${item.item_id}`} className="cursor-pointer"
                 checked={false} disabled={reviewSaving}
@@ -676,15 +676,15 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       {unreviewedPrezohoNotes.length > 0 && (
         <div className="px-3 py-2 border-b border-gray-200 bg-teal-50 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[8px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} on this item -- already checked, none need backfilling, just worth a look.</p>
+            <p className="text-[12px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} on this item -- already checked, none need backfilling, just worth a look.</p>
             <button onClick={markPrezohoNotesReviewed} disabled={prezohoNotesMarking}
-              className="shrink-0 text-[8px] font-semibold px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50">
+              className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50">
               {prezohoNotesMarking ? '…' : '✓ Mark Reviewed'}
             </button>
           </div>
           <div className="max-h-32 overflow-y-auto space-y-1">
             {unreviewedPrezohoNotes.map(n => (
-              <div key={n.id} className="text-[8px] text-gray-600 border-b border-teal-100 pb-1">
+              <div key={n.id} className="text-[12px] text-gray-600 border-b border-teal-100 pb-1">
                 <span className="font-semibold text-gray-700">{fmtDate(n.cell_date)}</span>
                 <span className="ml-1 text-teal-700">[{n.category}]</span>
                 <span className="ml-1 whitespace-pre-wrap break-words">{n.raw_text || '(blank)'}</span>
@@ -699,11 +699,11 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           {summaryFlags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {summaryFlags.map((f, i) => (
-                <span key={i} className={`inline-block px-2 py-0.5 rounded-full text-[8px] font-bold text-white whitespace-nowrap ${f.bg}`}>{f.label}</span>
+                <span key={i} className={`inline-block px-2 py-0.5 rounded-full text-[12px] font-bold text-white whitespace-nowrap ${f.bg}`}>{f.label}</span>
               ))}
             </div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-0.5 text-[9px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-0.5 text-[12px]">
             <div><span className="text-gray-500">Net Loss/Gain:</span>{' '}
               <span className={isNetLoss ? 'text-red-600 font-semibold' : isNetGain ? 'text-green-600 font-semibold' : 'text-gray-700 font-semibold'}>
                 {isNetLoss ? `-${fmtN(lgQty)}` : isNetGain ? `+${fmtN(Math.abs(lgQty))}` : '0'} (₵{fmtN(Math.abs(lgAmt))})
@@ -745,10 +745,10 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
           />
         ) : (
           <>
-            <p className="text-[7px] font-bold text-gray-500 px-1 py-0.5 bg-gray-50 border-b border-gray-200">
+            <p className="text-[12px] font-bold text-gray-500 px-1 py-0.5 bg-gray-50 border-b border-gray-200">
               Pack chain: → {targetName} → services
             </p>
-            <table className="table-fixed border-collapse text-[7px]"
+            <table className="table-fixed border-collapse text-[12px]"
               style={{ width: `${48 + 2 * 40 + 10 * 28 + packChainBreakdownNames.length * 48 + 44 + 48 + 56 + 48 + 2 * 56}px` }}>
               {/* Pixel-widths: date frozen at its text width, numeric columns
                   as thin as their numbers. The table scrolls sideways inside
@@ -776,31 +776,31 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-amber-500 text-gray-800 font-bold">
-                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500 text-[6px]">DATE</th>
-                  <th colSpan={7} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[6px]">
+                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-left pl-0.5 align-bottom sticky left-0 z-20 bg-amber-500 text-[12px]">DATE</th>
+                  <th colSpan={7} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[12px]">
                     Packs
                   </th>
-                  <th colSpan={8 + packChainBreakdownNames.length} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[6px]">
+                  <th colSpan={8 + packChainBreakdownNames.length} className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[12px]">
                     {targetName}
                   </th>
-                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-l-gray-600 text-[6px]"
+                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-l-gray-600 text-[12px]"
                     title={`Losses valued in cedis at ₵${sheetPrice} per single. Pack losses count as packs × singles-per-pack × ₵${sheetPrice} — treated as singles that were used but never recorded, NOT at the pack's own selling price.`}>
                     LOSS ₵
                   </th>
-                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-l-gray-600 text-[6px]"
+                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-l-gray-600 text-[12px]"
                     title="Raw item name as recorded on the pack's own transaction that day, before canonicalization.">
                     PACK ALIAS
                   </th>
-                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-gray-400 text-[6px]"
+                  <th rowSpan={2} className="py-0 border-b border-gray-400 text-center align-bottom border-l border-gray-400 text-[12px]"
                     title="Raw item name as recorded on the singles/service transaction that day, before canonicalization.">
                     SINGLES ALIAS
                   </th>
                 </tr>
                 <tr className="bg-amber-400 text-gray-800 font-bold">
-                  <th className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[6px]" title="Physical count">CNT</th>
-                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[6px]" title="Bought/received">BL</th>
-                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[6px]" title="Taken for internal use (credits singles below)">GMC</th>
-                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[6px]" title="Sold as whole packs to a real customer">WIC</th>
+                  <th className="py-0 border-b border-gray-400 text-center border-l border-l-gray-600 text-[12px]" title="Physical count">CNT</th>
+                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[12px]" title="Bought/received">BL</th>
+                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[12px]" title="Taken for internal use (credits singles below)">GMC</th>
+                  <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400 text-[12px]" title="Sold as whole packs to a real customer">WIC</th>
                   <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400" title="Running expected stock">EXP</th>
                   <th className="py-0 border-b border-gray-400 text-center border-l border-gray-400"
                     title="Packs missing at count. Column total shown below the label.">
@@ -894,14 +894,14 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                             <span className="text-gray-400"> / {fmtQ(cyc.sheetsGiven)}</span>
                             {open && (
                               diff < -0.001
-                                ? <span className="block text-red-600 text-[6px] font-bold">in progress ⚠</span>
-                                : <span className="block text-blue-600 text-[6px] font-semibold">in progress</span>
+                                ? <span className="block text-red-600 text-[12px] font-bold">in progress ⚠</span>
+                                : <span className="block text-blue-600 text-[12px] font-semibold">in progress</span>
                             )}
                           </td>
                           <td className="text-center py-0 font-bold border-l border-gray-300 whitespace-nowrap">
                             {open ? <span className="text-gray-300">—</span>
                               : diff > 0.001 ? (
-                                <span className="text-red-600">-₵{fmtN(diff * sheetPrice)}<span className="block text-[6px]">-{fmtQ(diff)} sheets</span></span>
+                                <span className="text-red-600">-₵{fmtN(diff * sheetPrice)}<span className="block text-[12px]">-{fmtQ(diff)} sheets</span></span>
                               ) : <span className="text-green-600">✓</span>}
                           </td>
                           <td className="text-center py-0 font-bold border-l border-gray-300 whitespace-nowrap">
@@ -920,7 +920,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       const qty = b?.qty ?? 0, amount = b?.amount ?? 0
                       return (
                         <td key={n} className="text-center py-0 font-bold border-l border-gray-300 text-gray-600 whitespace-nowrap overflow-hidden">
-                          {qty === 0 ? '—' : <>{fmtQ(qty)}<span className="text-blue-500 text-[6px]"> (₵{fmtN(amount)})</span></>}
+                          {qty === 0 ? '—' : <>{fmtQ(qty)}<span className="text-blue-500 text-[12px]"> (₵{fmtN(amount)})</span></>}
                         </td>
                       )
                     })}
@@ -957,7 +957,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   const totalCedis = packChainRows.reduce((s, r) => s + (rowLossCedis(r, numVal(item.units_per_pack), sheetPrice) ?? 0), 0)
                   return (
                     <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-                      <td colSpan={9} className="text-right pr-1 py-0 text-gray-600 text-[7px]">
+                      <td colSpan={9} className="text-right pr-1 py-0 text-gray-600 text-[12px]">
                         {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} →`}
                       </td>
                       <td className="border-l border-gray-300" />
@@ -993,9 +993,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       ) : showBreakdown ? (
         <div>
           <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-          <table className="w-full border-collapse text-[9px] tabular-nums">
+          <table className="w-full border-collapse text-[12px] tabular-nums">
           <thead>
-            <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
+            <tr className="bg-gray-50 text-gray-500 text-[12px] font-bold uppercase tracking-tighter border-b border-gray-200">
               <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               <th className="px-1 py-0 text-right" title="Converted in from another item's GMC take">CNV</th>
               <th className="px-1 py-0 text-right text-blue-500" title="Used = sold/consumed that day">Used</th>
@@ -1018,7 +1018,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-[9px]">
+          <tbody className="divide-y divide-gray-100 text-[12px]">
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
@@ -1081,7 +1081,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     return (
                       <td key={n} className="px-1 py-0 text-right text-gray-600 whitespace-nowrap">
                         {qty === 0 ? <span className="text-gray-300">—</span> : (
-                          <span className="text-[8px]" title={`Total ₵${fmtN(amount)} · avg. selling price ₵${fmtN(avgSp)} · ${fmtQ(qty)} used`}>
+                          <span className="text-[12px]" title={`Total ₵${fmtN(amount)} · avg. selling price ₵${fmtN(avgSp)} · ${fmtQ(qty)} used`}>
                             TT<span className="text-blue-600">({fmtN(amount)})</span>SP<span className="text-blue-600">({fmtN(avgSp)})</span>QTY<span className="text-blue-600">({fmtQ(qty)})</span>
                           </span>
                         )}
@@ -1136,7 +1136,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                       )}
                     </td>
                   )}
-                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[12px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
                         {matchingTradeOffs.map(rec => {
@@ -1185,9 +1185,9 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       ) : (
         <div>
           <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-          <table className="w-full border-collapse text-[9px] tabular-nums">
+          <table className="w-full border-collapse text-[12px] tabular-nums">
             <thead>
-              <tr className="bg-gray-50 text-gray-500 text-[8px] font-bold uppercase tracking-tighter border-b border-gray-200">
+              <tr className="bg-gray-50 text-gray-500 text-[12px] font-bold uppercase tracking-tighter border-b border-gray-200">
                 <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
               {!isService && <th className="px-1 py-0 text-right" title="Loss (red) or gain (green) valued at selling price">L/G ₵</th>}
               {!isService && <th className="px-1 py-0 text-right">L/G</th>}
@@ -1204,7 +1204,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
               <th className="px-1 py-0 text-left">Alias</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-[9px]">
+          <tbody className="divide-y divide-gray-100 text-[12px]">
             {displayedRows!.map((row) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
@@ -1288,7 +1288,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                   </td>}
                   {!isService && isGmcItem && <td className="px-1 py-0 text-right text-teal-600"><CnvValue qty={row.converted_in_qty} time={row.converted_in_time} used={row.cycle_used} closed={row.cycle_closed} usedBefore={row.cnv_used_before} usedAfter={row.cnv_used_after} /></td>}
                   {!isService && <td className="px-1 py-0 text-right text-gray-400">{fmtN(isGmcItem ? (row.gmc_soh ?? null) : row.expected_soh)}</td>}
-                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[8px]">
+                  {!isGmcItem && !isService && <td className="px-1 py-0 text-left text-gray-600 text-[12px]">
                     {matchingTradeOffs.length > 0 ? (
                       <div className="space-y-0.5">
                         {matchingTradeOffs.map(rec => {
@@ -1318,7 +1318,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[9px]">
+            <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold text-[12px]">
               <td className="pl-1 pr-1 py-0 text-gray-600 sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Total</td>
               {!isService && <td className={lgCls}>{totalCost > 0.01 ? `-₵${fmtN(totalCost)}` : totalCost < -0.01 ? `+₵${fmtN(Math.abs(totalCost))}` : '0'}</td>}
               {!isService && <td className={lgCls}>{totalLoss > 0.001 ? `-${fmtN(totalLoss)}` : totalLoss < -0.001 ? `+${fmtN(Math.abs(totalLoss))}` : '0'}</td>}
@@ -1384,7 +1384,7 @@ function renderCell(key: ColKey, row: SummaryRow) {
     case 'product_type':
       return (
         <td key={key} className="text-center py-0">
-          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
+          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[12px] font-semibold ${
             row.product_type === 'service' ? 'bg-purple-50 text-purple-600' : 'bg-teal-50 text-teal-600'}`}>
             {row.product_type === 'service' ? 'Service' : 'Good'}
           </span>
@@ -1520,7 +1520,7 @@ function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productT
           growing to fit them. */}
       <div ref={scrollRef} onScroll={e => sessionStorage.setItem('lossTabScrollTop', String(e.currentTarget.scrollTop))}
         className="flex-1 min-h-0 overflow-auto rounded-xl border border-gray-200 bg-white">
-        <table className="table-fixed border-collapse text-[11px]">
+        <table className="table-fixed border-collapse text-[12px]">
           {colgroup}
           <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
@@ -1535,7 +1535,7 @@ function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productT
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 text-[9px]">
+          <tbody className="divide-y divide-gray-100 text-[12px]">
             {filtered.length === 0 && (
               <tr><td colSpan={1 + shownColumns.length} className="py-10 text-center text-gray-400 text-xs">No items</td></tr>
             )}
@@ -1551,7 +1551,7 @@ function LossTab({ onOpenItem: _onOpenItem, search = '', group = 'All', productT
                       and the heading visibly drifts while scrolling instead
                       of staying put like the Item column does. */}
                   <td colSpan={1 + shownColumns.length} className="p-0">
-                    <div className="sticky left-0 z-10 w-fit bg-gray-100 px-1 py-0.5 font-bold text-gray-700 text-[10px] uppercase tracking-wide">
+                    <div className="sticky left-0 z-10 w-fit bg-gray-100 px-1 py-0.5 font-bold text-gray-700 text-[12px] uppercase tracking-wide">
                       {groupName} <span className="text-gray-400 font-normal normal-case">({items.length})</span>
                     </div>
                   </td>

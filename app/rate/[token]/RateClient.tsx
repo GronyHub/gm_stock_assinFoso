@@ -23,7 +23,7 @@ export default function RateClient({ token, valid, already, staff }: { token: st
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center px-5 py-8 text-center">
       <p className="text-xs font-extrabold uppercase tracking-widest text-[#14213D]">Grony Multimedia</p>
-      <p className="text-[11px] text-gray-500">Assin Foso, near GCB Bank</p>
+      <p className="text-[12px] text-gray-500">Assin Foso, near GCB Bank</p>
       {!valid && <p className="mt-8 text-sm text-gray-600">This rating link is not valid. Thank you for choosing us.</p>}
       {valid && done && (
         <div className="mt-8"><p className="text-5xl">🙏</p><p className="mt-3 text-lg font-bold text-gray-900">Thank you!</p><p className="mt-1 text-sm text-gray-600">Your feedback helps us serve you better.</p></div>

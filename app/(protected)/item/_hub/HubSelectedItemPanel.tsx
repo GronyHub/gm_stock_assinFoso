@@ -76,7 +76,7 @@ export default function HubSelectedItemPanel({ h }: { h: HubCtx }) {
                           </div>
                           {liveTapStatus.length > 0 && (
                             <div className="p-2 border-b border-blue-200 bg-white">
-                              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-[9px] font-mono text-blue-900 max-h-20 overflow-y-auto">
+                              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-[12px] font-mono text-blue-900 max-h-20 overflow-y-auto">
                                 {liveTapStatus.map((msg, i) => (
                                   <div key={i}>{msg}</div>
                                 ))}

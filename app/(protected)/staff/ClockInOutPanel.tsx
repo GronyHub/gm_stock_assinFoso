@@ -336,12 +336,12 @@ export default function ClockInOutPanel({
         <p className="text-xs font-semibold text-gray-700">My Time Today</p>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="bg-green-50 rounded-lg px-2.5 py-1.5">
-            <span className="text-[10px] text-gray-400 block">Time In</span>
+            <span className="text-[12px] text-gray-400 block">Time In</span>
             <span className="font-semibold text-green-700">{mine?.actual_in ?? '—'}<SourceDot source={mine?.in_source} /></span>
-            {needsOpeningCount && <span className="text-[9px] text-amber-600 font-semibold block mt-0.5">Pending opening count</span>}
+            {needsOpeningCount && <span className="text-[12px] text-amber-600 font-semibold block mt-0.5">Pending opening count</span>}
           </div>
           <div className="bg-orange-50 rounded-lg px-2.5 py-1.5">
-            <span className="text-[10px] text-gray-400 block">Time Out</span>
+            <span className="text-[12px] text-gray-400 block">Time Out</span>
             <span className="font-semibold text-orange-600">{mine?.actual_out ?? '—'}<SourceDot source={mine?.out_source} /></span>
           </div>
         </div>
@@ -391,7 +391,7 @@ export default function ClockInOutPanel({
             {savingBreak ? '…' : (mine?.on_break ? 'End Break' : 'Take a Break')}
           </button>
         )}
-        <p className="text-[10px] text-gray-400 text-center">Clock in at the shop with GPS on. No GPS? You can still clock in: the manager checks the CCTV and approves your time.</p>
+        <p className="text-[12px] text-gray-400 text-center">Clock in at the shop with GPS on. No GPS? You can still clock in: the manager checks the CCTV and approves your time.</p>
       </div>
     </>
   )

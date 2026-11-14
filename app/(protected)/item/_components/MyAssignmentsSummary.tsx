@@ -15,7 +15,7 @@ export function MyAssignmentsSummary({ assignments, deadlines }: { assignments: 
   if (mine.length === 0) return null
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-xl overflow-hidden">
-      <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wide px-3 pt-2.5 pb-1">Assigned to You</p>
+      <p className="text-[12px] font-bold text-blue-700 uppercase tracking-wide px-3 pt-2.5 pb-1">Assigned to You</p>
       <div className="divide-y divide-blue-100">
         {mine.map(v => (
           <div key={v.type} className="flex items-center justify-between gap-2 px-3 py-1.5 text-xs">

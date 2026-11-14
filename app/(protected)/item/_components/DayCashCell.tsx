@@ -40,10 +40,10 @@ export default function DayCashCell({ receiptId, cashCounted, salesTotal, onSave
   const money = (v: number) => v.toLocaleString('en-GH', { maximumFractionDigits: 2 })
 
   if (!receiptId) {
-    return <span className="text-[8px] text-gray-400" title="No walk-in sales on this day yet">CC —</span>
+    return <span className="text-[12px] text-gray-400" title="No walk-in sales on this day yet">CC —</span>
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-[8px] font-semibold leading-none whitespace-nowrap">
+    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold leading-none whitespace-nowrap">
       {editing ? (
         <span className="inline-flex items-center gap-0.5">
           <span className="text-gray-600">CC ₵</span>
@@ -51,7 +51,7 @@ export default function DayCashCell({ receiptId, cashCounted, salesTotal, onSave
             onChange={e => setVal(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void save(); if (e.key === 'Escape') setEditing(false) }}
             onBlur={() => void save()}
-            className="h-[12px] w-14 rounded border border-blue-400 bg-white px-0.5 text-[8px] outline-none" />
+            className="h-[12px] w-14 rounded border border-blue-400 bg-white px-0.5 text-[12px] outline-none" />
         </span>
       ) : (
         <button type="button" onClick={() => { setVal(cashCounted === null ? '' : String(cashCounted)); setEditing(true) }}

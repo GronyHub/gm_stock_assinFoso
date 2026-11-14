@@ -244,7 +244,7 @@ export default function GmcPacksPage() {
       <div>
         <h3 className="text-xs font-bold text-gray-900 mb-1">Configured GMC Packs</h3>
         <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[10px]">
+      <table className="w-full border-collapse text-[12px]">
         <thead>
           <tr className="border-b border-gray-300 bg-gray-100">
             <th className="border border-gray-200 px-1.5 py-0.5 text-left font-semibold text-gray-700">
@@ -268,38 +268,38 @@ export default function GmcPacksPage() {
                 <div className="space-y-0.5">
                   {row.packToGmc.length > 0 ? (
                     row.packToGmc.map((source: any, sourceIdx: number) => (
-                      <div key={sourceIdx} className="flex items-center gap-1 text-[9px]">
+                      <div key={sourceIdx} className="flex items-center gap-1 text-[12px]">
                         <span className="text-gray-900">{source.item_name}</span>
                         {source.units_per_pack && (
-                          <span className="text-gray-500 text-[8px]">
+                          <span className="text-gray-500 text-[12px]">
                             ({source.units_per_pack}u)
                           </span>
                         )}
                       </div>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-[8px] italic">—</span>
+                    <span className="text-gray-400 text-[12px] italic">—</span>
                   )}
                 </div>
               </td>
               <td className="border border-gray-200 px-1.5 py-0 text-center text-gray-900 font-semibold">
-                <div className="text-[9px]">{row.target_name || '?'}</div>
+                <div className="text-[12px]">{row.target_name || '?'}</div>
               </td>
               <td className="border border-gray-200 px-1.5 py-0">
                 <div className="space-y-0.5">
                   {row.serviceUsingGmc.length > 0 ? (
                     row.serviceUsingGmc.map((source: any, sourceIdx: number) => (
-                      <div key={sourceIdx} className="flex items-center gap-1 text-[9px]">
+                      <div key={sourceIdx} className="flex items-center gap-1 text-[12px]">
                         <span className="text-gray-900">{source.item_name}</span>
                         {source.units_per_pack && (
-                          <span className="text-gray-500 text-[8px]">
+                          <span className="text-gray-500 text-[12px]">
                             ({source.units_per_pack}u)
                           </span>
                         )}
                       </div>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-[8px] italic">—</span>
+                    <span className="text-gray-400 text-[12px] italic">—</span>
                   )}
                 </div>
               </td>
@@ -307,13 +307,13 @@ export default function GmcPacksPage() {
                 <div className="space-y-0.5">
                   {conversionHistory[row.target_id] && conversionHistory[row.target_id].length > 0 ? (
                     conversionHistory[row.target_id].map((conv: ConversionHistory, convIdx: number) => (
-                      <div key={convIdx} className="text-[9px] text-gray-700">
+                      <div key={convIdx} className="text-[12px] text-gray-700">
                         <div>{conv.targetItem}</div>
-                        <div className="text-gray-500 text-[8px]">{new Date(conv.date).toLocaleDateString()} × {conv.quantity}</div>
+                        <div className="text-gray-500 text-[12px]">{new Date(conv.date).toLocaleDateString()} × {conv.quantity}</div>
                       </div>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-[8px] italic">—</span>
+                    <span className="text-gray-400 text-[12px] italic">—</span>
                   )}
                 </div>
               </td>

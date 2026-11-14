@@ -92,12 +92,12 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
       <div className="flex items-start gap-1 px-2">
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
         <DensityToggle density={density} onChange={setDensity} />
-        {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[11px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
+        {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[12px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
       {chipNames.length > 0 && (
         <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
           {['', ...chipNames].map(n => (
-            <button key={n || 'all'} type="button" onClick={() => { whoTouched.current = true; setWho(n) }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
+            <button key={n || 'all'} type="button" onClick={() => { whoTouched.current = true; setWho(n) }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
           ))}
         </div>)}
       </div>
@@ -125,7 +125,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
               {fduties && fduties.filter(mine).length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500">Nothing is planned for {person ? nm(person) : 'this day'}.</p>}
               {fduties && BANDS.map(b => { const rows = fduties.filter(mine).filter(d => b.test(d)); if (!rows.length) return null; return (
                 <div key={b.key}>
-                  <p className="mb-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
+                  <p className="mb-0.5 text-[12px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
                   <div className={tileGrid(density)}>{rows.map(d => {
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}

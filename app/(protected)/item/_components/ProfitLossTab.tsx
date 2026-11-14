@@ -87,16 +87,16 @@ export default function ProfitLossTab() {
         <StatCard label="Daily Loss" value={fc(totals.dailyLoss)} tone="red" />
         <StatCard label={isProfit ? 'Net Profit' : 'Net Loss'} value={fc(Math.abs(totals.profit))} tone={isProfit ? 'green' : 'red'} />
       </div>
-      <p className="text-[11px] text-gray-400 -mt-2">Cash Counted − (Bills + Expenses + Daily Loss), all time.</p>
+      <p className="text-[12px] text-gray-400 -mt-2">Cash Counted − (Bills + Expenses + Daily Loss), all time.</p>
 
       <div>
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-semibold text-gray-700">Daily Profit &amp; Loss</p>
           <ColumnsPickerButton prefs={colPrefs} />
         </div>
-        <p className="text-[10px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
+        <p className="text-[12px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="table-fixed border-collapse text-[11px]" style={{
+          <table className="table-fixed border-collapse text-[12px]" style={{
             width: colPrefs.getWidth('date', PL_COL_DEFAULTS.date)
               + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PL_COL_DEFAULTS[c.key] ?? 90), 0),
           }}>
@@ -105,7 +105,7 @@ export default function ProfitLossTab() {
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PL_COL_DEFAULTS[c.key] ?? 90) }} />)}
             </colgroup>
             <thead>
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+              <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                 <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PL_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}>Date</ResizableTh>
                 {colPrefs.shownColumns.map((c, i) => (
                   <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1}
@@ -132,7 +132,7 @@ export default function ProfitLossTab() {
 
       <div className="bg-white border border-gray-200 rounded-xl p-3">
         <p className="text-sm font-semibold text-gray-700 mb-1">Monthly Profit &amp; Loss</p>
-        <p className="text-[10px] text-gray-400 mb-2">Cash counted against expenses, bills, and daily loss, by month.</p>
+        <p className="text-[12px] text-gray-400 mb-2">Cash counted against expenses, bills, and daily loss, by month.</p>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={monthly.map(m => ({ ...m, month: monthLabel(m.month) }))} margin={{ left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -151,7 +151,7 @@ export default function ProfitLossTab() {
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
         <span className="text-sm shrink-0">💡</span>
-        <p className="text-[11px] text-amber-800 leading-snug">
+        <p className="text-[12px] text-amber-800 leading-snug">
           Daily Loss is stock shrinkage valued at selling price (same figure as the Daily Loss feed and the Items list Loss Amount column) -- it does not account for unsold stock still sitting in inventory, so a day or month with heavy restocking can still look worse than it really is.
         </p>
       </div>

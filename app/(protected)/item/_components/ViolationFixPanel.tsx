@@ -75,7 +75,7 @@ export default function ViolationFixPanel({ type, items, onItemsChanged }: Props
   // with no filtered fix view of their own. no_staff_times lands on the
   // Staff tab's Team overview instead (see goToViolation).
   if (type === 'no_staff_times') {
-    return <p className="text-[11px] text-gray-400 py-3 px-2">Open the Staff tab to fix this.</p>
+    return <p className="text-[12px] text-gray-400 py-3 px-2">Open the Staff tab to fix this.</p>
   }
-  return <p className="text-[11px] text-gray-400 py-3 px-2">Open Grony Manage to fix this.</p>
+  return <p className="text-[12px] text-gray-400 py-3 px-2">Open Grony Manage to fix this.</p>
 }

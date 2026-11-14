@@ -44,7 +44,7 @@ export default function InfoCarousel() {
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="px-2 py-0.5 flex items-center justify-between gap-2">
-        <span className="text-[10px]">{current.text}</span>
+        <span className="text-[12px]">{current.text}</span>
         <div className="flex gap-1 items-center shrink-0">
           <div className="flex gap-0.5">
             {items.map((_, idx) => (
@@ -67,7 +67,7 @@ export default function InfoCarousel() {
           </div>
           <button
             onClick={() => setIsVisible(false)}
-            className="text-gray-400 hover:text-gray-600 leading-none px-0.5 text-[10px]"
+            className="text-gray-400 hover:text-gray-600 leading-none px-0.5 text-[12px]"
             title="Dismiss"
           >
             ×

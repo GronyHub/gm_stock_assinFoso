@@ -57,7 +57,7 @@ function c(v: string | null | undefined) {
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
-const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+const labelCls = 'text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
 function addedByLabel(v: Customer) {
   if (v.source === 'self_register') return 'Self-registered'
@@ -71,11 +71,11 @@ type ColKey = 'customerId' | 'company' | 'phone' | 'email' | 'location' | 'statu
 type CustomerColumn = ColumnDef<ColKey> & { align: 'left' | 'right'; tdClass: string; render: (v: Customer) => ReactNode }
 const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'company',  label: 'Company', align: 'left', tdClass: 'text-gray-600', render: v => v.company_name ?? '—' },
-  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => <>{v.phone ?? '—'}{v.extra_phones?.length ? <span className="ml-1 rounded bg-gray-100 px-1 text-[9px] font-bold text-gray-500">+{v.extra_phones.length}</span> : null}</> },
+  { key: 'phone',    label: 'Contact Number', align: 'left', tdClass: 'text-gray-600', render: v => <>{v.phone ?? '—'}{v.extra_phones?.length ? <span className="ml-1 rounded bg-gray-100 px-1 text-[12px] font-bold text-gray-500">+{v.extra_phones.length}</span> : null}</> },
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
   { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
   { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
-      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+      <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
         {v.status ?? '—'}
       </span>
     ) },
@@ -84,7 +84,7 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'serviceGoods', label: 'Service/Goods', align: 'left', tdClass: 'text-gray-600', render: v => v.service_goods ?? '—' },
   { key: 'addedBy', label: 'Added By', align: 'left', tdClass: 'text-gray-600', render: v => addedByLabel(v) },
   { key: 'whatsapp', label: 'WhatsApp Grp', align: 'left', tdClass: '', render: v => (
-      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.whatsapp_group_added ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
+      <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${v.whatsapp_group_added ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
         {v.whatsapp_group_added ? '✓ Added' : '✗ Not Added'}
       </span>
     ) },
@@ -365,7 +365,7 @@ export default function CustomersPage({
         <PageGuide page="customers" />
         <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
           title="Show only customers missing something"
-          className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
+          className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[12px] font-bold outline-none ${activeFlag ? 'border-red-600 bg-red-600 text-white' : 'border-red-200 bg-red-50 text-red-700'}`}>
           <option value="">Missing details ▾</option>
           {FLAG_TYPES.map(({ key, label }) => (
             <option key={key} value={key} disabled={flagCounts[key] === 0}>{label} ({flagCounts[key]})</option>
@@ -375,7 +375,7 @@ export default function CustomersPage({
         {locationCounts.length > 0 && (
           <select value={activeLocation ?? ''} onChange={e => setActiveLocation(e.target.value || null)}
             title="Show only customers in one place"
-            className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[11px] font-bold outline-none ${activeLocation ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+            className={`shrink-0 max-w-[170px] rounded-lg border px-1.5 py-1 text-[12px] font-bold outline-none ${activeLocation ? 'border-blue-600 bg-blue-600 text-white' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
             <option value="">📍 Location</option>
             {locationCounts.map(([loc, count]) => <option key={loc} value={loc}>{loc} ({count})</option>)}
           </select>
@@ -398,8 +398,8 @@ export default function CustomersPage({
                 <p className="text-xs text-gray-400">{selected.company_name}</p>}
               <div className="flex gap-1.5 mt-1">
                 {selected.is_internal &&
-                  <span className="text-[10px] bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-full">Internal</span>}
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
+                  <span className="text-[12px] bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-full">Internal</span>}
+                <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full
                   ${selected.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                   {selected.status ?? 'Unknown'}
                 </span>
@@ -451,9 +451,9 @@ export default function CustomersPage({
                   { label: 'Opening Bal', value: c(selected.opening_balance),        sub: 'opening balance' },
                 ].map(s => (
                   <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                    <p className="text-[12px] text-gray-400">{s.label}</p>
                     <p className={`text-sm font-bold ${s.label === 'Inv. Balance' && parseFloat(selected.invoice_outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
-                    <p className="text-[9px] text-gray-400">{s.sub}</p>
+                    <p className="text-[12px] text-gray-400">{s.sub}</p>
                   </div>
                 ))}
               </div>
@@ -476,7 +476,7 @@ export default function CustomersPage({
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No customers found.</p>
         ) : (
-          <table className="border-collapse text-[11px]" style={{
+          <table className="border-collapse text-[12px]" style={{
             tableLayout: 'fixed',
             width: idColWidth + custWidth('name')
               + colPrefs.shownColumns.reduce((s, c) => s + custWidth(c.key), 0),
@@ -488,7 +488,7 @@ export default function CustomersPage({
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: custWidth(c.key) }} />)}
             </colgroup>
             <thead>
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+              <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                 <th className={`relative overflow-hidden text-left ${cellPx} py-0.5 font-bold border-b border-r border-gray-200 sticky left-0 z-20 bg-gray-50`}>
                   <span className="block truncate">ID</span>
                 </th>
@@ -519,7 +519,7 @@ export default function CustomersPage({
                         <span className="text-amber-500 font-bold" title="Incomplete profile">⚠️</span>
                       )}
                       {v.is_internal && (
-                        <span className="text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                        <span className="text-[12px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
                       )}
                       {v.display_name}
                     </span>
@@ -572,13 +572,13 @@ function CustomerReceipts({ customerId }: { customerId: number }) {
               </span>
               <span className="shrink-0 font-semibold text-gray-900">{c(r.total)}</span>
               <a href={`/receipts/${r.id}/print`} target="_blank" rel="noopener noreferrer"
-                className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">View / print</a>
+                className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[12px] font-bold text-blue-700">View / print</a>
             </div>
           ))}
         </div>
       )}
       {rows.length > 5 && (
-        <button type="button" onClick={() => setShowAll(v => !v)} className="mt-1 text-[11px] font-semibold text-blue-600">
+        <button type="button" onClick={() => setShowAll(v => !v)} className="mt-1 text-[12px] font-semibold text-blue-600">
           {showAll ? 'Show fewer' : `Show all ${rows.length}`}
         </button>
       )}

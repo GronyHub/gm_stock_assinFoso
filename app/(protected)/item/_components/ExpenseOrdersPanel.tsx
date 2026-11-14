@@ -13,7 +13,7 @@ type ExpenseOrder = {
   created_at: string
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 function fmtPrice(v: string | null) {
   if (v == null) return null
@@ -32,7 +32,7 @@ function OrderForm({ form, setForm, itemNames, vendorNames, listId, onSave, onCa
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-2.5 space-y-1.5">
       <div>
-        <p className="text-[9px] text-gray-400 mb-0.5">Expense — pick an existing item or type a new one</p>
+        <p className="text-[12px] text-gray-400 mb-0.5">Expense — pick an existing item or type a new one</p>
         <input list={`${listId}-items`} value={form.expense_name}
           onChange={e => setForm({ ...form, expense_name: e.target.value })}
           placeholder="What does the shop want to buy?" className={inputCls} />
@@ -42,7 +42,7 @@ function OrderForm({ form, setForm, itemNames, vendorNames, listId, onSave, onCa
       </div>
       <div className="grid grid-cols-2 gap-1.5">
         <div>
-          <p className="text-[9px] text-gray-400 mb-0.5">Vendor (optional)</p>
+          <p className="text-[12px] text-gray-400 mb-0.5">Vendor (optional)</p>
           <input list={`${listId}-vendors`} value={form.vendor_name}
             onChange={e => setForm({ ...form, vendor_name: e.target.value })}
             placeholder="Not decided yet" className={inputCls} />
@@ -51,23 +51,23 @@ function OrderForm({ form, setForm, itemNames, vendorNames, listId, onSave, onCa
           </datalist>
         </div>
         <div>
-          <p className="text-[9px] text-gray-400 mb-0.5">Price (₵, optional)</p>
+          <p className="text-[12px] text-gray-400 mb-0.5">Price (₵, optional)</p>
           <input type="number" min="0" step="0.01" inputMode="decimal" value={form.price}
             onChange={e => setForm({ ...form, price: e.target.value })} placeholder="—" className={inputCls} />
         </div>
       </div>
       <div>
-        <p className="text-[9px] text-gray-400 mb-0.5">Notes — price comparisons, specs, anything for the decision</p>
+        <p className="text-[12px] text-gray-400 mb-0.5">Notes — price comparisons, specs, anything for the decision</p>
         <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
           rows={4} className={`${inputCls} resize-y`} />
       </div>
       <div className="flex items-center gap-1.5">
         <button onClick={onSave} disabled={saving || !form.expense_name.trim()}
-          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-bold rounded py-1.5 transition">
+          className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-bold rounded py-1.5 transition">
           {saving ? 'Saving…' : saveLabel}
         </button>
         {onCancel && (
-          <button onClick={onCancel} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">
+          <button onClick={onCancel} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">
             Cancel
           </button>
         )}
@@ -175,17 +175,17 @@ export default function ExpenseOrdersPanel() {
                   <div className="mt-1.5 pt-1.5 border-t border-gray-100">
                     {confirmDeleteId === o.id ? (
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-gray-500">Delete this order?</span>
+                        <span className="text-[12px] text-gray-500">Delete this order?</span>
                         <button onClick={() => deleteOrder(o.id)} disabled={deleting}
-                          className="text-[9px] font-bold text-white bg-red-600 rounded px-2 py-1 disabled:opacity-40">
+                          className="text-[12px] font-bold text-white bg-red-600 rounded px-2 py-1 disabled:opacity-40">
                           {deleting ? 'Deleting…' : 'Yes, Delete'}
                         </button>
                         <button onClick={() => setConfirmDeleteId(null)}
-                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 rounded px-2 py-1">Cancel</button>
+                          className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded px-2 py-1">Cancel</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDeleteId(o.id)}
-                        className="text-[9px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded px-2 py-1 transition">
+                        className="text-[12px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded px-2 py-1 transition">
                         Delete
                       </button>
                     )}
@@ -201,17 +201,17 @@ export default function ExpenseOrdersPanel() {
                       surface. */}
                   <button onClick={() => openEdit(o)} className="w-full text-left px-2.5 pt-2 hover:bg-gray-50 transition">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-[11px] font-bold text-gray-900 truncate">{o.expense_name}</p>
-                      {fmtPrice(o.price) != null && <p className="shrink-0 text-[11px] font-bold text-gray-700">₵{fmtPrice(o.price)}</p>}
+                      <p className="text-[12px] font-bold text-gray-900 truncate">{o.expense_name}</p>
+                      {fmtPrice(o.price) != null && <p className="shrink-0 text-[12px] font-bold text-gray-700">₵{fmtPrice(o.price)}</p>}
                     </div>
-                    <p className="text-[9px] text-gray-400">
+                    <p className="text-[12px] text-gray-400">
                       {o.vendor_name ? o.vendor_name : 'No vendor decided'}
                       {o.entered_by ? ` · added by ${o.entered_by}` : ''}
                     </p>
                   </button>
                   {o.notes && (
                     <div onClick={() => openEdit(o)} className="px-2.5 pb-2 pt-1 cursor-pointer hover:bg-gray-50 transition">
-                      <Linkify text={o.notes} as="p" className="text-[10px] text-gray-600 whitespace-pre-wrap line-clamp-2" />
+                      <Linkify text={o.notes} as="p" className="text-[12px] text-gray-600 whitespace-pre-wrap line-clamp-2" />
                     </div>
                   )}
                 </div>

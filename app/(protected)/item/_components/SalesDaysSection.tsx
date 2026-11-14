@@ -51,12 +51,12 @@ export default function SalesDaysSection() {
           <div className="mb-1.5 flex flex-wrap gap-1">
             {[...new Set(months.map(m => m.month.slice(0, 4)))].map(y => (
               <button key={y} type="button" onClick={() => { setYear(y); setOpen(null); setOpenDay(null) }}
-                className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${year === y ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{y}</button>
+                className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${year === y ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{y}</button>
             ))}
           </div>
-          <table className="w-full text-[11px]">
+          <table className="w-full text-[12px]">
             <thead>
-              <tr className="text-[9px] uppercase tracking-wide text-gray-500">
+              <tr className="text-[12px] uppercase tracking-wide text-gray-500">
                 <th className="py-1 pr-2 text-left">Month</th><th className="px-1 text-right">Sales</th><th className="px-1 text-right">GMC</th>
                 <th className="px-1 text-right">CC</th><th className="px-1 text-right">WNW</th><th className="pl-1 text-right">Days counted</th>
               </tr>
@@ -82,12 +82,12 @@ export default function SalesDaysSection() {
                   </tr>
                   {openDay === d.day && (
                     <tr><td colSpan={6} className="bg-white px-3 py-1">
-                      {!lines[d.day] ? <p className="text-[10px] text-gray-400">Loading items…</p> : lines[d.day].length === 0 ? <p className="text-[10px] text-gray-400">No items recorded.</p> : (
-                        <table className="w-full text-[10px]">
+                      {!lines[d.day] ? <p className="text-[12px] text-gray-400">Loading items…</p> : lines[d.day].length === 0 ? <p className="text-[12px] text-gray-400">No items recorded.</p> : (
+                        <table className="w-full text-[12px]">
                           <tbody>
                             {lines[d.day].map(l => (
                               <tr key={l.id} className="border-b border-gray-50">
-                                <td className="py-0.5 pr-2 text-gray-900">{l.item}{l.is_gmc ? <span className="ml-1 rounded bg-purple-100 px-1 text-[8px] font-bold text-purple-700">GMC</span> : null}</td>
+                                <td className="py-0.5 pr-2 text-gray-900">{l.item}{l.is_gmc ? <span className="ml-1 rounded bg-purple-100 px-1 text-[12px] font-bold text-purple-700">GMC</span> : null}</td>
                                 <td className="px-1 text-right text-gray-500">{num(l.quantity) !== null ? `${Number(l.quantity)} ×` : ''}</td>
                                 <td className="px-1 text-right text-gray-500">{num(l.item_price) !== null ? money2(l.item_price) : ''}</td>
                                 <td className="pl-1 text-right font-semibold">{money2(l.item_total)}</td>

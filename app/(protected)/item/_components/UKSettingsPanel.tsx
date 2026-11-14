@@ -4,7 +4,7 @@ import { UK_PEOPLE } from './ukViewData'
 
 type SubmenuOption = { id: number; label: string }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-[11px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1.5 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 // UK's own Settings -- deliberately separate from Biz's SettingsPane
 // (Viewing/Team/Users/Portal-As/Reorder Lists have nothing to do with UK).
@@ -88,7 +88,7 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
     <div className="p-3 space-y-4">
       <div className="space-y-1.5">
         <p className="text-xs font-bold text-gray-700">Add a menu or page</p>
-        <p className="text-[10px] text-gray-400">Creates a new item in the left pane, under a person or the General Section.</p>
+        <p className="text-[12px] text-gray-400">Creates a new item in the left pane, under a person or the General Section.</p>
         <select value={section} onChange={e => setSection(e.target.value)} className={inputCls}>
           {UK_PEOPLE.map(p => <option key={p} value={p}>{p}</option>)}
           <option value="General">General Section</option>
@@ -96,15 +96,15 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
         <input value={newMenuName} onChange={e => setNewMenuName(e.target.value)}
           placeholder="Menu name (e.g. Investment)" className={inputCls} />
         <button onClick={addMenu} disabled={addingMenu || !newMenuName.trim()}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[11px] font-bold rounded py-1.5 transition">
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-bold rounded py-1.5 transition">
           {addingMenu ? 'Adding…' : '+ Add Menu'}
         </button>
-        {menuResult && <p className="text-[10px] text-gray-500">{menuResult}</p>}
+        {menuResult && <p className="text-[12px] text-gray-500">{menuResult}</p>}
       </div>
 
       <div className="space-y-1.5 pt-3 border-t border-gray-200">
         <p className="text-xs font-bold text-gray-700">Add a column</p>
-        <p className="text-[10px] text-gray-400">Adds a new column to an existing menu&apos;s table.</p>
+        <p className="text-[12px] text-gray-400">Adds a new column to an existing menu&apos;s table.</p>
         <select value={targetSubmenuId} onChange={e => setTargetSubmenuId(e.target.value ? Number(e.target.value) : '')}
           className={inputCls} disabled={loadingSubmenus}>
           <option value="">{loadingSubmenus ? 'Loading…' : '— Pick a menu —'}</option>
@@ -112,19 +112,19 @@ export default function UKSettingsPanel({ onChanged }: { onChanged: () => void }
         </select>
         <input value={newColumnName} onChange={e => setNewColumnName(e.target.value)}
           placeholder="Column name" className={inputCls} />
-        <label className="flex items-center gap-1.5 text-[10px] text-gray-600 cursor-pointer select-none">
+        <label className="flex items-center gap-1.5 text-[12px] text-gray-600 cursor-pointer select-none">
           <input type="checkbox" checked={newColumnWide} onChange={e => setNewColumnWide(e.target.checked)}
             className="w-3.5 h-3.5 accent-blue-600" />
           Wide field — full-width block below the table, for long text (options, notes, etc.) instead of a narrow cell
         </label>
         <button onClick={addColumn} disabled={addingColumn || !newColumnName.trim() || targetSubmenuId === ''}
-          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[11px] font-bold rounded py-1.5 transition">
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-bold rounded py-1.5 transition">
           {addingColumn ? 'Adding…' : '+ Add Column'}
         </button>
-        {columnResult && <p className="text-[10px] text-gray-500">{columnResult}</p>}
+        {columnResult && <p className="text-[12px] text-gray-500">{columnResult}</p>}
       </div>
 
-      <p className="text-[10px] text-gray-400 pt-3 border-t border-gray-200">
+      <p className="text-[12px] text-gray-400 pt-3 border-t border-gray-200">
         Rows don&apos;t need Settings — open any menu and use its own &quot;+ New Row&quot; button.
       </p>
     </div>

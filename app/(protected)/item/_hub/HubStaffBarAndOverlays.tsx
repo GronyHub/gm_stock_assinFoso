@@ -44,7 +44,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                     {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as [ShopTab, string][]).map(([k, label]) => (
-                      <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
+                      <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
                   <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
@@ -62,7 +62,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                       <p className="text-xs text-gray-500">Pick a section. It opens in the main area.</p>
                       {manageSideOptions().map(o => (
                         <button key={o.key} type="button" onClick={() => { setShop(null); setLiveManageSection(o.key); goItemsMode('manage') }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">
-                          <span>{o.label}</span>{o.badge > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">{o.badge}</span>}
+                          <span>{o.label}</span>{o.badge > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold text-white">{o.badge}</span>}
                         </button>))}
                       {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('advert') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">📣 Advert</button>}
                       {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('gronyChecks') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">✔ Shop checks</button>}

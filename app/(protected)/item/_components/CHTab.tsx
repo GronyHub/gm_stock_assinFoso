@@ -120,7 +120,7 @@ export default function CHTab({ view, childData, rolePermissions = {} }: { view:
       <ManageLogPanel category={item.key} label={item.label} icon={item.icon} headerExtra={
         <div className="px-0">
           <h1 className="text-lg font-bold text-gray-900">C&amp;H</h1>
-          <p className="text-[10px] text-gray-400">Private · Grony &amp; Joe only</p>
+          <p className="text-[12px] text-gray-400">Private · Grony &amp; Joe only</p>
         </div>
       } />
     </div>

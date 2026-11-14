@@ -30,7 +30,7 @@ function fmt(val: string | null) {
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 type PropTab = 'all' | 'available' | 'away'
 
@@ -118,7 +118,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
       {propertiesWithoutLocation.length > 0 && (
         <div className="px-2 pt-2 shrink-0">
           <div className="bg-red-50 border border-red-200 rounded-xl p-2">
-            <p className="text-[9px] font-bold text-red-700">
+            <p className="text-[12px] font-bold text-red-700">
               ⚠ {propertiesWithoutLocation.length} available {propertiesWithoutLocation.length === 1 ? 'property' : 'properties'} without location assigned
             </p>
           </div>
@@ -127,13 +127,13 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0 flex-wrap">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition
+            className={`text-[12px] font-semibold px-1.5 py-0.5 rounded transition
               ${tab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
             {t.label} ({t.count})
           </button>
         ))}
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-          className="text-[10px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
+          className="text-[12px] bg-white border border-gray-200 rounded px-2 py-1 outline-none w-32" />
       </div>
       <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2">
         {filtered.length === 0 ? (
@@ -143,25 +143,25 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-bold text-gray-900 truncate">{p.name}</p>
-                <p className="text-[9px] text-gray-400">{fmtShort(p.acquired_date)} · ₵{fmt(p.amount)}{p.vendor_name ? ` · ${p.vendor_name}` : ''}</p>
+                <p className="text-[12px] text-gray-400">{fmtShort(p.acquired_date)} · ₵{fmt(p.amount)}{p.vendor_name ? ` · ${p.vendor_name}` : ''}</p>
               </div>
-              {p.acquired_via === 'gmc_stock' && <span className="text-[9px] font-semibold text-blue-600 shrink-0">From GMC stock</span>}
+              {p.acquired_via === 'gmc_stock' && <span className="text-[12px] font-semibold text-blue-600 shrink-0">From GMC stock</span>}
             </div>
 
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
+              <p className="text-[12px] text-gray-400 mb-0.5">Availability</p>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="radio" name={`availability-${p.id}`} checked={p.availability === 'available'}
                     onChange={() => patchPropertyFields(p, { availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
                     className="w-3 h-3 accent-blue-600" />
-                  <span className="text-[10px] text-gray-700">Available</span>
+                  <span className="text-[12px] text-gray-700">Available</span>
                 </label>
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="radio" name={`availability-${p.id}`} checked={p.availability === 'not_available'}
                     onChange={() => patchPropertyFields(p, { availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
                     className="w-3 h-3 accent-blue-600" />
-                  <span className="text-[10px] text-gray-700">Not Available</span>
+                  <span className="text-[12px] text-gray-700">Not Available</span>
                 </label>
               </div>
             </div>
@@ -169,24 +169,24 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
             {p.availability === 'available' && (
               <>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Condition</p>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input type="radio" name={`working-${p.id}`} checked={p.working === 'working'}
                         onChange={() => patchPropertyFields(p, { working: 'working', not_working_reason: null })}
                         className="w-3 h-3 accent-blue-600" />
-                      <span className="text-[10px] text-gray-700">Working</span>
+                      <span className="text-[12px] text-gray-700">Working</span>
                     </label>
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input type="radio" name={`working-${p.id}`} checked={p.working === 'not_working'}
                         onChange={() => patchPropertyFields(p, { working: 'not_working' })}
                         className="w-3 h-3 accent-blue-600" />
-                      <span className="text-[10px] text-gray-700">Not Working</span>
+                      <span className="text-[12px] text-gray-700">Not Working</span>
                     </label>
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Location</p>
                   <select value={p.location ?? ''} onChange={ev => patchPropertyFields(p, { location: ev.target.value })}
                     className={`${inputCls} w-auto`}>
                     <option value="" disabled>Select…</option>
@@ -195,7 +195,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
                 </div>
                 {p.working === 'not_working' && (
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Reason</p>
                     <select value={p.not_working_reason ?? ''} onChange={ev => patchPropertyFields(p, { not_working_reason: ev.target.value })}
                       className={`${inputCls} w-auto`}>
                       <option value="" disabled>Select…</option>
@@ -208,7 +208,7 @@ export default function PropertiesPage({ initialTab }: { initialTab?: PropTab | 
 
             {p.availability === 'not_available' && (
               <div>
-                <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
+                <p className="text-[12px] text-gray-400 mb-0.5">Reason / Location</p>
                 <select value={p.not_available_reason ?? ''} onChange={ev => patchPropertyFields(p, { not_available_reason: ev.target.value })}
                   className={`${inputCls} w-auto`}>
                   <option value="" disabled>Select…</option>

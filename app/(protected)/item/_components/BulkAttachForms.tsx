@@ -145,7 +145,7 @@ export default function BulkAttachForms({ receipts, onDone, onClose }: {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
         </div>
         <div className="p-3 space-y-2 overflow-y-auto flex-1">
-          <p className="text-[10px] text-gray-400">
+          <p className="text-[12px] text-gray-400">
             Select every form photo/scan for one month at once — each is matched to that day&apos;s Walk-In (W) receipt by the date in its filename. Fix any that couldn&apos;t be read automatically below.
           </p>
           <div className="flex gap-1.5">
@@ -178,11 +178,11 @@ export default function BulkAttachForms({ receipts, onDone, onClose }: {
               {rows.map(row => {
                 const receipt = matchedReceipt(row.date)
                 return (
-                  <div key={row.id} className="flex items-center gap-1.5 text-[10px] bg-gray-50 rounded-lg px-2 py-1.5">
+                  <div key={row.id} className="flex items-center gap-1.5 text-[12px] bg-gray-50 rounded-lg px-2 py-1.5">
                     <span className="flex-1 min-w-0 truncate text-gray-700" title={row.file.name}>{row.file.name}</span>
                     <input type="date" value={row.date} onChange={e => setRowDate(row.id, e.target.value)}
                       disabled={row.status !== 'idle'}
-                      className="shrink-0 bg-white border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none disabled:opacity-50" />
+                      className="shrink-0 bg-white border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none disabled:opacity-50" />
                     {row.status === 'idle' && (
                       receipt
                         ? <span className="shrink-0 text-green-600 font-semibold">✓ matched</span>

@@ -71,13 +71,13 @@ export default function LeastSalesChart({ kind }: { kind: Kind }) {
         </ResponsiveContainer>
       </Card>
       {isGoods ? (
-        <p className="text-[10px] text-gray-400 px-1 flex flex-wrap gap-x-3 gap-y-0.5">
+        <p className="text-[12px] text-gray-400 px-1 flex flex-wrap gap-x-3 gap-y-0.5">
           <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.Critical }} />Critical</span>
           <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.High }} />High</span>
           <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.Watch }} />Watch</span>
         </p>
       ) : (
-        <p className="text-[10px] text-gray-400 px-1">Red bars have never sold at all.</p>
+        <p className="text-[12px] text-gray-400 px-1">Red bars have never sold at all.</p>
       )}
     </div>
   )

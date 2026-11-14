@@ -45,7 +45,7 @@ export default function CategoryTraining({ cat, result, onDone, hideVideo, onWat
       {!hideVideo && <video onEnded={onWatched} key={t.video} src={t.video} controls playsInline preload="metadata" className="mx-auto max-h-[70vh] w-full max-w-sm rounded-xl bg-black" />}
       {!hideVideo && t.related.length > 0 && (
         <div className="space-y-1">
-          <p className="px-1 text-[11px] font-bold text-gray-600">More videos for this category</p>
+          <p className="px-1 text-[12px] font-bold text-gray-600">More videos for this category</p>
           {t.related.map(v => (
             <div key={v.file} className="rounded-xl bg-white">
               <button type="button" onClick={() => setOpen(open === v.file ? null : v.file)} className="flex w-full items-center gap-2 p-2 text-left text-sm font-semibold text-gray-900">▶ <span className="flex-1">{v.label}</span><span className="text-xs text-gray-400">{open === v.file ? 'Hide' : 'Watch'}</span></button>
@@ -56,7 +56,7 @@ export default function CategoryTraining({ cat, result, onDone, hideVideo, onWat
       )}
       <details className="rounded-xl bg-white">
         <summary className="flex cursor-pointer items-center gap-2 p-2 text-sm font-bold text-gray-900">❓ Quick quiz ({t.quiz.length} questions)
-          {result && <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${result.passed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>{result.passed ? 'Passed' : 'Not passed'} {result.score}/{result.total}</span>}
+          {result && <span className={`ml-auto rounded-full px-2 py-0.5 text-[12px] font-bold ${result.passed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>{result.passed ? 'Passed' : 'Not passed'} {result.score}/{result.total}</span>}
         </summary>
         <div className="space-y-3 p-2">
           {t.quiz.map((q, i) => (
@@ -69,7 +69,7 @@ export default function CategoryTraining({ cat, result, onDone, hideVideo, onWat
                   return <button key={j} type="button" disabled={!!shown} onClick={() => setAnswers(a => { const n = [...a]; n[i] = j; return n })} className={`block w-full rounded-lg border-2 p-2 text-left text-[13px] text-gray-800 ${mark}`}>{o}</button>
                 })}
               </div>
-              {shown && <p className="mt-1 text-[11px] text-gray-600">{answers[i] === q.answer ? '✓ Right. ' : '✗ '}{q.why}</p>}
+              {shown && <p className="mt-1 text-[12px] text-gray-600">{answers[i] === q.answer ? '✓ Right. ' : '✗ '}{q.why}</p>}
             </div>
           ))}
           {!shown && <button type="button" disabled={busy || answers.filter(a => a !== undefined).length < t.quiz.length} onClick={() => void submit()} className="w-full rounded-xl bg-indigo-600 py-2 text-sm font-bold text-white disabled:opacity-40">Check my answers</button>}

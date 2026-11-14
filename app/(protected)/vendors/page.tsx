@@ -29,7 +29,7 @@ function c(v: string | null | undefined) {
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
-const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+const labelCls = 'text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
 // Name stays sticky/always-visible (first column); these are the only ones
 // the picker can hide/reorder/rename.
@@ -41,7 +41,7 @@ const VENDOR_COLUMNS: VendorColumn[] = [
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
   { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
   { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
-      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+      <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
         {v.status ?? '—'}
       </span>
     ) },
@@ -272,7 +272,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
         <PageGuide page="vendors" />
         {noContactCount > 0 && (
           <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
-            className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
+            className={`shrink-0 text-[12px] font-bold px-2 py-1 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
             No contact ({noContactCount}) ▾
           </button>
         )}
@@ -305,7 +305,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
               {selected.company_name && selected.company_name !== selected.display_name &&
                 <p className="text-xs text-gray-400">{selected.company_name}</p>}
               {selected.is_internal &&
-                <span className="text-[10px] bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-full">Internal</span>}
+                <span className="text-[12px] bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-full">Internal</span>}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {!editingVendor && (
@@ -346,9 +346,9 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
                   { label: 'Outstanding', value: c(selected.outstanding),           sub: parseFloat(selected.outstanding) > 0 ? '⚠ unpaid' : 'settled' },
                 ].map(s => (
                   <div key={s.label} className="bg-gray-50 rounded-lg px-3 py-2">
-                    <p className="text-[10px] text-gray-400">{s.label}</p>
+                    <p className="text-[12px] text-gray-400">{s.label}</p>
                     <p className={`text-sm font-bold ${s.label === 'Outstanding' && parseFloat(selected.outstanding) > 0 ? 'text-red-600' : 'text-gray-900'}`}>{s.value}</p>
-                    <p className="text-[9px] text-gray-400">{s.sub}</p>
+                    <p className="text-[12px] text-gray-400">{s.sub}</p>
                   </div>
                 ))}
               </div>
@@ -369,7 +369,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No vendors found.</p>
         ) : (
-          <table className="border-collapse text-[11px]" style={{
+          <table className="border-collapse text-[12px]" style={{
             tableLayout: 'fixed',
             width: colPrefs.getWidth('name', VENDORS_COL_DEFAULTS.name)
               + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, VENDORS_COL_DEFAULTS[c.key] ?? 100), 0),
@@ -379,7 +379,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
               {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, VENDORS_COL_DEFAULTS[c.key] ?? 100) }} />)}
             </colgroup>
             <thead>
-              <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+              <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                 <ResizableTh onResize={d => colPrefs.resizeWidth('name', d, VENDORS_COL_DEFAULTS.name)} onReset={() => colPrefs.resetWidth('name')}>Name</ResizableTh>
                 {colPrefs.shownColumns.map((col, i) => (
                   <ResizableTh key={col.key} align={VENDOR_COL_BY_KEY.get(col.key)!.align} noDivider={i === colPrefs.shownColumns.length - 1}
@@ -395,7 +395,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
                   className={`cursor-pointer transition ${selected?.id === v.id ? 'bg-blue-50' : i % 2 === 1 ? 'bg-gray-50/60 hover:bg-blue-50/40' : 'hover:bg-blue-50/40'}`}>
                   <td className="px-3 py-0 font-semibold text-gray-900 truncate">
                     {v.is_internal && (
-                      <span className="mr-1 text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
+                      <span className="mr-1 text-[12px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded-full align-middle">INT</span>
                     )}
                     {v.display_name}
                   </td>

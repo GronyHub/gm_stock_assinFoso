@@ -30,10 +30,10 @@ export default function CustomerPhones({ customerId, main, extras, onChange }: {
 
   return (
     <div className="space-y-1.5 border-t border-gray-100 pt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Phone numbers</p>
+      <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">Phone numbers</p>
       <div className="flex items-center gap-2 text-xs">
         <span className="font-semibold text-gray-900">{main ?? '—'}</span>
-        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">MAIN · messages go here</span>
+        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[12px] font-bold text-green-700">MAIN · messages go here</span>
       </div>
       {extras.map(p => (
         <div key={p.id} className="flex flex-wrap items-center gap-2 text-xs">

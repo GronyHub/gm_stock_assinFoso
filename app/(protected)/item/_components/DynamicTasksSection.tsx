@@ -93,14 +93,14 @@ export default function DynamicTasksSection({ scopeKey }: { scopeKey: string }) 
           className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
           {showForm ? '× Close' : '+ New Task'}
         </button>
-        <label className="shrink-0 flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer">
+        <label className="shrink-0 flex items-center gap-1 text-[12px] text-gray-500 cursor-pointer">
           <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />
           Show done
         </label>
       </div>
 
       <button onClick={() => setShowArchive(v => !v)}
-        className="w-full text-[10px] font-semibold text-blue-600 hover:bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 transition">
+        className="w-full text-[12px] font-semibold text-blue-600 hover:bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 transition">
         {showArchive ? '← Back to this page' : '🗄 View completed tasks (all pages)'}
       </button>
 
@@ -124,7 +124,7 @@ export default function DynamicTasksSection({ scopeKey }: { scopeKey: string }) 
       )}
 
       {visible.length === 0 ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">No tasks yet.</p>
+        <p className="text-[12px] text-gray-400 text-center py-6">No tasks yet.</p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
           {visible.map(t => {
@@ -145,21 +145,21 @@ export default function DynamicTasksSection({ scopeKey }: { scopeKey: string }) 
                         <input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)}
                           className="text-xs bg-white border border-gray-300 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
                         <button onClick={() => setEditingId(null)}
-                          className="ml-auto text-[10px] font-semibold px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition">Cancel</button>
+                          className="ml-auto text-[12px] font-semibold px-2 py-1.5 rounded-lg text-gray-500 hover:bg-gray-100 transition">Cancel</button>
                         <button onClick={() => saveEdit(t.id)} disabled={!editTitle.trim()}
-                          className="text-[10px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">Save</button>
+                          className="text-[12px] font-semibold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition">Save</button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <p className={`text-[12px] font-medium ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</p>
-                      {t.notes && <p className="text-[10px] text-gray-400">{t.notes}</p>}
-                      {t.due_date && <p className="text-[9px] text-gray-400">Due {fmtDate(t.due_date)}</p>}
-                      <p className="text-[9px] text-gray-400">
+                      {t.notes && <p className="text-[12px] text-gray-400">{t.notes}</p>}
+                      {t.due_date && <p className="text-[12px] text-gray-400">Due {fmtDate(t.due_date)}</p>}
+                      <p className="text-[12px] text-gray-400">
                         Written {fmtDate(t.created_at)}{t.created_by ? ` by ${t.created_by}` : ''}
                       </p>
                       {t.done && days !== null && (
-                        <p className="text-[9px] text-green-600 font-medium">Completed in {days} day{days === 1 ? '' : 's'}</p>
+                        <p className="text-[12px] text-green-600 font-medium">Completed in {days} day{days === 1 ? '' : 's'}</p>
                       )}
                     </>
                   )}

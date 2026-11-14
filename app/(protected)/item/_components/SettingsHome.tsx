@@ -25,7 +25,7 @@ export default function SettingsHome({ canEdit, pages, viewing }: { canEdit: boo
         {msg && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
         {groups.map(g => (
           <div key={g} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <p className="bg-gray-50 px-3 py-1.5 text-[11px] font-extrabold uppercase text-gray-600">{g}</p>
+            <p className="bg-gray-50 px-3 py-1.5 text-[12px] font-extrabold uppercase text-gray-600">{g}</p>
             {FEATURES.filter(x => x.group === g).map(x => (
               <div key={x.key} className="flex items-start gap-3 border-t border-gray-100 px-3 py-2.5">
                 <div className="min-w-0 flex-1">
@@ -49,7 +49,7 @@ export default function SettingsHome({ canEdit, pages, viewing }: { canEdit: boo
             {pages.map(p => (
               <button key={p.label} type="button" onClick={p.onClick} className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left hover:bg-gray-50">
                 <span className="text-lg leading-none">{p.icon}</span>
-                <span className="min-w-0"><span className="block text-sm font-bold text-gray-900">{p.label}</span>{p.detail && <span className="block text-[11px] text-gray-500">{p.detail}</span>}</span>
+                <span className="min-w-0"><span className="block text-sm font-bold text-gray-900">{p.label}</span>{p.detail && <span className="block text-[12px] text-gray-500">{p.detail}</span>}</span>
               </button>
             ))}
           </div>

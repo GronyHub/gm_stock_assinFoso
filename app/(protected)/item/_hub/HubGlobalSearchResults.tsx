@@ -8,7 +8,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
   return (<><div className="flex-1 overflow-y-auto">
               {navMatches.length > 0 && (
                 <div>
-                  <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Go to</p>
+                  <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Go to</p>
                   {navMatches.map(d => (
                     <button key={d.label} onClick={() => { d.action(); closeGlobalSearch() }}
                       className="w-full text-left px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition truncate">
@@ -30,7 +30,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                 return (<>
                   {!!r.items?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Items</p>
                       {r.items.map(i => (
                         <button key={i.id} onClick={() => { openEditGridItem(i.id); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
@@ -42,7 +42,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.customers?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Customers</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Customers</p>
                       {r.customers.map(c => (
                         <button key={c.id}
                           onClick={() => { jumpToCustomersTab(); setCustomerSearchText(c.display_name); closeGlobalSearch() }}
@@ -55,7 +55,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.vendors?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Vendors</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Vendors</p>
                       {r.vendors.map(v => (
                         <button key={v.id}
                           onClick={() => { changeTab('loss'); setLossView('vendors'); setVendorSearchText(v.display_name); closeGlobalSearch() }}
@@ -68,7 +68,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.sales?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Sales</p>
                       {r.sales.map(s => (
                         <button key={s.id}
                           onClick={() => { changeTab('loss'); jumpToLiveSaleTab('sales', null, s.receipt_number || s.customer_name || ''); closeGlobalSearch() }}
@@ -81,7 +81,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.bills?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Bills</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Bills</p>
                       {r.bills.map(b => (
                         <button key={b.id}
                           onClick={() => { changeTab('loss'); jumpToLiveSaleTab('bills', null, b.bill_number || b.vendor_name || ''); closeGlobalSearch() }}
@@ -94,7 +94,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.announcements?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Done</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Done</p>
                       {r.announcements.map(a => (
                         <button key={a.id} onClick={() => { openShop('home'); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
@@ -115,7 +115,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                       actually live now. */}
                   {!!r.ukSubmenus?.filter(s => !(s.person in CH_PERSON_VIEW)).length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">UK</p>
                       {r.ukSubmenus.filter(s => !(s.person in CH_PERSON_VIEW)).map(s => (
                         <button key={s.id}
                           onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
@@ -128,7 +128,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.ukEntries?.filter(e => !(e.person in CH_PERSON_VIEW)).length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">UK entries</p>
                       {r.ukEntries.filter(e => !(e.person in CH_PERSON_VIEW)).map(e => (
                         <button key={`${e.row_id}-${e.column_name}`}
                           onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
@@ -141,7 +141,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.ukSubmenus?.filter(s => s.person in CH_PERSON_VIEW).length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
                       {r.ukSubmenus.filter(s => s.person in CH_PERSON_VIEW).map(s => (
                         <button key={s.id}
                           onClick={() => { openPersonSubmenu(s.person, s.id); closeGlobalSearch() }}
@@ -154,7 +154,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.ukEntries?.filter(e => e.person in CH_PERSON_VIEW).length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H entries</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H entries</p>
                       {r.ukEntries.filter(e => e.person in CH_PERSON_VIEW).map(e => (
                         <button key={`${e.row_id}-${e.column_name}`}
                           onClick={() => { openPersonSubmenu(e.person, e.submenu_id); closeGlobalSearch() }}
@@ -167,7 +167,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.chLogs?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
+                      <p className="px-3 pt-2 pb-1 text-[12px] font-bold text-gray-400 uppercase tracking-wide">C&amp;H</p>
                       {r.chLogs.map(l => (
                         <button key={l.id}
                           onClick={() => { changeTab('ch'); setLossView(l.category as LossView); closeGlobalSearch() }}

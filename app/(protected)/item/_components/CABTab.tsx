@@ -203,36 +203,36 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
 
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowWeekly(false)}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          className={`text-[12px] font-semibold px-1.5 py-0.5 rounded transition ${!showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Daily
         </button>
         <button onClick={() => setShowWeekly(true)}
-          className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          className={`text-[12px] font-semibold px-1.5 py-0.5 rounded transition ${showWeekly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>
           Weekly
           {unconfirmedCount > 0 && (
-            <span className="ml-1 bg-red-100 text-red-600 text-[8px] font-bold px-1 py-0.5 rounded-full">{unconfirmedCount}</span>
+            <span className="ml-1 bg-red-100 text-red-600 text-[12px] font-bold px-1 py-0.5 rounded-full">{unconfirmedCount}</span>
           )}
         </button>
         <button onClick={openConfirmForm}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition bg-green-600 text-white hover:bg-green-700">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded transition bg-green-600 text-white hover:bg-green-700">
           + New CAB Confirm
         </button>
         {showWeekly && (
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={onlyUnconfirmed} onChange={() => setOnlyUnconfirmed(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Unconfirmed only
           </label>
         )}
         {!showWeekly && (
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none ml-auto">
             <input type="checkbox" checked={hideBankMomoPhysical} onChange={() => setHideBankMomoPhysical(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed 3
           </label>
         )}
         {!showWeekly && (
-          <label className="flex items-center gap-1 text-[9px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
+          <label className="flex items-center gap-1 text-[12px] font-semibold text-gray-600 px-1.5 py-0.5 cursor-pointer select-none">
             <input type="checkbox" checked={confirmedColsOnly} onChange={() => setConfirmedColsOnly(o => !o)}
               className="w-3 h-3 accent-blue-600" />
             Confirmed CAB check
@@ -242,54 +242,54 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
 
       {showConfirmForm && (
         <div className="px-2 py-2 border-b border-gray-200 bg-green-50/60 shrink-0 space-y-1.5">
-          <p className="text-[10px] font-semibold text-gray-700">New CAB Confirm</p>
+          <p className="text-[12px] font-semibold text-gray-700">New CAB Confirm</p>
           <div className="flex flex-wrap items-end gap-1.5">
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+              <p className="text-[12px] text-gray-400 mb-0.5">Date</p>
               <input type="date" value={confirmDate} onChange={e => setConfirmDate(e.target.value)}
-                className="bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+                className="bg-white border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Bank</p>
+              <p className="text-[12px] text-gray-400 mb-0.5">Bank</p>
               <input type="number" min="0" step="any" value={confirmBank} onChange={e => setConfirmBank(e.target.value)}
-                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">MoMo</p>
+              <p className="text-[12px] text-gray-400 mb-0.5">MoMo</p>
               <input type="number" min="0" step="any" value={confirmMomo} onChange={e => setConfirmMomo(e.target.value)}
-                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Physical</p>
+              <p className="text-[12px] text-gray-400 mb-0.5">Physical</p>
               <input type="number" min="0" step="any" value={confirmPhysical} onChange={e => setConfirmPhysical(e.target.value)}
-                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
+                placeholder="0" className="w-24 bg-white border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400" />
             </div>
             <div>
-              <p className="text-[9px] text-gray-400 mb-0.5">Total</p>
-              <p className="text-[11px] font-bold text-blue-600 px-2 py-1">
+              <p className="text-[12px] text-gray-400 mb-0.5">Total</p>
+              <p className="text-[12px] font-bold text-blue-600 px-2 py-1">
                 {fmtn((Number(confirmBank) || 0) + (Number(confirmMomo) || 0) + (Number(confirmPhysical) || 0))}
               </p>
             </div>
             <button onClick={saveConfirm} disabled={confirmSaving}
-              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              className="text-[12px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
               {confirmSaving ? 'Saving…' : 'Save'}
             </button>
             <button onClick={() => setShowConfirmForm(false)}
-              className="text-[9px] font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
+              className="text-[12px] font-semibold px-2 py-1 rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
               Cancel
             </button>
           </div>
-          {confirmError && <p className="text-[9px] text-red-500">{confirmError}</p>}
+          {confirmError && <p className="text-[12px] text-red-500">{confirmError}</p>}
         </div>
       )}
 
       {showWeekly ? (
         <div className="flex-1 overflow-auto min-h-0 p-2">
-          <p className="text-[10px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
+          <p className="text-[12px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-            <table className="w-full border-collapse text-[11px]">
+            <table className="w-full border-collapse text-[12px]">
               <thead>
-                <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                   <th className="text-left px-3 py-0.5 font-bold border-b border-gray-200 whitespace-nowrap">Week</th>
                   <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Net</th>
                   <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200">Week-End Balance</th>
@@ -306,8 +306,8 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                     <td className="px-3 py-0 text-right font-bold text-gray-900">{fmtn(w.runningEnd)}</td>
                     <td className="px-3 py-0 text-center">
                       {w.confirmed
-                        ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ CONFIRMED</span>
-                        : <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-500">NOT CONFIRMED</span>}
+                        ? <span className="text-[12px] font-bold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ CONFIRMED</span>
+                        : <span className="text-[12px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-500">NOT CONFIRMED</span>}
                     </td>
                     <td className="px-3 py-0 text-right text-blue-600">{w.confirmed ? fmtn(w.cabTotal) : ''}</td>
                     <td className={`px-3 py-0 text-right font-semibold ${w.deficit != null && Number(w.deficit) < 0 ? 'text-red-500' : 'text-green-600'}`}>
@@ -326,17 +326,17 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
         </div>
       ) : (
         <div className="flex-1 overflow-auto min-h-0 p-2">
-          <p className="text-[10px] text-gray-400 mb-1.5">Last 90 days, most recent first.</p>
+          <p className="text-[12px] text-gray-400 mb-1.5">Last 90 days, most recent first.</p>
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-          <table className="w-full border-collapse text-[11px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 z-10">
               {confirmedColsOnly ? (
                 <>
-                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-0.5 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
                     <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-0.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                   </tr>
-                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                     {!hideBankMomoPhysical && (
                       <>
                         <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
@@ -350,7 +350,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                 </>
               ) : (
                 <>
-                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                     <th rowSpan={2} className="text-left px-3 py-0.5 font-bold border-b border-gray-200 align-bottom whitespace-nowrap">Date</th>
                     <th colSpan={hideBankMomoPhysical ? 2 : 5} className="text-center px-3 py-0.5 font-bold border-b border-gray-100 border-x-2 border-gray-300">Confirmed (physical count)</th>
                     <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Cash Counted">CC</th>
@@ -363,7 +363,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                     <th rowSpan={2} className="text-right px-3 py-0.5 font-bold border-b border-gray-200 align-bottom" title="Running cash-at-bank balance, carried day to day">Running</th>
                     <th rowSpan={2} className="text-right px-3 py-0.5 font-bold text-red-400 border-b border-gray-200 align-bottom" title="Confirmed total minus Running balance">Diff</th>
                   </tr>
-                  <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase tracking-wide">
+                  <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
                     {!hideBankMomoPhysical && (
                       <>
                         <th className="text-right px-3 py-0.5 font-bold border-b border-gray-200 border-l-2 border-gray-300">Bank</th>
@@ -393,7 +393,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
                           <span className="text-red-500 font-bold">✗</span>
                           {/* Diff shown inline, not just in the title -- hover
                               tooltips aren't reachable on mobile touch. */}
-                          <div className="text-[9px] text-red-500 font-semibold whitespace-nowrap">
+                          <div className="text-[12px] text-red-500 font-semibold whitespace-nowrap">
                             {verify.diff > 0 ? '+' : ''}{fmtn(verify.diff)}
                           </div>
                         </div>

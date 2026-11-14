@@ -19,7 +19,7 @@ const toDraft = (t: Tile): Draft => ({
 })
 const daysText = (d: string | null) => d ? d.split(',').map(x => WEEKDAY_LABEL[x]?.slice(0, 3)).join(' ') : 'Every day'
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
-const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
+const lab = 'mb-0.5 block text-[12px] font-bold uppercase text-gray-500'
 
 export default function ManageTilesClient() {
   const [tiles, setTiles] = useState<Tile[] | null>(null)
@@ -69,7 +69,7 @@ export default function ManageTilesClient() {
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Tile Manager</h1>
         <button type="button" onClick={() => setDraft(blank(group || 'Daytime'))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ New tile</button>
       </div>
-      <p className="mb-2 text-[11px] text-gray-500">Add tiles, stop tiles that should no longer appear (they can be restored), and set the time, days, how often, the group and the work minutes. Past records are never deleted.</p>
+      <p className="mb-2 text-[12px] text-gray-500">Add tiles, stop tiles that should no longer appear (they can be restored), and set the time, days, how often, the group and the work minutes. Past records are never deleted.</p>
       <div className="mb-2 flex flex-wrap gap-1.5">
         <select value={group} onChange={e => setGroup(e.target.value)} className="rounded-lg border border-gray-300 p-1.5 text-xs"><option value="">All groups</option>{groups.map(g => <option key={g}>{g}</option>)}</select>
         {(['active', 'stopped', 'all'] as const).map(s => <button key={s} type="button" onClick={() => setStatus(s)} className={`rounded-full px-3 py-1 text-xs font-bold ${status === s ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{s === 'active' ? 'Showing' : s === 'stopped' ? 'Stopped' : 'All'}</button>)}
@@ -81,14 +81,14 @@ export default function ManageTilesClient() {
         const rows = shown.filter(t => t.section === g); if (!rows.length) return null
         return (
           <div key={g} className="mb-3">
-            <div className="mb-1 flex items-center gap-2"><p className="text-xs font-extrabold uppercase text-[#14213D]">{g} · {rows.length}</p><button type="button" onClick={() => void rename(g)} className="text-[11px] font-semibold text-blue-700 underline">Rename group</button></div>
+            <div className="mb-1 flex items-center gap-2"><p className="text-xs font-extrabold uppercase text-[#14213D]">{g} · {rows.length}</p><button type="button" onClick={() => void rename(g)} className="text-[12px] font-semibold text-blue-700 underline">Rename group</button></div>
             <div className="space-y-1">
               {rows.map(t => (
                 <div key={t.id} className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${t.active ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-100 opacity-70'}`}>
                   <span className="text-lg leading-none">{t.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-gray-900">{t.title}</p>
-                    <p className="text-[10px] text-gray-500">{t.frequency === 'daily' ? (t.time ?? 'no time') : t.frequency}{t.frequency === 'daily' ? ` · ${daysText(t.days)}` : ''} · {t.minutes ?? 5} min · {KIND_LABEL[t.kind]?.split(' (')[0]}{t.last_done ? ` · last done ${t.last_done}` : ' · never done'}</p>
+                    <p className="text-[12px] text-gray-500">{t.frequency === 'daily' ? (t.time ?? 'no time') : t.frequency}{t.frequency === 'daily' ? ` · ${daysText(t.days)}` : ''} · {t.minutes ?? 5} min · {KIND_LABEL[t.kind]?.split(' (')[0]}{t.last_done ? ` · last done ${t.last_done}` : ' · never done'}</p>
                   </div>
                   <button type="button" onClick={() => void patch(t, { move: 'up' }, 'Moved')} className="px-1 text-sm text-gray-500" aria-label="Move up">▲</button>
                   <button type="button" onClick={() => void patch(t, { move: 'down' }, 'Moved')} className="px-1 text-sm text-gray-500" aria-label="Move down">▼</button>

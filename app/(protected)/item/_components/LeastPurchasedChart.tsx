@@ -40,7 +40,7 @@ export default function LeastPurchasedChart() {
     <div className="py-10 text-center text-gray-400 text-xs space-y-2">
       <p>No goods found.</p>
       {debug && (
-        <div className="text-left max-w-xs mx-auto bg-gray-50 border border-gray-200 rounded p-2 text-[10px] leading-relaxed">
+        <div className="text-left max-w-xs mx-auto bg-gray-50 border border-gray-200 rounded p-2 text-[12px] leading-relaxed">
           <p>Goods total: {debug.totalGoodsRows}</p>
           <p>Goods with stock &gt; 0: {debug.withPositiveStock}</p>
           <p>...with stock &amp; a purchase/sale/count on record: {debug.withStockAndHistory}</p>
@@ -73,7 +73,7 @@ export default function LeastPurchasedChart() {
           </BarChart>
         </ResponsiveContainer>
       </Card>
-      <p className="text-[10px] text-gray-400 px-1 flex flex-wrap gap-x-3 gap-y-0.5">
+      <p className="text-[12px] text-gray-400 px-1 flex flex-wrap gap-x-3 gap-y-0.5">
         <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.Critical }} />Critical</span>
         <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.High }} />High</span>
         <span><span className="inline-block w-2 h-2 rounded-sm align-middle mr-1" style={{ background: TIER_COLOR.Watch }} />Watch</span>

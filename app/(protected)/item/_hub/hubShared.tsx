@@ -713,7 +713,7 @@ export function formatLoss(l: { lossCount: number; lgAmt: number; gainCount?: nu
 // bigger on a phone than the (already small) Tailwind classes suggest. The
 // custom chevron below replaces the native arrow that appearance-none also
 // removes.
-export const COMPACT_SELECT_CLS = 'appearance-none truncate text-[8px] leading-tight px-1 py-1.5 pr-3 border rounded bg-no-repeat focus:outline-none focus:ring-1 focus:ring-blue-400'
+export const COMPACT_SELECT_CLS = 'appearance-none truncate text-[12px] leading-tight px-1 py-1.5 pr-3 border rounded bg-no-repeat focus:outline-none focus:ring-1 focus:ring-blue-400'
 
 export const COMPACT_SELECT_STYLE: CSSProperties = {
   backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234b5563'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E\")",

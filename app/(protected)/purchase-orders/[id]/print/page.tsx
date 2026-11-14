@@ -208,7 +208,7 @@ export default function PurchaseOrderPrintPage() {
 
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Vendor</p>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Vendor</p>
             <p className="text-sm font-semibold text-gray-900">{po.vendor_name ?? 'Unknown vendor'}</p>
             {po.expected_date && <p className="text-xs text-gray-600 mt-0.5">Expected delivery: {fmtDate(po.expected_date)}</p>}
           </div>
@@ -222,7 +222,7 @@ export default function PurchaseOrderPrintPage() {
 
         <table className="w-full text-sm border-collapse mb-6">
           <thead>
-            <tr className="border-b border-gray-300 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+            <tr className="border-b border-gray-300 text-[12px] font-semibold text-gray-400 uppercase tracking-wide">
               <th className="text-left py-2">Item</th>
               <th className="text-right py-2">Ordered</th>
               <th className="text-right py-2">Received</th>
@@ -253,7 +253,7 @@ export default function PurchaseOrderPrintPage() {
 
         {po.notes && (
           <div className="border-t border-gray-100 pt-3 mb-6">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Notes</p>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Notes</p>
             <p className="text-xs text-gray-700">{po.notes}</p>
           </div>
         )}

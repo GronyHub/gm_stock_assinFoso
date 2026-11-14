@@ -49,7 +49,7 @@ function DeadStockCard() {
             <div key={i.item_id} className="flex items-center gap-2 py-1.5">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-gray-800 truncate">{i.item_name}</p>
-                <p className="text-[9px] text-gray-400 truncate">{i.cf_group ?? 'Ungrouped'} · SOH {i.soh} · {fc(i.stock_value)}</p>
+                <p className="text-[12px] text-gray-400 truncate">{i.cf_group ?? 'Ungrouped'} · SOH {i.soh} · {fc(i.stock_value)}</p>
               </div>
               <StalenessBadge days={i.days_since_sale} />
             </div>
@@ -99,7 +99,7 @@ function ItemTrendsCard() {
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search item or group…"
           className="min-w-0 flex-1 text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
         <button onClick={() => setSortBy(s => s === 'revenue' ? 'change' : 'revenue')}
-          className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+          className="shrink-0 text-[12px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
           Sort: {sortBy === 'revenue' ? 'Revenue' : '% Change'}
         </button>
       </div>
@@ -113,7 +113,7 @@ function ItemTrendsCard() {
             <div key={t.item_id} className="flex items-center gap-2 py-1.5">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-gray-800 truncate">{t.item_name}</p>
-                <p className="text-[9px] text-gray-400 truncate">{t.cf_group ?? 'Ungrouped'}</p>
+                <p className="text-[12px] text-gray-400 truncate">{t.cf_group ?? 'Ungrouped'}</p>
               </div>
               <Sparkline data={t.revenue_series} color="#3b82f6" />
               <p className="text-xs font-bold text-gray-900 w-16 text-right shrink-0">{fc(t.total_revenue)}</p>

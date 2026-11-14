@@ -141,7 +141,7 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
     <div className="space-y-1">
       <div className="flex items-center gap-1.5">
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={disabled}
-          className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-gray-500 hover:text-blue-600 disabled:opacity-40 bg-gray-100 hover:bg-blue-50 rounded px-2 py-1 transition">
+          className="shrink-0 flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-blue-600 disabled:opacity-40 bg-gray-100 hover:bg-blue-50 rounded px-2 py-1 transition">
           📎 Upload
         </button>
         <input
@@ -153,7 +153,7 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
           onChange={e => { onAdd(e.target.files); e.target.value = '' }}
         />
         <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={disabled}
-          className="shrink-0 flex items-center gap-1 text-[10px] font-semibold text-gray-500 hover:text-blue-600 disabled:opacity-40 bg-gray-100 hover:bg-blue-50 rounded px-2 py-1 transition">
+          className="shrink-0 flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-blue-600 disabled:opacity-40 bg-gray-100 hover:bg-blue-50 rounded px-2 py-1 transition">
           📷 Photo
         </button>
         <input
@@ -176,7 +176,7 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
                   its own without needing to stop this link's click. */}
               <a href={m.localUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
                 {m.type === 'application/pdf' ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-[8px] font-bold">PDF</div>
+                  <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-[12px] font-bold">PDF</div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.localUrl} alt={m.name} className="w-full h-full object-cover" />
@@ -184,16 +184,16 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
               </a>
               {m.uploading && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white text-[8px] font-semibold">…</span>
+                  <span className="text-white text-[12px] font-semibold">…</span>
                 </div>
               )}
               {m.error && (
                 <div className="absolute inset-0 bg-red-500/70 flex items-center justify-center" title={m.error}>
-                  <span className="text-white text-[7px] font-semibold text-center px-0.5">!</span>
+                  <span className="text-white text-[12px] font-semibold text-center px-0.5">!</span>
                 </div>
               )}
               <button type="button" onClick={() => onRemove(m.localUrl)} title="Remove"
-                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-black/60 text-white text-[9px] flex items-center justify-center leading-none">
+                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-black/60 text-white text-[12px] flex items-center justify-center leading-none">
                 ×
               </button>
             </div>
@@ -205,7 +205,7 @@ export function AttachmentPicker({ items, onAdd, onRemove, disabled }: {
           without this the caller would otherwise just silently drop it on
           save. Spelled out here so it can't go unnoticed. */}
       {items.filter(m => m.error).map(m => (
-        <p key={`err-${m.localUrl}`} className="text-[9px] text-red-600 font-medium">
+        <p key={`err-${m.localUrl}`} className="text-[12px] text-red-600 font-medium">
           &quot;{m.name}&quot; failed to attach — {m.error}
         </p>
       ))}

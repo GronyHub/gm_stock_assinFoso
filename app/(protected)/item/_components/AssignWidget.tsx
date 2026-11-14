@@ -43,11 +43,11 @@ export default function AssignWidget({ type }: { type: string }) {
   if (loading) return null
 
   return (
-    <div className="flex items-center gap-2 flex-wrap bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px]">
+    <div className="flex items-center gap-2 flex-wrap bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12px]">
       <span className="text-gray-500 font-semibold shrink-0">Assigned:</span>
       {canManage ? (
         <select value={assignee} disabled={saving} onChange={e => save(e.target.value, deadline)}
-          className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-[11px] capitalize outline-none focus:ring-1 focus:ring-blue-400">
+          className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-[12px] capitalize outline-none focus:ring-1 focus:ring-blue-400">
           <option value="">Unassigned</option>
           {ASSIGNABLE_STAFF.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
@@ -57,7 +57,7 @@ export default function AssignWidget({ type }: { type: string }) {
       {canManage && (
         <input type="date" value={deadline} disabled={saving || !assignee} onChange={e => save(assignee, e.target.value)}
           title="Deadline -- overdue triggers auto-penalty"
-          className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-[11px] outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50" />
+          className="bg-white border border-gray-200 rounded-lg px-1.5 py-1 text-[12px] outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50" />
       )}
       {!canManage && deadline && <span className="text-gray-400">due {deadline}</span>}
     </div>

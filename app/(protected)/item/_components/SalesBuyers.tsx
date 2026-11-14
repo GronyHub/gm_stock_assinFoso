@@ -19,8 +19,8 @@ export default function SalesBuyers({ buyers, onChanged }: { buyers: Buyer[]; on
     groups.set(key, [...(groups.get(key) ?? []), b])
   }
   return (
-    <div className="space-y-1.5 bg-green-50/60 px-2 py-1.5 text-[11px]">
-      <p className="text-[10px] font-bold uppercase text-green-800">Customers on this day&apos;s sales</p>
+    <div className="space-y-1.5 bg-green-50/60 px-2 py-1.5 text-[12px]">
+      <p className="text-[12px] font-bold uppercase text-green-800">Customers on this day&apos;s sales</p>
       {[...groups.values()].map(list => <BuyerGroup key={list[0].id} list={list} onChanged={onChanged} />)}
     </div>
   )
@@ -66,16 +66,16 @@ function BuyerGroup({ list, onChanged }: { list: Buyer[]; onChanged: () => void 
       </p>
       <p className="text-gray-600">{items}</p>
       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-        {phone && <button type="button" onClick={() => void whatsapp()} className="rounded bg-green-600 px-2 py-1 text-[10px] font-bold text-white">Send on WhatsApp</button>}
+        {phone && <button type="button" onClick={() => void whatsapp()} className="rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">Send on WhatsApp</button>}
         {needsCustomer && (
           <>
-            {!phone && <input value={typedPhone} onChange={e => setTypedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="Phone 0XXXXXXXXX" inputMode="numeric" className="w-28 rounded border border-gray-300 px-1.5 py-1 text-[11px]" />}
-            <input value={typedName} onChange={e => setTypedName(e.target.value)} placeholder="Customer name" className="w-32 rounded border border-gray-300 px-1.5 py-1 text-[11px]" />
-            <button type="button" disabled={busy || !typedName.trim() || !(phone || /^0\d{9}$/.test(typedPhone))} onClick={() => void saveCustomer()} className="rounded bg-blue-600 px-2 py-1 text-[10px] font-bold text-white disabled:opacity-40">Save as customer</button>
+            {!phone && <input value={typedPhone} onChange={e => setTypedPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="Phone 0XXXXXXXXX" inputMode="numeric" className="w-28 rounded border border-gray-300 px-1.5 py-1 text-[12px]" />}
+            <input value={typedName} onChange={e => setTypedName(e.target.value)} placeholder="Customer name" className="w-32 rounded border border-gray-300 px-1.5 py-1 text-[12px]" />
+            <button type="button" disabled={busy || !typedName.trim() || !(phone || /^0\d{9}$/.test(typedPhone))} onClick={() => void saveCustomer()} className="rounded bg-blue-600 px-2 py-1 text-[12px] font-bold text-white disabled:opacity-40">Save as customer</button>
           </>
         )}
-        {!phone && !needsCustomer && <span className="text-[10px] text-gray-400">No phone number saved for this customer</span>}
-        {msg && <span className="text-[10px] font-semibold text-gray-700">{msg}</span>}
+        {!phone && !needsCustomer && <span className="text-[12px] text-gray-400">No phone number saved for this customer</span>}
+        {msg && <span className="text-[12px] font-semibold text-gray-700">{msg}</span>}
       </div>
     </div>
   )

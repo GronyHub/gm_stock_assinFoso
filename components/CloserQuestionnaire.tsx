@@ -91,7 +91,7 @@ export default function CloserQuestionnaire({ presentStaff, saving, onSubmit, on
 
         <div className="space-y-1.5">
           <p className={qCls}>1. Select the staff who didn&apos;t wear the company T-shirt today</p>
-          <p className="text-[11px] text-gray-400">Leave everyone unticked if all staff wore it.</p>
+          <p className="text-[12px] text-gray-400">Leave everyone unticked if all staff wore it.</p>
           <div className="space-y-1">
             {presentStaff.map(name => (
               <label key={name} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 cursor-pointer">

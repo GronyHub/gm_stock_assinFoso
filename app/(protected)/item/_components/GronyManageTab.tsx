@@ -75,8 +75,8 @@ export default function GronyManageContent({
       <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
         {ADVERT_ITEMS.map((item, i) => (
           <Fragment key={item.key}>
-            {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
+            {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
+            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[12px] whitespace-nowrap text-gray-700">
               <input type="radio" name="advertItemRadio" checked={selectedAdvertItem === item.key} onChange={() => setSelectedAdvertItem(item.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
               <span>{item.icon} {item.label}</span>
             </label>
@@ -119,8 +119,8 @@ export default function GronyManageContent({
       <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
         {GRONY_CHECKS_ITEMS.map((item, i) => (
           <Fragment key={item.key}>
-            {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
-            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap text-gray-700">
+            {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
+            <label className="shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[12px] whitespace-nowrap text-gray-700">
               <input type="radio" name="gronyCheckItemRadio" checked={selectedGronyCheckItem === item.key} onChange={() => setSelectedGronyCheckItem(item.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
               <span>{item.icon} {item.label}</span>
             </label>

@@ -71,7 +71,7 @@ function wnwColor(wnw: string | null, light = false) {
   return light ? 'text-green-200' : 'text-green-600'
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 placeholder-gray-400 outline-none focus:ring-1 focus:ring-blue-400'
 
 const NO_WORK_REASONS = [
   'No work — Public Holiday','No work — Christmas Day','No work — Good Friday',
@@ -117,11 +117,11 @@ export function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: st
           </select>
           <div className="flex gap-1">
             <button onClick={markNoWork} disabled={saving}
-              className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+              className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
               {saving ? 'Saving…' : 'Confirm No Work'}
             </button>
             <button onClick={() => setShowNoWork(false)} disabled={saving}
-              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
           </div>
         </div>
       ) : (
@@ -135,12 +135,12 @@ export function MissingDayFix({ date, onFixed }: { date: string; onFixed: (d: st
           <div className="flex gap-1">
             {total ? (
               <button onClick={addReceipt} disabled={saving}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded py-1.5 transition">
                 {saving ? 'Saving…' : 'Create Receipt'}
               </button>
             ) : (
               <button onClick={() => setShowNoWork(true)}
-                className="flex-1 bg-orange-500 hover:bg-orange-400 text-white text-[10px] font-semibold rounded py-1.5 transition">
+                className="flex-1 bg-orange-500 hover:bg-orange-400 text-white text-[12px] font-semibold rounded py-1.5 transition">
                 No Work
               </button>
             )}
@@ -595,11 +595,11 @@ function SalesTab({
   if (violation === 'missing_days') {
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.missingDays.length} day${flags.missingDays.length !== 1 ? 's' : ''} with no sales receipts`}
         </p>
         {!flagsLoading && flags && (flags.missingDays.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No missing days found.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No missing days found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {flags.missingDays.map((r: any) => (
                 <MissingDayFix key={r.missing_date} date={r.missing_date} onFixed={d =>
@@ -615,20 +615,20 @@ function SalesTab({
   if (violation === 'dup_receipt') {
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {flagsLoading || !flags ? 'Loading…' : `${flags.dupReceipts.length} day${flags.dupReceipts.length !== 1 ? 's' : ''} with more than one receipt of the same customer type`}
         </p>
         {!flagsLoading && flags && (flags.dupReceipts.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No duplicate WIC/GMC receipts found.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No duplicate WIC/GMC receipts found.</p>
           : <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {flags.dupReceipts.map((r: any, i: number) => (
                 <div key={i} className="px-2 py-2">
-                  <p className="text-[10px] font-semibold text-gray-900">
+                  <p className="text-[12px] font-semibold text-gray-900">
                     {fmtDate(r.receipt_date)} — {r.customer_type}
                     <span className="ml-1 text-red-500">({r.receipt_count} receipts)</span>
                   </p>
-                  <p className="text-[9px] text-gray-400 mt-0.5">{r.receipt_numbers}</p>
-                  <p className="text-[9px] text-gray-400 mt-0.5">Merge the items from the extra receipt(s) into one via Edit, then delete the rest.</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">{r.receipt_numbers}</p>
+                  <p className="text-[12px] text-gray-400 mt-0.5">Merge the items from the extra receipt(s) into one via Edit, then delete the rest.</p>
                 </div>
               ))}
             </div>
@@ -646,10 +646,10 @@ function SalesTab({
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowHistory(false)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
           ← Back
         </button>
-        <span className="text-[9px] font-semibold text-purple-700">Sales History</span>
+        <span className="text-[12px] font-semibold text-purple-700">Sales History</span>
       </div>
       <HistoryPanel keywords={['sale', 'receipt']} onEntryClick={log => {
         // "added sale receipt": "SR-001 · ₵300 on date"  →  receipt_number = first token
@@ -691,14 +691,14 @@ function SalesTab({
           every row (bar rows vs. item-name rows differ a lot), and that
           left the sticky ITEM column and the CC column next to it
           disagreeing by a few px, clipping CC's leading characters. */}
-      <table className="w-full table-fixed border-collapse text-[10px]">
+      <table className="w-full table-fixed border-collapse text-[12px]">
         <colgroup>
           <col style={{ width: compactSales ? '30%' : '40%' }} />
           {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: `${compactSales ? (c.width ?? 0) * 0.85 : c.width}%` }} />)}
         </colgroup>
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
-            <th className="text-left px-1 py-0.5 text-[10px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
+            <th className="text-left px-1 py-0.5 text-[12px] font-bold text-gray-500 border-b border-gray-200 sticky left-0 z-20 bg-gray-100">ITEM</th>
             {/* CC/WNW are real columns (not text docked inside the ITEM
                 header) so the header label and every row's value share the
                 same table column and can't drift out of alignment. Only the
@@ -706,8 +706,8 @@ function SalesTab({
             {colPrefs.shownColumns.map(c => (
               <th key={c.key}
                 className={c.key === 'cc' || c.key === 'wnw' || c.key === 'customer'
-                  ? 'text-left px-1 py-0.5 pl-3 text-[10px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
-                  : 'text-right px-1 py-0.5 text-[10px] font-bold text-gray-500 border-b border-gray-200'}>
+                  ? 'text-left px-1 py-0.5 pl-3 text-[12px] font-bold text-gray-500 border-b border-gray-200 whitespace-nowrap'
+                  : 'text-right px-1 py-0.5 text-[12px] font-bold text-gray-500 border-b border-gray-200'}>
                 {c.label}
               </th>
             ))}
@@ -750,22 +750,22 @@ function SalesTab({
               <tr>
                 <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 bg-blue-50/40 border-b border-gray-200">
                 <div className="p-2 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-600">{isAddingGmcHere ? 'New GMC Receipt' : 'Edit Receipt'}</p>
+                  <p className="text-[12px] font-bold text-gray-600">{isAddingGmcHere ? 'New GMC Receipt' : 'Edit Receipt'}</p>
                   <div className="grid grid-cols-2 gap-1">
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                      <p className="text-[12px] text-gray-400 mb-0.5">Date</p>
                       <input type="date" value={editForm.receipt_date}
                         onChange={e => setEditForm(f => ({ ...f, receipt_date: e.target.value }))} className={inputCls} />
                     </div>
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Customer</p>
+                      <p className="text-[12px] text-gray-400 mb-0.5">Customer</p>
                       <input value={editForm.customer_name}
                         onChange={e => setEditForm(f => ({ ...f, customer_name: e.target.value }))}
                         placeholder="Walk-in" className={inputCls} />
                     </div>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Cash Counted (₵)</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Cash Counted (₵)</p>
                     <input type="number" min="0" step="0.01" inputMode="decimal"
                       value={editForm.cash_counted}
                       onChange={e => setEditForm(f => ({ ...f, cash_counted: e.target.value }))}
@@ -775,10 +775,10 @@ function SalesTab({
                     {/* Attach (or add to) the written form -- so a receipt
                         entered before this feature existed can still be
                         caught up here instead of needing a new receipt. */}
-                    <p className="text-[9px] text-gray-400 mb-0.5">Attached Form</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Attached Form</p>
                     <AttachmentPicker items={attachments.items} onAdd={attachments.addFiles} onRemove={attachments.remove} disabled={saving} />
                   </div>
-                  <table className="w-full border-collapse text-[10px]">
+                  <table className="w-full border-collapse text-[12px]">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-200">
                         <th className="text-left px-1 py-0.5 font-semibold text-gray-500">Item</th>
@@ -793,15 +793,15 @@ function SalesTab({
                         <tr key={l.id ?? `new-${idx}`} className="border-b border-gray-100">
                           <td className="px-1 py-0.5">
                             <input value={l.item_name} onChange={e => updateEditLine(idx, 'item_name', e.target.value)}
-                              className="w-full bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                              className="w-full bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5">
                             <input type="number" min="1" step="1" value={l.quantity} onChange={e => updateEditLine(idx, 'quantity', e.target.value)}
-                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5">
                             <input type="number" min="0" step="0.01" value={l.item_price} onChange={e => updateEditLine(idx, 'item_price', e.target.value)}
-                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                              className="w-full text-right bg-gray-50 border border-gray-200 rounded px-1 py-0.5 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                           </td>
                           <td className="px-1 py-0.5 text-right text-gray-700">
                             {((parseFloat(l.quantity)||0)*(parseFloat(l.item_price)||0)).toFixed(0)}
@@ -826,18 +826,18 @@ function SalesTab({
                   <div className="relative">
                     <input value={newItemQuery} onChange={e => setNewItemQuery(e.target.value)}
                       placeholder="+ Search item to add…"
-                      className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+                      className="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
                     {newItemQuery.trim().length > 0 && (
                       <div className="absolute z-20 left-0 right-0 mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-32 overflow-y-auto">
                         {items.filter(it => it.item_name.toLowerCase().includes(newItemQuery.trim().toLowerCase())).slice(0, 15).map(it => (
                           <button key={it.id} onClick={() => addEditLine(it as any)}
-                            className="w-full text-left px-2 py-1 text-[10px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
+                            className="w-full text-left px-2 py-1 text-[12px] text-gray-800 hover:bg-blue-50 border-b border-gray-100 last:border-0">
                             {it.item_name}
                           </button>
                         ))}
                         {items.filter(it => it.item_name.toLowerCase().includes(newItemQuery.trim().toLowerCase())).length === 0 && (
                           <button onClick={() => addFreeTextLine(newItemQuery.trim())}
-                            className="w-full text-left px-2 py-1.5 text-[10px] text-blue-600 font-semibold hover:bg-blue-50">
+                            className="w-full text-left px-2 py-1.5 text-[12px] text-blue-600 font-semibold hover:bg-blue-50">
                             + Add &quot;{newItemQuery.trim()}&quot; as a new item
                           </button>
                         )}
@@ -845,29 +845,29 @@ function SalesTab({
                     )}
                   </div>
 
-                  {editError && <p className="text-[10px] text-red-500 font-medium text-center">{editError}</p>}
+                  {editError && <p className="text-[12px] text-red-500 font-medium text-center">{editError}</p>}
                   <div className="flex gap-1">
                     <button onClick={saveEdit} disabled={saving}
-                      className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                      className="flex-1 bg-green-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                       {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button onClick={cancelEdit}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                     {editingId !== 'new-gmc' && (
                       <button onClick={() => setConfirmDeleteId(r.id)}
-                        className="px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded">Delete</button>
+                        className="px-3 py-1 bg-red-50 text-red-600 text-[12px] font-semibold rounded">Delete</button>
                     )}
                   </div>
                   {editingId !== 'new-gmc' && confirmDeleteId === r.id && (
                     <div className="mt-1.5 px-2 py-2 bg-red-50 border border-red-100 rounded flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-red-700 font-medium">Delete this receipt permanently?</span>
+                      <span className="text-[12px] text-red-700 font-medium">Delete this receipt permanently?</span>
                       <div className="flex gap-1 shrink-0">
                         <button onClick={() => deleteReceipt(r.id)} disabled={deletingId === r.id}
-                          className="text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-2 py-1 rounded">
+                          className="text-[12px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 px-2 py-1 rounded">
                           {deletingId === r.id ? 'Deleting…' : 'Yes, Delete'}
                         </button>
                         <button onClick={() => setConfirmDeleteId(null)}
-                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          className="text-[12px] font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded">
                           Cancel
                         </button>
                       </div>
@@ -894,7 +894,7 @@ function SalesTab({
                   like the line rows below. */}
               <td className={`sticky left-0 z-[5] bg-inherit overflow-hidden ${isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'}`}>
                 <span className="flex items-center gap-1 min-w-0 flex-wrap">
-                  <span className={`font-extrabold shrink-0 ${isDayHead ? 'text-white text-xs' : 'text-gray-600 text-[11px]'}`}>
+                  <span className={`font-extrabold shrink-0 ${isDayHead ? 'text-white text-xs' : 'text-gray-600 text-[12px]'}`}>
                     {fmtShort(r.receipt_date)}
                   </span>
                   {/* Jumps straight into editingId === r.id below -- no menu
@@ -910,14 +910,14 @@ function SalesTab({
                   {fmtCust(r.customer_name) === 'W' && !gmcDates.has(r.receipt_date?.slice(0, 10)) && (
                     <button onClick={e => { e.stopPropagation(); startAddGmc(r.receipt_date.slice(0, 10)) }}
                       title="Add this day's missing GMC receipt"
-                      className={`leading-none shrink-0 text-[10px] font-extrabold ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-purple-500 hover:text-purple-700'}`}>
+                      className={`leading-none shrink-0 text-[12px] font-extrabold ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-purple-500 hover:text-purple-700'}`}>
                       +G
                     </button>
                   )}
                   {/* truncate (not whitespace-nowrap on the whole span) so a
                       long customer name ellipsizes within its fixed-width
                       column instead of overflowing into CC next door. */}
-                  <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[11px]'}`}>
+                  <span className={`font-extrabold truncate ${isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[12px]'}`}>
                     {fmtCust(r.customer_name)}
                   </span>
                   {/* Shows only once the form's actually attached, so a
@@ -929,7 +929,7 @@ function SalesTab({
                     <a href={r.attachments[0].url} target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
                       title={`${r.attachments.length} form${r.attachments.length !== 1 ? 's' : ''} attached — tap to view`}
-                      className={`shrink-0 text-[10px] leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+                      className={`shrink-0 text-[12px] leading-none ${isDayHead ? 'text-blue-100 hover:text-white' : 'text-gray-400 hover:text-gray-700'}`}>
                       📎
                     </a>
                   )}
@@ -937,17 +937,17 @@ function SalesTab({
               </td>
               {colPrefs.shownColumns.map(c => {
                 if (c.key === 'cc') return (
-                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-blue-100 text-xs' : 'px-1 py-0 text-gray-500 text-[11px]'}`}>
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-blue-100 text-xs' : 'px-1 py-0 text-gray-500 text-[12px]'}`}>
                     {!itemNameMatch && fmt(r.cash_counted)}
                   </td>
                 )
                 if (c.key === 'wnw') return (
-                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-xs' : 'px-1 py-0 text-[11px]'} ${wnwColor(r.wnw, isDayHead)}`}>
+                  <td key={c.key} className={`text-left pl-3 font-extrabold ${isDayHead ? 'px-1.5 py-0.5 text-xs' : 'px-1 py-0 text-[12px]'} ${wnwColor(r.wnw, isDayHead)}`}>
                     {!itemNameMatch && fmt(r.wnw)}
                   </td>
                 )
                 if (c.key === 'total') return (
-                  <td key={c.key} className={`px-1 py-0.5 text-right font-extrabold ${isDayHead ? 'text-white text-xs' : 'text-gray-900 text-[11px]'}`}>
+                  <td key={c.key} className={`px-1 py-0.5 text-right font-extrabold ${isDayHead ? 'text-white text-xs' : 'text-gray-900 text-[12px]'}`}>
                     {!itemNameMatch && fmt(r.invoice_amount)}
                   </td>
                 )
@@ -957,7 +957,7 @@ function SalesTab({
             {editingRow}
             {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}
-                className={`border-b border-gray-100 text-[11px] font-bold leading-tight ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
+                className={`border-b border-gray-100 text-[12px] font-bold leading-tight ${selectedId === r.id ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                 <td colSpan={1 + lineItemLeadingBlanks} className="px-1 py-0 text-gray-900 align-top sticky left-0 z-[5] bg-inherit">
                   {line ? (
                     line.item_id ? (
@@ -1002,7 +1002,7 @@ function SalesTab({
           <button onClick={() => { setLoading(true); void loadReceipts(3) }}
             className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
         </div>
-      ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No receipts</p>}
+      ) : filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No receipts</p>}
     </div>
     {showBulkAttach && (
       <BulkAttachForms receipts={receipts} onClose={() => setShowBulkAttach(false)}

@@ -52,7 +52,7 @@ function CashCountedTrendCard() {
         <Pill label="Latest Cash Counted" value={latest ? fc(latest.cashCounted) : '—'} color="#3b82f6" />
         <Pill label="Latest Compliance" value={latest ? `${latest.compliance}%` : '—'} />
         <div className="bg-gray-50 rounded-lg px-3 py-2 flex-1 min-w-[100px] flex items-center justify-between">
-          <p className="text-[10px] text-gray-400">Compliance Trend</p>
+          <p className="text-[12px] text-gray-400">Compliance Trend</p>
           <TrendBadge direction={complianceTrend.direction} pct={complianceTrend.pct} />
         </div>
       </div>

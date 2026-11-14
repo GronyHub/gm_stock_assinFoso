@@ -90,7 +90,7 @@ export default function ClockInGateModal({ onClockedIn, onSkip }: { onClockedIn:
         {cashAsk && (
           <div className="space-y-1.5 rounded-lg border border-amber-300 bg-amber-50 p-2">
             <p className="text-xs font-bold text-amber-900">Cash counted for {cashAsk.day} (₵)</p>
-            <p className="text-[11px] text-amber-900">Required before you clock in. Sales written down: <b>₵{cashAsk.salesTotal.toFixed(2)}</b>.</p>
+            <p className="text-[12px] text-amber-900">Required before you clock in. Sales written down: <b>₵{cashAsk.salesTotal.toFixed(2)}</b>.</p>
             <input type="number" inputMode="decimal" min="0" step="0.01" value={cashVal} onChange={e => setCashVal(e.target.value)} placeholder="Cash counted"
               className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400" />
             <button type="button" onClick={() => void clockIn(Number(cashVal))} disabled={saving || cashVal.trim() === '' || !(Number(cashVal) >= 0)}

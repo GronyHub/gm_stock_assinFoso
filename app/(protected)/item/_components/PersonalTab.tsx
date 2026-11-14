@@ -49,7 +49,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[10px] uppercase tracking-wide border-b border-gray-200'
+const TH = 'text-left px-3 py-0.5 font-bold text-gray-400 text-[12px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-3 py-0'
 
 // Shared between the standalone /personal page and C&H's "Personal
@@ -163,7 +163,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
         {embedded ? <div /> : (
           <div>
             <h1 className="text-lg font-bold text-gray-900">Personal</h1>
-            <p className="text-[10px] text-gray-400">Private · Grony & Joe only</p>
+            <p className="text-[12px] text-gray-400">Private · Grony & Joe only</p>
           </div>
         )}
         <button onClick={() => setShowAdd(!showAdd)}
@@ -231,15 +231,15 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
       {/* Totals */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] text-gray-400">Total Spent</p>
+          <p className="text-[12px] text-gray-400">Total Spent</p>
           <p className="text-sm font-bold text-red-600">{c(grandOut)}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] text-gray-400">Received</p>
+          <p className="text-[12px] text-gray-400">Received</p>
           <p className="text-sm font-bold text-green-700">{c(grandIn)}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl px-3 py-2.5">
-          <p className="text-[10px] text-gray-400">Entries</p>
+          <p className="text-[12px] text-gray-400">Entries</p>
           <p className="text-sm font-bold text-gray-900">{entries.length}</p>
         </div>
       </div>
@@ -268,12 +268,12 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                     <span className="text-lg">{CAT_ICON[cat] ?? '🏷️'}</span>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{cat}</p>
-                      <p className="text-[10px] text-gray-400">{count} entr{count !== 1 ? 'ies' : 'y'}</p>
+                      <p className="text-[12px] text-gray-400">{count} entr{count !== 1 ? 'ies' : 'y'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-gray-900">{c(total)}</p>
-                    <p className="text-[10px] text-gray-400">{pct.toFixed(1)}%</p>
+                    <p className="text-[12px] text-gray-400">{pct.toFixed(1)}%</p>
                   </div>
                 </div>
                 <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -315,7 +315,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
 
           {filtered.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-              <table className="w-full border-collapse text-[11px]">
+              <table className="w-full border-collapse text-[12px]">
                 <thead>
                   <tr className="bg-gray-50">
                     <th className={`${TH} whitespace-nowrap`}>Date</th>
@@ -330,7 +330,7 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                       <td className={`${TD} text-gray-500 whitespace-nowrap align-top`}>{fmtDate(e.entry_date)}</td>
                       <td className={`${TD} text-gray-800 align-top`}>
                         {e.description}
-                        {e.notes && <p className="text-[10px] text-gray-400 mt-0.5">{e.notes}</p>}
+                        {e.notes && <p className="text-[12px] text-gray-400 mt-0.5">{e.notes}</p>}
                       </td>
                       <td className={`${TD} text-right font-bold align-top whitespace-nowrap ${e.direction === 'in' ? 'text-green-700' : 'text-red-600'}`}>
                         {e.direction === 'in' ? '+' : '-'}{c(e.amount)}
@@ -340,9 +340,9 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                           editCatCustom ? (
                             <div className="flex items-center gap-1">
                               <input value={editCat} onChange={ev => setEditCat(ev.target.value)} placeholder="New category name" autoFocus
-                                className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none" />
-                              <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
-                              <button onClick={() => { setEditId(null); setEditCatCustom(false) }} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
+                                className="border border-blue-300 rounded-lg px-2 py-1 text-[12px] outline-none" />
+                              <button onClick={() => saveCategory(e.id)} className="text-[12px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                              <button onClick={() => { setEditId(null); setEditCatCustom(false) }} className="text-[12px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
                             </div>
                           ) : (
                             <div className="flex items-center gap-1 flex-wrap">
@@ -350,24 +350,24 @@ export default function PersonalTab({ embedded = false }: { embedded?: boolean }
                                   if (ev.target.value === '__new__') { setEditCatCustom(true); setEditCat('') } else setEditCat(ev.target.value)
                                   setEditSubcat('')
                                 }}
-                                className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
+                                className="border border-blue-300 rounded-lg px-2 py-1 text-[12px] outline-none">
                                 {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
                                 <option value="__new__">+ Add new category…</option>
                               </select>
                               {editCat === 'Children' && (
                                 <select value={editSubcat} onChange={ev => setEditSubcat(ev.target.value)}
-                                  className="border border-blue-300 rounded-lg px-2 py-1 text-[10px] outline-none">
+                                  className="border border-blue-300 rounded-lg px-2 py-1 text-[12px] outline-none">
                                   <option value="">Which child?</option>
                                   {CHILDREN_SUBCATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                               )}
-                              <button onClick={() => saveCategory(e.id)} className="text-[10px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
-                              <button onClick={() => setEditId(null)} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
+                              <button onClick={() => saveCategory(e.id)} className="text-[12px] px-2 py-1 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                              <button onClick={() => setEditId(null)} className="text-[12px] px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">✕</button>
                             </div>
                           )
                         ) : (
                           <button onClick={() => { setEditId(e.id); setEditCat(e.category ?? 'Other'); setEditCatCustom(false); setEditSubcat(e.subcategory ?? '') }}
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
+                            className={`text-[12px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${CAT_COLOR[e.category ?? 'Other'] ?? CAT_COLOR['Other']}`}>
                             {CAT_ICON[e.category ?? 'Other'] ?? '🏷️'} {e.category ?? 'Other'}{e.subcategory ? ` · ${e.subcategory}` : ''} ✎
                           </button>
                         )}

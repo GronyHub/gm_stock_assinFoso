@@ -16,7 +16,7 @@ export function useTileDensity(): [TileDensity, (d: TileDensity) => void] {
 export function DensityToggle({ density, onChange }: { density: TileDensity; onChange: (d: TileDensity) => void }) {
   return (
     <button type="button" onClick={() => onChange(density === 'full' ? 'compact' : 'full')} title={density === 'full' ? 'Show small tiles' : 'Show the whole text on each tile'}
-      className="shrink-0 rounded-lg border border-gray-300 bg-white px-1.5 py-1.5 text-[10px] font-bold text-gray-700">{density === 'full' ? '▦ Small' : '▤ Full'}</button>
+      className="shrink-0 rounded-lg border border-gray-300 bg-white px-1.5 py-1.5 text-[12px] font-bold text-gray-700">{density === 'full' ? '▦ Small' : '▤ Full'}</button>
   )
 }
 
@@ -33,18 +33,18 @@ export default function TaskTile({ density, time, title, who, category, type, de
     <button type="button" title={title} onClick={onClick} onContextMenu={e => e.preventDefault()}
       className={`relative flex select-none flex-col items-start justify-start gap-px rounded-md border text-left active:opacity-70 ${full ? 'min-h-[4.5rem] px-2 py-1.5' : 'min-h-[3.6rem] px-1 py-0.5'} ${tone}`}>
       {markEl}
-      <span className={`flex items-center gap-1 font-extrabold leading-none text-gray-500 ${full ? 'text-[11px]' : 'text-[8px]'}`}>{icon && full ? <span className="text-base">{icon}</span> : null}{time}{badge && badge > 1 ? <span className="rounded-full bg-[#14213D] px-1 text-[9px] text-white">{badge}</span> : null}</span>
-      <span className={`break-words font-semibold text-gray-900 ${full ? 'text-[12px] leading-snug' : 'line-clamp-3 text-[8px] leading-[1.1]'}`}>{full ? title : shortTitle(title)}</span>
-      {full && detail ? <span className="text-[11px] leading-snug text-gray-600">{detail}</span> : null}
-      {full && (category || type) ? <span className="text-[10px] font-semibold leading-tight text-gray-500">{[category, type].filter(Boolean).join(' · ')}</span> : null}
-      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${lawHref ? (full ? 'pr-9' : 'pr-5') : ''} ${full ? 'truncate pt-0.5 text-[11px]' : 'truncate text-[7px]'}`}>{who}</span> : null}
+      <span className={`flex items-center gap-1 font-extrabold leading-none text-gray-500 ${full ? 'text-[12px]' : 'text-[12px]'}`}>{icon && full ? <span className="text-base">{icon}</span> : null}{time}{badge && badge > 1 ? <span className="rounded-full bg-[#14213D] px-1 text-[12px] text-white">{badge}</span> : null}</span>
+      <span className={`break-words font-semibold text-gray-900 ${full ? 'text-[12px] leading-snug' : 'line-clamp-3 text-[12px] leading-[1.1]'}`}>{full ? title : shortTitle(title)}</span>
+      {full && detail ? <span className="text-[12px] leading-snug text-gray-600">{detail}</span> : null}
+      {full && (category || type) ? <span className="text-[12px] font-semibold leading-tight text-gray-500">{[category, type].filter(Boolean).join(' · ')}</span> : null}
+      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${lawHref ? (full ? 'pr-9' : 'pr-5') : ''} ${full ? 'truncate pt-0.5 text-[12px]' : 'truncate text-[12px]'}`}>{who}</span> : null}
     </button>
   )
   if (!lawHref) return tile
   return (
     <div className="relative flex flex-col [&>button]:flex-1">{tile}
       <a href={lawHref} title="Open the law behind this task to change it" onClick={e => e.stopPropagation()}
-        className={`absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1.5 py-1 text-[10px]' : 'px-1 py-0.5 text-[8px]'}`}>Law</a>
+        className={`absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1.5 py-1 text-[12px]' : 'px-1 py-0.5 text-[12px]'}`}>Law</a>
     </div>
   )
 }

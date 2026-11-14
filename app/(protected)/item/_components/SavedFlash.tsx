@@ -10,5 +10,5 @@
 // ActivityToaster), not confirming your own.
 export default function SavedFlash({ show }: { show: boolean }) {
   if (!show) return null
-  return <span className="text-[10px] font-semibold text-green-600">✓ Saved</span>
+  return <span className="text-[12px] font-semibold text-green-600">✓ Saved</span>
 }

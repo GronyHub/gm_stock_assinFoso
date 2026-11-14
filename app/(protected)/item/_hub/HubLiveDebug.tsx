@@ -8,7 +8,7 @@ export default function HubLiveDebug({ h }: { h: HubCtx }) {
   const { liveSaleMounted, liveMode, liveDebugLogs, liveLossPrompt, setLiveLossPrompt, liveGainPrompt, setLiveGainPrompt, livePairingPrompt, setLivePairingPrompt } = h
   return (<>{liveMode === 'sale' && liveSaleMounted && (<>
           {liveDebugLogs.length > 0 && (
-            <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
+            <div className="fixed top-4 right-4 bg-black text-white text-[12px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
               {liveDebugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
             </div>
           )}

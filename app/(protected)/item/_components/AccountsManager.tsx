@@ -124,13 +124,13 @@ export default function AccountsManager({ onClose, onAccountCreated }: { onClose
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {error && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700">
+            <div className="p-2 bg-red-50 border border-red-200 rounded text-[12px] text-red-700">
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <p className="text-[10px] font-semibold text-gray-600">Create New Account</p>
+            <p className="text-[12px] font-semibold text-gray-600">Create New Account</p>
             <div className="flex gap-1">
               <input
                 type="text"
@@ -138,12 +138,12 @@ export default function AccountsManager({ onClose, onAccountCreated }: { onClose
                 onChange={e => setNewAccountName(e.target.value)}
                 onKeyPress={e => e.key === 'Enter' && handleCreateAccount()}
                 placeholder="Account name…"
-                className="flex-1 text-[11px] px-2 py-1.5 border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none focus:ring-1 focus:ring-blue-400"
+                className="flex-1 text-[12px] px-2 py-1.5 border border-gray-200 rounded bg-gray-50 focus:bg-white outline-none focus:ring-1 focus:ring-blue-400"
               />
               <button
                 onClick={handleCreateAccount}
                 disabled={!newAccountName.trim() || saving}
-                className="px-2 py-1.5 bg-blue-600 text-white text-[10px] font-semibold rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-2 py-1.5 bg-blue-600 text-white text-[12px] font-semibold rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 Add
               </button>
@@ -151,12 +151,12 @@ export default function AccountsManager({ onClose, onAccountCreated }: { onClose
           </div>
 
           {loading ? (
-            <p className="text-[11px] text-gray-400 text-center py-4">Loading accounts…</p>
+            <p className="text-[12px] text-gray-400 text-center py-4">Loading accounts…</p>
           ) : accounts.length === 0 ? (
-            <p className="text-[11px] text-gray-400 text-center py-4">No accounts yet</p>
+            <p className="text-[12px] text-gray-400 text-center py-4">No accounts yet</p>
           ) : (
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-gray-600 mb-2">Existing Accounts</p>
+              <p className="text-[12px] font-semibold text-gray-600 mb-2">Existing Accounts</p>
               {accounts.map(account => (
                 <div key={account.id} className="flex items-center gap-1 p-2 bg-gray-50 rounded hover:bg-gray-100">
                   {editingId === account.id ? (
@@ -166,36 +166,36 @@ export default function AccountsManager({ onClose, onAccountCreated }: { onClose
                         value={editingName}
                         onChange={e => setEditingName(e.target.value)}
                         onKeyPress={e => e.key === 'Enter' && handleRenameAccount()}
-                        className="flex-1 text-[11px] px-1.5 py-1 border border-blue-300 rounded bg-white outline-none"
+                        className="flex-1 text-[12px] px-1.5 py-1 border border-blue-300 rounded bg-white outline-none"
                         autoFocus
                       />
                       <button
                         onClick={handleRenameAccount}
                         disabled={saving}
-                        className="px-1.5 py-1 bg-green-600 text-white text-[9px] font-semibold rounded hover:bg-green-700 disabled:opacity-50"
+                        className="px-1.5 py-1 bg-green-600 text-white text-[12px] font-semibold rounded hover:bg-green-700 disabled:opacity-50"
                       >
                         ✓
                       </button>
                       <button
                         onClick={() => { setEditingId(null); setEditingName('') }}
                         disabled={saving}
-                        className="px-1.5 py-1 bg-gray-300 text-gray-700 text-[9px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50"
+                        className="px-1.5 py-1 bg-gray-300 text-gray-700 text-[12px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50"
                       >
                         ✕
                       </button>
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 text-[11px] text-gray-900">{account.name}</span>
+                      <span className="flex-1 text-[12px] text-gray-900">{account.name}</span>
                       <button
                         onClick={() => { setEditingId(account.id); setEditingName(account.name); setError(null) }}
-                        className="px-1.5 py-1 bg-gray-200 text-gray-700 text-[9px] hover:bg-gray-300 rounded"
+                        className="px-1.5 py-1 bg-gray-200 text-gray-700 text-[12px] hover:bg-gray-300 rounded"
                       >
                         Rename
                       </button>
                       <button
                         onClick={() => handleDeleteAccount(account.id)}
-                        className="px-1.5 py-1 bg-red-100 text-red-700 text-[9px] hover:bg-red-200 rounded"
+                        className="px-1.5 py-1 bg-red-100 text-red-700 text-[12px] hover:bg-red-200 rounded"
                       >
                         Delete
                       </button>
@@ -210,7 +210,7 @@ export default function AccountsManager({ onClose, onAccountCreated }: { onClose
         <div className="px-4 py-3 border-t border-gray-200 flex justify-end">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-100 rounded"
+            className="px-3 py-1.5 text-[12px] font-semibold text-gray-700 hover:bg-gray-100 rounded"
           >
             Close
           </button>

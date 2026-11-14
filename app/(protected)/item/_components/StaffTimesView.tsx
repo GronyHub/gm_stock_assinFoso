@@ -113,17 +113,17 @@ export default function StaffTimesView({ staffName, username, onOpenDone }: { st
       <div className="flex items-center justify-between px-1 py-1.5 border-b border-gray-100 shrink-0">
         <button onClick={() => setDate(d => shiftDate(d, -1))}
           className="text-gray-400 hover:text-gray-700 font-bold px-1.5 leading-none">‹</button>
-        <p className="text-[11px] font-semibold text-gray-700">{fmtDate(date)}</p>
+        <p className="text-[12px] font-semibold text-gray-700">{fmtDate(date)}</p>
         <button onClick={() => setDate(d => shiftDate(d, 1))} disabled={date >= newest}
           className="text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:hover:text-gray-400 font-bold px-1.5 leading-none">›</button>
       </div>
       {loading ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
       ) : !detail ? (
-        <div className="py-6 text-center"><p className="text-[11px] text-gray-400">Could not load time details.</p><button type="button" onClick={() => void loadDetail()} className="mt-2 rounded-lg bg-gray-100 px-3 py-1 text-[11px] font-bold text-gray-700">Try again</button></div>
+        <div className="py-6 text-center"><p className="text-[12px] text-gray-400">Could not load time details.</p><button type="button" onClick={() => void loadDetail()} className="mt-2 rounded-lg bg-gray-100 px-3 py-1 text-[12px] font-bold text-gray-700">Try again</button></div>
       ) : (
         <>
-          <div className="px-1 py-2 border-b border-gray-100 flex items-center justify-between text-[10px] text-gray-500 shrink-0">
+          <div className="px-1 py-2 border-b border-gray-100 flex items-center justify-between text-[12px] text-gray-500 shrink-0">
             <span>
               Clocked in {detail.actual_in ?? '—'}
               {detail.actual_out ? ` · out ${detail.actual_out}` : ''}
@@ -136,7 +136,7 @@ export default function StaffTimesView({ staffName, username, onOpenDone }: { st
               <span className="block font-semibold text-gray-700">Worked {formatDuration(detail.total_seconds)}</span>
             </span>
           </div>
-          <p className="px-1 py-3 text-[11px] text-gray-500">
+          <p className="px-1 py-3 text-[12px] text-gray-500">
             What was done that day is in the <button type="button" onClick={onOpenDone} className="font-bold text-blue-700 underline">Done</button> tab.
           </p>
         </>

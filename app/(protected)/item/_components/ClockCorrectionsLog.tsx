@@ -23,7 +23,7 @@ export default function ClockCorrectionsLog({ defaultOpen = false, onClose, me =
   return (
     <div className="rounded-xl border border-gray-200 bg-white">
       <button type="button" onClick={() => (onClose ? onClose() : setOpen(o => !o))} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left">
-        <span className="min-w-0"><span className="block text-sm font-bold text-gray-900">🕐 Time approvals</span><span className="block text-[10px] text-gray-500">Who asked, who approved, and when</span></span>
+        <span className="min-w-0"><span className="block text-sm font-bold text-gray-900">🕐 Time approvals</span><span className="block text-[12px] text-gray-500">Who asked, who approved, and when</span></span>
         <span className="shrink-0 text-xs font-bold text-gray-400">{onClose ? 'Close ✕' : open ? '▲' : '▼'}</span>
       </button>
       {open && (
@@ -35,16 +35,16 @@ export default function ClockCorrectionsLog({ defaultOpen = false, onClose, me =
             <div key={r.id} className="flex items-start gap-2 py-1.5">
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] leading-snug text-gray-900"><b>{cap(r.staff)}</b> · {short(r.work_date)} · <b>{r.field === 'in' ? 'In' : 'Out'} {r.proposed_out}</b></p>
-                <p className="text-[10px] leading-snug text-gray-500">Asked {short(r.requested_at)} {hm(r.requested_at)}{r.basis || r.note ? ` · ${[r.basis, r.note].filter(Boolean).join(' · ')}` : ''}</p>
-                {r.status === 'pending' && (r.staff === me.toLowerCase() || (r.against ?? '') === me.toLowerCase()) && (() => { const w = waited(r.requested_at), who = decider(r.staff); return <p className={`text-[10px] font-bold leading-snug ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue ? ` · ${who} has not decided in 2 days${who === 'Joe' ? ': you can step in' : ''}` : ''}</p> })()}
-                {r.status === 'pending' && r.staff === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">Your own time: {r.staff === 'joe' ? 'Grony' : 'Joe or Grony'} decides it.</p>}
-                {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') === me.toLowerCase() && <p className="text-[10px] font-semibold leading-snug text-amber-800">You clocked {cap(r.staff)} out, so you cannot approve this one.</p>}
+                <p className="text-[12px] leading-snug text-gray-500">Asked {short(r.requested_at)} {hm(r.requested_at)}{r.basis || r.note ? ` · ${[r.basis, r.note].filter(Boolean).join(' · ')}` : ''}</p>
+                {r.status === 'pending' && (r.staff === me.toLowerCase() || (r.against ?? '') === me.toLowerCase()) && (() => { const w = waited(r.requested_at), who = decider(r.staff); return <p className={`text-[12px] font-bold leading-snug ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue ? ` · ${who} has not decided in 2 days${who === 'Joe' ? ': you can step in' : ''}` : ''}</p> })()}
+                {r.status === 'pending' && r.staff === me.toLowerCase() && <p className="text-[12px] font-semibold leading-snug text-amber-800">Your own time: {r.staff === 'joe' ? 'Grony' : 'Joe or Grony'} decides it.</p>}
+                {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') === me.toLowerCase() && <p className="text-[12px] font-semibold leading-snug text-amber-800">You clocked {cap(r.staff)} out, so you cannot approve this one.</p>}
                 {r.status === 'pending' && r.staff !== me.toLowerCase() && (r.against ?? '') !== me.toLowerCase() && <div className="mt-1"><ClockRequestRow p={r} compact onDone={() => void reload()} /></div>}
-                {r.decided_by && <p className="text-[10px] leading-snug text-gray-700">{r.status === 'rejected' ? 'Rejected' : 'Approved'} by <b>{cap(r.decided_by)}</b>{r.decided_at ? ` · ${short(r.decided_at)} ${hm(r.decided_at)}` : ''}</p>}
+                {r.decided_by && <p className="text-[12px] leading-snug text-gray-700">{r.status === 'rejected' ? 'Rejected' : 'Approved'} by <b>{cap(r.decided_by)}</b>{r.decided_at ? ` · ${short(r.decided_at)} ${hm(r.decided_at)}` : ''}</p>}
               </div>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS[r.status] ?? STATUS.pending}`}>{r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : 'Waiting'}</span>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[12px] font-bold ${STATUS[r.status] ?? STATUS.pending}`}>{r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : 'Waiting'}</span>
             </div>))}
-          {rows && rows.length > 8 && <button type="button" onClick={() => setAll(a => !a)} className="w-full py-1.5 text-center text-[11px] font-bold text-blue-700">{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
+          {rows && rows.length > 8 && <button type="button" onClick={() => setAll(a => !a)} className="w-full py-1.5 text-center text-[12px] font-bold text-blue-700">{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
         </div>)}
     </div>
   )

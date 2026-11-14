@@ -41,7 +41,7 @@ export default function PenaltyDecisions({ onChange }: { onChange?: () => void }
       {pend.map(p => (
         <div key={`p${p.id}`} className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3">
           <p className="text-sm font-bold text-gray-900">⚖ {p.status === 'disputed' ? 'Disputed violation' : 'Violation to confirm'}: {cap(p.staff)} · {p.points} point</p>
-          <p className="text-xs text-gray-700">{p.reason}</p><p className="text-[10px] text-gray-500">{dlabel(p.day)} · reported by {cap(p.created_by ?? '')}</p>
+          <p className="text-xs text-gray-700">{p.reason}</p><p className="text-[12px] text-gray-500">{dlabel(p.day)} · reported by {cap(p.created_by ?? '')}</p>
           {p.status === 'disputed' && <p className="mt-1 rounded-lg bg-white p-2 text-xs text-red-800"><b>Disputed by {cap(p.staff)}:</b> {p.dispute_note}</p>}
           {p.status === 'disputed' ? (
             <div className="mt-2 flex gap-2">

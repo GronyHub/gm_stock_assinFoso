@@ -10,7 +10,7 @@ export const SNOOZE_OPTIONS: { label: string; minutes: number }[] = [
 export default function SnoozeChips({ storageKey, onDone, title = 'Not now: remind me in' }: { storageKey: string; onDone: () => void; title?: string }) {
   return (
     <div className="rounded-xl bg-gray-100 p-2">
-      <p className="mb-1 text-center text-[11px] font-bold text-gray-600">{title}</p>
+      <p className="mb-1 text-center text-[12px] font-bold text-gray-600">{title}</p>
       <div className="flex flex-wrap justify-center gap-1.5">
         {SNOOZE_OPTIONS.map(o => (
           <button key={o.minutes} type="button" onClick={() => { snooze(storageKey, o.minutes); onDone() }}

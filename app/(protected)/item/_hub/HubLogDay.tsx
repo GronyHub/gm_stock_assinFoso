@@ -25,7 +25,7 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                         <Fragment key={date}>
                           {/* Date header */}
                           <tr id={`log-day-${date}`} className="bg-green-50 border-b border-green-200">
-                            <td className="sticky left-0 top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                            <td className="sticky left-0 top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               {rcptSelect && (() => {
                                 const ok = (dateTaps || []).filter((t): t is Tap => t != null && !t.undone && !t.invoice_id)
                                 return ok.length > 0 ? (
@@ -43,13 +43,13 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                   setLiveEditingCurrentDate(date)
                                 }}
                                 title="Edit a log entry from this day"
-                                className="text-green-600 hover:text-green-800 font-bold text-[10px] leading-none p-0 border-0 bg-transparent"
+                                className="text-green-600 hover:text-green-800 font-bold text-[12px] leading-none p-0 border-0 bg-transparent"
                               >
                                 ✏️
                               </button>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
-                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold text-green-700 whitespace-nowrap">
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[12px] leading-none font-semibold text-green-700 whitespace-nowrap">
                               ₵{formatPrice(dateTotal)}
                             </td>
                             <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-left">
@@ -77,7 +77,7 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                               )}
                               </span>
                             </td>
-                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[8px] leading-none font-semibold whitespace-nowrap">
+                            <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[12px] leading-none font-semibold whitespace-nowrap">
                               <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
                             </td>
                           </tr>
@@ -136,18 +136,18 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                     checked={rcptSel.has(tap.id)}
                                     onChange={e => setRcptSel(prev => { const n = new Set(prev); if (e.target.checked) n.add(tap.id); else n.delete(tap.id); return n })} />
                                 )}
-                                <span className={`inline-block rounded px-0.5 mr-0.5 text-[7px] font-bold leading-tight align-middle ${tap.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                <span className={`inline-block rounded px-0.5 mr-0.5 text-[12px] font-bold leading-tight align-middle ${tap.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                                   {tap.is_gmc ? 'GMC' : 'WIC'}
                                 </span>
                                 {tap.undone ? (
                                   <span
                                     onClick={tapItem ? () => openEditGridItem(tapItem.id) : undefined}
-                                    className={`text-[9px] leading-tight font-semibold line-through text-red-600 ${isDesktop ? '' : 'break-words'} ${tapItem ? 'cursor-pointer hover:text-red-800' : ''}`}
+                                    className={`text-[12px] leading-tight font-semibold line-through text-red-600 ${isDesktop ? '' : 'break-words'} ${tapItem ? 'cursor-pointer hover:text-red-800' : ''}`}
                                   >
                                     {tap.item_name}
                                   </span>
                                 ) : (
-                                  renderClickableItemName(tap.item_name, `text-[9px] leading-tight font-semibold ${isDesktop ? '' : 'break-words'} text-gray-900`)
+                                  renderClickableItemName(tap.item_name, `text-[12px] leading-tight font-semibold ${isDesktop ? '' : 'break-words'} text-gray-900`)
                                 )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-left">
@@ -157,7 +157,7 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                   return (
                                     <button type="button" disabled={tap.undone} onClick={() => setTapCustomerSheet(tap)}
                                       title={labelOnly ? `${cname} - label only (not a customer). Tap to save as a customer` : cname ? `${cname} - tap for WhatsApp / change` : 'Add the customer for this sale'}
-                                      className={`max-w-[64px] truncate text-[9px] leading-none font-semibold whitespace-nowrap ${labelOnly ? 'italic text-gray-500' : cname ? 'text-green-700' : 'text-gray-300'}`}>
+                                      className={`max-w-[64px] truncate text-[12px] leading-none font-semibold whitespace-nowrap ${labelOnly ? 'italic text-gray-500' : cname ? 'text-green-700' : 'text-gray-300'}`}>
                                       {cname ?? '＋'}
                                     </button>
                                   )
@@ -165,53 +165,53 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                 {tap.invoice_id && (
                                   <a href={`/receipts/${tap.invoice_id}/print`} target="_blank" rel="noopener noreferrer"
                                     title={`Receipt ${tap.invoice_number ?? ''}: tap to view or reprint`}
-                                    className="block max-w-[64px] truncate text-[8px] leading-tight font-semibold text-orange-600 underline">
+                                    className="block max-w-[64px] truncate text-[12px] leading-tight font-semibold text-orange-600 underline">
                                     🧾 {tap.invoice_number ?? 'Receipt'}
                                   </a>
                                 )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
                                 {tap.wa_sent_at && !tap.undone && (
-                                  <span className="text-[9px] leading-none font-bold text-green-600"
+                                  <span className="text-[12px] leading-none font-bold text-green-600"
                                     title={`Sent on WhatsApp ${new Date(tap.wa_sent_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}>✓</span>
                                 )}
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : 'text-blue-600'}`}>
+                                <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : 'text-blue-600'}`}>
                                   ₵{formatPrice(Number(tap.price) * tap.quantity)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
-                                <span className="text-[8px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
+                                <span className="text-[12px] leading-none text-gray-500 whitespace-nowrap">{fmtTime(tap.tapped_at)}</span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
+                                <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tap.price)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
+                                <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
                                   ₵{formatPrice(tapCostPrice)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
-                                <span className={`text-[9px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                   ₵{formatPrice(tapProfit)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
-                                <span className={`text-[9px] leading-none font-semibold ${tap.undone ? 'text-red-600' : 'text-gray-900'}`}>
+                                <span className={`text-[12px] leading-none font-semibold ${tap.undone ? 'text-red-600' : 'text-gray-900'}`}>
                                   {tap.quantity}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0" title={tap.staff_name}>
-                                <span className="text-[9px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
+                                <span className="text-[12px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
-                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
+                                <span className="text-[12px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
-                                <span className="text-[9px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
+                                <span className="text-[12px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                               </td>
                               <td className="leading-none px-0.5 py-0">
                                 <div className="flex items-center justify-center gap-0.5">
@@ -223,27 +223,27 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                           setLiveEditingTapTime(tap.tapped_at.slice(0, 16))
                                         }}
                                         title="Edit time"
-                                        className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0 border-0"
+                                        className="text-[12px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none p-0 border-0"
                                       >
                                         🕐
                                       </button>
                                       <button
                                         onClick={() => openEmbed(`/pending-jobs?fromTap=${tap.id}`)}
                                         title="Make this sale (paid in full) a pending job: the customer left work to be done or collected"
-                                        className="text-[10px] font-bold text-amber-700 hover:bg-amber-100 rounded leading-none p-0 border-0"
+                                        className="text-[12px] font-bold text-amber-700 hover:bg-amber-100 rounded leading-none p-0 border-0"
                                       >
                                         🧾
                                       </button>
                                       <button
                                         onClick={() => undoTap(tap.id)}
                                         title="Undo"
-                                        className="text-[10px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0 border-0"
+                                        className="text-[12px] font-bold text-red-600 hover:bg-red-100 rounded leading-none p-0 border-0"
                                       >
                                         ↩
                                       </button>
                                     </>
                                   )}
-                                  {tap.undone && <span className="text-[8px] font-bold leading-none text-red-600">CANCELLED</span>}
+                                  {tap.undone && <span className="text-[12px] font-bold leading-none text-red-600">CANCELLED</span>}
                                 </div>
                               </td>
                             </tr>
@@ -259,17 +259,17 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                             return (
                               <tr key={`rec-${l.id}`} title="Recorded on the day receipt (not tapped). Read-only.">
                                 <td className={`sticky left-0 z-[1] leading-tight px-0.5 py-0.5 ${isDesktop ? 'whitespace-nowrap' : 'max-w-[118px] min-w-[96px]'} align-top bg-gray-50`}>
-                                  <span className={`inline-block rounded px-0.5 mr-0.5 text-[7px] font-bold leading-tight align-middle ${l.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-600'}`}>{l.is_gmc ? 'GMC' : 'REC'}</span>
-                                  <span className={`text-[9px] leading-tight font-semibold text-gray-700 ${isDesktop ? '' : 'break-words'}`}>{l.item_name}</span>
+                                  <span className={`inline-block rounded px-0.5 mr-0.5 text-[12px] font-bold leading-tight align-middle ${l.is_gmc ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-600'}`}>{l.is_gmc ? 'GMC' : 'REC'}</span>
+                                  <span className={`text-[12px] leading-tight font-semibold text-gray-700 ${isDesktop ? '' : 'break-words'}`}>{l.item_name}</span>
                                 </td>
                                 <td className="bg-gray-50" />
                                 <td className="bg-gray-50" />
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] font-semibold whitespace-nowrap text-gray-700">₵{formatPrice(amt)}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[8px] text-gray-400">record</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] whitespace-nowrap text-gray-700">{l.item_price != null ? `₵${formatPrice(Number(l.item_price))}` : '—'}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[9px] whitespace-nowrap text-gray-500">{cp !== null ? `₵${formatPrice(cp)}` : '—'}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className={`text-[9px] whitespace-nowrap ${pf !== null && pf < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{pf !== null ? `₵${formatPrice(pf)}` : '—'}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[9px] text-gray-700">{q !== null ? q : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] font-semibold whitespace-nowrap text-gray-700">₵{formatPrice(amt)}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[12px] text-gray-400">record</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-700">{l.item_price != null ? `₵${formatPrice(Number(l.item_price))}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-500">{cp !== null ? `₵${formatPrice(cp)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className={`text-[12px] whitespace-nowrap ${pf !== null && pf < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{pf !== null ? `₵${formatPrice(pf)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[12px] text-gray-700">{q !== null ? q : '—'}</span></td>
                                 <td className="bg-gray-50" />
                                 <td className="bg-gray-50" />
                                 <td className="bg-gray-50" />

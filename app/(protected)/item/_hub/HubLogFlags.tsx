@@ -34,18 +34,18 @@ export default function HubLogFlags({ h }: { h: HubCtx }) {
                   <table className="border-collapse" style={{ zoom: logZoomFor(520) }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Customer</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-center whitespace-nowrap" title="Message / receipt sent on WhatsApp">WA</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[8px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
+                        <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Customer</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-center whitespace-nowrap" title="Message / receipt sent on WhatsApp">WA</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">Total</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Time</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">SP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5" />
                       </tr>
                     </thead>

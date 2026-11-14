@@ -143,9 +143,9 @@ export function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: s
               {deleted && <span className="text-red-600">✗</span>}
               {oldText}
             </span>
-            {initialOf(h.old_by) && <span className="text-[6px] whitespace-nowrap">({initialOf(h.old_by)})</span>}
+            {initialOf(h.old_by) && <span className="text-[12px] whitespace-nowrap">({initialOf(h.old_by)})</span>}
             {initialOf(h.changed_by) && (
-              <span className="text-amber-600 text-[6px] font-bold whitespace-nowrap">{initialOf(h.changed_by)}</span>
+              <span className="text-amber-600 text-[12px] font-bold whitespace-nowrap">{initialOf(h.changed_by)}</span>
             )}
           </span>
         )
@@ -157,9 +157,9 @@ export function CntValue({ qty, countedBy, countedAt, history, blank }: { qty: s
         <span className="flex flex-col items-center" title={time ? `Counted at ${time}` : undefined}>
           <span className="whitespace-nowrap">
             {text}
-            {initialOf(countedBy) && <span className="text-blue-500 text-[6px]"> ({initialOf(countedBy)})</span>}
+            {initialOf(countedBy) && <span className="text-blue-500 text-[12px]"> ({initialOf(countedBy)})</span>}
           </span>
-          {time && <span className="text-gray-400 text-[6px] whitespace-nowrap">{time}</span>}
+          {time && <span className="text-gray-400 text-[12px] whitespace-nowrap">{time}</span>}
         </span>
       )}
     </span>
@@ -220,19 +220,19 @@ export function CntCell({ row, isOwnerLevelUser, editing, editQty, saving, onSta
     return (
       <span className="inline-flex flex-col items-end gap-0.5">
         <input type="number" min="0" step="any" autoFocus value={editQty} onChange={e => onQtyChange(e.target.value)}
-          className="w-12 text-[9px] border border-gray-300 rounded px-1 py-0.5 text-right outline-none focus:ring-1 focus:ring-blue-400" />
+          className="w-12 text-[12px] border border-gray-300 rounded px-1 py-0.5 text-right outline-none focus:ring-1 focus:ring-blue-400" />
         <span className="flex gap-0.5">
           <button type="button" onClick={onSave} disabled={saving}
-            className="text-[7px] font-bold text-white bg-green-600 hover:bg-green-700 rounded px-1 disabled:opacity-50">
+            className="text-[12px] font-bold text-white bg-green-600 hover:bg-green-700 rounded px-1 disabled:opacity-50">
             {saving ? '…' : 'Save'}
           </button>
           <button type="button" onClick={onCancel}
-            className="text-[7px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded px-1">
+            className="text-[12px] font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 rounded px-1">
             Cancel
           </button>
           {isOwnerLevelUser && (
             <button type="button" onClick={onDelete}
-              className="text-[7px] font-bold text-white bg-red-600 hover:bg-red-700 rounded px-1">
+              className="text-[12px] font-bold text-white bg-red-600 hover:bg-red-700 rounded px-1">
               Del
             </button>
           )}
@@ -296,15 +296,15 @@ export function CnvValue({ qty, time, used, closed, usedBefore, usedAfter }: {
       </span>
       {closed === false && (
         overGiven
-          ? <span className="text-green-600 text-[6px] font-bold whitespace-nowrap">open</span>
-          : <span className="text-blue-600 text-[6px] font-semibold whitespace-nowrap">open</span>
+          ? <span className="text-green-600 text-[12px] font-bold whitespace-nowrap">open</span>
+          : <span className="text-blue-600 text-[12px] font-semibold whitespace-nowrap">open</span>
       )}
       {usedBefore != null && usedAfter != null && (
-        <span className="text-gray-400 text-[6px] whitespace-nowrap" title="Used before / after this pack was tapped open today">
+        <span className="text-gray-400 text-[12px] whitespace-nowrap" title="Used before / after this pack was tapped open today">
           {fmtQ(usedBefore)}/{fmtQ(usedAfter)}
         </span>
       )}
-      {t && <span className="text-gray-400 text-[6px] whitespace-nowrap">{t}</span>}
+      {t && <span className="text-gray-400 text-[12px] whitespace-nowrap">{t}</span>}
     </span>
   )
 }
@@ -643,7 +643,7 @@ export function SingleServicePackChainTable({
 
   return (
     <>
-      <p className="text-[8px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
+      <p className="text-[12px] font-bold text-gray-500 px-1.5 py-1 bg-gray-50 border-b border-gray-200">
         Pack chain: → {targetName} → service
       </p>
       {/* width: max-content (not a manually-summed pixel value, and not left
@@ -653,7 +653,7 @@ export function SingleServicePackChainTable({
           space rather than showing the next column. max-content forces the
           table to size itself from its columns, and can't drift out of sync
           the way a hand-maintained pixel sum can. */}
-      <table className="table-fixed border-collapse text-[8px]" style={{ width: 'max-content' }}>
+      <table className="table-fixed border-collapse text-[12px]" style={{ width: 'max-content' }}>
         <colgroup>
           <col style={{width:'62px'}} />
           <col style={{width:'22px'}} /><col style={{width:'22px'}} />
@@ -746,7 +746,7 @@ export function SingleServicePackChainTable({
         </thead>
         <tbody>
           {visibleRows.length === 0 ? (
-            <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[9px]">{lossOnly ? 'No loss rows.' : gainOnly ? 'No gain rows.' : 'No rows.'}</td></tr>
+            <tr><td colSpan={totalColSpan} className="text-center py-3 text-gray-400 text-[12px]">{lossOnly ? 'No loss rows.' : gainOnly ? 'No gain rows.' : 'No rows.'}</td></tr>
           ) : visibleRows.map((row, i) => {
             const packWicQty = numVal(row.packWic)
             const packSpVal = numVal(row.packSellPrice) || sp
@@ -830,8 +830,8 @@ export function SingleServicePackChainTable({
                       <span className="block text-gray-400">/{fmtQ(cyc.sheetsGiven)}</span>
                       {cycOpen && (
                         (cycDiff as number) < -0.001
-                          ? <span className="block text-red-600 text-[6px] font-bold">open ⚠</span>
-                          : <span className="block text-blue-600 text-[6px] font-semibold">open</span>
+                          ? <span className="block text-red-600 text-[12px] font-bold">open ⚠</span>
+                          : <span className="block text-blue-600 text-[12px] font-semibold">open</span>
                       )}
                     </td>
                     <td className="text-center py-0 font-bold border-l border-gray-300 whitespace-nowrap">
@@ -874,10 +874,10 @@ export function SingleServicePackChainTable({
             )
           })}
           <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold">
-            <td colSpan={packColSpan} className="text-right pr-1 py-0 text-gray-600 text-[7px] border-l-2 border-l-amber-600">
+            <td colSpan={packColSpan} className="text-right pr-1 py-0 text-gray-600 text-[12px] border-l-2 border-l-amber-600">
               {`Pack side, net of gains: ${packLossCedisTotal > 0.001 ? `-₵${fmtN(packLossCedisTotal)}` : '0'}${packGainCedisTotal > 0.001 ? ` (⚠+₵${fmtN(packGainCedisTotal)} gained)` : ''}`}
             </td>
-            <td colSpan={singlesColSpan} className="text-right pr-1 py-0 text-gray-600 text-[7px] border-l-2 border-l-indigo-600">
+            <td colSpan={singlesColSpan} className="text-right pr-1 py-0 text-gray-600 text-[12px] border-l-2 border-l-indigo-600">
               {`over ${closedCycles.length} closed pack${closedCycles.length === 1 ? '' : 's'} → USED/PACK, net of gains: ${cycleLossTotal > 0.001 ? `-₵${fmtN(cycleLossTotal * sheetPrice)}` : '0'}${cycleGainTotal > 0.001 ? ` (⚠+₵${fmtN(cycleGainTotal * sheetPrice)} gained)` : ''}`}
             </td>
             <td className="text-center py-0 border-l-2 border-l-gray-600 whitespace-nowrap">
@@ -916,7 +916,7 @@ export function rowSortVal(row: SummaryRow, col: SortCol): number | string {
 }
 
 /* ── compact th with sort indicator ── */
-export const thBase = 'px-2 py-0 leading-none font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[10px] uppercase tracking-wide'
+export const thBase = 'px-2 py-0 leading-none font-bold cursor-pointer select-none whitespace-nowrap border-b border-gray-200 text-[12px] uppercase tracking-wide'
 export function SortTh({ label, col, sort, onSort, cls = '', style, onResize, onResetWidth, noDivider = false }: {
   label: ReactNode; col: SortCol
   sort: { col: SortCol; dir: SortDir }
@@ -932,7 +932,7 @@ export function SortTh({ label, col, sort, onSort, cls = '', style, onResize, on
   return (
     <th onClick={() => onSort(col)} style={style}
       className={`relative overflow-hidden ${thBase} ${noDivider ? '' : 'border-r'} ${cls} ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-700'}`}>
-      <span className="block truncate">{label}{arrow && <span className="ml-0.5 text-[9px]">{arrow}</span>}</span>
+      <span className="block truncate">{label}{arrow && <span className="ml-0.5 text-[12px]">{arrow}</span>}</span>
       {onResize && <ColResizeHandle onResize={onResize} onReset={onResetWidth} />}
     </th>
   )

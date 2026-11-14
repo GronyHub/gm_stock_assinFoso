@@ -91,16 +91,16 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
     }
   }
 
-  if (!content) return <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+  if (!content) return <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
 
   return (
     <div className="py-2 px-2 space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">{title}</p>
         <div className="flex items-center gap-2">
           <SavedFlash show={justSaved} />
           {canEdit && !editing && (
-            <button onClick={startEdit} className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+            <button onClick={startEdit} className="text-[12px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
               Edit
             </button>
           )}
@@ -111,8 +111,8 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
         <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1.5">
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={16}
             className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-blue-400 resize-y" />
-          <p className="text-[9px] text-gray-400">Use &quot;# Heading&quot;, &quot;## Subheading&quot;, and &quot;- bullet&quot; lines for formatting.</p>
-          {error && <p className="text-[10px] text-red-500">{error}</p>}
+          <p className="text-[12px] text-gray-400">Use &quot;# Heading&quot;, &quot;## Subheading&quot;, and &quot;- bullet&quot; lines for formatting.</p>
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
           <div className="flex items-center gap-1.5">
             <button onClick={save} disabled={saving}
               className="flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white transition">
@@ -128,7 +128,7 @@ export default function ContentPage({ contentKey, title, submenu }: { contentKey
         <div className="bg-white border border-gray-200 rounded-lg px-3 py-2">
           <RenderedBody body={content.body} />
           {content.updated_by && content.updated_at && (
-            <p className="text-[9px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+            <p className="text-[12px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
               Last updated by <span className="capitalize">{content.updated_by}</span> · {fmtDate(content.updated_at)}
             </p>
           )}

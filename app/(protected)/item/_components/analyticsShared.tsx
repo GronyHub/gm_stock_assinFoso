@@ -25,7 +25,7 @@ export function Card({ title, subtitle, children }: { title: string; subtitle?: 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-3 mb-3">
       <p className="text-sm font-semibold text-gray-700 mb-1">{title}</p>
-      {subtitle && <p className="text-[10px] text-gray-400 mb-1">{subtitle}</p>}
+      {subtitle && <p className="text-[12px] text-gray-400 mb-1">{subtitle}</p>}
       {children}
     </div>
   )
@@ -34,7 +34,7 @@ export function Card({ title, subtitle, children }: { title: string; subtitle?: 
 export function Pill({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="bg-gray-50 rounded-lg px-3 py-2 flex-1 min-w-[100px]">
-      <p className="text-[10px] text-gray-400">{label}</p>
+      <p className="text-[12px] text-gray-400">{label}</p>
       <p className="text-sm font-bold" style={{ color: color ?? '#111827' }}>{value}</p>
     </div>
   )
@@ -44,7 +44,7 @@ export function Recommendation({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex gap-2">
       <span className="text-sm shrink-0">💡</span>
-      <p className="text-[11px] text-amber-800 leading-snug">{children}</p>
+      <p className="text-[12px] text-amber-800 leading-snug">{children}</p>
     </div>
   )
 }
@@ -73,7 +73,7 @@ export function TrendBadge({ direction, pct }: { direction: 'up' | 'down' | 'fla
   const cls = direction === 'up' ? 'text-green-700 bg-green-50' : direction === 'down' ? 'text-red-700 bg-red-50' : 'text-gray-500 bg-gray-100'
   const arrow = direction === 'up' ? '▲' : direction === 'down' ? '▼' : '—'
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
+    <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
       {arrow} {Math.abs(pct).toFixed(0)}%
     </span>
   )
@@ -82,7 +82,7 @@ export function TrendBadge({ direction, pct }: { direction: 'up' | 'down' | 'fla
 export function StalenessBadge({ days }: { days: number | null }) {
   const cls = days === null || days >= 90 ? 'bg-red-50 text-red-700' : days >= 30 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
+    <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded shrink-0 ${cls}`}>
       {days === null ? 'Never sold' : `${days}d`}
     </span>
   )

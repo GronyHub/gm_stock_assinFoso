@@ -39,9 +39,9 @@ export default function VideoGate() {
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/70 p-3 print:hidden" role="dialog" aria-modal="true">
       <div className="w-full max-w-md space-y-2 rounded-2xl bg-white p-3 shadow-xl">
-        <p className="text-[11px] font-extrabold uppercase tracking-wide text-indigo-700">Before work · video {v.overdue ? 'overdue' : `due ${v.dueDate}`}</p>
+        <p className="text-[12px] font-extrabold uppercase tracking-wide text-indigo-700">Before work · video {v.overdue ? 'overdue' : `due ${v.dueDate}`}</p>
         <p className="text-sm font-bold text-gray-900">Watch the {v.label} video to the end</p>
-        <p className="text-[11px] text-gray-600">The law: watch each tile video to the end within 7 days. It counts only when it plays to the end.{left ? ` ${left} more after this one.` : ''}</p>
+        <p className="text-[12px] text-gray-600">The law: watch each tile video to the end within 7 days. It counts only when it plays to the end.{left ? ` ${left} more after this one.` : ''}</p>
         <video ref={ref} src={v.src} controls playsInline preload="metadata" onEnded={ended} className="max-h-[55vh] w-full rounded-lg bg-black" />
         {done
           ? <button type="button" onClick={() => setV(null)} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white">Watched. Close</button>

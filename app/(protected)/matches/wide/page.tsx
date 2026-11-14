@@ -135,7 +135,7 @@ export default function MatchesWidePage() {
         <p className="text-xs font-semibold text-blue-900 mb-2">Add New Match</p>
         <div className="flex gap-2 items-end">
           <div className="flex-1">
-            <label className="text-[9px] font-semibold text-gray-600 block mb-1">Service</label>
+            <label className="text-[12px] font-semibold text-gray-600 block mb-1">Service</label>
             <select value={addingService} onChange={e => setAddingService(e.target.value)}
               className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
               <option value="">Select a service…</option>
@@ -147,7 +147,7 @@ export default function MatchesWidePage() {
             </select>
           </div>
           <div className="flex-1">
-            <label className="text-[9px] font-semibold text-gray-600 block mb-1">Goods</label>
+            <label className="text-[12px] font-semibold text-gray-600 block mb-1">Goods</label>
             <select value={addingGoods} onChange={e => setAddingGoods(e.target.value)}
               className="w-full text-xs bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-blue-400">
               <option value="">Select goods…</option>
@@ -170,7 +170,7 @@ export default function MatchesWidePage() {
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search service or goods name…"
           className="w-full text-xs bg-gray-50 border border-gray-300 rounded px-3 py-2 outline-none focus:ring-1 focus:ring-blue-400" />
-        <p className="text-[9px] text-gray-400 mt-1">{filtered.length} of {matches.length} matches</p>
+        <p className="text-[12px] text-gray-400 mt-1">{filtered.length} of {matches.length} matches</p>
       </div>
 
       {/* Table */}
@@ -180,7 +180,7 @@ export default function MatchesWidePage() {
             {matches.length === 0 ? 'No matches yet. Add one above.' : 'No matches match your search.'}
           </p>
         ) : (
-          <table className="w-full border-collapse text-[11px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-3 py-0.5 font-semibold text-gray-600 border-b border-gray-300">Service</th>
@@ -192,7 +192,7 @@ export default function MatchesWidePage() {
             </thead>
             <tbody>
               {filtered.map(m => (
-                <tr key={m.id} className="border-b border-gray-200 hover:bg-gray-50 text-[11px] font-bold leading-tight">
+                <tr key={m.id} className="border-b border-gray-200 hover:bg-gray-50 text-[12px] font-bold leading-tight">
                   <td className="px-3 py-0 text-gray-900 font-medium">{m.service_name}</td>
                   <td className="px-3 py-0 text-gray-600">{m.service_group || '—'}</td>
                   <td className="px-3 py-0 text-gray-900 font-medium">{m.goods_name}</td>

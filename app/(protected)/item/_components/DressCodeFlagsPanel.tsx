@@ -54,11 +54,11 @@ export default function DressCodeFlagsPanel({ filterStaff }: { filterStaff?: str
               <div key={staff} className="px-4 py-3 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-gray-700">{staff}</span>
-                  <span className="text-[10px] text-orange-600 font-semibold">{dates.length} day{dates.length !== 1 ? 's' : ''}</span>
+                  <span className="text-[12px] text-orange-600 font-semibold">{dates.length} day{dates.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {dates.map(d => (
-                    <span key={d} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{fmtDate(d)}</span>
+                    <span key={d} className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{fmtDate(d)}</span>
                   ))}
                 </div>
               </div>
@@ -78,7 +78,7 @@ export default function DressCodeFlagsPanel({ filterStaff }: { filterStaff?: str
             {scopedOverdue.map(r => (
               <div key={r.staff_name} className="flex items-center justify-between px-4 py-3">
                 <span className="text-sm font-semibold text-gray-700">{r.staff_name}</span>
-                <span className="text-[10px] text-red-600 font-semibold">due {fmtDate(r.due_date)}</span>
+                <span className="text-[12px] text-red-600 font-semibold">due {fmtDate(r.due_date)}</span>
               </div>
             ))}
           </div>

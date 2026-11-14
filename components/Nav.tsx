@@ -55,7 +55,7 @@ export default function Nav() {
         {!isItemHub && <MyAvatar size={20} className="shrink-0" />}
         {!isItemHub && (
           <button onClick={() => { if (confirm('Sign out?')) signOut({ callbackUrl: '/login' }) }}
-            className="shrink-0 text-[11px] text-gray-500 hover:text-gray-900 transition">Sign out</button>
+            className="shrink-0 text-[12px] text-gray-500 hover:text-gray-900 transition">Sign out</button>
         )}
       </div>
     </nav>

@@ -36,14 +36,14 @@ export default function MySelfChip({ name, username, sales = 0, active = false, 
   return (
     <button type="button" data-keep-embed onClick={open} title={`You are signed in as ${name}. Tap for your times and tasks.`}
       className={`relative flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 ${slim ? 'py-0.5' : 'py-1'} text-left ${active ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'}`}>
-      {waiting > 0 && <span title={`${waiting} waiting for you`} className="absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full bg-red-600 px-1 text-center text-[9px] font-extrabold leading-4 text-white">{waiting > 99 ? '99+' : waiting}</span>}
+      {waiting > 0 && <span title={`${waiting} waiting for you`} className="absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full bg-red-600 px-1 text-center text-[12px] font-extrabold leading-4 text-white">{waiting > 99 ? '99+' : waiting}</span>}
       <span className="flex w-full min-w-0 items-center gap-1">
         <span className={`shrink-0 rounded-full border-[3px] ${here ? 'border-green-500' : 'border-red-600'}`} title={here ? 'Clocked in' : 'Clocked out'}><MyAvatar size={20} /></span>
         <PenaltyChip name={username ?? name} />
       </span>
-      {!slim && <span className="w-full truncate text-[10px] font-extrabold leading-tight text-white">{name.charAt(0).toUpperCase() + name.slice(1)}</span>}
+      {!slim && <span className="w-full truncate text-[12px] font-extrabold leading-tight text-white">{name.charAt(0).toUpperCase() + name.slice(1)}</span>}
       <span title="Sales you have recorded today" className="text-[14px] font-extrabold leading-tight text-green-300 tabular-nums">₵{sales.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-      {!slim && row && total != null && <span className="text-[8px] leading-tight text-blue-200">{fmt(row.worked_seconds / 60)}/{fmt(total)}</span>}
+      {!slim && row && total != null && <span className="text-[12px] leading-tight text-blue-200">{fmt(row.worked_seconds / 60)}/{fmt(total)}</span>}
     </button>
   )
 }

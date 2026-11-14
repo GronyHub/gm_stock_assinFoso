@@ -108,7 +108,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                   </button>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[11px]">
+                  <table className="w-full text-[12px]">
                     <thead>
                       <tr className="bg-gray-100 border-b border-gray-200">
                         <th className="text-left px-2 py-1 font-semibold text-gray-600">Item</th>
@@ -139,12 +139,12 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                           <td className="text-right px-2 py-1.5 text-gray-600">{tap.quantity}</td>
                           <td className="text-right px-2 py-1.5 text-gray-900 font-semibold">₵{(Number(tap.price) * Number(tap.quantity)).toFixed(2)}</td>
                           <td className="text-center px-2 py-1.5">
-                            <span className={`text-[10px] font-semibold px-2 py-1 rounded ${tap.is_gmc ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                            <span className={`text-[12px] font-semibold px-2 py-1 rounded ${tap.is_gmc ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                               {tap.is_gmc ? 'GMC' : 'WIC'}
                             </span>
                           </td>
                           <td className="px-2 py-1.5 text-gray-600">{tap.staff_name}</td>
-                          <td className="px-2 py-1.5 text-gray-600 text-[10px]">{tap.tapped_at.slice(11, 16)}</td>
+                          <td className="px-2 py-1.5 text-gray-600 text-[12px]">{tap.tapped_at.slice(11, 16)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -170,7 +170,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Add New Entry for {new Date(liveEditingCurrentDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
                 <div className="space-y-3 mb-4">
                   <div className="relative">
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Item</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Item</label>
                     <input
                       type="text"
                       placeholder="Search or select item..."
@@ -194,7 +194,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                               className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition"
                             >
                               <div className="font-semibold">{item.name}</div>
-                              <div className="text-[10px] text-gray-600">₵{item.selling_price || '0'}</div>
+                              <div className="text-[12px] text-gray-600">₵{item.selling_price || '0'}</div>
                             </button>
                           ))}
                         {liveCatalogueItems.filter(i => i.name.toLowerCase().includes(liveNewEntryItemSearch.toLowerCase())).length === 0 && (
@@ -204,7 +204,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Quantity</label>
                     <input
                       type="number"
                       step="0.01"
@@ -214,7 +214,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Price (₵)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -224,7 +224,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Date & Time</label>
                     <input
                       type="datetime-local"
                       value={liveNewEntryForm.tappedAt}
@@ -307,7 +307,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Edit Log Entry</h3>
                 <div className="space-y-3 mb-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Quantity</label>
                     <input
                       type="number"
                       step="0.01"
@@ -317,7 +317,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Price (₵)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -327,7 +327,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Date & Time</label>
                     <input
                       type="datetime-local"
                       value={liveEditingFullTapForm.tappedAt}
@@ -366,7 +366,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Add New Log Entry</h3>
                 <div className="space-y-3 mb-4">
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Item</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Item</label>
                     <input
                       type="text"
                       placeholder="Search item..."
@@ -377,7 +377,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Quantity</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Quantity</label>
                     <input
                       type="number"
                       step="0.01"
@@ -387,7 +387,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Price (₵)</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Price (₵)</label>
                     <input
                       type="number"
                       step="0.01"
@@ -397,7 +397,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold text-gray-600 mb-1">Date & Time</label>
+                    <label className="block text-[12px] font-semibold text-gray-600 mb-1">Date & Time</label>
                     <input
                       type="datetime-local"
                       value={liveNewEntryForm.tappedAt}
@@ -413,7 +413,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                       onChange={e => setLiveNewEntryForm(f => ({ ...f, isGMC: e.target.checked }))}
                       className="w-4 h-4 cursor-pointer"
                     />
-                    <label htmlFor="entry-is-gmc" className="text-[11px] font-semibold text-gray-600 cursor-pointer">
+                    <label htmlFor="entry-is-gmc" className="text-[12px] font-semibold text-gray-600 cursor-pointer">
                       GMC (Grony Multimedia as Customer)
                     </label>
                   </div>
@@ -466,25 +466,25 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
                 <PageGuide page="bills" />
                 <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[100px]">
+                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[100px]">
                   <option value="">All Vendors</option>
                   {liveBillsAvailableVendors.map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
                 <select value={liveBillsMonthFilter ?? ''} onChange={e => setLiveBillsMonthFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
                   <option value="">All Months</option>
                   {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
                     <option key={m} value={i + 1}>{m}</option>
                   ))}
                 </select>
                 <select value={liveBillsYearFilter ?? ''} onChange={e => setLiveBillsYearFilter(e.target.value ? Number(e.target.value) : null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
+                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none">
                   <option value="">All Years</option>
                   {liveBillsAvailableYears.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
                 {(liveBillsVendorFilter !== null || liveBillsMonthFilter !== null || liveBillsYearFilter !== null) && (
                   <button onClick={() => { setLiveBillsVendorFilter(null); setLiveBillsMonthFilter(null); setLiveBillsYearFilter(null) }}
-                    className="text-[9px] font-semibold text-blue-600 hover:text-blue-700">
+                    className="text-[12px] font-semibold text-blue-600 hover:text-blue-700">
                     Clear
                   </button>
                 )}
@@ -496,7 +496,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                   placeholder="Search…"
                   className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20"
                 />
-                <label className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
+                <label className="flex items-center gap-0.5 text-[12px] font-semibold text-gray-600 cursor-pointer select-none whitespace-nowrap">
                   <input type="radio" checked={liveBillsShowAnalytics} onClick={() => setLiveBillsShowAnalytics(a => !a)} onChange={() => {}}
                     className="cursor-pointer w-2.5 h-2.5" />
                   Analytics
@@ -508,22 +508,22 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                   live counts, sorted by count descending). Same treatment as
                   Sales' row; see liveBillsRadioValue/selectLiveBillsRadio above. */}
               <div className="px-1.5 py-0.5 bg-white border-b border-gray-100 flex items-center gap-1.5 flex-wrap">
-                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[10px] shrink-0">
+                <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 text-[12px] shrink-0">
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'all'} onChange={() => selectLiveBillsRadio('all')} className="cursor-pointer w-2.5 h-2.5" />
                   <span>All</span>
                 </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                <label className="shrink-0 flex items-center gap-0.5 text-[12px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'new_bill'} onChange={() => selectLiveBillsRadio('new_bill')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   + New Bill
                 </label>
                 <label title="Show only the date/vendor bars, hiding each bill's item lines"
-                  className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                  className="shrink-0 flex items-center gap-0.5 text-[12px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'bars_only'} onChange={() => selectLiveBillsRadio('bars_only')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   Bars Only
                 </label>
-                <label className="shrink-0 flex items-center gap-0.5 text-[10px] font-semibold text-gray-600 cursor-pointer select-none">
+                <label className="shrink-0 flex items-center gap-0.5 text-[12px] font-semibold text-gray-600 cursor-pointer select-none">
                   <input type="radio" name="liveBillsRadio" checked={liveBillsRadioValue === 'history'} onChange={() => selectLiveBillsRadio('history')}
                     className="cursor-pointer w-2.5 h-2.5" />
                   History
@@ -602,7 +602,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
               <div className="px-1.5 py-0.5 bg-white flex items-center flex-wrap gap-x-1.5 gap-y-0.5 border-b border-gray-200">
                 {liveExpensesMainRadios.map((v, i) => (
                   <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[9px]">·</span>}
+                    {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
                     {renderLiveExpensesRadio(v)}
                   </Fragment>
                 ))}
@@ -610,12 +610,12 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
                 <PageGuide page="expenses" />
                 <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
                   <option value="">All Accounts</option>
                   {liveExpensesAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
                 <select value={liveExpensesPropertyTypeFilter ?? ''} onChange={e => setLiveExpensesPropertyTypeFilter(e.target.value || null)}
-                  className="text-[10px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
                   <option value="">All Types</option>
                   {EXPENSES_PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>

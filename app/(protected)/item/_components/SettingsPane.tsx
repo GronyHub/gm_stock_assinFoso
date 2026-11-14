@@ -42,7 +42,7 @@ export default function SettingsPane({
       {myStaffName && (
         <div className="mt-1 pt-1 border-t border-white/30">
           {mode !== 'icon' && (
-            <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Viewing</span></p>
+            <p className="pt-1 pb-0.5"><span className="block w-full text-[12px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Viewing</span></p>
           )}
           <SidePaneButton icon="👤" label="Me" mode={mode}
             active={viewingName.toLowerCase() === myStaffName.toLowerCase()} onClick={() => pickViewing(myStaffName)} />
@@ -62,7 +62,7 @@ export default function SettingsPane({
       {canManage && (
         <div className="mt-1 pt-1 border-t border-white/30">
           {mode !== 'icon' && (
-            <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Team</span></p>
+            <p className="pt-1 pb-0.5"><span className="block w-full text-[12px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Team</span></p>
           )}
           {STAFF_ADMIN_TEAM_ITEMS.map((t, i) => (
             <SidePaneButton key={t.key} icon={t.icon} label={t.label} mode={mode} divider={i > 0}
@@ -74,7 +74,7 @@ export default function SettingsPane({
       {(canSeeUsers || canManageRoles || canViewPortalAs) && (
         <div className="mt-1 pt-1 border-t border-white/30">
           {mode !== 'icon' && (
-            <p className="pt-1 pb-0.5"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Access</span></p>
+            <p className="pt-1 pb-0.5"><span className="block w-full text-[12px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">Access</span></p>
           )}
           {(canSeeUsers || canManageRoles) && (
             <SidePaneButton icon="🔐" label={canSeeUsers && canManageRoles ? 'Users & Roles' : canManageRoles ? 'Roles & Permissions' : 'Users'}

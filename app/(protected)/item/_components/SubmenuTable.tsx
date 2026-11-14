@@ -59,7 +59,7 @@ function SubmenuFiles({ submenuId }: { submenuId: number }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Files</p>
+      <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Files</p>
       {!loading && files.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
           {files.map(f => (
@@ -77,7 +77,7 @@ function SubmenuFiles({ submenuId }: { submenuId: number }) {
           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
       </label>
-      {error && <p className="text-[10px] text-red-500">{error}</p>}
+      {error && <p className="text-[12px] text-red-500">{error}</p>}
     </div>
   )
 }
@@ -132,14 +132,14 @@ function ColumnLayoutButton({ columns, onToggleWide }: { columns: UKColumn[]; on
       </button>
       {open && (
         <div className="absolute top-full right-0 mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-30 min-w-[220px]">
-          <p className="px-2.5 pt-1.5 pb-0.5 text-[9px] font-bold text-gray-400 uppercase tracking-wide">Column Layout</p>
+          <p className="px-2.5 pt-1.5 pb-0.5 text-[12px] font-bold text-gray-400 uppercase tracking-wide">Column Layout</p>
           {columns.map(c => (
             <label key={c.id}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 cursor-pointer select-none hover:bg-gray-50 border-b border-gray-50 last:border-0">
               <input type="checkbox" checked={c.is_wide} onChange={e => onToggleWide(c.id, e.target.checked)}
                 className="w-3.5 h-3.5 accent-blue-600 shrink-0" />
               <span className="truncate flex-1">{c.name}</span>
-              <span className="shrink-0 text-[9px] text-gray-400">{c.is_wide ? 'Wide' : 'Narrow'}</span>
+              <span className="shrink-0 text-[12px] text-gray-400">{c.is_wide ? 'Wide' : 'Narrow'}</span>
             </label>
           ))}
         </div>
@@ -208,7 +208,7 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {submenu.name}</p>
+        <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">Columns · {submenu.name}</p>
         <div className="flex items-center gap-1">
           <ColumnLayoutButton columns={columns} onToggleWide={toggleColumnWide} />
           {narrowColumns.length > 0 && <ColumnsPickerButton prefs={prefs} />}
@@ -267,7 +267,7 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
           {rows.map((r, ri) => (
             <div key={r.id} className="bg-white border-y border-gray-200">
               <div className="px-3 py-1.5 flex items-center justify-between gap-2 bg-gray-50 border-b border-gray-100">
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide truncate">
+                <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide truncate">
                   {narrowColumns.length > 0 && r.values[narrowColumns[0].id]
                     ? r.values[narrowColumns[0].id]
                     : `Row ${ri + 1}`}
@@ -277,7 +277,7 @@ function SubmenuGrid({ submenu, columns, rows, editCell, saveCell, deleteRow, ad
               <div className="px-3 py-2 space-y-2">
                 {wideColumns.map(c => (
                   <div key={c.id}>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{c.name}</p>
+                    <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{c.name}</p>
                     {renderCell(r, c)}
                   </div>
                 ))}

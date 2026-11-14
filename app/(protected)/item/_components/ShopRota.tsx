@@ -37,20 +37,20 @@ export default function ShopRota({ canManage }: { canManage: boolean }) {
       {canManage && (
         <details className="rounded-xl border border-gray-300 bg-white p-2" open>
           <summary className="cursor-pointer text-sm font-bold text-gray-900">Standard week: fill the rota from it</summary>
-          <p className="mt-1 text-[11px] text-gray-600">Enter each person&apos;s hours once; empty start = off. The earliest start of a day becomes its Opener and the latest finish its Closer.</p>
+          <p className="mt-1 text-[12px] text-gray-600">Enter each person&apos;s hours once; empty start = off. The earliest start of a day becomes its Opener and the latest finish its Closer.</p>
           <div className="mt-2 space-y-3">{Object.keys(week).map(n => (
             <div key={n}>
               <p className="mb-1 text-xs font-extrabold capitalize text-[#14213D]">{n} <span className="font-semibold text-gray-500">· {DAYS.reduce((a, [d]) => a + hrs(week[n][d]), 0)} h a week · about {Math.round(DAYS.reduce((a, [d]) => a + hrs(week[n][d]), 0) * 52 / 12)} h a month</span></p>
               <div className="grid grid-cols-7 gap-1">{DAYS.map(([d, label]) => (
                 <div key={d} className="rounded-lg bg-gray-50 p-1 text-center">
-                  <p className="text-[10px] font-bold text-gray-500">{label}</p>
-                  <input type="time" value={week[n][d]?.in ?? ''} onChange={e => set(n, d, 'in', e.target.value)} className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-[10px]" />
-                  <input type="time" value={week[n][d]?.out ?? ''} disabled={!week[n][d]} onChange={e => set(n, d, 'out', e.target.value)} className="mt-0.5 w-full rounded border border-gray-300 px-0.5 py-0.5 text-[10px] disabled:opacity-40" />
+                  <p className="text-[12px] font-bold text-gray-500">{label}</p>
+                  <input type="time" value={week[n][d]?.in ?? ''} onChange={e => set(n, d, 'in', e.target.value)} className="w-full rounded border border-gray-300 px-0.5 py-0.5 text-[12px]" />
+                  <input type="time" value={week[n][d]?.out ?? ''} disabled={!week[n][d]} onChange={e => set(n, d, 'out', e.target.value)} className="mt-0.5 w-full rounded border border-gray-300 px-0.5 py-0.5 text-[12px] disabled:opacity-40" />
                 </div>))}</div>
             </div>))}</div>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-gray-700">From<input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
-            <label className="text-[11px] font-semibold text-gray-700">To<input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+            <label className="text-[12px] font-semibold text-gray-700">From<input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+            <label className="text-[12px] font-semibold text-gray-700">To<input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
           </div>
           <button type="button" disabled={busy} onClick={() => void apply()} className="mt-2 w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? 'Setting…' : 'Fill the rota'}</button>
           {msg && <p className="mt-1 text-xs font-semibold text-gray-800">{msg}</p>}

@@ -50,7 +50,7 @@ export function PersonDayTiles({ person, date, density }: { person: string; date
       {items && items.length > 0 && date < today && (
         <div className="flex flex-nowrap gap-1 overflow-x-auto">
           {([['all', 'Everything', items.length], ['done', 'Done', n('done')], ['not', 'Marked not done', n('not')], ['miss', 'Not done at all', n('miss')]] as const).map(([k, label, c]) => (
-            <button key={k} type="button" onClick={() => setF(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${f === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {c}</button>
+            <button key={k} type="button" onClick={() => setF(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${f === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {c}</button>
           ))}
         </div>)}
       {items && shown.length > 0 && (

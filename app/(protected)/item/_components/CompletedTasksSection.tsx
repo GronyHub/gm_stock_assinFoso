@@ -46,11 +46,11 @@ export default function CompletedTasksSection() {
   }
 
   if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>
-  if (tasks.length === 0) return <p className="text-[11px] text-gray-400 text-center py-6">No completed tasks yet.</p>
+  if (tasks.length === 0) return <p className="text-[12px] text-gray-400 text-center py-6">No completed tasks yet.</p>
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] text-gray-400 px-0.5">{tasks.length} completed across all pages</p>
+      <p className="text-[12px] text-gray-400 px-0.5">{tasks.length} completed across all pages</p>
       <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-50">
         {tasks.map(t => {
           const days = t.completed_at ? daysBetween(t.created_at, t.completed_at) : null
@@ -60,12 +60,12 @@ export default function CompletedTasksSection() {
                 className="mt-0.5 w-3.5 h-3.5 accent-blue-600 shrink-0 cursor-pointer" title="Mark as not done" />
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium text-gray-500 line-through">{t.title}</p>
-                {t.notes && <p className="text-[10px] text-gray-400">{t.notes}</p>}
-                <p className="text-[9px] text-gray-400">
+                {t.notes && <p className="text-[12px] text-gray-400">{t.notes}</p>}
+                <p className="text-[12px] text-gray-400">
                   {t.submenu || 'Unscoped'} · Written {fmtDate(t.created_at)}{t.created_by ? ` by ${t.created_by}` : ''}
                 </p>
                 {t.completed_at && (
-                  <p className="text-[9px] text-green-600 font-medium">
+                  <p className="text-[12px] text-green-600 font-medium">
                     Completed {fmtDate(t.completed_at)} · {days} day{days === 1 ? '' : 's'} to complete
                   </p>
                 )}

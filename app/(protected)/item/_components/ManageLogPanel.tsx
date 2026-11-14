@@ -132,14 +132,14 @@ export default function ManageLogPanel({
       {(jingleOverdue || equipmentOverdue) && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-2.5 py-2 flex items-center gap-2">
           <span className="text-red-600 text-xs">🚩</span>
-          <p className="text-[11px] text-red-700 font-semibold">
+          <p className="text-[12px] text-red-700 font-semibold">
             {jingleOverdue ? 'No new jingle recorded yet this month.' : 'Equipment check not confirmed for the most recent Monday/Thursday.'}
           </p>
         </div>
       )}
       {!filterAboutStaff && (
         <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
+          <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
           {aboutStaffRoster && (
             <select value={aboutStaff} onChange={e => setAboutStaff(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400">
@@ -154,12 +154,12 @@ export default function ManageLogPanel({
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-200" />
-              <button onClick={() => setPhotoUrl(null)} className="text-[10px] text-red-500 font-semibold">Remove photo</button>
+              <button onClick={() => setPhotoUrl(null)} className="text-[12px] text-red-500 font-semibold">Remove photo</button>
             </div>
           )}
-          {error && <p className="text-[10px] text-red-500">{error}</p>}
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
           <div className="flex items-center gap-1.5">
-            <label className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
+            <label className="shrink-0 text-[12px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
               {uploading ? 'Uploading…' : '📷 Photo'}
               <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
@@ -174,9 +174,9 @@ export default function ManageLogPanel({
       )}
 
       {loading ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
       ) : entries.length === 0 ? (
-        <p className="text-[11px] text-gray-400 text-center py-6">
+        <p className="text-[12px] text-gray-400 text-center py-6">
           {filterAboutStaff ? `No ${label.toLowerCase()} entries about ${filterAboutStaff} yet.` : `No ${label.toLowerCase()} entries yet.`}
         </p>
       ) : (
@@ -188,13 +188,13 @@ export default function ManageLogPanel({
                 <img src={e.photo_url} alt="" className="w-10 h-10 rounded object-cover border border-gray-200 shrink-0" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] text-gray-400">{fmtDate(e.log_date)} · <span className="capitalize">{e.logged_by}</span></p>
-                {e.notes && <Linkify text={e.notes} as="p" className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug" />}
+                <p className="text-[12px] text-gray-400">{fmtDate(e.log_date)} · <span className="capitalize">{e.logged_by}</span></p>
+                {e.notes && <Linkify text={e.notes} as="p" className="text-[12px] text-gray-800 whitespace-pre-wrap leading-snug" />}
               </div>
               {confirmDeleteId === e.id ? (
                 <div className="flex items-center gap-1 shrink-0">
-                  <button onClick={() => remove(e.id)} className="text-[9px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5">Yes</button>
-                  <button onClick={() => setConfirmDeleteId(null)} className="text-[9px] font-semibold text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">No</button>
+                  <button onClick={() => remove(e.id)} className="text-[12px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5">Yes</button>
+                  <button onClick={() => setConfirmDeleteId(null)} className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">No</button>
                 </div>
               ) : (
                 <button onClick={() => setConfirmDeleteId(e.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>

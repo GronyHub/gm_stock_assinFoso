@@ -348,7 +348,7 @@ export default function UsersPanel({ users, setUsers, roles }: {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900">{u.display_name}</p>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${roleBadge(u.role)}`}>{u.role}</span>
+                    <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${roleBadge(u.role)}`}>{u.role}</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">@{u.username}</p>
                   <p className="text-xs mt-0.5">
@@ -393,7 +393,7 @@ export default function UsersPanel({ users, setUsers, roles }: {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-700">{u.display_name}</p>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">{u.deactivation_reason ?? 'Resigned'}</span>
+                    <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">{u.deactivation_reason ?? 'Resigned'}</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">@{u.username}</p>
                   {u.resigned_at && <p className="text-xs text-gray-400 mt-0.5">Since {fmtDate(u.resigned_at)}</p>}

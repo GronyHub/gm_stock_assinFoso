@@ -77,7 +77,7 @@ function fmt(val: string | null) {
   return isNaN(n) ? '—' : n.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 const BILLS_FLAG_VIOLATIONS = new Set(['no_vendor', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'vcp_jump'])
 
@@ -112,17 +112,17 @@ function NoVendorFix({ b, onFixed }: { b: NoVendorRow; onFixed: (id: number) => 
     <div className="px-2 py-2 space-y-1.5">
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
-          <p className="text-[9px] text-gray-400">₵{fmt(b.total)}</p>
+          <p className="text-[12px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+          <p className="text-[12px] text-gray-400">₵{fmt(b.total)}</p>
         </div>
         <input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Vendor name" autoComplete="off"
-          className="w-32 bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] outline-none focus:ring-1 focus:ring-blue-400" />
+          className="w-32 bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-blue-400" />
         <button onClick={save} disabled={saving}
-          className="shrink-0 text-[9px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
+          className="shrink-0 text-[12px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
           {saving ? '…' : 'Save'}
         </button>
       </div>
-      {error && <p className="text-[9px] text-red-600">{error}</p>}
+      {error && <p className="text-[12px] text-red-600">{error}</p>}
     </div>
   )
 }
@@ -153,16 +153,16 @@ function NoAttachmentFix({ b, onFixed }: { b: NoAttachmentRow; onFixed: (id: num
     <div className="px-2 py-2 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
-          <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'} · ₵{fmt(b.total)}</p>
+          <p className="text-[12px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+          <p className="text-[12px] text-gray-400">{b.vendor_name ?? 'No vendor'} · ₵{fmt(b.total)}</p>
         </div>
       </div>
       <AttachmentPicker items={att.items} onAdd={att.addFiles} onRemove={att.remove} disabled={saving} />
       <button onClick={save} disabled={saving || att.isUploading || att.saved.length === 0}
-        className="text-[9px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
+        className="text-[12px] font-bold px-2 py-1 rounded bg-green-600 text-white disabled:opacity-40">
         {saving ? 'Saving…' : 'Save'}
       </button>
-      {error && <p className="text-[9px] text-red-600">{error}</p>}
+      {error && <p className="text-[12px] text-red-600">{error}</p>}
     </div>
   )
 }
@@ -231,27 +231,27 @@ function AddBillExpenseButton({ billId, onAdded }: { billId: number; onAdded: (e
         <>
           <input value={newAccount} onChange={e => setNewAccount(e.target.value)} placeholder="New account name" autoFocus
             onKeyDown={e => { if (e.key === 'Enter') void saveAccount() }}
-            className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-28 outline-none" />
-          <button onClick={() => void saveAccount()} disabled={newAccount.trim().length < 2} className="text-[9px] font-bold px-1.5 py-0.5 bg-green-600 text-white rounded disabled:opacity-40">Save</button>
-          <button onClick={() => { setAddingAccount(false); setNewAccount('') }} className="text-[9px] font-semibold px-1 py-0.5 bg-gray-100 text-gray-600 rounded">×</button>
+            className="text-[12px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-28 outline-none" />
+          <button onClick={() => void saveAccount()} disabled={newAccount.trim().length < 2} className="text-[12px] font-bold px-1.5 py-0.5 bg-green-600 text-white rounded disabled:opacity-40">Save</button>
+          <button onClick={() => { setAddingAccount(false); setNewAccount('') }} className="text-[12px] font-semibold px-1 py-0.5 bg-gray-100 text-gray-600 rounded">×</button>
         </>
       ) : (
         <select value={description} onChange={e => { if (e.target.value === '__new') setAddingAccount(true); else setDescription(e.target.value) }}
-          className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-32 outline-none">
+          className="text-[12px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-32 outline-none">
           <option value="">Choose account…</option>
           {accounts.map(a => <option key={a} value={a}>{a}</option>)}
           <option value="__new">+ Add new account…</option>
         </select>
       )}
       <input type="number" min="0" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="₵"
-        className="text-[9px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-14 outline-none" />
+        className="text-[12px] text-gray-900 bg-gray-100 border border-gray-200 rounded px-1 py-0.5 w-14 outline-none" />
       <button onClick={save} disabled={saving}
-        className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-600 text-white rounded disabled:opacity-40">
+        className="text-[12px] font-bold px-1.5 py-0.5 bg-purple-600 text-white rounded disabled:opacity-40">
         {saving ? '…' : 'Add'}
       </button>
       <button onClick={() => setOpen(false)}
-        className="text-[9px] font-semibold px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
-      {error && <span className="text-[8px] text-red-600 font-semibold">{error}</span>}
+        className="text-[12px] font-semibold px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">✕</button>
+      {error && <span className="text-[12px] text-red-600 font-semibold">{error}</span>}
     </span>
   )
 }
@@ -294,7 +294,7 @@ function NewSpCell({ itemId, currentSp, onSaved }: { itemId: number | null; curr
       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
       onClick={e => e.stopPropagation()}
       title="Type a new selling price to update this item's live selling price"
-      className={`w-full text-right text-[10px] rounded px-1 py-0.5 border outline-none ${savedFlash ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'} ${saving ? 'opacity-50' : ''}`}
+      className={`w-full text-right text-[12px] rounded px-1 py-0.5 border outline-none ${savedFlash ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white'} ${saving ? 'opacity-50' : ''}`}
     />
   )
 }
@@ -354,8 +354,8 @@ function EditableLineCell({ lineId, field, value, display, onSaved }: {
         onChange={e => setDraft(e.target.value)}
         onBlur={save}
         onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditing(false) }}
-        className="w-16 text-right text-[10px] bg-white border border-blue-300 rounded px-1 py-0.5 outline-none disabled:opacity-50" />
-      {error && <span className="text-[8px] text-red-600 font-semibold whitespace-nowrap">{error}</span>}
+        className="w-16 text-right text-[12px] bg-white border border-blue-300 rounded px-1 py-0.5 outline-none disabled:opacity-50" />
+      {error && <span className="text-[12px] text-red-600 font-semibold whitespace-nowrap">{error}</span>}
     </span>
   )
 }
@@ -827,11 +827,11 @@ function BillsTab({
     const rows = flags?.noVendorBills ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no vendor recorded`}
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a vendor recorded.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">Every bill has a vendor recorded.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(b => (
@@ -849,23 +849,23 @@ function BillsTab({
     const rows = flags?.noItemsBills ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with a total but no item list`}
         </p>
-        <p className="text-[9px] text-gray-400 px-2 mb-2">
+        <p className="text-[12px] text-gray-400 px-2 mb-2">
           Mostly historical bills entered as a lump total with no line-by-line breakdown -- there is no fix form here since adding items after the fact is not supported yet; this is a review list.
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill with a total has an item list.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">Every bill with a total has an item list.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(b => (
                 <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
-                    <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                    <p className="text-[12px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                    <p className="text-[12px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
                   </div>
-                  <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
+                  <p className="text-[12px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
                 </div>
               ))}
             </div>
@@ -878,14 +878,14 @@ function BillsTab({
     const rows = flags?.billTotalMismatch ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} whose items don't add up to the total`}
         </p>
-        <p className="text-[9px] text-gray-400 px-2 mb-2">
+        <p className="text-[12px] text-gray-400 px-2 mb-2">
           Check the bill against the actual receipt -- a missing line, a wrong price/qty, or a total typed wrong could each explain the gap.
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill&apos;s items add up to its total.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">Every bill&apos;s items add up to its total.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(b => {
@@ -893,12 +893,12 @@ function BillsTab({
                 return (
                   <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
-                      <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                      <p className="text-[12px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                      <p className="text-[12px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] font-bold text-gray-700">Total ₵{fmt(b.total)} · Items ₵{fmt(b.lines_total)}</p>
-                      <p className="text-[9px] font-semibold text-red-600">{diff > 0 ? `₵${fmt(diff.toFixed(2))} short` : `₵${fmt((-diff).toFixed(2))} over`}</p>
+                      <p className="text-[12px] font-bold text-gray-700">Total ₵{fmt(b.total)} · Items ₵{fmt(b.lines_total)}</p>
+                      <p className="text-[12px] font-semibold text-red-600">{diff > 0 ? `₵${fmt(diff.toFixed(2))} short` : `₵${fmt((-diff).toFixed(2))} over`}</p>
                     </div>
                   </div>
                 )
@@ -913,11 +913,11 @@ function BillsTab({
     const rows = flags?.billNoAttachment ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no receipt attached`}
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a receipt attached.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">Every bill has a receipt attached.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(b => (
@@ -935,23 +935,23 @@ function BillsTab({
     const rows = flags?.billNoExpense ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} bill${rows.length !== 1 ? 's' : ''} with no corresponding expense`}
         </p>
-        <p className="text-[9px] text-gray-400 px-2 mb-2">
+        <p className="text-[12px] text-gray-400 px-2 mb-2">
           No bill_expenses row (bank charges, transport, etc.) has been migrated onto this bill from the Expenses tab -- there is no fix form here since that migration happens from the Expenses side; this is a review list.
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">Every bill has a corresponding expense.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">Every bill has a corresponding expense.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(b => (
                 <div key={b.id} className="px-2 py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
-                    <p className="text-[9px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
+                    <p className="text-[12px] font-semibold text-gray-700 truncate">{b.bill_number} · {fmtShort(b.bill_date)}</p>
+                    <p className="text-[12px] text-gray-400">{b.vendor_name ?? 'No vendor'}</p>
                   </div>
-                  <p className="text-[10px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
+                  <p className="text-[12px] font-bold text-gray-700 shrink-0">₵{fmt(b.total)}</p>
                 </div>
               ))}
             </div>
@@ -964,24 +964,24 @@ function BillsTab({
     const rows = flags?.vcpJumps ?? []
     return (
       <div className="overflow-y-auto h-full py-2">
-        <p className="text-[10px] text-gray-400 px-2 mb-1">
+        <p className="text-[12px] text-gray-400 px-2 mb-1">
           {!flags ? 'Loading…' : `${rows.length} item${rows.length !== 1 ? 's' : ''} whose cost jumped 20%+ from the previous bill`}
         </p>
-        <p className="text-[9px] text-gray-400 px-2 mb-2">
+        <p className="text-[12px] text-gray-400 px-2 mb-2">
           Check this bill's price against the earlier one -- a real supplier change or negotiation is fine, a typo isn't. Confirm clears it once reviewed; it won't come back for this same jump.
         </p>
         {flags && (rows.length === 0
-          ? <p className="py-4 text-center text-gray-400 text-[10px]">No cost jumps to review.</p>
+          ? <p className="py-4 text-center text-gray-400 text-[12px]">No cost jumps to review.</p>
           : (
             <div className="bg-white border-t border-b border-gray-200 divide-y divide-gray-100">
               {rows.map(r => (
                 <div key={`${r.item_id}-${r.bill_id}`} className="px-2 py-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold text-gray-700 truncate">{r.item_name}</p>
-                    <p className="text-[9px] text-gray-400">{fmtShort(r.bill_date)} · ₵{fmt(r.prev_vcp)} → ₵{fmt(r.new_vcp)}</p>
+                    <p className="text-[12px] font-semibold text-gray-700 truncate">{r.item_name}</p>
+                    <p className="text-[12px] text-gray-400">{fmtShort(r.bill_date)} · ₵{fmt(r.prev_vcp)} → ₵{fmt(r.new_vcp)}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <p className="text-[10px] font-bold text-red-600">+{r.pct}%</p>
+                    <p className="text-[12px] font-bold text-red-600">+{r.pct}%</p>
                     <button
                       type="button"
                       onClick={async () => {
@@ -991,7 +991,7 @@ function BillsTab({
                           body: JSON.stringify({ itemId: r.item_id, billId: r.bill_id }),
                         }).catch(() => {})
                       }}
-                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 text-white transition whitespace-nowrap"
+                      className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 text-white transition whitespace-nowrap"
                     >
                       Confirm
                     </button>
@@ -1008,10 +1008,10 @@ function BillsTab({
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowHistory(false)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
           ← Back
         </button>
-        <span className="text-[9px] font-semibold text-purple-700">Bills History</span>
+        <span className="text-[12px] font-semibold text-purple-700">Bills History</span>
       </div>
       <HistoryPanel keywords={['bill']} onEntryClick={log => {
         // "added bill": "BL-001 · ₵500 from Vendor"  →  bill_number = first token
@@ -1043,7 +1043,7 @@ function BillsTab({
           wrapRef.current = el
           if (el && el.clientWidth !== wrapWidth) setWrapWidth(el.clientWidth)
         }}>
-        <table className="border-collapse text-[10px]" style={{
+        <table className="border-collapse text-[12px]" style={{
           tableLayout: 'fixed',
           width: tableNaturalWidth,
           zoom: compact && wrapWidth > 0 ? Math.min(1, Math.max(0.5, wrapWidth / tableNaturalWidth)) : undefined,
@@ -1055,9 +1055,9 @@ function BillsTab({
           <thead className="sticky top-0 bg-gray-100 z-10">
             <tr>
               <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, colDefaults.item)} onReset={() => colPrefs.resetWidth('item')}
-                className="text-[9px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
+                className="text-[12px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
               {colPrefs.shownColumns.map((c, i) => (
-                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[9px]"
+                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[12px]"
                   onResize={d => colPrefs.resizeWidth(c.key, d, colDefaults[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
                   {c.label}
                 </ResizableTh>
@@ -1072,21 +1072,21 @@ function BillsTab({
                 return (
                   <tr key={g.key}>
                     <td colSpan={1 + colPrefs.shownColumns.length} className="p-2 bg-white space-y-2 border-b border-gray-200">
-                      <p className="text-[10px] font-bold text-gray-600">Edit Bill · {billsById[g.editBillId]?.bill_number}</p>
+                      <p className="text-[12px] font-bold text-gray-600">Edit Bill · {billsById[g.editBillId]?.bill_number}</p>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Date</p>
                         <input type="date" value={editForm.bill_date}
                           onChange={e => setEditForm(f => ({ ...f, bill_date: e.target.value }))} className={inputCls} />
                       </div>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Vendor</p>
                         <input value={editForm.vendor_name} autoComplete="off"
                           onChange={e => setEditForm(f => ({ ...f, vendor_name: e.target.value }))} className={inputCls} />
                       </div>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Items on this bill: change any figure (quantity, unit price or line total), then Save</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Items on this bill: change any figure (quantity, unit price or line total), then Save</p>
                         <div className="rounded-lg border border-gray-200">
-                          <div className="grid grid-cols-[1fr_52px_62px_70px] gap-1 border-b border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[8px] font-bold uppercase text-gray-500">
+                          <div className="grid grid-cols-[1fr_52px_62px_70px] gap-1 border-b border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[12px] font-bold uppercase text-gray-500">
                             <span>Item</span><span className="text-right">Qty</span><span className="text-right">Unit price</span><span className="text-right">Total</span>
                           </div>
                           {g.rows.map(r => {
@@ -1094,10 +1094,10 @@ function BillsTab({
                             const set = (patch: Partial<typeof d>) => setLineDrafts(prev => ({ ...prev, [r.lineId]: { ...d, ...patch } }))
                             const num = (v: string) => { const n = parseFloat(v); return isFinite(n) ? n : 0 }
                             const f4 = (n: number) => String(Math.round(n * 10000) / 10000)
-                            const cell = 'w-full rounded border border-gray-300 bg-white px-1 py-0.5 text-right text-[10px] text-gray-900 outline-none focus:border-blue-400'
+                            const cell = 'w-full rounded border border-gray-300 bg-white px-1 py-0.5 text-right text-[12px] text-gray-900 outline-none focus:border-blue-400'
                             return (
                               <div key={r.lineId} className="grid grid-cols-[1fr_52px_62px_70px] items-center gap-1 border-b border-gray-100 px-1.5 py-0.5 last:border-0">
-                                <span className="break-words text-[10px] font-semibold leading-tight text-gray-900">{r.itemName}</span>
+                                <span className="break-words text-[12px] font-semibold leading-tight text-gray-900">{r.itemName}</span>
                                 <input type="number" min="0" step="any" value={d.qty} onChange={e => set({ qty: e.target.value, total: f4(num(e.target.value) * num(d.price)) })} className={cell} aria-label="Quantity" />
                                 <input type="number" min="0" step="any" value={d.price} onChange={e => set({ price: e.target.value, total: f4(num(d.qty) * num(e.target.value)) })} className={cell} aria-label="Unit price" />
                                 <input type="number" min="0" step="any" value={d.total} onChange={e => set({ total: e.target.value, price: num(d.qty) > 0 ? f4(num(e.target.value) / num(d.qty)) : d.price })} className={cell} aria-label="Line total" />
@@ -1105,26 +1105,26 @@ function BillsTab({
                             )
                           })}
                         </div>
-                        <p className="mt-0.5 text-[8px] text-gray-400">Changing the quantity or unit price updates the total; changing the total works out the unit price. This also updates the item&apos;s cost price.</p>
+                        <p className="mt-0.5 text-[12px] text-gray-400">Changing the quantity or unit price updates the total; changing the total works out the unit price. This also updates the item&apos;s cost price.</p>
                       </div>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Receipt</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Receipt</p>
                         <AttachmentPicker items={editAttachments.items} onAdd={editAttachments.addFiles}
                           onRemove={editAttachments.remove} disabled={saving} />
                       </div>
                       {editError && (
-                        <p className="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{editError}</p>
+                        <p className="text-[12px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{editError}</p>
                       )}
                       <div className="flex gap-1">
                         <button onClick={() => saveEdit(g.editBillId)} disabled={saving}
-                          className="flex-1 bg-green-600 text-white text-[10px] font-bold rounded py-1 disabled:opacity-40">
+                          className="flex-1 bg-green-600 text-white text-[12px] font-bold rounded py-1 disabled:opacity-40">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
                         <button onClick={() => { setEditingBillId(null); setEditError('') }}
-                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                          className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                         {isOwnerLevelUser && (
                           <button onClick={() => deleteBill(g.editBillId)} disabled={saving}
-                            className="px-3 py-1 bg-red-600 text-white text-[10px] font-semibold rounded disabled:opacity-40">Delete</button>
+                            className="px-3 py-1 bg-red-600 text-white text-[12px] font-semibold rounded disabled:opacity-40">Delete</button>
                         )}
                       </div>
                     </td>
@@ -1152,12 +1152,12 @@ function BillsTab({
                         </button>
                         <AddBillExpenseButton billId={g.editBillId} onAdded={row => setBillExpenses(prev => [...prev, row])} />
                         {g.sharedExpensesTotal > 0 && (
-                          <span className={`text-[9px] whitespace-nowrap ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}
+                          <span className={`text-[12px] whitespace-nowrap ${g.isDayHead ? 'text-blue-100' : 'text-gray-400'}`}
                             title="Total shared extra costs entered against this bill">
                             +₵{g.sharedExpensesTotal.toFixed(2)}
                           </span>
                         )}
-                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[11px]'}`}
+                        <span className={`flex-1 text-center font-extrabold truncate ${g.isDayHead ? 'text-white text-xs' : 'text-gray-700 text-[12px]'}`}
                           title={g.vendorName ?? ''}>
                           {g.vendorName ?? '—'}
                         </span>
@@ -1169,7 +1169,7 @@ function BillsTab({
                   </tr>
                   {(!barsOnly || expandedIds.has(g.key)) && g.rows.map(row => (
                     <tr key={row.key} id={`billrow-${row.billId}`}
-                      className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                      className={`group border-b border-gray-100 text-[12px] font-bold leading-tight ${row.unresolved ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
                       <td className={`sticky left-0 z-10 px-1 py-0 text-gray-900 overflow-hidden ${row.unresolved || (row.itemId && !row.convertsToItemId && row.gmcType !== 'gmc') ? 'bg-red-50' : 'bg-white group-hover:bg-gray-50'}`}>
                         {row.itemId ? (
                           <button type="button" onClick={() => setViewingItemId(row.itemId)} className={compact ? 'block text-blue-600 hover:underline text-left leading-tight break-words line-clamp-2' : 'block truncate text-blue-600 hover:underline text-left'}>
@@ -1234,7 +1234,7 @@ function BillsTab({
                   {(!barsOnly || expandedIds.has(g.key)) && g.expenseRows.map(e => {
                     const mentionsPack = isExpenseMentioningPack(e)
                     return (
-                    <tr key={`exp-${e.id}`} className={`group border-b border-gray-100 text-[9px] font-bold leading-tight ${mentionsPack ? 'bg-red-50/40 hover:bg-red-50' : 'bg-purple-50/40 hover:bg-purple-50'}`}>
+                    <tr key={`exp-${e.id}`} className={`group border-b border-gray-100 text-[12px] font-bold leading-tight ${mentionsPack ? 'bg-red-50/40 hover:bg-red-50' : 'bg-purple-50/40 hover:bg-purple-50'}`}>
                       {/* The amount lives here, next to the expense's own
                           name, not in the numeric Total column -- there can
                           be more than one related expense on the same bill,
@@ -1242,7 +1242,7 @@ function BillsTab({
                           number sitting in the shared Total column would
                           have nothing pinning it to which expense it was. */}
                       <td className={`sticky left-0 z-10 px-1 py-0.5 overflow-hidden ${mentionsPack ? 'text-red-700 bg-red-50 group-hover:bg-red-100' : 'text-purple-700 bg-purple-50 group-hover:bg-purple-100'}`}>
-                        <span className={`block italic text-[9px] leading-tight ${mentionsPack ? 'text-red-400' : 'text-purple-400'}`}>Related Expense</span>
+                        <span className={`block italic text-[12px] leading-tight ${mentionsPack ? 'text-red-400' : 'text-purple-400'}`}>Related Expense</span>
                         <span className="block break-words leading-tight">{e.description || 'Other'} — ₵{fmt(e.amount)}</span>
                       </td>
                       {colPrefs.shownColumns.map(c => (
@@ -1267,7 +1267,7 @@ function BillsTab({
             <button onClick={() => { setLoading(true); void loadBills(3) }}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg">Try again</button>
           </div>
-        ) : filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No bills</p>}
+        ) : filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No bills</p>}
         </div>
       </div>
       {viewingItemId != null && (

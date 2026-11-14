@@ -128,17 +128,17 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
       {unknownPhone && pos && (
         <div style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width }}
           className="z-[200] space-y-1 rounded-lg border border-amber-300 bg-white p-2 shadow-lg" onClick={e => e.stopPropagation()}>
-          <p className="text-[10px] font-semibold text-amber-800">New number. Type their name and they are saved as a new customer (leave empty to just send):</p>
+          <p className="text-[12px] font-semibold text-amber-800">New number. Type their name and they are saved as a new customer (leave empty to just send):</p>
           <input value={newName} onChange={e => { setNewName(e.target.value); onName?.(e.target.value) }} placeholder="Customer name" autoFocus
             onKeyDown={e => { if (e.key === 'Enter') { setUnknownPhone(false); onEnter?.() } }}
             className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 outline-none" />
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setUnknownPhone(false)} className="text-[10px] font-semibold text-blue-700">Done</button>
+            <button type="button" onClick={() => setUnknownPhone(false)} className="text-[12px] font-semibold text-blue-700">Done</button>
             {onRegister && (
               <button type="button" onClick={() => {
                 setUnknownPhone(false)
                 onRegister(text, code => { const digits = code.replace(/\D/g, ''); emitted.current = digits; setText(digits); onChange(digits); setNewName(''); onName?.('') })
-              }} className="text-[10px] font-bold text-green-700">Full registration (location, email, services…)</button>
+              }} className="text-[12px] font-bold text-green-700">Full registration (location, email, services…)</button>
             )}
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function CustomerBox({ value, onChange, onName, onLabel, label, o
             <button key={h.id} type="button" onMouseDown={e => e.preventDefault()} onClick={() => pick(h)}
               className="block w-full border-b border-gray-100 px-3 py-2 text-left last:border-0 hover:bg-blue-50">
               <span className="block text-xs font-semibold text-gray-900">{h.display_name}</span>
-              <span className="block text-[10px] text-gray-500">{h.customer_id_code}{h.phone ? ` · ${h.phone}` : ''}{h.company_name ? ` · ${h.company_name}` : ''}</span>
+              <span className="block text-[12px] text-gray-500">{h.customer_id_code}{h.phone ? ` · ${h.phone}` : ''}{h.company_name ? ` · ${h.company_name}` : ''}</span>
             </button>
           ))}
           {onLabel && typed.length >= 2 && (

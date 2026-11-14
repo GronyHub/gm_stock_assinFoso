@@ -225,7 +225,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
           {!editMode ? (
             <div className="flex items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-2 flex-1 items-center text-[9px]">
+              <div className="flex flex-wrap gap-2 flex-1 items-center text-[12px]">
                 <div className="flex items-center gap-1">
                   <span className="font-semibold text-gray-600">Aliases:</span>
                   {aliasRecords[item.item_id]?.length === 0 ? (
@@ -233,7 +233,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {(aliasRecords[item.item_id] ?? []).map(a => (
-                        <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                        <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
                           {a.name}
                         </span>
                       ))}
@@ -247,7 +247,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
                   ) : (
                     <div className="flex flex-wrap gap-1">
                       {(matchRecords[item.item_name.trim().toLowerCase()] ?? []).map(m => (
-                        <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                        <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
                           {m.name}
                         </span>
                       ))}
@@ -257,7 +257,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
               </div>
               <button
                 onClick={() => setEditMode(true)}
-                className="shrink-0 text-[9px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
                 ✎ Edit
               </button>
             </div>
@@ -265,14 +265,14 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
             <div className="space-y-2">
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
+                  <p className="text-[12px] font-bold text-gray-600 mb-1 uppercase truncate">Aliases</p>
                   <AliasPicker
                     itemId={item.item_id}
                     current={aliasRecords[item.item_id] ?? []}
                     onChange={(next) => setAliasRecords(prev => ({ ...prev, [item.item_id]: next }))} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Services Used</p>
+                  <p className="text-[12px] font-bold text-gray-600 mb-1 uppercase truncate">Services Used</p>
                   <MatchPicker
                     itemId={item.item_id}
                     itemName={item.item_name}
@@ -282,7 +282,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
                     onChange={(next) => setMatchRecords(prev => ({ ...prev, [item.item_name.trim().toLowerCase()]: next }))} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-gray-600 mb-1 uppercase truncate">Merge</p>
+                  <p className="text-[12px] font-bold text-gray-600 mb-1 uppercase truncate">Merge</p>
                   <MergeItemPicker
                     itemId={item.item_id}
                     itemName={item.item_name}
@@ -293,7 +293,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
               </div>
               <button
                 onClick={() => setEditMode(false)}
-                className="w-full text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
+                className="w-full text-[12px] font-semibold px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition">
                 ✓ Done
               </button>
             </div>

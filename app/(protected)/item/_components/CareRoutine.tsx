@@ -122,10 +122,10 @@ function TileButton({ t, photo, live, onTap, onEdit }: { t: Tile; photo?: string
       className="flex min-w-0 flex-1 select-none flex-col items-center gap-0.5 rounded-md py-0.5 disabled:cursor-default active:bg-gray-100">
       <span className="relative">
         <Avatar name={t.child} url={photo} ring={RING[t.state]} />
-        {t.state === 'done' && <span className="absolute -right-1 -top-1 rounded-full bg-green-600 px-[3px] text-[7px] leading-3 text-white">✓</span>}
-        {t.state === 'notdone' && <span className="absolute -right-1 -top-1 rounded-full bg-gray-500 px-[3px] text-[7px] leading-3 text-white">✕</span>}
+        {t.state === 'done' && <span className="absolute -right-1 -top-1 rounded-full bg-green-600 px-[3px] text-[12px] leading-3 text-white">✓</span>}
+        {t.state === 'notdone' && <span className="absolute -right-1 -top-1 rounded-full bg-gray-500 px-[3px] text-[12px] leading-3 text-white">✕</span>}
       </span>
-      <span className={`text-[9px] font-bold leading-none tabular-nums ${TIME_COLOR[t.state]}`}>{show}</span>
+      <span className={`text-[12px] font-bold leading-none tabular-nums ${TIME_COLOR[t.state]}`}>{show}</span>
     </button>
   )
 }
@@ -152,7 +152,7 @@ export function DayTiles({ items, events, photos, date, offset, now, childFilter
     <div className="flex flex-wrap gap-x-2 gap-y-2.5">
       {groups.map(g => (
         <div key={`${g.key}-${g.tiles[0].key}`} style={{ width: childFilter ? 'calc(25% - 6px)' : `calc(${g.tiles.length * 12.5}% - 4px)` }}>
-          <p className="truncate text-[9px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
+          <p className="truncate text-[12px] font-semibold leading-tight text-gray-700" title={g.title}>{g.important ? '❗' : ''}{g.title}</p>
           <div className="flex gap-0.5 rounded-lg bg-gray-50 p-0.5">
             {g.tiles.map(t => (
               <TileButton key={t.key} t={t} photo={photos[t.child]} live={offset === 0 || (offset < 0 && (t.kind !== 'night' || !!t.ev))}
@@ -347,7 +347,7 @@ export function TileSheet({ t, photo, past = false, onClose, onSaved }: { t: Til
                 <input value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
                 <input type="time" value={time} onChange={e => setTime(e.target.value)} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
                 <button type="button" disabled={busy || !title.trim() || !time} onClick={() => void saveTile()} className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white disabled:opacity-40">Save tile</button>
-                <p className="text-[11px] text-gray-500">Only the people supervising the caretaker can change a tile. This changes it for every child and every day.</p>
+                <p className="text-[12px] text-gray-500">Only the people supervising the caretaker can change a tile. This changes it for every child and every day.</p>
               </>
             )}
           </div>

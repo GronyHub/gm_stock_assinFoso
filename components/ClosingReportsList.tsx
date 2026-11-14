@@ -19,7 +19,7 @@ type Report = {
 function YesNoBadge({ v, goodWhen }: { v: boolean; goodWhen: boolean }) {
   const good = v === goodWhen
   return (
-    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${good ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+    <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded ${good ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
       {v ? 'Yes' : 'No'}
     </span>
   )

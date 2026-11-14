@@ -2219,7 +2219,7 @@ export function useHubState() {
   function renderLiveExpensesRadio(v: typeof liveExpensesMainRadios[number]) {
     return (
       <label key={v.key} title={v.description}
-        className={`shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[9px] whitespace-nowrap ${
+        className={`shrink-0 flex items-center gap-0.5 cursor-pointer hover:underline select-none text-[12px] whitespace-nowrap ${
           v.variant === 'flag' ? 'text-red-600' : v.variant === 'nav' ? 'font-semibold text-blue-600' : v.variant === 'view' ? 'font-semibold text-gray-600' : 'text-gray-700'
         }`}>
         <input type="radio" name="liveExpensesRadio" checked={liveExpensesRadioValue === v.key} onChange={() => selectLiveExpensesRadio(v.key)} className="cursor-pointer w-2.5 h-2.5 shrink-0" />
@@ -4580,7 +4580,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       if (count <= 0) return null
       return (
         <button onClick={onClick}
-          className={`${textColor} hover:underline whitespace-nowrap shrink-0 text-[9px] font-medium`}>
+          className={`${textColor} hover:underline whitespace-nowrap shrink-0 text-[12px] font-medium`}>
           {label}({count})
         </button>
       )
@@ -4592,7 +4592,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (only === 'bills' && !(violationCounts.no_vendor || violationCounts.no_items_bills || violationCounts.bill_total_mismatch || violationCounts.bill_no_attachment || violationCounts.bill_no_expense || violationCounts.vcp_jump)) return null
 
     return (
-      <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[9px] whitespace-nowrap overflow-x-auto">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-red-50 border-b border-red-200 text-[12px] whitespace-nowrap overflow-x-auto">
         <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">{only ? 'Flags' : 'Critical, Do Now'}</span>
         {show('counts') && (<>
         {divider}
@@ -4673,7 +4673,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // decision tools distinct from action-required flags.
   function renderAnalyticsRow() {
     return (
-      <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 border-b border-blue-200 text-[9px] whitespace-nowrap overflow-x-auto">
+      <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 border-b border-blue-200 text-[12px] whitespace-nowrap overflow-x-auto">
         <span className="font-extrabold text-blue-700 uppercase tracking-wide shrink-0">Analytics</span>
         <span className="text-blue-300 shrink-0">·</span>
         <span className="text-gray-600 font-semibold shrink-0">Sales;</span>
@@ -4768,7 +4768,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // just plain text sitting on the container's own gray-200 background,
     // which read as one continuous switch instead of separate buttons.
     const btnCls = (active: boolean, color: string) =>
-      `font-bold rounded-md border transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[10px]' : 'px-2 py-1 text-xs'} ${
+      `font-bold rounded-md border transition whitespace-nowrap shrink-0 ${compact ? 'px-1.5 py-1 text-[12px]' : 'px-2 py-1 text-xs'} ${
         active ? `${color} text-white border-transparent` : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'
       }`
     // itemsPageMode itself doesn't change when P&L/CAB/Customers take over
@@ -4812,7 +4812,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (!liveCountProgress || liveCountProgress.total === 0) return null
     const assignee = assignments['flags']
     return (
-      <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[9px]' : 'text-[10px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
+      <div className={`flex items-center justify-center gap-2 ${compact ? 'text-[12px]' : 'text-[12px]'} ${dark ? 'text-white/70' : 'text-gray-500'}`}>
         <span className={`font-semibold ${dark ? 'text-white/90' : 'text-gray-700'}`}>Counted today</span>
         <span>({liveCountProgress.doneToday}/{liveCountProgress.total})</span>
         {assignee && <span className="capitalize">— {assignee}</span>}
@@ -4845,7 +4845,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <select
           value={liveProductTypeFilter}
           onChange={e => setLiveProductTypeFilter(e.target.value as 'all' | 'goods' | 'services')}
-          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+          className="text-[12px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
         >
           <option value="all">All</option>
           <option value="goods">Goods</option>
@@ -4854,7 +4854,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <select
           value={liveGroupFilter || ''}
           onChange={e => setLiveGroupFilter(e.target.value || null)}
-          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+          className="text-[12px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
         >
           <option value="">Groups</option>
           {liveGroups.map(g => (
@@ -4864,7 +4864,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <select
           value={liveGmcTypeFilter || ''}
           onChange={e => setLiveGmcTypeFilter(e.target.value || null)}
-          className="text-[10px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
+          className="text-[12px] px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 flex-1"
         >
           <option value="">GMC Types</option>
           <option value="none">None</option>
@@ -4901,7 +4901,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               setLiveSaleFilter({ kind: v as 'loss' | 'gain' | 'count_0' | 'count_1' })
             }
           }}
-          className="text-[10px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
+          className="text-[12px] px-2 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white flex-1"
         >
           <option value="">Filter</option>
           {liveSaleFilterFlags.filter(f => !f.key.startsWith('flag_')).map(f => {
@@ -4990,21 +4990,21 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 below, so it's still visible after scrolling right through
                 the narrower compact columns. */}
             <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
-              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="What the records expected on this day">Exp</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center" title="Expected minus counted -- a loss when positive, a gain when negative">Loss/Gain</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">Actions</div>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center" title="What the records expected on this day">Exp</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center" title="Expected minus counted -- a loss when positive, a gain when negative">Loss/Gain</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-right">Actions</div>
             </div>
             {liveCountsByDate.map(([date, dateRecs]) => (
               <div key={date}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-amber-50 border-b border-amber-200 sticky top-[26px] z-9`}>
-                  <div className="col-span-10 px-2 py-1 text-[10px] font-semibold text-amber-700">
+                  <div className="col-span-10 px-2 py-1 text-[12px] font-semibold text-amber-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} counted
                   </div>
                 </div>
@@ -5054,7 +5054,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 setLiveEditingCountTime(rec.counted_at!.slice(0, 16))
                               }}
                               title="Edit time"
-                              className="text-[10px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
+                              className="text-[12px] font-bold text-blue-600 hover:bg-blue-100 rounded leading-none px-1.5 py-0.5"
                             >
                               🕐
                             </button>
@@ -5062,7 +5062,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                           <button
                             type="button"
                             onClick={() => liveEditingCountId === rec.id ? setLiveEditingCountId(null) : startEditCount(rec)}
-                            className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
+                            className="text-[12px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded-full hover:bg-blue-100 transition"
                           >
                             {liveEditingCountId === rec.id ? 'Close' : 'Edit'}
                           </button>
@@ -5070,7 +5070,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                             <button
                               type="button"
                               onClick={() => deleteCountRecord(rec)}
-                              className="text-[10px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded-full hover:bg-red-100 transition"
+                              className="text-[12px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded-full hover:bg-red-100 transition"
                             >
                               Del
                             </button>
@@ -5161,7 +5161,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
 
     return (
       <div className="flex-1 overflow-y-auto">
-        <div className="px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+        <div className="px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
           {scored.length} item{scored.length !== 1 ? 's' : ''} need{scored.length === 1 ? 's' : ''} counting
         </div>
         <div className="divide-y divide-gray-100">
@@ -5183,10 +5183,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: tierColor }} />
                 <div className="flex-1 min-w-0 pl-2">
                   <div className="flex items-center gap-1.5">
-                    {renderClickableItemName(item.name, 'text-[11px] font-semibold truncate')}
-                    <span className="shrink-0 text-[7px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: tierColor }}>{tier}</span>
+                    {renderClickableItemName(item.name, 'text-[12px] font-semibold truncate')}
+                    <span className="shrink-0 text-[12px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: tierColor }}>{tier}</span>
                   </div>
-                  <p className="text-[9px] text-gray-500 truncate">
+                  <p className="text-[12px] text-gray-500 truncate">
                     {expectedLabel}
                     <span className="text-gray-400"> · </span>
                     {status.label}{status.level === 'overdue' ? ' overdue' : ''}
@@ -5211,7 +5211,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     type="button"
                     disabled={liveCountSaving}
                     onClick={() => submitCount(item, Math.ceil(Number(item.soh)))}
-                    className="shrink-0 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold whitespace-nowrap disabled:opacity-30"
+                    className="shrink-0 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold whitespace-nowrap disabled:opacity-30"
                   >
                     Same as {Math.ceil(Number(item.soh))}, no loss
                   </button>
@@ -5220,14 +5220,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     value={qty}
                     onChange={e => setLiveInlineCountQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter') recordInlineCount(item) }}
-                    className="w-14 text-[11px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                    className="w-14 text-[12px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
                   />
                   <button
                     type="button"
                     disabled={!qty || liveCountSaving}
                     onClick={() => recordInlineCount(item)}
                     aria-label={`Record count for ${item.name}`}
-                    className="shrink-0 w-6 h-6 rounded-full bg-green-600 text-white text-[11px] font-bold flex items-center justify-center disabled:opacity-30"
+                    className="shrink-0 w-6 h-6 rounded-full bg-green-600 text-white text-[12px] font-bold flex items-center justify-center disabled:opacity-30"
                   >
                     ✓
                   </button>
@@ -5254,7 +5254,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     }
     return (
       <div className="flex-1 overflow-y-auto">
-        <div className="px-2 py-1 bg-red-700 text-[9px] font-bold text-white uppercase tracking-wide">
+        <div className="px-2 py-1 bg-red-700 text-[12px] font-bold text-white uppercase tracking-wide">
           {items.length} item{items.length !== 1 ? 's' : ''} with negative stock -- count to correct
         </div>
         <div className="divide-y divide-gray-100">
@@ -5264,8 +5264,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               <div key={item.id} className="relative flex items-center gap-2 px-2 py-1.5">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600" />
                 <div className="flex-1 min-w-0 pl-2">
-                  {renderClickableItemName(item.name, 'text-[11px] font-semibold truncate')}
-                  <p className="text-[9px] text-red-600 font-semibold">
+                  {renderClickableItemName(item.name, 'text-[12px] font-semibold truncate')}
+                  <p className="text-[12px] text-red-600 font-semibold">
                     System shows {Math.ceil(Number(item.soh))} -- count what's actually on the shelf.
                   </p>
                 </div>
@@ -5275,14 +5275,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     value={qty}
                     onChange={e => setLiveInlineCountQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter') recordInlineCount(item) }}
-                    className="w-14 text-[11px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-200"
+                    className="w-14 text-[12px] font-semibold text-gray-900 text-right rounded-md border border-gray-300 px-1.5 py-1 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-200"
                   />
                   <button
                     type="button"
                     disabled={!qty || liveCountSaving}
                     onClick={() => recordInlineCount(item)}
                     aria-label={`Record count for ${item.name}`}
-                    className="shrink-0 w-6 h-6 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center disabled:opacity-30"
+                    className="shrink-0 w-6 h-6 rounded-full bg-red-600 text-white text-[12px] font-bold flex items-center justify-center disabled:opacity-30"
                   >
                     ✓
                   </button>
@@ -5306,20 +5306,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ) : (
           <div className="inline-block min-w-full">
             <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
-              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Exp</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Loss</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Exp</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Loss</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Notes</div>
             </div>
             {liveLossesByDate.map(([date, dateRecs]) => (
               <div key={date}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
-                  <div className="col-span-9 px-2 py-1 text-[10px] font-semibold text-red-700">
+                  <div className="col-span-9 px-2 py-1 text-[12px] font-semibold text-red-700">
                     {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {dateRecs.length} losses
                   </div>
                 </div>
@@ -5386,20 +5386,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ) : (
           <div className="inline-block min-w-full">
             <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
-              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Qty</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Exp</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Loss</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-center">Time</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">By</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Source</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Notes</div>
+              <div className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Qty</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Exp</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Loss</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-center">Time</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">By</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Source</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Notes</div>
             </div>
             {groups.map(([itemName, itemRecs]) => (
               <div key={itemName}>
                 <div className={`grid ${COUNT_RECORDS_GRID} gap-0 bg-red-50 border-b border-red-200 sticky top-[26px] z-9`}>
-                  <div className="col-span-9 px-2 py-1 text-[10px] font-semibold text-red-700">
+                  <div className="col-span-9 px-2 py-1 text-[12px] font-semibold text-red-700">
                     {itemName} · {itemRecs.length} losses
                   </div>
                 </div>
@@ -5461,10 +5461,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         ) : (
           <div className="inline-block min-w-full">
             <div className={`grid ${GRID} gap-0 bg-gray-50 border-b border-gray-200 sticky top-0 z-10`}>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Item</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase">Group</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">ACP</div>
-              <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 uppercase text-right">SP</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Item</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase">Group</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-right">ACP</div>
+              <div className="px-2 py-1 text-[12px] font-semibold text-gray-600 uppercase text-right">SP</div>
             </div>
             {items.map(item => {
               const sp = parseFloat(String(item.selling_price)) || 0
@@ -5538,7 +5538,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       <div key={item.id} className="px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition group">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-gray-900 truncate">{item.name}</p>
-                          <p className="text-[10px] text-gray-500">ID: {item.id}</p>
+                          <p className="text-[12px] text-gray-500">ID: {item.id}</p>
                         </div>
                         <div className="flex items-center gap-2 ml-2 shrink-0">
                           {liveEditingItemIntervalId === item.id ? (
@@ -5574,7 +5574,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   })
                                 }}
                                 disabled={liveEditingItemIntervalSaving}
-                                className="px-2 py-1 text-[10px] font-bold text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                                className="px-2 py-1 text-[12px] font-bold text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
                               >
                                 ✓
                               </button>
@@ -5584,7 +5584,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                   setLiveEditingItemIntervalId(null)
                                   setLiveEditingItemIntervalDays('')
                                 }}
-                                className="px-2 py-1 text-[10px] font-bold text-gray-600 hover:bg-gray-200 rounded"
+                                className="px-2 py-1 text-[12px] font-bold text-gray-600 hover:bg-gray-200 rounded"
                               >
                                 ✕
                               </button>
@@ -5596,7 +5596,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                                 setLiveEditingItemIntervalId(item.id)
                                 setLiveEditingItemIntervalDays(item.count_cadence_days ? String(item.count_cadence_days) : '')
                               }}
-                              className="px-2 py-1 text-[10px] font-bold text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition"
+                              className="px-2 py-1 text-[12px] font-bold text-blue-600 hover:bg-blue-50 rounded opacity-0 group-hover:opacity-100 transition"
                               title="Edit counting interval"
                             >
                               Edit
@@ -5839,7 +5839,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             }}
             placeholder={compact ? 'Search item…' : 'Search & pick item…'}
             className={`border focus:outline-none focus:ring-1 w-full pr-7 ${
-              compact ? 'text-[11px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
+              compact ? 'text-[12px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
             } ${
               livePickedItemId !== null
                 ? 'border-green-400 bg-green-50 focus:ring-green-400'
@@ -5868,7 +5868,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
               setLiveItemPickerQuery('')
             }}
             className={`font-semibold bg-green-600 text-white hover:bg-green-700 transition ${
-              compact ? 'px-1 py-0.5 text-[10px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
+              compact ? 'px-1 py-0.5 text-[12px] rounded-md' : 'px-2 py-1.5 text-sm rounded-lg'
             }`}
           >
             {compact ? '✕ Item' : 'Clear Item'}
@@ -5878,7 +5878,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           type="button"
           onClick={() => setLiveSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
           title="Tap to switch between WIC and GMC"
-          className={`font-semibold transition shrink-0 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
+          className={`font-semibold transition shrink-0 ${compact ? 'px-2 py-1 text-[12px] rounded-md' : 'px-4 py-1.5 text-sm rounded'} ${
             liveSaleType === 'GMC'
               ? 'bg-purple-600 text-white'
               : 'bg-blue-600 text-white'
@@ -5891,7 +5891,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           disabled={liveSaleType === 'GMC'}
           onClick={() => setMiOn(v => !v)}
           title="MI: record several items for one customer and issue one receipt"
-          className={`font-bold transition shrink-0 disabled:opacity-40 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-3 py-1.5 text-sm rounded'} ${miOn ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          className={`font-bold transition shrink-0 disabled:opacity-40 ${compact ? 'px-2 py-1 text-[12px] rounded-md' : 'px-3 py-1.5 text-sm rounded'} ${miOn ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
         >
           MI{miOn && miLines.length ? ` ${miLines.length}` : ''}
         </button>
@@ -5899,7 +5899,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           type="button"
           onClick={() => openEmbed('/pending-jobs?new=1')}
           title="Pending job: a customer leaves a job (a deposit, or nothing paid yet)"
-          className={`font-bold transition shrink-0 bg-amber-100 text-amber-900 hover:bg-amber-200 ${compact ? 'px-2 py-1 text-[10px] rounded-md' : 'px-3 py-1.5 text-sm rounded'}`}
+          className={`font-bold transition shrink-0 bg-amber-100 text-amber-900 hover:bg-amber-200 ${compact ? 'px-2 py-1 text-[12px] rounded-md' : 'px-3 py-1.5 text-sm rounded'}`}
         >
           🧾 Job
         </button>
@@ -5955,7 +5955,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           }
         }}
         className={compact
-          ? 'text-[10px] px-1 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white shrink-0'
+          ? 'text-[12px] px-1 py-0.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white shrink-0'
           : 'text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white'}
       >
         <option value="">Filter</option>
@@ -5993,7 +5993,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
       <button
         key={flag.key}
         onClick={flag.onViewClick}
-        className={`text-[10px] px-2 py-1 rounded border transition whitespace-nowrap ${
+        className={`text-[12px] px-2 py-1 rounded border transition whitespace-nowrap ${
           liveCurrentView?.kind === 'violation' && liveCurrentView.key === flag.key
             ? 'bg-blue-600 text-white border-blue-700'
             : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'

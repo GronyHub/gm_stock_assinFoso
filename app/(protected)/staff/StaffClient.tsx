@@ -132,7 +132,7 @@ const TAB_ICONS: Record<Tab, React.ReactNode> = {
 
 function Badge({ n }: { n: number }) {
   if (!n) return null
-  return <span className="ml-1 bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{n}</span>
+  return <span className="ml-1 bg-red-100 text-red-600 text-[12px] font-bold px-1.5 py-0.5 rounded-full">{n}</span>
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -429,22 +429,22 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
     const absent = (n: string, d: string) => absences.some(a => a.staff_name.toLowerCase() === n.toLowerCase() && a.start_date <= d && a.end_date >= d)
     return (
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-[11px] table-fixed">
+        <table className="w-full text-[12px] table-fixed">
           <colgroup>
             <col style={{width:'22%'}} />
             {staffList.map(s => <col key={s} />)}
           </colgroup>
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left px-1.5 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
+              <th className="text-left px-1.5 py-0.5 text-[12px] text-gray-500 font-semibold">Date</th>
               {staffList.map(s => (
-                <th key={s} className="text-center px-0.5 py-0.5 text-[10px] text-gray-500 font-semibold capitalize">{s}</th>
+                <th key={s} className="text-center px-0.5 py-0.5 text-[12px] text-gray-500 font-semibold capitalize">{s}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {futureDates.length > 0 && (
-              <tr className="bg-blue-50"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">Coming up · planned on the rota</td></tr>
+              <tr className="bg-blue-50"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-blue-700">Coming up · planned on the rota</td></tr>
             )}
             {futureDates.map(d => (
               <tr key={'f' + d} className="bg-blue-50/40">
@@ -453,11 +453,11 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                   const e = upcomingRota.find(x => x.rota_date === d && x.staff_name.toLowerCase() === s.toLowerCase())
                   return (
                     <td key={s} className="px-0.5 py-0.5 text-center">
-                      {absent(s, d) ? <span className="text-[10px] font-bold text-red-600">ABSENT</span> : !e ? <span className="text-gray-300">—</span> : e.is_off ? <span className="text-gray-400">OFF</span> : (
+                      {absent(s, d) ? <span className="text-[12px] font-bold text-red-600">ABSENT</span> : !e ? <span className="text-gray-300">—</span> : e.is_off ? <span className="text-gray-400">OFF</span> : (
                         <div className="flex flex-col items-center leading-tight italic">
                           <span className="text-blue-700">{e.sched_in ?? '—'}</span>
                           <span className="text-blue-500">{e.sched_out ?? '—'}</span>
-                          {e.role === 'opener' || e.role === 'closer' ? <span className="text-[8px] font-bold not-italic text-indigo-700">{e.role}</span> : null}
+                          {e.role === 'opener' || e.role === 'closer' ? <span className="text-[12px] font-bold not-italic text-indigo-700">{e.role}</span> : null}
                         </div>
                       )}
                     </td>
@@ -466,7 +466,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
               </tr>
             ))}
             {futureDates.length > 0 && historyGrouped.length > 0 && (
-              <tr className="bg-gray-100"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">Recorded times</td></tr>
+              <tr className="bg-gray-100"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-gray-600">Recorded times</td></tr>
             )}
             {historyGrouped.length === 0 && !(withFuture && viewMode === 'future') && (
               <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
@@ -479,7 +479,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                 <Fragment key={date}>
                   {isMonthStart && (
                     <tr className="bg-gray-100 border-t-2 border-b-2 border-gray-300">
-                      <td className="px-1.5 py-0.5 text-[10px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
+                      <td className="px-1.5 py-0.5 text-[12px] font-bold text-gray-600 leading-tight">{monthKeyLabel(monthKey)}<br/>Total</td>
                       {staffList.map(s => {
                         const mins = allRecords
                           .filter(r => r.staff_name === s && r.work_date.startsWith(monthKey) && r.actual_in && r.actual_out)
@@ -489,7 +489,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                             return sum + (tout >= tin ? tout - tin : (tout + 1440) - tin)
                           }, 0)
                         return (
-                          <td key={s} className="text-center px-0.5 py-0.5 text-[10px] font-bold text-gray-700">
+                          <td key={s} className="text-center px-0.5 py-0.5 text-[12px] font-bold text-gray-700">
                             {mins ? minsToHrs(mins) : '—'}
                           </td>
                         )
@@ -512,7 +512,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                           <span className="text-green-700">{cellData?.in ?? <span className="text-gray-300">—</span>}{cellData?.in && <SourceDot source={cellData.inSource} />}</span>
                           <span className="text-orange-600">{cellData?.out ?? <span className="text-gray-300">—</span>}{cellData?.out && <SourceDot source={cellData.outSource} />}</span>
                           {dayDurationLabel(cellData?.in, cellData?.out) && (
-                            <span className="text-[9px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
+                            <span className="text-[12px] text-gray-400">{dayDurationLabel(cellData?.in, cellData?.out)}</span>
                           )}
                         </div>
                       )
@@ -522,19 +522,19 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
                             <div className="flex flex-col gap-0.5">
                               <input value={adminEditIn} onChange={e => setAdminEditIn(e.target.value)}
                                 placeholder="in"
-                                className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
+                                className="w-full text-[12px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
                               <input value={adminEditOut} onChange={e => setAdminEditOut(e.target.value)}
                                 placeholder="out"
-                                className="w-full text-[9px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
+                                className="w-full text-[12px] border border-blue-300 rounded px-1 py-0.5 text-center outline-none" />
                               <div className="flex gap-0.5">
                                 <button onClick={adminSaveEdit} disabled={adminEditSaving}
-                                  className="flex-1 text-[8px] font-bold bg-green-600 text-white rounded py-0.5 disabled:opacity-40">
+                                  className="flex-1 text-[12px] font-bold bg-green-600 text-white rounded py-0.5 disabled:opacity-40">
                                   {adminEditSaving ? '…' : '✓'}
                                 </button>
                                 <button onClick={() => record && adminDelete(record)} title="Delete"
-                                  className="text-[8px] font-bold bg-red-50 text-red-500 rounded py-0.5 px-1">✕</button>
+                                  className="text-[12px] font-bold bg-red-50 text-red-500 rounded py-0.5 px-1">✕</button>
                                 <button onClick={() => setAdminEditRow(null)}
-                                  className="flex-1 text-[8px] font-bold bg-gray-100 text-gray-600 rounded py-0.5">—</button>
+                                  className="flex-1 text-[12px] font-bold bg-gray-100 text-gray-600 rounded py-0.5">—</button>
                               </div>
                             </div>
                           ) : isAdmin && record ? (
@@ -589,7 +589,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           {/* The tabs never shrink or wrap their words; when the icons do not fit beside them (a phone), the icons drop to the next line instead of covering the tabs. */}
           <div className="flex flex-wrap items-center gap-1">
             <div className="flex shrink-0 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setViewMode(k)} className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
+              <button key={k} type="button" onClick={() => setViewMode(k)} className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
             <div className="ml-auto flex shrink-0 items-center gap-1">
             {extraToolbar}
             <button onClick={() => { setAbsOpen(v => !v); setOptsOpen(false) }} title="Report an absence" aria-label="Report an absence"
@@ -606,10 +606,10 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
               <div className="grid grid-cols-2 gap-1">
                 {(['late', 'absent'] as const).map(k => <button key={k} type="button" onClick={() => setAbsForm(f => ({ ...f, type: k }))} className={`rounded-lg py-1.5 text-xs font-bold ${absForm.type === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k === 'late' ? 'I will be late' : 'I will be absent'}</button>)}
               </div>
-              <p className="text-[11px] text-gray-600">Tell the shop here before you arrive late or before your shift starts. Late without telling = 1 penalty point. Absent without notice = 2 points.</p>
+              <p className="text-[12px] text-gray-600">Tell the shop here before you arrive late or before your shift starts. Late without telling = 1 penalty point. Absent without notice = 2 points.</p>
               <div className="grid grid-cols-2 gap-2">
-                <label className="text-[11px] font-semibold text-gray-700">From<input type="date" min={ownerLevel ? undefined : new Date().toISOString().slice(0, 10)} value={absForm.from} onChange={e => setAbsForm(f => ({ ...f, from: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
-                {absForm.type === 'late' ? <label className="text-[11px] font-semibold text-gray-700">I expect to arrive at<input type="time" value={absForm.expected} onChange={e => setAbsForm(f => ({ ...f, expected: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label> : <label className="text-[11px] font-semibold text-gray-700">To (optional)<input type="date" min={absForm.from || undefined} value={absForm.to} onChange={e => setAbsForm(f => ({ ...f, to: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>}
+                <label className="text-[12px] font-semibold text-gray-700">From<input type="date" min={ownerLevel ? undefined : new Date().toISOString().slice(0, 10)} value={absForm.from} onChange={e => setAbsForm(f => ({ ...f, from: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+                {absForm.type === 'late' ? <label className="text-[12px] font-semibold text-gray-700">I expect to arrive at<input type="time" value={absForm.expected} onChange={e => setAbsForm(f => ({ ...f, expected: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label> : <label className="text-[12px] font-semibold text-gray-700">To (optional)<input type="date" min={absForm.from || undefined} value={absForm.to} onChange={e => setAbsForm(f => ({ ...f, to: e.target.value }))} className="mt-0.5 w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>}
               </div>
               <input value={absForm.reason} onChange={e => setAbsForm(f => ({ ...f, reason: e.target.value }))} placeholder="Reason" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
               <button onClick={() => void reportAbsence()} disabled={!absForm.from || (absForm.type === 'late' && !absForm.expected)} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">Report it</button>
@@ -619,7 +619,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
           {optsOpen && ownerLevel && (
             <div className="mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
               <p className="text-xs font-bold text-gray-900">What the team sees on this page</p>
-              <p className="text-[11px] text-gray-600">Untick a person to hide their column from the team. Former staff are never shown to the team: only the owner and Joe see their times (under Inactive Team Times).</p>
+              <p className="text-[12px] text-gray-600">Untick a person to hide their column from the team. Former staff are never shown to the team: only the owner and Joe see their times (under Inactive Team Times).</p>
               {STAFF.map(n => {
                 const former = inactiveStaff.has(n)
                 return (
@@ -984,7 +984,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
     <div className="space-y-4">
       {payFlags.length > 0 && (
         <button onClick={() => setView('flags' as unknown as PayView)}
-          className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition ${(view as string) === 'flags' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+          className={`text-[12px] font-bold px-2.5 py-1.5 rounded-lg transition ${(view as string) === 'flags' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
           🚩 Payslip Issues ({payFlags.length})
         </button>
       )}
@@ -1007,8 +1007,8 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
               <span className="mt-0.5 text-base">{f.severity === 'error' ? '🔴' : '🟡'}</span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STAFF_COLORS[f.staff] ?? 'bg-gray-100 text-gray-600'}`}>{f.staff}</span>
-                  <span className="text-[10px] font-semibold text-gray-500">{f.month}</span>
+                  <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${STAFF_COLORS[f.staff] ?? 'bg-gray-100 text-gray-600'}`}>{f.staff}</span>
+                  <span className="text-[12px] font-semibold text-gray-500">{f.month}</span>
                 </div>
                 <p className="text-xs text-gray-800 mt-1">{f.issue}</p>
               </div>
@@ -1047,7 +1047,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                   <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-2">
                     {confirmError && <p className="text-xs text-red-500 font-medium">{confirmError}</p>}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <p className="text-[11px] text-gray-500">Once every staff member has been paid for {monthLabelFull(selectedMonth)}, confirm payment to record the total as a Salaries expense. Anyone marked &quot;Not paying this month&quot; below is left out of the total.</p>
+                      <p className="text-[12px] text-gray-500">Once every staff member has been paid for {monthLabelFull(selectedMonth)}, confirm payment to record the total as a Salaries expense. Anyone marked &quot;Not paying this month&quot; below is left out of the total.</p>
                       <button onClick={confirmPayment} disabled={confirming}
                         className="shrink-0 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg px-4 py-2 transition">
                         {confirming ? 'Confirming…' : '✓ Confirm Payment'}
@@ -1070,11 +1070,11 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                       className={`text-left rounded-xl border p-3 transition ${expandedId === i ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'} ${excluded ? 'opacity-60' : ''}`}>
                       <button onClick={() => setExpandedId(expandedId === i ? null : i)} className="w-full text-left">
                         <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color}`}>{name}</span>
+                          <span className={`text-[12px] font-bold px-2 py-0.5 rounded-full ${color}`}>{name}</span>
                           <span className={`text-sm font-bold ${excluded ? 'text-gray-400 line-through' : 'text-green-700'}`}>{fmtC(p?.total_salary)}</span>
                         </div>
                         {p && (
-                          <div className="mt-1.5 text-[10px] text-gray-500 space-y-0.5">
+                          <div className="mt-1.5 text-[12px] text-gray-500 space-y-0.5">
                             <div className="flex justify-between"><span>Hours</span><span className="font-medium text-gray-700">{p.hours_worked ? parseFloat(p.hours_worked).toFixed(1)+'h' : '—'}</span></div>
                             <div className="flex justify-between"><span>Pay</span><span className="font-medium text-gray-700">{fmtC(p.pay_for_hours)}</span></div>
                             {p.overtime_hours && parseFloat(p.overtime_hours) > 0 && (
@@ -1088,10 +1088,10 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                           </div>
                         )}
                       </button>
-                      {excluded && <p className="mt-1.5 text-[9px] text-red-500 font-semibold">🚫 Not paying this month</p>}
+                      {excluded && <p className="mt-1.5 text-[12px] text-red-500 font-semibold">🚫 Not paying this month</p>}
                       {canBuild && p && !currentConfirmation && (
                         <button onClick={() => toggleExclude(p)}
-                          className={`mt-2 w-full text-[10px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                          className={`mt-2 w-full text-[12px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
                           {excluded ? '↩ Include in Payment' : '🚫 Exclude from Payment'}
                         </button>
                       )}
@@ -1111,9 +1111,9 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
 
               {/* Full comparison table */}
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide px-3 pt-2.5 pb-1">Full Breakdown</p>
+                <p className="text-[12px] font-bold text-gray-500 uppercase tracking-wide px-3 pt-2.5 pb-1">Full Breakdown</p>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[9px]">
+                  <table className="w-full text-[12px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="text-left px-3 py-1.5 text-gray-500 font-bold">Staff</th>
@@ -1130,8 +1130,8 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                         return (
                           <tr key={name} className={`hover:bg-gray-50 ${excluded ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-1.5">
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${color}`}>{name}</span>
-                              {excluded && <span className="ml-1 text-[8px] font-bold text-red-500">🚫 not paying</span>}
+                              <span className={`text-[12px] font-bold px-1.5 py-0.5 rounded-full ${color}`}>{name}</span>
+                              {excluded && <span className="ml-1 text-[12px] font-bold text-red-500">🚫 not paying</span>}
                             </td>
                             {PAY_COLS.map(c => (
                               <td key={c.key}
@@ -1145,7 +1145,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                       {/* Totals row -- total_salary excludes anyone marked
                           "not paying" this month, same as the Grand Total above. */}
                       <tr className="bg-gray-100 border-t-2 border-gray-300">
-                        <td className="px-3 py-1.5 text-[9px] font-bold text-gray-700">TOTAL</td>
+                        <td className="px-3 py-1.5 text-[12px] font-bold text-gray-700">TOTAL</td>
                         {PAY_COLS.map(c => {
                           const sum = monthlyData.reduce((s, p) => {
                             if (!p) return s
@@ -1190,7 +1190,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
           {/* Monthly history table */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-[9px]">
+              <table className="w-full text-[12px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-3 py-1.5 text-gray-500 font-bold whitespace-nowrap">Month</th>
@@ -1215,7 +1215,7 @@ export function PayslipsTab({ role, username, viewingStaff }: { role: string; us
                   })}
                   {/* Totals row */}
                   <tr className="bg-gray-100 border-t-2 border-gray-300">
-                    <td className="px-3 py-1.5 text-[9px] font-bold text-gray-700">TOTAL</td>
+                    <td className="px-3 py-1.5 text-[12px] font-bold text-gray-700">TOTAL</td>
                     {PAY_COLS.map(c => {
                       const sum = staffData.reduce((s, p) => s + (p ? parseFloat((p as any)[c.key] ?? '0') || 0 : 0), 0)
                       return (
@@ -1299,7 +1299,7 @@ export function TeamProfilesTab() {
               ['address',       'Address'],
             ].map(([field, label]) => (
               <div key={field} className={field === 'address' ? 'col-span-2' : ''}>
-                <label className="text-[10px] text-gray-500 mb-0.5 block">{label}</label>
+                <label className="text-[12px] text-gray-500 mb-0.5 block">{label}</label>
                 <input
                   value={(editForm as any)[field] ?? ''}
                   onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
@@ -1316,10 +1316,10 @@ export function TeamProfilesTab() {
                 onChange={e => setEditForm(f => ({ ...f, has_company_tshirt: e.target.checked }))}
                 className="w-3.5 h-3.5"
               />
-              <label htmlFor="edit-has-tshirt" className="text-[11px] text-gray-600">Has company t-shirt</label>
+              <label htmlFor="edit-has-tshirt" className="text-[12px] text-gray-600">Has company t-shirt</label>
             </div>
             <div>
-              <label className="text-[10px] text-gray-500 mb-0.5 block">T-shirt Due Date (if not yet given)</label>
+              <label className="text-[12px] text-gray-500 mb-0.5 block">T-shirt Due Date (if not yet given)</label>
               <input
                 type="date"
                 value={editForm.tshirt_due_date ?? ''}
@@ -1462,7 +1462,7 @@ function prefillRow(payslips: Payslip[], staffName: string, buildMonth: string, 
 function NumField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="block text-[10px] text-gray-400 mb-0.5">{label}</span>
+      <span className="block text-[12px] text-gray-400 mb-0.5">{label}</span>
       <input type="number" step="0.01" value={value} onChange={e => onChange(e.target.value)}
         className="w-full bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
     </label>
@@ -1634,7 +1634,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 
       <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <label className="block text-[10px] text-gray-400 mb-0.5">Pay Month</label>
+          <label className="block text-[12px] text-gray-400 mb-0.5">Pay Month</label>
           <input type="month" value={buildMonth} onChange={e => setBuildMonth(e.target.value)}
             className="bg-gray-100 border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-blue-400" />
         </div>
@@ -1646,12 +1646,12 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-2">
         <p className="text-xs font-bold text-blue-800">Bulk Apply</p>
-        <p className="text-[10px] text-blue-600">Fill in only the fields you want to set for everyone checked below — leave the rest blank to keep each staff's own value.</p>
+        <p className="text-[12px] text-blue-600">Fill in only the fields you want to set for everyone checked below — leave the rest blank to keep each staff's own value.</p>
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => setBulkSelected(new Set(ALL_STAFF_NAMES))}
-            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">All</button>
+            className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">All</button>
           <button onClick={() => setBulkSelected(new Set())}
-            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">None</button>
+            className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-lg bg-white border border-blue-200 text-blue-700">None</button>
           {ALL_STAFF_NAMES.map(name => (
             <label key={name} className="flex items-center gap-1 text-xs bg-white border border-blue-200 rounded-lg px-2 py-1 cursor-pointer">
               <input type="checkbox" checked={bulkSelected.has(name)} onChange={() => toggleBulkStaff(name)} />
@@ -1692,19 +1692,19 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
                 <span className={`text-base font-bold ${excluded || hidden ? 'text-gray-400 line-through' : 'text-blue-700'}`}>{fmtC(String(finalTotal))}</span>
                 {!excluded && (
                   <button onClick={() => toggleBuildHidden(name)}
-                    className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${hidden ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}>
+                    className={`text-[12px] font-semibold px-2 py-1 rounded-lg transition ${hidden ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}>
                     {hidden ? '↩ Show for Payment' : '🚫 Hide from Payment'}
                   </button>
                 )}
                 <button onClick={() => toggleBuildExclude(name)}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
+                  className={`text-[12px] font-semibold px-2 py-1 rounded-lg transition ${excluded ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}>
                   {excluded ? '↩ Add Back' : '✕ Remove'}
                 </button>
               </div>
             </div>
-            {excluded && <p className="text-[10px] text-red-500 font-semibold">Removed from this payroll — no payslip will be saved for {name}.</p>}
+            {excluded && <p className="text-[12px] text-red-500 font-semibold">Removed from this payroll — no payslip will be saved for {name}.</p>}
             {!excluded && hidden && (
-              <p className="text-[10px] text-amber-600 font-semibold">Hidden from payment — {name}&apos;s payslip will still be saved, just left out of the payment total until you switch this back on.</p>
+              <p className="text-[12px] text-amber-600 font-semibold">Hidden from payment — {name}&apos;s payslip will still be saved, just left out of the payment total until you switch this back on.</p>
             )}
             <div className="grid grid-cols-2 gap-2">
               <NumField label={`Hours Worked (${hoursByStaff[name] ?? 0}h logged)`} value={row.hours_worked} onChange={v => updateRow(name, 'hours_worked', v)} />
@@ -1719,7 +1719,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
               <NumField label="SSNIT (deducted)" value={row.ssnit} onChange={v => updateRow(name, 'ssnit', v)} />
             </div>
             <div className="flex items-center justify-between gap-2 pt-1 border-t border-gray-100">
-              <span className="text-[11px] text-gray-400">Computed: {fmtC(String(computedTotal))}</span>
+              <span className="text-[12px] text-gray-400">Computed: {fmtC(String(computedTotal))}</span>
               <div className="w-40">
                 <NumField label="Flat Total Override" value={row.flat_total} onChange={v => updateRow(name, 'flat_total', v)} />
               </div>
@@ -1729,7 +1729,7 @@ function PayslipBuilder({ payslips, onSaved }: { payslips: Payslip[]; onSaved: (
       })}
 
       {(buildExcluded.size > 0 || buildHidden.size > 0) && (
-        <p className="text-[11px] text-gray-400 text-center">
+        <p className="text-[12px] text-gray-400 text-center">
           {ALL_STAFF_NAMES.length - buildExcluded.size} of {ALL_STAFF_NAMES.length} staff will be saved
           {buildExcluded.size > 0 && <> — {[...buildExcluded].join(', ')} removed from this payroll</>}
           {buildHidden.size > 0 && <> — {[...buildHidden].join(', ')} hidden from payment</>}.
@@ -1825,21 +1825,21 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
           {!viewingStaff && (
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
             <p className="text-sm font-semibold text-gray-700">Auto-Penalty Settings</p>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[12px] text-gray-400">
               Once an assigned violation has been outstanding this many days, the assigned staff member is
               automatically penalized the points below. Checked daily. If an assignment has its own deadline
               set (see its own page&apos;s Assigned control), that fixed date is used instead of this rolling threshold.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-gray-500 mb-0.5 block">Threshold (days)</label>
+                <label className="text-[12px] text-gray-500 mb-0.5 block">Threshold (days)</label>
                 <input type="number" min="1" disabled={!canManage}
                   value={penaltySettings.threshold_days ?? '3'}
                   onChange={e => setPenaltySettings(s => ({ ...s, threshold_days: e.target.value }))}
                   className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 mb-0.5 block">Points per violation</label>
+                <label className="text-[12px] text-gray-500 mb-0.5 block">Points per violation</label>
                 <input type="number" min="1" disabled={!canManage}
                   value={penaltySettings.points_per_violation ?? '5'}
                   onChange={e => setPenaltySettings(s => ({ ...s, points_per_violation: e.target.value }))}
@@ -1861,7 +1861,7 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {leaderboard.map(l => (
                 <div key={l.staff} className="bg-gray-50 rounded-lg px-3 py-2">
-                  <p className="text-[10px] text-gray-400 capitalize">{l.staff}</p>
+                  <p className="text-[12px] text-gray-400 capitalize">{l.staff}</p>
                   <p className={`text-base font-bold ${l.points > 0 ? 'text-red-500' : 'text-gray-700'}`}>{l.points}</p>
                 </div>
               ))}
@@ -1942,11 +1942,11 @@ export function ViolationsTab({ role, username, viewingStaff }: { role: string; 
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAFF_COLORS[v.staff_name.charAt(0).toUpperCase() + v.staff_name.slice(1)] ?? 'bg-gray-100 text-gray-600'}`}>
                       {v.staff_name}
                     </span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SEVERITY_COLORS[v.severity] ?? 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${SEVERITY_COLORS[v.severity] ?? 'bg-gray-100 text-gray-500'}`}>
                       {v.severity}
                     </span>
                     {v.points > 0 && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">
+                      <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">
                         -{v.points} pts
                       </span>
                     )}
@@ -2038,11 +2038,11 @@ function NoTimesFix({ date, onFixed }: { date: string; onFixed: (d: string) => v
               <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${STAFF_COLORS[cap] ?? 'bg-gray-100 text-gray-600'}`}>{cap}</span>
               <div className="flex gap-1">
                 <button onClick={() => upd(s, { mode: 'work' })}
-                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'work' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
+                  className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'work' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
                   Worked
                 </button>
                 <button onClick={() => upd(s, { mode: 'away' })}
-                  className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'away' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
+                  className={`text-[12px] font-semibold px-2.5 py-0.5 rounded-lg transition ${e.mode === 'away' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}>
                   Away
                 </button>
               </div>
@@ -2145,7 +2145,7 @@ export function RoleTab({ role, username, viewingStaff }: { role: string; userna
               <option value="manager">Manager</option>
               <option value="owner">Owner</option>
             </select>
-            <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
+            <span className={`shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded-full ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-500'}`}>
               {saving === u.id ? '…' : u.role}
             </span>
           </div>
@@ -2700,7 +2700,7 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
           {/* Tenure */}
           <div className="bg-white border border-gray-200 rounded-xl p-3">
             <p className="text-sm font-semibold text-gray-700 mb-0.5">Tenure (Active Since)</p>
-            <p className="text-[11px] text-gray-400 mb-2">Based on earliest recorded clock-in — not necessarily actual hire date.</p>
+            <p className="text-[12px] text-gray-400 mb-2">Based on earliest recorded clock-in — not necessarily actual hire date.</p>
             <div className="space-y-2">
               {tenure.map(t => (
                 <div key={t.staff} className="flex items-center justify-between text-sm">
@@ -2715,7 +2715,7 @@ export function AnalyticsTab({ viewingStaff }: { viewingStaff?: string } = {}) {
           {/* Punctuality */}
           <div className="bg-white border border-gray-200 rounded-xl p-3">
             <p className="text-sm font-semibold text-gray-700 mb-0.5">Punctuality — Average Clock-In Time</p>
-            <p className="text-[11px] text-gray-400 mb-2">Lower (earlier) is better. Based on all recorded clock-ins.</p>
+            <p className="text-[12px] text-gray-400 mb-2">Lower (earlier) is better. Based on all recorded clock-ins.</p>
             <div className="space-y-2">
               {punctuality.map(p => (
                 <div key={p.staff} className="flex items-center justify-between text-sm">
@@ -2777,7 +2777,7 @@ function StaffClientInner({ role, username, embedded, openAddSignal }: { role: s
       <div className="flex gap-1 overflow-x-auto pb-1">
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[10px] font-semibold transition
+            className={`shrink-0 flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl text-[12px] font-semibold transition
               ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
             {TAB_ICONS[t]}
             {t}

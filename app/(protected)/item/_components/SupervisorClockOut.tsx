@@ -34,9 +34,9 @@ export default function SupervisorClockOut({ staffName }: { staffName: string })
       <WithMic onText={t => setEvidence(x => (x ? x + ' ' : '') + t)}>
         <textarea value={evidence} onChange={e => setEvidence(e.target.value)} rows={2} placeholder={clockIn ? 'Your evidence they are at the shop (CCTV, you saw them...)' : 'Your evidence they are not at the shop (CCTV, a call, a photo...)'} className="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs" />
       </WithMic>
-      <label className="block text-[11px] font-bold text-gray-700">{clockIn ? 'Time they arrived' : 'Time they left'} (leave empty if you do not know)
+      <label className="block text-[12px] font-bold text-gray-700">{clockIn ? 'Time they arrived' : 'Time they left'} (leave empty if you do not know)
         <input type="time" value={time} onChange={e => setTime(e.target.value)} className="mt-0.5 w-full rounded-lg border border-amber-300 bg-white p-1.5 text-sm" /></label>
-      {!time && <p className="text-[11px] text-gray-700">{clockIn ? (info.firstActivity ? `Without a time, the app uses their first action at the shop today: ${info.firstActivity}.` : 'They have no shop activity today, so you must enter the time they arrived.') : (info.lastActivity ? `Without a time, the app uses their last action at the shop: ${info.lastActivity}.` : 'They have no shop activity today, so you must enter the time they left.')}</p>}
+      {!time && <p className="text-[12px] text-gray-700">{clockIn ? (info.firstActivity ? `Without a time, the app uses their first action at the shop today: ${info.firstActivity}.` : 'They have no shop activity today, so you must enter the time they arrived.') : (info.lastActivity ? `Without a time, the app uses their last action at the shop: ${info.lastActivity}.` : 'They have no shop activity today, so you must enter the time they left.')}</p>}
       {msg && <p className="text-xs font-bold text-red-700">{msg}</p>}
       <button type="button" disabled={busy || evidence.trim().length < 4 || (!time && !(clockIn ? info.firstActivity : info.lastActivity))} onClick={() => void go()} className="w-full rounded-xl bg-amber-600 py-2 text-xs font-bold text-white disabled:opacity-40">Clock {cap(staffName)} {clockIn ? 'in' : 'out'}</button>
     </div>

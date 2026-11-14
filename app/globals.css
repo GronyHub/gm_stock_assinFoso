@@ -63,3 +63,11 @@ body {
 
 /* A page shown inside the hub's right pane (see components/FrameFlag.tsx) has no navigation bar of its own. */
 html.framed .no-frame { display: none !important; }
+
+/* Phone readability (owner, 14 Nov 2026): on touch screens every button is at least 36px tall and wide, so small chips and icons are easy to hit. */
+@media (pointer: coarse) {
+  button, [role="button"], a.rounded-full {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}

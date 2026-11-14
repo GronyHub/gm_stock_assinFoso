@@ -100,7 +100,7 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide,
           type="button"
           onClick={onHide}
           title="Hide sidebar"
-          className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white/10 hover:bg-white/25 text-blue-100 text-[9px] flex items-center justify-center transition"
+          className="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-white/10 hover:bg-white/25 text-blue-100 text-[12px] flex items-center justify-center transition"
         >
           ◀
         </button>
@@ -110,7 +110,7 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide,
       {SHOW_MODE_SWITCH && <div className="flex items-stretch gap-0.5 p-1">
         {(['icon', 'both', 'text'] as DisplayMode[]).map(m => (
           <button key={m} onClick={() => onChange(m)} title={MODE_LABEL[m]}
-            className={`flex-1 flex items-center justify-center py-1 rounded text-[11px] transition
+            className={`flex-1 flex items-center justify-center py-1 rounded text-[12px] transition
               ${mode === m ? 'bg-white text-[var(--pane-accent)]' : 'bg-white/10 text-blue-100 hover:bg-white/20'}`}>
             {GLYPH[m]}
           </button>
@@ -224,7 +224,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           each side to keep the whole thing centered. */}
       {mode !== 'icon' && (
         (chipLabel || chipBorder)
-          ? <span className="block w-full -mx-1 truncate text-[8px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
+          ? <span className="block w-full -mx-1 truncate text-[12px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
           : <span className="w-full whitespace-normal break-words leading-tight">{label}</span>
       )}
     </button>

@@ -86,7 +86,7 @@ export function LossDialog({ prompt: lp, onClose, onFixRecords }: {
                 🔢 Counts
               </button>
             </div>
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[12px] text-gray-400">
               A sale entered with the wrong quantity, a bill never recorded, or an earlier miscount all show up as a "loss".
             </p>
           </div>

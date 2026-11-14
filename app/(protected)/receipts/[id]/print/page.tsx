@@ -241,19 +241,19 @@ export default function ReceiptPrintPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="Grony Multimedia" className="h-12 w-auto mb-1" />
             <p className="text-xs text-gray-500">{COMPANY.location}</p>
-            <p className="text-[11px] text-gray-500">Tel / WhatsApp / MoMo: {COMPANY.phone}</p>
-            <p className="text-[11px] text-gray-500">{COMPANY.email} | {COMPANY.website}</p>
+            <p className="text-[12px] text-gray-500">Tel / WhatsApp / MoMo: {COMPANY.phone}</p>
+            <p className="text-[12px] text-gray-500">{COMPANY.email} | {COMPANY.website}</p>
           </div>
           <div className="text-right">
             <p className="text-lg font-bold uppercase tracking-wide text-gray-900">{docType}</p>
             <p className="text-sm text-gray-600">{receipt.invoice_number}</p>
             <p className="text-xs text-gray-400">{fmtDate(receipt.invoice_date)}</p>
-            <p className="text-[11px] text-gray-400">Printed {fmtGhanaTime(generatedAt)} GMT</p>
+            <p className="text-[12px] text-gray-400">Printed {fmtGhanaTime(generatedAt)} GMT</p>
           </div>
         </div>
 
         <div className="mb-6">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Bill To</p>
+          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Bill To</p>
           <p className="text-sm font-semibold text-gray-900">{receipt.customer_display ?? receipt.customer_name}</p>
           {hasMoreDetails && (
             <div className="text-xs text-gray-600 mt-0.5 space-y-0.5">
@@ -268,7 +268,7 @@ export default function ReceiptPrintPage() {
 
         <table className="w-full text-sm border-collapse mb-6">
           <thead>
-            <tr className="border-b border-gray-300 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+            <tr className="border-b border-gray-300 text-[12px] font-semibold text-gray-400 uppercase tracking-wide">
               <th className="text-left py-2">Item</th>
               <th className="text-right py-2">Qty</th>
               <th className="text-right py-2">Price</th>
@@ -303,15 +303,15 @@ export default function ReceiptPrintPage() {
 
         {receipt.notes && (
           <div className="border-t border-gray-100 pt-3 mb-6">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Notes</p>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Notes</p>
             <p className="text-xs text-gray-700">{receipt.notes}</p>
           </div>
         )}
 
         <div className="text-center border-t border-gray-100 pt-4 space-y-1">
           <p className="text-xs text-gray-400">Thank you for your business.</p>
-          <p className="text-[10px] text-gray-500">Our services: {COMPANY.services.join(' | ')}</p>
-          <p className="text-[10px] text-gray-500">{COMPANY.location} | {COMPANY.phone} | {COMPANY.email} | {COMPANY.website}</p>
+          <p className="text-[12px] text-gray-500">Our services: {COMPANY.services.join(' | ')}</p>
+          <p className="text-[12px] text-gray-500">{COMPANY.location} | {COMPANY.phone} | {COMPANY.email} | {COMPANY.website}</p>
         </div>
       </div>
     </div>

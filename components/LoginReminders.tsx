@@ -23,7 +23,7 @@ export default function LoginReminders() {
       className={`fixed left-1/2 top-2 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border-2 px-3 py-2 text-left shadow-lg print:hidden ${TONE[head.tone]}`}>
       <span className="block text-[12px] font-extrabold leading-tight">{head.title}</span>
       <span className="block text-[12px] font-semibold leading-snug">{head.text}</span>
-      {queue.length > 1 && <span className="mt-0.5 block text-[10px] font-bold opacity-60">{queue.length - 1} more</span>}
+      {queue.length > 1 && <span className="mt-0.5 block text-[12px] font-bold opacity-60">{queue.length - 1} more</span>}
     </button>
   )
 }

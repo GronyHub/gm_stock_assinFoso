@@ -11,7 +11,7 @@ export default function FlagQuotaLine() {
   return (
     <p className={`mb-2 rounded-lg p-2 text-sm font-bold ${ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
       Today: {p.fixed} of {p.needed} flags fixed{ok ? ' ✓' : ''}. {p.negOpen > 0 ? `Negative stock still open: ${p.negOpen}.` : 'No negative stock left.'}
-      <span className="block text-[11px] font-semibold opacity-80">Law: the manager fixes at least 5 flags a day, starting with the negative stock. Fewer costs 1 penalty point at 19:25.</span>
+      <span className="block text-[12px] font-semibold opacity-80">Law: the manager fixes at least 5 flags a day, starting with the negative stock. Fewer costs 1 penalty point at 19:25.</span>
     </p>
   )
 }

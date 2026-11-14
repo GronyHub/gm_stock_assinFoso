@@ -242,7 +242,7 @@ export default function ProfileTab() {
           </div>
         )}
         {photoErr && <p className="text-xs text-red-600 mt-2">{photoErr}</p>}
-        <p className="text-[11px] text-gray-400 mt-3">
+        <p className="text-[12px] text-gray-400 mt-3">
           Your display photo shows beside your name across the app and is printed on your employee tag. Use a clear,
           front-facing photo of your face, taken in good light. You can change it any time.
         </p>
@@ -260,7 +260,7 @@ export default function ProfileTab() {
           <label className={labelCls}>Email Address</label>
           <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
             placeholder="you@example.com" className={inputCls} />
-          <p className="text-[10px] text-gray-400 mt-1">Used for login and password reset</p>
+          <p className="text-[12px] text-gray-400 mt-1">Used for login and password reset</p>
         </div>
         <div>
           <label className={labelCls}>Phone Number</label>
@@ -295,7 +295,7 @@ export default function ProfileTab() {
         <form onSubmit={handleSaveStaff} className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
           <div>
             <p className="text-sm font-semibold text-gray-700">Staff Details</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[12px] text-gray-400 mt-0.5">
               This information is used for payslips and HR records. Please fill in all fields accurately.
             </p>
           </div>

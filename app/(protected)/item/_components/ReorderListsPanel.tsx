@@ -26,7 +26,7 @@ function SectionPicker({ current, groupNames, onPick }: { current: string | null
             if (e.key === 'Enter') { onPick(newName.trim() || null); setAddingNew(false); setNewName('') }
             if (e.key === 'Escape') setAddingNew(false)
           }}
-          className="text-[10px] border border-gray-300 rounded px-1.5 py-0.5 w-24 outline-none focus:ring-1 focus:ring-blue-400" />
+          className="text-[12px] border border-gray-300 rounded px-1.5 py-0.5 w-24 outline-none focus:ring-1 focus:ring-blue-400" />
         <button onClick={() => { onPick(newName.trim() || null); setAddingNew(false); setNewName('') }}
           className="text-green-600 text-xs font-bold px-0.5">✓</button>
         <button onClick={() => setAddingNew(false)} className="text-gray-400 text-xs font-bold px-0.5">×</button>
@@ -37,7 +37,7 @@ function SectionPicker({ current, groupNames, onPick }: { current: string | null
     <select value={current ?? ''} onChange={e => {
       if (e.target.value === '__new__') { setAddingNew(true); return }
       onPick(e.target.value || null)
-    }} className="text-[10px] border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-700">
+    }} className="text-[12px] border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-700">
       <option value="">No section</option>
       {groupNames.map(g => <option key={g} value={g}>{g}</option>)}
       <option value="__new__">+ New section…</option>
@@ -190,7 +190,7 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
           return (
           <div key={item.key}>
             {header && (
-              <p className="pt-2 pb-1"><span className="block w-full text-[8px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
+              <p className="pt-2 pb-1"><span className="block w-full text-[12px] font-extrabold text-red-700 bg-yellow-400 uppercase tracking-wide px-2 py-1 truncate">{header}</span></p>
             )}
             <div className={`flex flex-col gap-1.5 bg-white border rounded-lg px-3 py-2 transition ${paneHidden[item.key] ? 'border-gray-200 opacity-50' : 'border-gray-200'}`}>
               <div className="flex items-center gap-2">
@@ -232,10 +232,10 @@ export default function ReorderListsPanel({ cashItems, manageItems, staffItems, 
               </div>
               {tab === 'cash' && renamingKey !== item.key && (
                 <div className="flex items-center gap-1.5 pl-7 flex-wrap">
-                  <span className="text-[9px] text-gray-400 shrink-0">Section</span>
+                  <span className="text-[12px] text-gray-400 shrink-0">Section</span>
                   <SectionPicker current={item.group ?? null} groupNames={groupNames}
                     onPick={name => saveGroup(item, name, override?.standalone ?? false)} />
-                  <label className="flex items-center gap-1 text-[9px] text-gray-500 cursor-pointer select-none ml-auto shrink-0">
+                  <label className="flex items-center gap-1 text-[12px] text-gray-500 cursor-pointer select-none ml-auto shrink-0">
                     <input type="checkbox" checked={override?.standalone ?? false}
                       onChange={e => saveGroup(item, override?.group_name ?? null, e.target.checked)}
                       className="w-3 h-3 accent-blue-600" />

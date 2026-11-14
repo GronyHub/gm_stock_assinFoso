@@ -111,7 +111,7 @@ export default function GronyChecksGrid() {
                           {has ? '✓' : '○'}
                         </div>
                         {lastDate && (
-                          <div className="text-[9px] text-gray-500 mt-0.5">{lastDate}</div>
+                          <div className="text-[12px] text-gray-500 mt-0.5">{lastDate}</div>
                         )}
                       </td>
                     )

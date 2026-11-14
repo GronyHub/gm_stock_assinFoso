@@ -30,7 +30,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && liveDueCatalogueCount > 0 && (
-                          <div className="col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[9px] font-bold text-white uppercase tracking-wide">
+                          <div className="col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
                             {liveDueCatalogueCount} item{liveDueCatalogueCount !== 1 ? 's' : ''} need{liveDueCatalogueCount === 1 ? 's' : ''} counting
                           </div>
                         )}
@@ -50,7 +50,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                           className={`relative flex flex-col border-r-2 border-b-2 group ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} transition`}
                         >
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
-                            <div className={`px-2 py-1 text-[8px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
+                            <div className={`px-2 py-1 text-[12px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                               <span className="truncate">{due.label} {overdue ? 'OVERDUE' : 'DUE'}</span>
                             </div>
                           )}
@@ -100,7 +100,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                               else if (f.label.includes('MISSING GROUP')) displayLabel = ''
                               else if (f.label.includes('EMPTY DATA')) displayLabel = f.label.replace('⚠ EMPTY DATA: ', '')
                               return displayLabel ? (
-                                <div key={i} className={`px-2 py-0.5 text-[8px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
+                                <div key={i} className={`px-2 py-0.5 text-[12px] font-extrabold text-white tracking-wide truncate ${f.bg}`}>
                                   {displayLabel}
                                 </div>
                               ) : null
@@ -109,10 +109,10 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                           <div className="px-1 py-0.5 flex flex-col">
                             {liveSaleViolationFilter === 'countDue' ? (
                               <>
-                                <div className={`text-[11px] font-semibold leading-tight truncate text-left`}>
-                                  {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left text-blue-600`)}
+                                <div className={`text-[12px] font-semibold leading-tight truncate text-left`}>
+                                  {renderClickableItemName(item.name, `text-[12px] leading-tight truncate text-left text-blue-600`)}
                                 </div>
-                                <p className="text-[9px] text-gray-600 leading-tight mt-0.5">
+                                <p className="text-[12px] text-gray-600 leading-tight mt-0.5">
                                   <span>Last ctd: </span>
                                   <span className="font-semibold text-gray-900">
                                     {liveLastCountDateByItemId.get(item.id) ? fmtDate(liveLastCountDateByItemId.get(item.id)!) : 'Never'}
@@ -124,20 +124,20 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                     </>
                                   )}
                                 </p>
-                                <p className="text-[9px] text-gray-600 leading-tight">
+                                <p className="text-[12px] text-gray-600 leading-tight">
                                   <span>SOH: </span>
                                   <span className="font-semibold text-gray-900">{Math.ceil(Number(item.soh))} pc</span>
                                 </p>
                               </>
                             ) : (
                               <>
-                                <div className={`text-[11px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
-                                  {renderClickableItemName(item.name, `text-[11px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
+                                <div className={`text-[12px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                                  {renderClickableItemName(item.name, `text-[12px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                                 </div>
                                 {liveSaleViolationFilter === 'noViolations' ? (
                                   <>
                                     {item.product_type !== 'service' && (
-                                      <p className="text-[9px] text-gray-600 leading-tight">
+                                      <p className="text-[12px] text-gray-600 leading-tight">
                                         <span className="text-green-600 font-semibold">ACP ₵{formatACP(item.acp_price ?? item.cost_price)}</span>
                                         <span className="text-gray-400"> · </span>
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
@@ -149,7 +149,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                         from the same liveGmcTargetStock map the GMC-target
                                         badge/gate logic already keeps current. */}
                                     {item.product_type === 'service' && item.converts_to_item_id != null && (
-                                      <p className="text-[9px] text-gray-600 leading-tight">
+                                      <p className="text-[12px] text-gray-600 leading-tight">
                                         <span className="text-slate-600 font-semibold">
                                           {item.converts_to_name ?? 'material'} left = {Math.ceil(liveGmcTargetStock.get(item.converts_to_item_id) ?? 0)}
                                         </span>
@@ -175,11 +175,11 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
                                         </label>
                                         <label className="flex-[1.8] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
-                                          <span className="text-[9px] text-gray-400">₵</span>
+                                          <span className="text-[12px] text-gray-400">₵</span>
                                           <input
                                             type="number" inputMode="decimal"
                                             disabled={!session}
@@ -187,7 +187,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
                                             onClick={e => e.stopPropagation()}
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
                                         </label>
                                         {!miOn && features.live_who && (<label className="flex-[1.2] min-w-0 rounded-md border border-gray-300 bg-white px-1 py-0.5 flex items-center gap-0.5 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-200">
@@ -201,7 +201,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
                                             placeholder="Who? (required)"
-                                            className="w-full min-w-0 text-[10px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>)}
                                         <button
@@ -209,7 +209,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                           disabled={liveSaving || !session}
                                           onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
                                           aria-label={`Record sale for ${item.name}`}
-                                          className={`shrink-0 w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center disabled:opacity-50 transition-colors ${
+                                          className={`shrink-0 w-7 h-7 rounded-full text-white text-[13px] font-bold flex items-center justify-center disabled:opacity-50 transition-colors ${
                                             justTappedItemIds.has(item.id) ? 'bg-green-600' : 'bg-red-600 hover:bg-red-700'
                                           }`}
                                         >
@@ -219,7 +219,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                     )}
                                   </>
                                 ) : (
-                                  <p className="text-[9px] text-gray-600 leading-tight">
+                                  <p className="text-[12px] text-gray-600 leading-tight">
                                     <span className="text-blue-600 font-semibold">₵{formatPrice(item.selling_price)}</span>
                                     <span className="text-gray-400"> · </span>
                                     {item.product_type !== 'service' && (
@@ -256,7 +256,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                     {item.gmc_type && (
                                       <>
                                         <span className="text-gray-400"> · </span>
-                                        <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[7px] font-bold text-purple-700">
+                                        <span className="inline-block rounded bg-purple-100 px-1 py-0.5 text-[12px] font-bold text-purple-700">
                                           {item.gmc_type === 'gmc' ? 'GMC' : item.gmc_type === 'service_no_gmc' ? 'SVC only' : item.gmc_type === 'pack_to_gmc' ? 'PKG→GMC' : 'SVC/GMC'}
                                           {item.converts_to_name && ` → ${item.converts_to_name}`}
                                         </span>
@@ -268,7 +268,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                             )}
                           </div>
                           {count > 0 && (
-                            <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[8px] font-bold">
+                            <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-3 h-3 px-0.5 rounded-full bg-blue-600 text-white text-[12px] font-bold">
                               {count}
                             </span>
                           )}

@@ -40,17 +40,17 @@ export default function ItemPicture({ itemId }: { itemId: number }) {
   }
   return (
     <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-3 py-2">
-      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-[10px] text-gray-400">
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 text-[12px] text-gray-400">
         {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : url === undefined ? '…' : 'No photo'}
       </div>
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold text-gray-600">Item photo (used in adverts)</p>
+        <p className="text-[12px] font-semibold text-gray-600">Item photo (used in adverts)</p>
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="rounded bg-blue-600 px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : url ? 'Change photo' : 'Add photo'}</button>
-          {url && <button type="button" disabled={busy} onClick={() => void remove()} className="rounded bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-700">Remove</button>}
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="rounded bg-blue-600 px-2.5 py-1 text-[12px] font-bold text-white disabled:opacity-40">{busy ? 'Saving…' : url ? 'Change photo' : 'Add photo'}</button>
+          {url && <button type="button" disabled={busy} onClick={() => void remove()} className="rounded bg-red-50 px-2.5 py-1 text-[12px] font-bold text-red-700">Remove</button>}
         </div>
-        {credit && <p className="max-w-[260px] truncate text-[9px] text-gray-400" title={credit}>Photo: {credit.split(' · http')[0]}</p>}
-        {err && <p className="text-[10px] text-red-600">{err}</p>}
+        {credit && <p className="max-w-[260px] truncate text-[12px] text-gray-400" title={credit}>Photo: {credit.split(' · http')[0]}</p>}
+        {err && <p className="text-[12px] text-red-600">{err}</p>}
         <input ref={input} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = '' }} />
       </div>
     </div>

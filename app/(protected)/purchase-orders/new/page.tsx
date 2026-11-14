@@ -115,7 +115,7 @@ export default function NewPurchaseOrderPage({ onSuccess }: { onSuccess?: () => 
       <div className="bg-white border border-gray-300 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+            <tr className="bg-gray-50 border-b border-gray-200 text-[12px] font-semibold text-gray-400 uppercase tracking-wide">
               <th className="text-left px-3 py-2">Item</th>
               <th className="text-right px-3 py-2">Qty</th>
               <th className="text-right px-3 py-2">Price</th>

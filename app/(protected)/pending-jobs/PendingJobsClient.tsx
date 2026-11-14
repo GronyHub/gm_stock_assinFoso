@@ -71,15 +71,15 @@ export default function PendingJobsClient({ canDelete }: { canDelete: boolean })
     return (
       <div key={j.id} className={`space-y-1.5 rounded-xl border-2 p-3 ${late ? 'border-red-300 bg-red-50' : j.status === 'ready' ? 'border-green-300 bg-green-50' : j.status === 'done' ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'}`}>
         <div className="flex flex-wrap items-center gap-x-2">
-          <p className="text-sm font-extrabold text-gray-900">{j.customer}{j.customer_id ? <span className="ml-1 text-[11px] font-bold text-gray-500">{j.customer_id}</span> : null}</p>
+          <p className="text-sm font-extrabold text-gray-900">{j.customer}{j.customer_id ? <span className="ml-1 text-[12px] font-bold text-gray-500">{j.customer_id}</span> : null}</p>
           {j.phone && <a href={`tel:${j.phone}`} className="text-xs font-semibold text-blue-700 underline">{j.phone}</a>}
-          <span className="text-[10px] font-bold text-gray-400">{jobNo(j.id)}</span>
-          <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${j.status === 'ready' ? 'bg-green-600 text-white' : j.status === 'done' ? 'bg-gray-300 text-gray-800' : 'bg-amber-200 text-amber-900'}`}>{j.status === 'ready' ? 'Ready to collect' : j.status === 'done' ? 'Collected' : 'To be done'}</span>
+          <span className="text-[12px] font-bold text-gray-400">{jobNo(j.id)}</span>
+          <span className={`ml-auto rounded-full px-2 py-0.5 text-[12px] font-bold ${j.status === 'ready' ? 'bg-green-600 text-white' : j.status === 'done' ? 'bg-gray-300 text-gray-800' : 'bg-amber-200 text-amber-900'}`}>{j.status === 'ready' ? 'Ready to collect' : j.status === 'done' ? 'Collected' : 'To be done'}</span>
         </div>
         {j.lines.length ? <ul className="text-sm text-gray-800">{j.lines.map((l, i) => <li key={i}>{l.qty} x {l.name} @ {money(l.price)} = {money(l.qty * l.price)}</li>)}</ul> : <p className="text-sm text-gray-800">{j.job}</p>}
         <p className="text-sm font-bold text-gray-900">{j.total > 0 ? <>Total {money(j.total)} · {j.prepaid ? <span className="text-green-700">paid in full in the Sales Log</span> : <>paid {money(j.paid)} · <span className={j.balance > 0.005 ? 'text-red-700' : 'text-green-700'}>{j.balance > 0.005 ? `balance ${money(j.balance)}` : 'fully paid'}</span></>}</> : null}</p>
         {j.note && <p className="text-xs text-gray-600">Note: {j.note}</p>}
-        <p className="text-[11px] text-gray-500">Left {dlabel(j.left_on)}{days(j.left_on, t) > 0 ? ` (${days(j.left_on, t)} day${days(j.left_on, t) === 1 ? '' : 's'} ago)` : ' (today)'} · <b className={late ? 'text-red-700' : ''}>{dueTxt}</b>{j.status !== 'done' && !j.due_on ? '' : ''}{j.created_by ? ` · taken by ${j.created_by}` : ''}</p>
+        <p className="text-[12px] text-gray-500">Left {dlabel(j.left_on)}{days(j.left_on, t) > 0 ? ` (${days(j.left_on, t)} day${days(j.left_on, t) === 1 ? '' : 's'} ago)` : ' (today)'} · <b className={late ? 'text-red-700' : ''}>{dueTxt}</b>{j.status !== 'done' && !j.due_on ? '' : ''}{j.created_by ? ` · taken by ${j.created_by}` : ''}</p>
         <div className="flex flex-wrap gap-1.5">
           {j.status === 'pending' && <button type="button" onClick={async () => { if (await send('PATCH', '/api/pending-jobs', { id: j.id, status: 'ready' }, 'Marked ready to collect.') && j.phone) openWa(waOf({ ...j, status: 'ready' }, 'ready')) }} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Done: tell the customer</button>}
           {j.balance > 0.005 && <button type="button" onClick={() => setPay({ id: j.id, amount: String(j.balance), method: 'cash', refund: false })} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white">Take payment</button>}
@@ -92,7 +92,7 @@ export default function PendingJobsClient({ canDelete }: { canDelete: boolean })
         </div>
         {pay?.id === j.id && (
           <div className="flex flex-wrap items-end gap-2 rounded-lg bg-white p-2">
-            <label className="text-[11px] font-semibold text-gray-700">{pay.refund ? 'Refund' : 'Amount'}<input type="number" step="0.01" value={pay.amount} onChange={e => setPay({ ...pay, amount: e.target.value })} className="mt-0.5 block w-28 rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+            <label className="text-[12px] font-semibold text-gray-700">{pay.refund ? 'Refund' : 'Amount'}<input type="number" step="0.01" value={pay.amount} onChange={e => setPay({ ...pay, amount: e.target.value })} className="mt-0.5 block w-28 rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
             <select value={pay.method} onChange={e => setPay({ ...pay, method: e.target.value })} className="rounded-lg border border-gray-300 p-1.5 text-sm"><option value="cash">Cash</option><option value="momo">MoMo</option></select>
             <button type="button" onClick={async () => { const r = await send('POST', '/api/pending-jobs/payments', { job_id: j.id, amount: pay.amount, method: pay.method, kind: pay.refund ? 'refund' : 'balance' }, pay.refund ? 'Refund recorded.' : 'Payment recorded.'); if (r) setPay(null) }} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Record</button>
           </div>
@@ -130,7 +130,7 @@ export default function PendingJobsClient({ canDelete }: { canDelete: boolean })
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone (for WhatsApp)" inputMode="tel" className="rounded-lg border border-gray-300 p-2 text-sm" />
-            <label className="text-[11px] font-semibold text-gray-700">Promised for<input type="date" min={t} value={form.due_on} onChange={e => setForm(f => ({ ...f, due_on: e.target.value }))} className="mt-0.5 block w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
+            <label className="text-[12px] font-semibold text-gray-700">Promised for<input type="date" min={t} value={form.due_on} onChange={e => setForm(f => ({ ...f, due_on: e.target.value }))} className="mt-0.5 block w-full rounded-lg border border-gray-300 p-1.5 text-sm" /></label>
           </div>
           {!form.prepaid && (
             <div className="relative">
@@ -159,7 +159,7 @@ export default function PendingJobsClient({ canDelete }: { canDelete: boolean })
           )}
           <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
           <button type="button" disabled={!form.customer.trim() || !form.phone.trim() || !lines.length} onClick={() => void add()} className="w-full rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">{form.prepaid ? 'Make it a pending job' : 'Write it down'}</button>
-          <p className="text-[11px] text-gray-500">The customer and phone are needed so they can be messaged. Only the money taken now is added to today&apos;s sales total.</p>
+          <p className="text-[12px] text-gray-500">The customer and phone are needed so they can be messaged. Only the money taken now is added to today&apos;s sales total.</p>
         </div>
       )}
       <div className="flex flex-wrap gap-1">{TABS.map(([k, label]) => <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-full px-3 py-1 text-xs font-bold ${tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}{k === 'debt' && owing.length ? ` (${owing.length})` : ''}</button>)}</div>

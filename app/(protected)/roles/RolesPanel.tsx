@@ -134,7 +134,7 @@ export default function RolesPanel({ roles, setRoles, users }: {
               <div key={role.key} className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">{role.label}</p>
-                  <p className="text-[11px] text-gray-400">
+                  <p className="text-[12px] text-gray-400">
                     {roleUsers.length === 0 ? 'No users' : roleUsers.map(u => u.display_name).join(', ')}
                   </p>
                 </div>

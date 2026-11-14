@@ -102,14 +102,14 @@ export default function StaffMemberPersonalTab({
       <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
         {TABS.filter(t => (isSelf || (t.key !== 'payslips' && t.key !== 'profile')) && (t.key !== 'violations' || isSelf || canManage) && (t.key !== 'waiting' || isSelf || mayView) && (t.key !== 'done' || isSelf || mayView) && (t.key !== 'laws' || isSelf || mayView)).map(t => (
           <button key={t.key} type="button" ref={el => { if (el && activeTab === t.key) el.scrollIntoView({ inline: 'center', block: 'nearest' }) }} onClick={() => setActiveTab(t.key)}
-            className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
+            className={`shrink-0 flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
               activeTab === t.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}>
             <span>{t.icon}</span>{t.label}
           </button>
         ))}
       </div>
-      {onClose && <button type="button" onClick={onClose} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[11px] font-bold text-gray-700">✕ Close</button>}
+      {onClose && <button type="button" onClick={onClose} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-[12px] font-bold text-gray-700">✕ Close</button>}
       </div>
 
       <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">

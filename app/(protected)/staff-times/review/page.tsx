@@ -39,14 +39,14 @@ function LongShiftsTable({ rows }: { rows: (RecentRow & { mins: number })[] }) {
   if (rows.length === 0) return <p className="text-center text-gray-400 py-6">Nothing over {FLAG_HOURS} hours.</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <table className="w-full text-[11px]">
+      <table className="w-full text-[12px]">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
-            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Staff</th>
-            <th className="text-center px-2 py-0.5 text-[10px] text-green-600 font-semibold">In</th>
-            <th className="text-center px-2 py-0.5 text-[10px] text-orange-500 font-semibold">Out</th>
-            <th className="text-right px-3 py-0.5 text-[10px] text-red-600 font-semibold">Total</th>
+            <th className="text-left px-3 py-0.5 text-[12px] text-gray-500 font-semibold">Date</th>
+            <th className="text-left px-3 py-0.5 text-[12px] text-gray-500 font-semibold">Staff</th>
+            <th className="text-center px-2 py-0.5 text-[12px] text-green-600 font-semibold">In</th>
+            <th className="text-center px-2 py-0.5 text-[12px] text-orange-500 font-semibold">Out</th>
+            <th className="text-right px-3 py-0.5 text-[12px] text-red-600 font-semibold">Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -69,13 +69,13 @@ function TimesTable({ rows, emptyText }: { rows: RecentRow[]; emptyText: string 
   if (rows.length === 0) return <p className="text-center text-gray-400 py-6">{emptyText}</p>
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <table className="w-full text-[11px]">
+      <table className="w-full text-[12px]">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Date</th>
-            <th className="text-left px-3 py-0.5 text-[10px] text-gray-500 font-semibold">Staff</th>
-            <th className="text-center px-2 py-0.5 text-[10px] text-green-600 font-semibold">In</th>
-            <th className="text-center px-2 py-0.5 text-[10px] text-orange-500 font-semibold">Out</th>
+            <th className="text-left px-3 py-0.5 text-[12px] text-gray-500 font-semibold">Date</th>
+            <th className="text-left px-3 py-0.5 text-[12px] text-gray-500 font-semibold">Staff</th>
+            <th className="text-center px-2 py-0.5 text-[12px] text-green-600 font-semibold">In</th>
+            <th className="text-center px-2 py-0.5 text-[12px] text-orange-500 font-semibold">Out</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">

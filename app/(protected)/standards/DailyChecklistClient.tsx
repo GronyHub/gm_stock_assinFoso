@@ -35,7 +35,7 @@ function WhoTag({ t, roles }: { t: { assignment?: string }; roles: { opener: str
   const [label, cls] = a === 'opener' ? [`Opener${roles.opener ? ` · ${nm(roles.opener)}` : ''}`, 'bg-indigo-100 text-indigo-800']
     : a === 'closer' ? [`Closer${roles.closer ? ` · ${nm(roles.closer)}` : ''}`, 'bg-purple-100 text-purple-800']
     : a === 'managers' ? ['Joe', 'bg-amber-100 text-amber-900'] : ['Everyone', 'bg-gray-100 text-gray-600']
-  return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[9px] font-bold ${cls}`}>{label}</span>
+  return <span className={`ml-1 inline-block shrink-0 rounded-full px-1.5 py-px align-middle text-[12px] font-bold ${cls}`}>{label}</span>
 }
 
 // Standing duties answered by a card on the same page (clock notices, questions, approvals, decisions): like Waiting for me, their tile is hidden.
@@ -165,7 +165,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
         <div className="space-y-1.5 px-2">
           <div className="flex flex-nowrap gap-1 overflow-x-auto">
             {([['all', 'Everything', pastDuties.length], ['done', 'Done', pastDuties.filter(x => x.state === 'done').length], ['no', 'Marked not done', pastDuties.filter(x => x.state === 'no').length], ['miss', 'Not done at all', pastDuties.filter(x => x.state === 'miss').length]] as const).map(([k, label, n]) => (
-              <button key={k} type="button" onClick={() => setPastFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+              <button key={k} type="button" onClick={() => setPastFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
           </div>
           <div className={tileGrid(density)}>
@@ -176,17 +176,17 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           </div>
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
-            <div className="space-y-1"><p className="text-[10px] font-extrabold uppercase text-gray-500">Other work logged</p>
-              {adhoc.map(a => <p key={a.id} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[11px] text-gray-900"><b>{a.recorded_by}</b> · {hhmm(a.recorded_at)} · {a.note}</p>)}
+            <div className="space-y-1"><p className="text-[12px] font-extrabold uppercase text-gray-500">Other work logged</p>
+              {adhoc.map(a => <p key={a.id} className="rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[12px] text-gray-900"><b>{a.recorded_by}</b> · {hhmm(a.recorded_at)} · {a.note}</p>)}
             </div>)}
         </div>
       )}
           {/* Same structure as Waiting for me: one filter row, one grid of tiles (late red, due now amber, later grey, done green). */}
       {!settling && isToday && <div className="mx-2 mb-1 flex flex-nowrap items-center gap-1 overflow-x-auto">
             {([['all', 'Everything', dayList.length], ['waiting', 'Waiting', dayList.filter(x => x.st === 'now' || x.st === 'later').length], ['overdue', 'Overdue', dayList.filter(x => x.st === 'late').length], ['done', 'Done', dayList.filter(x => x.st === 'done' || x.st === 'no').length]] as const).map(([k, label, n]) => (
-              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
+              <button key={k} type="button" onClick={() => setTodayFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${todayFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
-            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto shrink-0 whitespace-nowrap px-1 text-[11px] font-bold text-blue-700 underline">Day report</button>}
+            {canEdit && <button type="button" onClick={() => setReporting(true)} className="ml-auto shrink-0 whitespace-nowrap px-1 text-[12px] font-bold text-blue-700 underline">Day report</button>}
       </div>}
       {!settling && isToday && (
         <div className="mx-2 mb-2 space-y-1.5 rounded-xl border border-[#14213D] bg-white p-1">
@@ -256,9 +256,9 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
         </div>
         {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
         {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
-        {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[11px] font-semibold text-red-700">If this is still undone at the end of the day, whoever it falls on gets a penalty point (at most 3 a day). Marking it Not done with a real reason excuses the point.</p>}
-        {t.law_id && t.category && <a href={`/laws?cat=${encodeURIComponent(t.category)}`} className="block text-[11px] font-semibold text-blue-700 underline">From the Company Laws · {t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
-        {t.minutes != null && <p className="text-[11px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
+        {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[12px] font-semibold text-red-700">If this is still undone at the end of the day, whoever it falls on gets a penalty point (at most 3 a day). Marking it Not done with a real reason excuses the point.</p>}
+        {t.law_id && t.category && <a href={`/laws?cat=${encodeURIComponent(t.category)}`} className="block text-[12px] font-semibold text-blue-700 underline">From the Company Laws · {t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
+        {t.minutes != null && <p className="text-[12px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
         {t.kind === 'group' && <GroupForm tileId={t.id} day={ev?.day ?? new Date().toISOString().slice(0, 10)} editable={isToday} canEdit={canEdit} onSaved={onSaved} onClose={onClose} />}
         {t.kind !== 'tap' && t.kind !== 'group' && !ev && isToday && <AnswerForm t={t} present={present} onSaved={onSaved} onClose={onClose} />}
@@ -554,7 +554,7 @@ function AdhocForm({ onClose, onSaved }: { onClose: () => void; onSaved: (m: str
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div className="mx-auto max-h-[92vh] w-full max-w-2xl space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
         <p className="text-base font-bold">Log an activity</p>
-        <p className="text-[11px] text-gray-500">For work you did that is not a tile today. It is saved in the history under its category, and its minutes are added to your work time (up to 60 minutes a day).</p>
+        <p className="text-[12px] text-gray-500">For work you did that is not a tile today. It is saved in the history under its category, and its minutes are added to your work time (up to 60 minutes a day).</p>
         <div className="flex flex-wrap gap-1.5">
           {LAW_CATEGORIES.map(c => <button key={c.key} type="button" onClick={() => setCategory(c.key)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${category === c.key ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{c.icon} {c.key}</button>)}
         </div>

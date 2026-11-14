@@ -182,7 +182,7 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                   it (Count has nothing to filter by group/type/violation --
                   its sub-nav is the only picker it needs). */}
               {showControls && (liveMode === 'sale' || liveMode === 'sales') && !inCountTab && (
-                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[9px]">
+                <div className="px-2 py-0.5 border-b border-green-700 flex flex-wrap items-center gap-0 text-[12px]">
                   {/* View-only filters (black) -- All(V) retired: bundling
                       every violation into one button made it impossible to
                       point a staff member at just the one thing to fix.

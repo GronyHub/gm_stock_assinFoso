@@ -46,8 +46,8 @@ function InlineItemPicker({ items, value, onChange }: { items: Item[]; value: It
   if (value) {
     return (
       <div className="flex items-center gap-1">
-        <span className="text-[10px] font-semibold text-blue-700 truncate max-w-[130px]">{value.canonical_name}</span>
-        <button onClick={() => onChange(null)} title="Change" className="text-[10px] text-gray-400 hover:text-red-500 leading-none">×</button>
+        <span className="text-[12px] font-semibold text-blue-700 truncate max-w-[130px]">{value.canonical_name}</span>
+        <button onClick={() => onChange(null)} title="Change" className="text-[12px] text-gray-400 hover:text-red-500 leading-none">×</button>
       </div>
     )
   }
@@ -56,12 +56,12 @@ function InlineItemPicker({ items, value, onChange }: { items: Item[]; value: It
       <input value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Search item…"
-        className="w-32 text-[10px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+        className="w-32 text-[12px] bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
       {open && (
         <div className="absolute z-20 top-full left-0 mt-0.5 w-48 max-h-40 overflow-y-auto bg-white border border-gray-200 rounded shadow-lg">
-          {matches.length === 0 ? <p className="text-[9px] text-gray-400 px-2 py-1.5">No matches</p> : matches.map(item => (
+          {matches.length === 0 ? <p className="text-[12px] text-gray-400 px-2 py-1.5">No matches</p> : matches.map(item => (
             <div key={item.id} onMouseDown={() => { onChange(item); setQuery(''); setOpen(false) }}
-              className="px-2 py-1 text-[10px] text-gray-900 hover:bg-blue-50 cursor-pointer truncate">
+              className="px-2 py-1 text-[12px] text-gray-900 hover:bg-blue-50 cursor-pointer truncate">
               {item.canonical_name}
             </div>
           ))}
@@ -121,15 +121,15 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white flex items-center gap-2">
-        <span className="text-[9px] text-orange-500 font-bold">{display.length} pending</span>
+        <span className="text-[12px] text-orange-500 font-bold">{display.length} pending</span>
         <input value={nameSearch} onChange={e => setNameSearch(e.target.value)} placeholder="Search…"
-          className="text-[10px] bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 w-36" />
+          className="text-[12px] bg-gray-50 border border-gray-200 rounded px-2 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 w-36" />
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {display.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-[10px]">Nothing pending. 🎉</p>
+          <p className="py-10 text-center text-gray-400 text-[12px]">Nothing pending. 🎉</p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
@@ -149,7 +149,7 @@ function PreZohoPanel({ tab, items }: { tab: Tab; items: Item[] }) {
                   </td>
                   <td className="px-2 py-0">
                     <button onClick={() => confirmMatch(r)} disabled={!picked[r.name] || saving === r.name}
-                      className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                      className="text-[12px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
                       {saving === r.name ? '…' : '✓ Confirm'}
                     </button>
                   </td>
@@ -215,14 +215,14 @@ function FlaggedPanel({ items }: { items: Item[] }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{rows.length} flagged mismatch{rows.length === 1 ? '' : 'es'}</span>
-        <span className="text-[9px] text-gray-400 ml-2">raw name contradicts the item it&apos;s matched to (singles vs. pack)</span>
+        <span className="text-[12px] text-red-600 font-bold">{rows.length} flagged mismatch{rows.length === 1 ? '' : 'es'}</span>
+        <span className="text-[12px] text-gray-400 ml-2">raw name contradicts the item it&apos;s matched to (singles vs. pack)</span>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {rows.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-[10px]">No flagged mismatches found. 🎉</p>
+          <p className="py-10 text-center text-gray-400 text-[12px]">No flagged mismatches found. 🎉</p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">RAW NAME</th>
@@ -247,11 +247,11 @@ function FlaggedPanel({ items }: { items: Item[] }) {
                     <td className="px-2 py-0">
                       <div className="flex gap-1">
                         <button onClick={() => reassign(r)} disabled={!picked[k] || saving === k}
-                          className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                          className="text-[12px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
                           {saving === k ? '…' : 'Reassign'}
                         </button>
                         <button onClick={() => dismiss(r)}
-                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                          className="text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
                           Dismiss
                         </button>
                       </div>
@@ -317,17 +317,17 @@ function AmbiguousPanel() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{groups.length} ambiguous name{groups.length === 1 ? '' : 's'}</span>
-        <span className="text-[9px] text-gray-400 ml-2">same raw text maps to more than one item -- resweep skips these</span>
+        <span className="text-[12px] text-red-600 font-bold">{groups.length} ambiguous name{groups.length === 1 ? '' : 's'}</span>
+        <span className="text-[12px] text-gray-400 ml-2">same raw text maps to more than one item -- resweep skips these</span>
       </div>
       {lastResult && (
-        <p className="shrink-0 text-[9px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
+        <p className="shrink-0 text-[12px] text-gray-500 bg-gray-50 border-b border-gray-200 px-2 py-1">{lastResult}</p>
       )}
       <div className="flex-1 overflow-y-auto min-h-0">
         {groups.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-[10px]">No ambiguous aliases found. 🎉</p>
+          <p className="py-10 text-center text-gray-400 text-[12px]">No ambiguous aliases found. 🎉</p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ALIAS NAME</th>
@@ -347,17 +347,17 @@ function AmbiguousPanel() {
                     <td className="px-2 py-0">
                       <div className="flex gap-1 justify-end">
                         <button onClick={() => keep(g, c.item_id)} disabled={resolving !== null}
-                          className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                          className="text-[12px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
                           {resolving === `${g.norm_name}::${c.item_id}` ? '…' : 'Keep this'}
                         </button>
                         {allZero && (
                           <button onClick={() => keep(g, null)} disabled={resolving !== null}
-                            className="text-[9px] font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded px-2 py-1 transition">
+                            className="text-[12px] font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded px-2 py-1 transition">
                             {resolving === `${g.norm_name}::delete` ? '…' : 'Delete all'}
                           </button>
                         )}
                         <button onClick={() => dismiss(g)}
-                          className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                          className="text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
                           Dismiss
                         </button>
                       </div>
@@ -437,14 +437,14 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="shrink-0 px-2 py-1.5 border-b border-gray-200 bg-white">
-        <span className="text-[9px] text-red-600 font-bold">{rows.length} name conflict{rows.length === 1 ? '' : 's'}</span>
-        <span className="text-[9px] text-gray-400 ml-2">alias text also exists as a separate item&apos;s own canonical name</span>
+        <span className="text-[12px] text-red-600 font-bold">{rows.length} name conflict{rows.length === 1 ? '' : 's'}</span>
+        <span className="text-[12px] text-gray-400 ml-2">alias text also exists as a separate item&apos;s own canonical name</span>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {rows.length === 0 ? (
-          <p className="py-10 text-center text-gray-400 text-[10px]">No name conflicts found. 🎉</p>
+          <p className="py-10 text-center text-gray-400 text-[12px]">No name conflicts found. 🎉</p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-2 py-0.5 font-semibold text-gray-500 border-b border-gray-200">ALIAS</th>
@@ -460,12 +460,12 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
                   <td className="px-2 py-0 text-gray-900 max-w-[110px] truncate">{r.alias_name}</td>
                   <td className="px-2 py-0 text-blue-600 max-w-[100px]">
                     <p className="truncate">{r.aliased_to_item_name}</p>
-                    <p className="text-[8px] text-gray-400">SP {fmtRate(r.aliased_to_sp)} · CP {fmtRate(r.aliased_to_cp)}</p>
+                    <p className="text-[12px] text-gray-400">SP {fmtRate(r.aliased_to_sp)} · CP {fmtRate(r.aliased_to_cp)}</p>
                   </td>
                   <td className="px-2 py-0 max-w-[110px]">
                     <p className="text-gray-900 truncate">{r.conflicting_item_name}</p>
-                    <p className="text-[8px] text-gray-400">SP {fmtRate(r.conflicting_sp)} · CP {fmtRate(r.conflicting_cp)}</p>
-                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded ${
+                    <p className="text-[12px] text-gray-400">SP {fmtRate(r.conflicting_sp)} · CP {fmtRate(r.conflicting_cp)}</p>
+                    <span className={`text-[12px] font-bold px-1 py-0.5 rounded ${
                       r.conflicting_item_status === 'Active' ? 'bg-red-100 text-red-700'
                       : r.conflicting_item_status ? 'bg-gray-100 text-gray-500' : 'bg-orange-100 text-orange-700'}`}>
                       {r.conflicting_item_status ?? 'no status'}
@@ -478,15 +478,15 @@ function NameConflictsPanel({ items }: { items: Item[] }) {
                   <td className="px-2 py-0">
                     <div className="flex gap-1">
                       <button onClick={() => remap(r)} disabled={!picked[r.alias_id] || busy === r.alias_id}
-                        className="text-[9px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                        className="text-[12px] font-bold text-white bg-green-600 hover:bg-green-500 disabled:opacity-40 rounded px-2 py-1 transition">
                         {busy === r.alias_id ? '…' : 'Remap'}
                       </button>
                       <button onClick={() => deleteAlias(r)} disabled={busy === r.alias_id}
-                        className="text-[9px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 rounded px-2 py-1 transition">
+                        className="text-[12px] font-bold text-white bg-red-600 hover:bg-red-500 disabled:opacity-40 rounded px-2 py-1 transition">
                         Delete
                       </button>
                       <button onClick={() => dismiss(r.alias_id)}
-                        className="text-[9px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
+                        className="text-[12px] font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded px-2 py-1 transition">
                         Dismiss
                       </button>
                     </div>
@@ -543,20 +543,20 @@ export default function AliasesTab({ tab }: Props) {
     <div className="flex flex-col h-full min-h-0">
       <div className="shrink-0 border-b border-gray-200 bg-white px-2 py-1.5 space-y-1">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-[10px] font-bold text-gray-700">{tabLabel}</p>
+          <p className="text-[12px] font-bold text-gray-700">{tabLabel}</p>
           <div className="flex items-center gap-1">
             <button onClick={resweep} disabled={resweeping}
               title="Re-apply every existing alias against current sales/bill lines"
-              className="text-[9px] text-green-700 font-semibold bg-green-50 px-1.5 py-0.5 rounded hover:bg-green-100 disabled:opacity-50">
+              className="text-[12px] text-green-700 font-semibold bg-green-50 px-1.5 py-0.5 rounded hover:bg-green-100 disabled:opacity-50">
               {resweeping ? 'Re-sweeping…' : '⟳ Re-sweep aliases'}
             </button>
-            <Link href="/aliases/wide" className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
+            <Link href="/aliases/wide" className="text-[12px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100">
               Wide Table →
             </Link>
           </div>
         </div>
         {resweepResult && (
-          <p className="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">{resweepResult}</p>
+          <p className="text-[12px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5">{resweepResult}</p>
         )}
       </div>
       {tab === 'flagged'

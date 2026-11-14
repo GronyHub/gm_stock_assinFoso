@@ -29,7 +29,7 @@ export default function LawQuestion() {
   }
   return (
     <div className="fixed inset-x-2 bottom-2 z-[85] mx-auto max-w-md space-y-2 rounded-2xl border-2 border-indigo-300 bg-white p-3 shadow-xl print:hidden">
-      <p className="text-[11px] font-extrabold uppercase tracking-wide text-indigo-700">Question of the day{q.law ? ` · ${q.law}` : ''}</p>
+      <p className="text-[12px] font-extrabold uppercase tracking-wide text-indigo-700">Question of the day{q.law ? ` · ${q.law}` : ''}</p>
       <p className="text-sm font-bold text-gray-900">{q.q}</p>
       {!r && <div className="space-y-1.5">{q.options.map((o, i) => <button key={i} type="button" disabled={busy} onClick={() => void answer(i)} className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-left text-sm text-gray-900 disabled:opacity-40">{o}</button>)}</div>}
       {r && (<div className={`space-y-1 rounded-lg p-2 text-sm ${r.correct ? 'bg-green-50 text-green-900' : 'bg-red-50 text-red-900'}`}>

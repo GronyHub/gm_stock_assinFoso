@@ -37,7 +37,7 @@ export default function GuideClient({ mode }: { mode: 'howto' | 'owner' }) {
           {grouped.length === 0 && <p className="py-6 text-center text-sm text-gray-400">No topics match.</p>}
           {grouped.map(([g, ts]) => (
             <div key={g} className="mb-3">
-              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">{g}</p>
+              <p className="px-2 py-1 text-[12px] font-bold uppercase tracking-wide text-gray-400">{g}</p>
               {ts.map(t => <button key={t.id} type="button" onClick={() => setActiveId(t.id)} className={`block w-full rounded-lg px-2 py-1.5 text-left text-sm ${active?.id === t.id ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>{t.title}</button>)}
             </div>
           ))}

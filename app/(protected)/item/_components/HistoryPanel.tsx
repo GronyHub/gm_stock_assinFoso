@@ -36,7 +36,7 @@ export default function HistoryPanel({ keywords, onEntryClick }: Props) {
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
-      <table className="w-full border-collapse text-[9px] border border-black">
+      <table className="w-full border-collapse text-[12px] border border-black">
         <thead className="sticky top-0 bg-gray-100 z-10">
           <tr>
             <th className="text-left px-1 py-0 font-semibold text-gray-700 border border-black whitespace-nowrap">TIME</th>

@@ -23,8 +23,8 @@ export default function ClockRequestRow({ p, onDone, compact = false }: { p: Clo
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-sm text-gray-900">
       {!compact && <span className="min-w-0 basis-full"><b>{cap(p.staff)}</b> · {p.work_date} · {p.actual_in ? `in ${p.actual_in} · ` : ''}says {p.field === 'in' ? 'in' : 'out'} <b>{p.proposed_out}</b>{p.field !== 'in' && p.estimated ? <span className="text-gray-500"> (app estimate {p.estimated})</span> : null}</span>}
-      {p.basis && /CCTV/.test(p.basis) && <span className="basis-full text-[11px] font-bold text-red-800">🎥 {p.basis}</span>}
-      {w && <span className={`basis-full text-[11px] font-bold ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue && who === 'Joe' ? ' · Joe has not decided in 2 days: you can step in' : ''}</span>}
+      {p.basis && /CCTV/.test(p.basis) && <span className="basis-full text-[12px] font-bold text-red-800">🎥 {p.basis}</span>}
+      {w && <span className={`basis-full text-[12px] font-bold ${w.overdue ? 'text-red-700' : 'text-gray-600'}`}>{who} decides · waiting {w.text}{w.overdue && who === 'Joe' ? ' · Joe has not decided in 2 days: you can step in' : ''}</span>}
       <input type="time" value={pick} onChange={e => setPick(e.target.value)} title="Optional: approve an earlier time instead" className="w-24 rounded-lg border border-gray-300 p-1 text-xs" />
       <button type="button" disabled={busy} onClick={() => void act('approve')} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Approve</button>
       <button type="button" disabled={busy} onClick={() => void act('reject')} className="rounded-lg bg-gray-200 px-3 py-1.5 text-xs font-bold text-gray-800 disabled:opacity-40">Reject</button>

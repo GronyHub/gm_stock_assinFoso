@@ -36,7 +36,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                       <div className="border-b border-gray-200 bg-gray-50 px-1.5 py-1">
                         {!liveGridEditRelationsOpen ? (
                           <div className="flex items-center justify-between gap-1.5">
-                            <div className="flex flex-wrap gap-1.5 flex-1 items-center text-[8px]">
+                            <div className="flex flex-wrap gap-1.5 flex-1 items-center text-[12px]">
                               <div className="flex items-center gap-1">
                                 <span className="font-semibold text-gray-600">Aliases:</span>
                                 {liveGridEditAliases.length === 0 ? (
@@ -44,7 +44,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
                                     {liveGridEditAliases.map(a => (
-                                      <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                                      <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
                                         {a.name}
                                       </span>
                                     ))}
@@ -60,7 +60,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
                                     {liveGridEditMatches.map(m => (
-                                      <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[8px] font-semibold">
+                                      <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
                                         {m.name}
                                       </span>
                                     ))}
@@ -70,28 +70,28 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                             </div>
                             <button
                               onClick={() => setLiveGridEditRelationsOpen(true)}
-                              className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                              className="shrink-0 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
                               ✎ Edit
                             </button>
                           </div>
                         ) : (
                           <div className="space-y-1">
                             <div className="flex items-center justify-between gap-1.5">
-                              <p className="text-[8px] font-bold text-blue-700 uppercase tracking-wide">Editing</p>
+                              <p className="text-[12px] font-bold text-blue-700 uppercase tracking-wide">Editing</p>
                               <button
                                 onClick={saveGridEditItem}
                                 disabled={liveEditSaving}
-                                className="shrink-0 text-[8px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white transition whitespace-nowrap">
+                                className="shrink-0 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white transition whitespace-nowrap">
                                 {liveEditSaving ? 'Saving…' : '✓ Save'}
                               </button>
                             </div>
                             <div className="grid grid-cols-3 gap-1">
                               <div className="min-w-0">
-                                <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">Aliases</p>
+                                <p className="text-[12px] font-bold text-gray-600 mb-0.5 uppercase truncate">Aliases</p>
                                 <AliasPicker itemId={editItem.id} current={liveGridEditAliases} onChange={setLiveGridEditAliases} />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">
+                                <p className="text-[12px] font-bold text-gray-600 mb-0.5 uppercase truncate">
                                   {editItem.product_type === 'service' ? 'Goods Used' : 'Services Used'}
                                 </p>
                                 <MatchPicker
@@ -111,7 +111,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               </div>
                               {isOwnerLevel(session?.user as any) && (
                                 <div className="min-w-0">
-                                  <p className="text-[7px] font-bold text-gray-600 mb-0.5 uppercase truncate">Merge</p>
+                                  <p className="text-[12px] font-bold text-gray-600 mb-0.5 uppercase truncate">Merge</p>
                                   <MergeItemPicker
                                     itemId={editItem.id}
                                     itemName={editItem.name}
@@ -130,24 +130,24 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                                 {!liveGridEditConfirmDelete ? (
                                   <button
                                     onClick={() => setLiveGridEditConfirmDelete(true)}
-                                    className="bg-gray-100 hover:bg-red-50 text-red-600 text-[8px] font-semibold rounded px-2 py-0.5 transition">
+                                    className="bg-gray-100 hover:bg-red-50 text-red-600 text-[12px] font-semibold rounded px-2 py-0.5 transition">
                                     Delete
                                   </button>
                                 ) : (
                                   <div className="flex items-center gap-1 flex-wrap justify-end">
-                                    <p className="text-[8px] text-red-600">No sales/bills/counts?</p>
+                                    <p className="text-[12px] text-red-600">No sales/bills/counts?</p>
                                     <button
                                       onClick={deleteGridEditItem}
                                       disabled={liveGridEditDeleting}
-                                      className="bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[8px] font-semibold rounded px-2 py-0.5 transition">
+                                      className="bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-[12px] font-semibold rounded px-2 py-0.5 transition">
                                       {liveGridEditDeleting ? 'Deleting…' : 'Confirm'}
                                     </button>
                                     <button
                                       onClick={() => { setLiveGridEditConfirmDelete(false); setLiveGridEditDeleteError('') }}
-                                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[8px] font-semibold rounded">
+                                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">
                                       Cancel
                                     </button>
-                                    {liveGridEditDeleteError && <p className="text-[8px] text-red-600 font-medium w-full text-right">{liveGridEditDeleteError}</p>}
+                                    {liveGridEditDeleteError && <p className="text-[12px] text-red-600 font-medium w-full text-right">{liveGridEditDeleteError}</p>}
                                   </div>
                                 )}
                               </div>
@@ -192,7 +192,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                       <div ref={liveGridEditSaleTapRef} className="px-2 py-1.5 border-b border-gray-200">
                         <p className="text-xs text-gray-500 mb-1">Backdate a sale (only if it wasn't tapped on the item card)</p>
                         {liveTapStatus.length > 0 && (
-                          <div className="mb-1.5 p-1.5 bg-gray-50 border border-gray-200 rounded text-[8px] font-mono text-gray-600 max-h-24 overflow-y-auto">
+                          <div className="mb-1.5 p-1.5 bg-gray-50 border border-gray-200 rounded text-[12px] font-mono text-gray-600 max-h-24 overflow-y-auto">
                             {liveTapStatus.map((msg, i) => (
                               <div key={i}>{msg}</div>
                             ))}
@@ -278,7 +278,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               </button>
                             </div>
                             {liveGridEditCountError && (
-                              <p className="mt-1 text-[10px] text-red-600">{liveGridEditCountError}</p>
+                              <p className="mt-1 text-[12px] text-red-600">{liveGridEditCountError}</p>
                             )}
                           </>
                         ) : (
@@ -305,7 +305,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               </button>
                             </div>
                             {liveGridEditCountError && (
-                              <p className="mt-1 text-[10px] text-red-600">{liveGridEditCountError}</p>
+                              <p className="mt-1 text-[12px] text-red-600">{liveGridEditCountError}</p>
                             )}
                           </>
                         )}
@@ -313,7 +313,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                     )})()}
                     {editItem && !liveGridEditLoading && (
                       <div className="bg-gray-50">
-                        <h3 className="px-2 py-1 text-[9px] font-bold text-gray-900 border-b border-gray-200">Details</h3>
+                        <h3 className="px-2 py-1 text-[12px] font-bold text-gray-900 border-b border-gray-200">Details</h3>
                         {/* Wraps the WHOLE panel, not just LossTab's own inner
                             boundary (which only covers <ItemDetail> itself) --
                             a crash anywhere in ItemDetailPanel's own body was

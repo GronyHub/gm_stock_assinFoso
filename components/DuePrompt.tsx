@@ -48,7 +48,7 @@ export default function DuePrompt() {
   const simple = cur.kind === 'tap'
   return (
     <div className="fixed inset-x-2 top-2 z-[88] mx-auto max-w-md space-y-2 rounded-2xl border-2 border-amber-400 bg-white p-3 shadow-xl print:hidden" role="alertdialog">
-      <p className="text-[11px] font-extrabold uppercase tracking-wide text-amber-700">It&apos;s time{cur.time ? ` · ${cur.time}` : ''}{list.length > 1 ? ` · ${list.length - 1} more after this` : ''}</p>
+      <p className="text-[12px] font-extrabold uppercase tracking-wide text-amber-700">It&apos;s time{cur.time ? ` · ${cur.time}` : ''}{list.length > 1 ? ` · ${list.length - 1} more after this` : ''}</p>
       <p className="text-sm font-bold text-gray-900">It&apos;s time for: {cur.title}</p>
       {!notReq ? (
         <div className="flex flex-wrap gap-1.5">
@@ -61,7 +61,7 @@ export default function DuePrompt() {
       ) : (
         <div className="space-y-1.5">
           <input value={why} onChange={e => setWhy(e.target.value)} placeholder="Why is it not required today?" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
-          <p className="text-[11px] text-gray-500">The reason is recorded with your name. The manager can overrule it, and then it counts as not done.</p>
+          <p className="text-[12px] text-gray-500">The reason is recorded with your name. The manager can overrule it, and then it counts as not done.</p>
           <div className="flex gap-1.5">
             <button type="button" disabled={busy || why.trim().length < 4} onClick={() => void record('Not done', `Not required: ${why.trim()}`)} className="flex-1 rounded-xl bg-gray-700 py-2 text-sm font-bold text-white disabled:opacity-40">Not required today</button>
             <button type="button" onClick={() => setNotReq(false)} className="rounded-xl bg-gray-100 px-3 py-2 text-sm font-bold text-gray-700">Back</button>

@@ -66,7 +66,7 @@ export default function MIBasket({ onClose, onAddItem, lines, onQty, onPrice, on
             <div key={l.itemId} className="flex items-center gap-1.5 rounded-lg bg-gray-50 p-1.5">
               <p className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-900">{l.name}</p>
               <input type="number" min={1} inputMode="numeric" value={l.qty} onChange={e => onQty(l.itemId, e.target.value)} className="w-12 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Quantity" />
-              <span className="text-[10px] text-gray-400">×₵</span>
+              <span className="text-[12px] text-gray-400">×₵</span>
               <input type="number" min={0} step="any" inputMode="decimal" value={l.price} onChange={e => onPrice(l.itemId, e.target.value)} className="w-16 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Price" />
               <span className="w-14 text-right text-xs font-bold text-gray-800">₵{((Number(l.qty) || 0) * (Number(l.price) || 0)).toLocaleString('en-GB', { maximumFractionDigits: 2 })}</span>
               <button type="button" onClick={() => onRemove(l.itemId)} className="px-1 text-lg leading-none text-red-500" aria-label="Remove">&times;</button>
@@ -74,14 +74,14 @@ export default function MIBasket({ onClose, onAddItem, lines, onQty, onPrice, on
           ))}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div>
-              <p className="mb-0.5 text-[10px] font-semibold uppercase text-gray-400">Customer (GM ID, phone or name)</p>
+              <p className="mb-0.5 text-[12px] font-semibold uppercase text-gray-400">Customer (GM ID, phone or name)</p>
               <div className="rounded-lg border border-gray-300 px-2 py-1.5">
                 <CustomerBox value={customer} onChange={onCustomer} onName={onName} onRegister={onRegister} disabled={busy}
                   placeholder="GM / phone / name" className="w-full text-sm font-semibold text-gray-900 outline-none" />
               </div>
             </div>
             <div>
-              <p className="mb-0.5 text-[10px] font-semibold uppercase text-gray-400">Sale date</p>
+              <p className="mb-0.5 text-[12px] font-semibold uppercase text-gray-400">Sale date</p>
               <input type="date" value={date} max={today} onChange={e => onDate(e.target.value || today)} className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm" />
             </div>
           </div>

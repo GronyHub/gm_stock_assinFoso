@@ -66,7 +66,7 @@ function MentionButtons({ notes, roster }: { notes: string; roster: string[] }) 
       {mentions.map((m, i) => (
         <button key={i} type="button" disabled={sent.has(i)}
           onClick={async () => { const ok = await postTask(m.name, m.text); if (ok) setSent(prev => new Set(prev).add(i)) }}
-          className={`text-[10px] font-semibold px-2 py-1 rounded-lg transition ${sent.has(i) ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+          className={`text-[12px] font-semibold px-2 py-1 rounded-lg transition ${sent.has(i) ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
           {sent.has(i) ? `✓ Sent to ${m.name}` : `Send to ${m.name} →`}
         </button>
       ))}
@@ -219,14 +219,14 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
       {!filterStaff && (<>
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🗣️ Team Meeting</p>
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">🗣️ Team Meeting</p>
 
         <div>
-          <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Present</p>
+          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Present</p>
           <div className="flex flex-wrap gap-1.5">
             {staffRoster.map(name => (
               <button key={name} type="button" onClick={() => toggleAttendee(name)}
-                className={`text-[11px] font-semibold px-2 py-1 rounded-lg border transition ${attendees.includes(name) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                className={`text-[12px] font-semibold px-2 py-1 rounded-lg border transition ${attendees.includes(name) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
                 {name}
               </button>
             ))}
@@ -235,12 +235,12 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
 
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Start</p>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Start</p>
             <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
           </div>
           <div className="flex-1">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide mb-1">End</p>
+            <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-1">End</p>
             <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
           </div>
@@ -265,12 +265,12 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-200" />
-            <button onClick={() => setPhotoUrl(null)} className="text-[10px] text-red-500 font-semibold">Remove photo</button>
+            <button onClick={() => setPhotoUrl(null)} className="text-[12px] text-red-500 font-semibold">Remove photo</button>
           </div>
         )}
-        {error && <p className="text-[10px] text-red-500">{error}</p>}
+        {error && <p className="text-[12px] text-red-500">{error}</p>}
         <div className="flex items-center gap-1.5">
-          <label className="shrink-0 text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
+          <label className="shrink-0 text-[12px] font-semibold px-2 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition cursor-pointer">
             {uploading ? 'Uploading…' : '📷 Photo'}
             <input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
@@ -284,7 +284,7 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-2 space-y-1.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">📌 Discuss On Another Page</p>
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">📌 Discuss On Another Page</p>
         <div className="flex items-center gap-1.5">
           <select value={routePage} onChange={e => setRoutePage(e.target.value)}
             className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-blue-400">
@@ -305,10 +305,10 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
         const visibleEntries = filterStaff
           ? entries.filter(e => (e.attendees ?? []).some(n => n.toLowerCase() === filterStaff.toLowerCase()))
           : entries
-        if (loading) return <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        if (loading) return <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
         if (visibleEntries.length === 0) {
           return (
-            <p className="text-[11px] text-gray-400 text-center py-6">
+            <p className="text-[12px] text-gray-400 text-center py-6">
               {filterStaff ? `No meetings recorded with ${filterStaff} present yet.` : 'No meetings logged yet.'}
             </p>
           )
@@ -323,18 +323,18 @@ export default function StaffMeetingPanel({ staffRoster, routablePages, filterSt
                   <img src={e.photo_url} alt="" className="w-10 h-10 rounded object-cover border border-gray-200 shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] text-gray-400">
+                  <p className="text-[12px] text-gray-400">
                     {fmtDate(e.log_date)}{fmtTimeRange(e.start_time, e.end_time) ? ` · ${fmtTimeRange(e.start_time, e.end_time)}` : ''} · <span className="capitalize">{e.logged_by}</span>
                   </p>
                   {!!e.attendees?.length && (
-                    <p className="text-[9px] text-gray-500">Present: {e.attendees.join(', ')}</p>
+                    <p className="text-[12px] text-gray-500">Present: {e.attendees.join(', ')}</p>
                   )}
-                  {e.notes && <Linkify text={e.notes} as="p" className="text-[11px] text-gray-800 whitespace-pre-wrap leading-snug" />}
+                  {e.notes && <Linkify text={e.notes} as="p" className="text-[12px] text-gray-800 whitespace-pre-wrap leading-snug" />}
                 </div>
                 {!filterStaff && (confirmDeleteId === e.id ? (
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => remove(e.id)} className="text-[9px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5">Yes</button>
-                    <button onClick={() => setConfirmDeleteId(null)} className="text-[9px] font-semibold text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">No</button>
+                    <button onClick={() => remove(e.id)} className="text-[12px] font-bold text-white bg-red-600 rounded px-1.5 py-0.5">Yes</button>
+                    <button onClick={() => setConfirmDeleteId(null)} className="text-[12px] font-semibold text-gray-600 bg-gray-100 rounded px-1.5 py-0.5">No</button>
                   </div>
                 ) : (
                   <button onClick={() => setConfirmDeleteId(e.id)} className="shrink-0 text-gray-300 hover:text-red-500 font-bold leading-none">×</button>

@@ -8,6 +8,6 @@ export default function PageGuide({ page }: { page: string }) {
   if (!area) return null
   return (
     <a href={`/laws?tile=${area.key}`} title={`The laws, sanctions and how-to for ${area.label}`}
-      className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100">📜 Laws</a>
+      className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-[12px] font-bold text-indigo-700 hover:bg-indigo-100">📜 Laws</a>
   )
 }

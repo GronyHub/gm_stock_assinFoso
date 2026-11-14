@@ -743,15 +743,15 @@ export default function PageLawsList({
           <div className={lg ? 'mt-2 bg-gray-50 p-2 rounded border border-gray-200 space-y-1.5' : 'mt-0.5 bg-gray-50 p-1 rounded border border-gray-200 space-y-0.5'}>
             <textarea autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Reply…" rows={lg ? 2 : 1}
               onKeyDown={e => { if (e.key === 'Escape') { setReplyingTo(null); setReplyText('') } }}
-              className={`flex-1 min-w-0 ${lg ? 'text-[10px] rounded' : 'text-[8px]'} bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full`} />
+              className={`flex-1 min-w-0 ${lg ? 'text-[12px] rounded' : 'text-[12px]'} bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none w-full`} />
             <div className={lg ? 'flex gap-1' : 'flex gap-0.5'}>
-              <button type="button" onClick={() => addReply(itemType, itemId)} className={`flex-1 text-green-600 hover:text-green-700 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>Post</button>
-              <button type="button" onClick={() => { setReplyingTo(null); setReplyText('') }} className={`shrink-0 text-gray-400 hover:text-gray-600 ${lg ? 'text-xs' : 'text-[8px]'} font-bold`}>×</button>
+              <button type="button" onClick={() => addReply(itemType, itemId)} className={`flex-1 text-green-600 hover:text-green-700 ${lg ? 'text-xs' : 'text-[12px]'} font-bold`}>Post</button>
+              <button type="button" onClick={() => { setReplyingTo(null); setReplyText('') }} className={`shrink-0 text-gray-400 hover:text-gray-600 ${lg ? 'text-xs' : 'text-[12px]'} font-bold`}>×</button>
             </div>
           </div>
         )}
         {repliesByItem[itemKey]?.length > 0 && (
-          <div className={lg ? 'mt-2 space-y-1 text-[9px] border-l-2 border-gray-200 pl-2' : 'mt-0.5 space-y-0.5 text-[7px] border-l border-gray-200 pl-1'}>
+          <div className={lg ? 'mt-2 space-y-1 text-[12px] border-l-2 border-gray-200 pl-2' : 'mt-0.5 space-y-0.5 text-[12px] border-l border-gray-200 pl-1'}>
             {repliesByItem[itemKey].map(reply => (
               <div key={reply.id} className={lg ? 'bg-gray-50 p-1.5 rounded' : 'bg-gray-50 p-0.5 rounded'}>
                 <div className={lg ? 'flex items-start justify-between gap-2' : 'flex items-center justify-between gap-1'}>
@@ -782,28 +782,28 @@ export default function PageLawsList({
       <div className="flex flex-col gap-0.5 bg-blue-50 p-1 border border-blue-200 leading-none">
         <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Task…"
           onKeyDown={e => { if (e.key === 'Enter') onCreate(); if (e.key === 'Escape') onCancel() }}
-          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+          className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
         <div className="flex gap-0.5">
           <select value={type} onChange={e => setType(e.target.value)}
-            className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+            className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
             <option>General +</option>
             <option>App +</option>
             <option>Note</option>
           </select>
           {setDueDate && (
             <input type="date" value={dueDate || ''} onChange={e => setDueDate(e.target.value)}
-              className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+              className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
           )}
         </div>
         <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-          className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+          className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
           <option value="">Assign…</option>
           {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
         </select>
         {setRecurrenceType && (
           <>
             <select value={recurrenceType} onChange={e => setRecurrenceType(e.target.value as 'once' | 'weekly' | 'monthly')}
-              className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+              className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
               <option value="once">One-time</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
@@ -811,7 +811,7 @@ export default function PageLawsList({
             {recurrenceType === 'weekly' && (
               <div className="flex flex-wrap gap-0.5">
                 {weekDays.map(day => (
-                  <label key={day} className="flex items-center gap-0.5 text-[8px] cursor-pointer">
+                  <label key={day} className="flex items-center gap-0.5 text-[12px] cursor-pointer">
                     <input type="checkbox" checked={recurrenceDays?.includes(day) || false}
                       onChange={e => {
                         if (e.target.checked) {
@@ -829,7 +829,7 @@ export default function PageLawsList({
             {recurrenceType === 'monthly' && (
               <div className="flex flex-wrap gap-0.5">
                 {monthDays.map(day => (
-                  <label key={day} className="flex items-center gap-0.5 text-[8px] cursor-pointer">
+                  <label key={day} className="flex items-center gap-0.5 text-[12px] cursor-pointer">
                     <input type="checkbox" checked={recurrenceDays?.includes(day) || false}
                       onChange={e => {
                         if (e.target.checked) {
@@ -847,8 +847,8 @@ export default function PageLawsList({
           </>
         )}
         <div className="flex gap-0.5">
-          <button type="button" onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Create</button>
-          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+          <button type="button" onClick={onCreate} className="flex-1 text-green-600 hover:text-green-700 text-[12px] font-bold">Create</button>
+          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[12px] font-bold">×</button>
         </div>
       </div>
     )
@@ -860,10 +860,10 @@ export default function PageLawsList({
       <div className="flex flex-col gap-0.5">
         <textarea autoFocus value={value} onChange={e => setValue(e.target.value)} placeholder="Note…" rows={1}
           onKeyDown={e => { if (e.key === 'Escape') onCancel() }}
-          className="flex-1 min-w-0 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
+          className="flex-1 min-w-0 text-[12px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none" />
         <div className="flex gap-1">
-          <button type="button" onClick={onSave} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">Save</button>
-          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+          <button type="button" onClick={onSave} className="flex-1 text-green-600 hover:text-green-700 text-[12px] font-bold">Save</button>
+          <button type="button" onClick={onCancel} className="shrink-0 text-gray-400 hover:text-gray-600 text-[12px] font-bold">×</button>
         </div>
       </div>
     )
@@ -878,7 +878,7 @@ export default function PageLawsList({
     return (
       <>
         {tasks && tasks.length > 0 && (
-          <div className="space-y-0.5 text-[8px]">
+          <div className="space-y-0.5 text-[12px]">
             {tasks.map(task => (
               <div key={task.id} className={`p-0.5 rounded border leading-tight ${task.done ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}
                 onMouseDown={() => taskPress.onMouseDown(task.id)} onMouseUp={taskPress.onMouseUp}
@@ -887,27 +887,27 @@ export default function PageLawsList({
                   <div className="flex flex-col gap-0.5 leading-none">
                     <input autoFocus value={editTaskTitle} onChange={e => setEditTaskTitle(e.target.value)} placeholder="Task…"
                       onKeyDown={e => { if (e.key === 'Enter') saveEditTask(lawId, flagKey); if (e.key === 'Escape') setEditingTaskId(null) }}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                      className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                     <select value={editTaskType} onChange={e => setEditTaskType(e.target.value)}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                      className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                       <option>General +</option>
                       <option>App +</option>
                       <option>Note</option>
                     </select>
                     <select value={editTaskAssignedTo} onChange={e => setEditTaskAssignedTo(e.target.value)}
-                      className="flex-1 min-w-0 text-[8px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
+                      className="flex-1 min-w-0 text-[12px] bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400">
                       <option value="">Assign…</option>
                       {ASSIGNABLE_STAFF.map(staff => <option key={staff} value={staff}>{staff}</option>)}
                     </select>
                     <div className="flex gap-0.5">
-                      <button type="button" onClick={() => saveEditTask(lawId, flagKey)} className="flex-1 text-green-600 hover:text-green-700 text-[8px] font-bold">✓</button>
-                      <button type="button" onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[8px] font-bold">×</button>
+                      <button type="button" onClick={() => saveEditTask(lawId, flagKey)} className="flex-1 text-green-600 hover:text-green-700 text-[12px] font-bold">✓</button>
+                      <button type="button" onClick={() => setEditingTaskId(null)} className="shrink-0 text-gray-400 hover:text-gray-600 text-[12px] font-bold">×</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-0.5">
                     <p className={`font-semibold ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                    <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600">
+                    <div className="flex items-center gap-1 flex-wrap text-[12px] text-gray-600">
                       <span>{task.task_type === 'App +' ? 'App' : task.task_type === 'Note' ? 'Note' : 'General'}</span>
                       <span>•</span>
                       <span>{formatDate(task.created_at)} by {task.created_by}</span>
@@ -915,7 +915,7 @@ export default function PageLawsList({
                       {task.done && task.completed_at && (<><span>•</span><span>{calculateDuration(task.created_at, task.completed_at)}</span></>)}
                     </div>
                     {menuTaskId === task.id && (
-                      <div className="flex gap-1 text-[8px] mt-0.5">
+                      <div className="flex gap-1 text-[12px] mt-0.5">
                         <button type="button" onClick={() => { toggleTaskCompletion(task.id, task.done, lawId, flagKey); setMenuTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
                         <button type="button" onClick={() => { startEditTask(task); setMenuTaskId(null) }} title="Edit task" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
                         <button type="button" onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
@@ -973,8 +973,8 @@ export default function PageLawsList({
       {!isItemsLaws && (
         <>
           <div className="px-2 py-1.5 bg-gray-50 border-b border-gray-200">
-            <p className="text-[10px] text-gray-500 font-semibold">Page Rules</p>
-            <p className="text-[9px] text-gray-400 mt-0.5">
+            <p className="text-[12px] text-gray-500 font-semibold">Page Rules</p>
+            <p className="text-[12px] text-gray-400 mt-0.5">
               Fixed rules for this page -- rarely change, separate from the main Company Laws page.
             </p>
           </div>
@@ -991,7 +991,7 @@ export default function PageLawsList({
       )}
 
       {isItemsLaws && openForm === 'law' && (
-        <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[8px]">
+        <div className="px-1 py-1 bg-blue-50 border-t border-blue-200 flex flex-col gap-0.5 text-[12px]">
           <input autoFocus value={globalLawText} onChange={e => setGlobalLawText(e.target.value)} placeholder="New law…"
             onKeyDown={e => { if (e.key === 'Enter') addGlobalLaw(); if (e.key === 'Escape') setOpenForm?.(null) }}
             className="flex-1 min-w-0 bg-white border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
@@ -1004,7 +1004,7 @@ export default function PageLawsList({
 
       {visibleLaws.length === 0 && visibleFlags.length === 0 && visibleGlobalTasks.length === 0 && !(isItemsLaws && openForm === 'task') ? (
         <div className={`${isItemsLaws ? 'py-6' : 'px-2 py-4 bg-white border-b border-gray-200'} text-center`}>
-          <p className="text-[11px] text-gray-400">{anyFilterActive ? 'Nothing matches this filter.' : 'No laws yet.'}</p>
+          <p className="text-[12px] text-gray-400">{anyFilterActive ? 'Nothing matches this filter.' : 'No laws yet.'}</p>
         </div>
       ) : (
         <div className={`bg-white ${isItemsLaws ? 'divide-y divide-gray-100' : 'border border-gray-200 rounded-lg divide-y divide-gray-50'}`}>
@@ -1014,7 +1014,7 @@ export default function PageLawsList({
             <div key={l.id} className="flex items-start gap-1 px-1 py-0.5 bg-gray-50/50"
               onMouseDown={() => lawPress.onMouseDown(l.id)} onMouseUp={lawPress.onMouseUp}
               onTouchStart={() => lawPress.onTouchStart(l.id)} onTouchEnd={lawPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{i + 1}</span>
+              <span className="shrink-0 text-[12px] font-bold text-gray-300">{i + 1}</span>
               {editingId === l.id ? (
                 <>
                   <input autoFocus value={editText} onChange={e => setEditText(e.target.value)}
@@ -1022,31 +1022,31 @@ export default function PageLawsList({
                       if (e.key === 'Enter') saveEdit(l.id)
                       if (e.key === 'Escape') setEditingId(null)
                     }}
-                    className="min-w-0 flex-1 text-[8px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                    className="min-w-0 flex-1 text-[12px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                   <button type="button" onClick={() => saveEdit(l.id)} title="Save"
-                    className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[8px] font-bold">✓</button>
+                    className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[12px] font-bold">✓</button>
                   <button type="button" onClick={() => setEditingId(null)} title="Cancel"
-                    className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
+                    className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[12px] font-bold">×</button>
                 </>
               ) : (
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 flex-wrap leading-none">
                     {lawWithClick.onViewClick && (
-                      <button type="button" onClick={lawWithClick.onViewClick} className="text-[9px] font-medium transition text-gray-800 hover:text-blue-600 hover:underline">
+                      <button type="button" onClick={lawWithClick.onViewClick} className="text-[12px] font-medium transition text-gray-800 hover:text-blue-600 hover:underline">
                         {lawWithClick.text}
                       </button>
                     )}
                     {!lawWithClick.onViewClick && (
-                      <p className="text-[9px] text-gray-800">{lawWithClick.text}</p>
+                      <p className="text-[12px] text-gray-800">{lawWithClick.text}</p>
                     )}
                     {taskForLaw !== l.id && noteForLaw !== l.id && (
                       <>
-                        <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
+                        <button type="button" onClick={() => { setTaskForLaw(l.id); fetchTasksForLaw(l.id) }} title="Add task" className="text-blue-500 hover:text-blue-600 font-semibold text-[12px]">✓ +</button>
                       </>
                     )}
                   </div>
                   {menuLawId === l.id && (
-                    <div className="flex gap-1 text-[8px]">
+                    <div className="flex gap-1 text-[12px]">
                       <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
                       <button type="button" onClick={() => moveLawInOrder(`law-${l.id}`, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 font-semibold">▼</button>
                       <button type="button" onClick={() => startEdit(l)} title="Edit" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
@@ -1078,31 +1078,31 @@ export default function PageLawsList({
               <>
                 {propertyTypeFlags.length > 0 && (
                   <div className="flex items-center gap-2 px-1 py-0.5 bg-purple-50/30">
-                    <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + 1}</span>
+                    <span className="shrink-0 text-[12px] font-bold text-gray-300">{visibleLaws.length + 1}</span>
                     <div className="flex items-center gap-3 flex-wrap min-w-0">
                       {propertyTypeFlags.filter(f => !hideZeroFlags || f.count > 0).map((f, typeIdx) => (
                         <div key={f.key}
                           className={`flex items-center gap-1.5 cursor-pointer px-1.5 py-0.5 rounded transition ${f.active ? 'bg-blue-200 ring-2 ring-blue-400' : 'hover:bg-purple-100'}`}
                           onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
                           onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-                          <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
+                          <button type="button" onClick={f.onViewClick} className={`text-[12px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
                             {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
                           </button>
-                          <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
+                          <span className="text-[12px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                           {menuFlagKey === f.key && (
-                            <div className="flex gap-1 text-[8px]">
+                            <div className="flex gap-1 text-[12px]">
                               <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 font-semibold">▲</button>
                               <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 font-semibold">▼</button>
                               <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 font-semibold">✎</button>
                               {taskForFlag !== f.key && noteForFlag !== f.key && (
                                 <>
-                                  <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
+                                  <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[12px]">✓ +</button>
                                 </>
                               )}
                             </div>
                           )}
                           {menuFlagKey !== f.key && (
-                            <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
+                            <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[12px] font-semibold">⋯</button>
                           )}
                         </div>
                       ))}
@@ -1113,7 +1113,7 @@ export default function PageLawsList({
             <div key={f.key} className={`flex items-start gap-1 px-1 py-0.5 transition ${f.active ? 'bg-blue-100 ring-2 ring-inset ring-blue-400' : 'bg-red-50/30'}`}
               onMouseDown={() => flagPress.onMouseDown(f.key)} onMouseUp={flagPress.onMouseUp}
               onTouchStart={() => flagPress.onTouchStart(f.key)} onTouchEnd={flagPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
+              <span className="shrink-0 text-[12px] font-bold text-gray-300">{visibleLaws.length + (propertyTypeFlags.length > 0 ? 2 : 1) + i}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap leading-none">
                   {editingFlagKey === f.key ? (
@@ -1123,42 +1123,42 @@ export default function PageLawsList({
                           if (e.key === 'Enter') { saveCustomFlagName(f.key, editFlagLabel); setEditingFlagKey(null) }
                           if (e.key === 'Escape') setEditingFlagKey(null)
                         }}
-                        className="min-w-0 flex-1 text-[9px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
+                        className="min-w-0 flex-1 text-[12px] bg-gray-100 border border-gray-300 px-1 py-0.5 outline-none focus:ring-1 focus:ring-blue-400" />
                       <button type="button" onClick={() => { saveCustomFlagName(f.key, editFlagLabel); setEditingFlagKey(null) }} title="Save"
-                        className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[8px] font-bold">✓</button>
+                        className="shrink-0 text-green-600 hover:text-green-700 px-0.5 text-[12px] font-bold">✓</button>
                       <button type="button" onClick={() => setEditingFlagKey(null)} title="Cancel"
-                        className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[8px] font-bold">×</button>
+                        className="shrink-0 text-gray-400 hover:text-gray-600 px-0.5 text-[12px] font-bold">×</button>
                     </>
                   ) : (
-                    <button type="button" onClick={f.onViewClick} className={`text-[9px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
+                    <button type="button" onClick={f.onViewClick} className={`text-[12px] font-medium transition ${f.active ? 'text-blue-900 font-bold' : 'text-gray-800 hover:text-blue-600 hover:underline'}`}>
                       {VIEW_KEYS.includes(f.key) ? (customViewNames[f.key] || f.label) : (customFlagNames[f.key] || f.label)}
                     </button>
                   )}
                   {editingFlagKey !== f.key && f.description && (
                     <button type="button" onClick={() => setExpandedFlagDesc(expandedFlagDesc === f.key ? null : f.key)}
                       title="Show description"
-                      className="text-gray-400 hover:text-gray-600 text-[8px] font-bold shrink-0">ⓘ</button>
+                      className="text-gray-400 hover:text-gray-600 text-[12px] font-bold shrink-0">ⓘ</button>
                   )}
                   {editingFlagKey !== f.key && (
-                    <span className="text-[8px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
+                    <span className="text-[12px] bg-red-100 text-red-700 font-bold px-1 py-0 rounded text-center">{f.count}</span>
                   )}
                   {editingFlagKey !== f.key && menuFlagKey === f.key ? (
                     <>
-                      <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▲</button>
-                      <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">▼</button>
-                      <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[8px] font-semibold">✎</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'up')} title="Move up" className="text-gray-500 hover:text-gray-700 text-[12px] font-semibold">▲</button>
+                      <button type="button" onClick={() => moveLawInOrder(f.key, 'down')} title="Move down" className="text-gray-500 hover:text-gray-700 text-[12px] font-semibold">▼</button>
+                      <button type="button" onClick={() => startEditFlag(f)} title="Rename" className="text-gray-500 hover:text-gray-700 text-[12px] font-semibold">✎</button>
                       {taskForFlag !== f.key && (
                         <>
-                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[8px]">✓ +</button>
+                          <button type="button" onClick={() => { setTaskForFlag(f.key); fetchTasksForFlag(f.key) }} title="Add task for this flag" className="text-blue-500 hover:text-blue-600 font-semibold text-[12px]">✓ +</button>
                         </>
                       )}
                     </>
                   ) : editingFlagKey !== f.key && (
-                    <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[8px] font-semibold">⋯</button>
+                    <button type="button" onClick={() => setMenuFlagKey(f.key)} className="text-gray-400 hover:text-gray-600 text-[12px] font-semibold">⋯</button>
                   )}
                 </div>
                 {expandedFlagDesc === f.key && f.description && (
-                  <p className="text-[8px] text-gray-600 leading-tight">{f.description}</p>
+                  <p className="text-[12px] text-gray-600 leading-tight">{f.description}</p>
                 )}
                 {taskForFlag === f.key
                   ? renderAddTaskForm(taskTitleForFlag, setTaskTitleForFlag, taskTypeForFlag, setTaskTypeForFlag, taskAssignedToFlag, setTaskAssignedToFlag, addTaskForFlag, () => setTaskForFlag(null),
@@ -1174,15 +1174,15 @@ export default function PageLawsList({
             <div key={`task-${task.id}`} className="px-1 py-0.5 bg-green-50/50 flex items-center gap-1"
               onMouseDown={() => globalTaskPress.onMouseDown(task.id)} onMouseUp={globalTaskPress.onMouseUp}
               onTouchStart={() => globalTaskPress.onTouchStart(task.id)} onTouchEnd={globalTaskPress.onTouchEnd}>
-              <span className="shrink-0 text-[8px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + i + 1}</span>
+              <span className="shrink-0 text-[12px] font-bold text-gray-300">{visibleLaws.length + visibleFlags.length + i + 1}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] text-gray-800">✓ {task.title}</p>
-                <div className="flex items-center gap-1 flex-wrap text-[7px] text-gray-600 mt-0.5">
+                <p className="text-[12px] text-gray-800">✓ {task.title}</p>
+                <div className="flex items-center gap-1 flex-wrap text-[12px] text-gray-600 mt-0.5">
                   <span>{formatDate(task.created_at)} by {task.created_by}</span>
                   {task.assigned_to && (<><span>•</span><span>To: {task.assigned_to}</span></>)}
                 </div>
                 {menuGlobalTaskId === task.id && (
-                  <div className="flex gap-1 text-[8px] mt-0.5">
+                  <div className="flex gap-1 text-[12px] mt-0.5">
                     <button type="button" onClick={() => { toggleGlobalTaskCompletion(task.id, task.done); setMenuGlobalTaskId(null) }} title={task.done ? 'Reopen' : 'Complete'} className="text-green-600 hover:text-green-700 font-semibold">✓</button>
                     <button type="button" onClick={() => { setReplyingTo(`task-${task.id}`); fetchReplies('task', task.id); setMenuGlobalTaskId(null) }} title="Reply" className="text-blue-500 hover:text-blue-700 font-semibold">💬</button>
                     <button type="button" onClick={() => { deleteGlobalTask(task.id); setMenuGlobalTaskId(null) }} title="Delete task" className="text-red-500 hover:text-red-700 font-semibold">×</button>

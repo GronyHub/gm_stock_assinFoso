@@ -55,7 +55,7 @@ type DailyItem = {
 }
 
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 function CountRow({ item, onSaved, onLoss, onPairing, onLog }: {
   item: DailyItem
@@ -111,25 +111,25 @@ function CountRow({ item, onSaved, onLoss, onPairing, onLog }: {
   return (
     <tr className="border-b border-gray-100 last:border-0">
       <td className="px-1.5 py-0.5 min-w-0">
-        <p className="text-[10px] text-gray-900 font-semibold leading-tight truncate max-w-[110px]">{item.item_name}</p>
-        {item.cf_group && <p className="text-[9px] text-gray-400 leading-tight truncate">{item.cf_group}</p>}
+        <p className="text-[12px] text-gray-900 font-semibold leading-tight truncate max-w-[110px]">{item.item_name}</p>
+        {item.cf_group && <p className="text-[12px] text-gray-400 leading-tight truncate">{item.cf_group}</p>}
       </td>
-      <td className="px-1 py-0.5 text-center text-[10px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
+      <td className="px-1 py-0.5 text-center text-[12px] font-bold text-gray-900 whitespace-nowrap">{soh}</td>
       <td className="px-1 py-0.5">
-        <span className={`text-[9px] font-semibold px-1 py-0.5 rounded-full whitespace-nowrap ${badgeClass}`}>{badgeLabel}</span>
+        <span className={`text-[12px] font-semibold px-1 py-0.5 rounded-full whitespace-nowrap ${badgeClass}`}>{badgeLabel}</span>
       </td>
       <td className="px-1 py-0.5">
         <div className="flex items-center gap-1">
           <button onClick={() => submit(soh)} disabled={saving}
-            className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[9px] font-semibold rounded px-1.5 py-1 whitespace-nowrap transition">
+            className="bg-green-700 hover:bg-green-600 disabled:opacity-40 text-white text-[12px] font-semibold rounded px-1.5 py-1 whitespace-nowrap transition">
             {saving ? '…' : `=${soh}`}
           </button>
           <input type="number" min="0" step="any" value={customQty} onChange={e => setCustomQty(e.target.value)}
             placeholder="qty" inputMode="decimal"
-            className="w-11 bg-gray-100 border border-gray-200 rounded px-1 py-1 text-[10px] text-center outline-none focus:ring-1 focus:ring-blue-400" />
+            className="w-11 bg-gray-100 border border-gray-200 rounded px-1 py-1 text-[12px] text-center outline-none focus:ring-1 focus:ring-blue-400" />
           <button onClick={() => { if (customQty !== '') submit(Number(customQty)) }}
             disabled={customQty === '' || saving}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[9px] font-semibold rounded px-1.5 py-1 transition">
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[12px] font-semibold rounded px-1.5 py-1 transition">
             Save
           </button>
         </div>
@@ -209,7 +209,7 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing, initialIt
   return (
     <div className="bg-blue-50 border-b border-blue-200 px-2 py-2 space-y-1.5 shrink-0">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold text-blue-700">Manual Count — any item, today&apos;s date</p>
+        <p className="text-[12px] font-bold text-blue-700">Manual Count — any item, today&apos;s date</p>
         <button onClick={onClose} className="text-blue-300 hover:text-blue-500 font-bold leading-none">×</button>
       </div>
       {!sel ? (
@@ -221,19 +221,19 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing, initialIt
               {matches.map(i => (
                 <button key={i.id} onClick={() => setSel(i)}
                   className="w-full text-left px-2 py-1.5 hover:bg-blue-50 transition">
-                  <span className="text-[10px] font-semibold text-gray-900">{i.item_name}</span>
-                  {i.cf_group && <span className="text-[9px] text-gray-400"> · {i.cf_group}</span>}
+                  <span className="text-[12px] font-semibold text-gray-900">{i.item_name}</span>
+                  {i.cf_group && <span className="text-[12px] text-gray-400"> · {i.cf_group}</span>}
                 </button>
               ))}
             </div>
           )}
-          {q.trim() && matches.length === 0 && <p className="text-[9px] text-gray-400">No items match.</p>}
+          {q.trim() && matches.length === 0 && <p className="text-[12px] text-gray-400">No items match.</p>}
         </>
       ) : (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between bg-white border border-gray-200 rounded px-2 py-1.5">
-            <span className="text-[10px] font-semibold text-gray-900">{sel.item_name}</span>
-            <button onClick={() => { setSel(null); setQty('') }} className="text-[9px] text-blue-600 font-semibold">change</button>
+            <span className="text-[12px] font-semibold text-gray-900">{sel.item_name}</span>
+            <button onClick={() => { setSel(null); setQty('') }} className="text-[12px] text-blue-600 font-semibold">change</button>
           </div>
           <div className="flex gap-1.5">
             <div className="w-28 shrink-0"><WithMic mode="number" onText={t => t && setQty(t)}>
@@ -243,11 +243,11 @@ function ManualCountForm({ items, onSaved, onClose, onLoss, onPairing, initialIt
             <input value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="Notes (optional)" className={inputCls + ' w-full'} /></WithMic>
             <button onClick={() => save()} disabled={qty === '' || saving}
-              className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[10px] font-semibold rounded px-3 py-1 transition">
+              className="shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white text-[12px] font-semibold rounded px-3 py-1 transition">
               {saving ? '…' : 'Save'}
             </button>
           </div>
-          {error && <p className="text-[9px] text-red-500">{error}</p>}
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
         </div>
       )}
     </div>
@@ -441,7 +441,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
     return (
       <div className="overflow-y-auto h-full py-2">
         {debugLogs.length > 0 && (
-          <div className="fixed top-4 right-4 bg-black text-white text-[11px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
+          <div className="fixed top-4 right-4 bg-black text-white text-[12px] rounded px-3 py-2 max-w-xs z-50 shadow-lg">
             {debugLogs.map((log, i) => <div key={i} className="whitespace-normal break-words">{log}</div>)}
           </div>
         )}
@@ -450,7 +450,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         <div className="flex justify-end px-2 pb-1">
           {hasCountableItems && (
             <button onClick={() => setShowManual(v => !v)}
-              className="text-[9px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+              className="text-[12px] font-semibold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
               {showManual ? '× Close' : '+ Manual Count'}
             </button>
           )}
@@ -460,15 +460,15 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
             onSaved={() => { loadRecords(); loadDaily() }} />
         )}
         {dailyLoading ? (
-          <p className="py-10 text-center text-gray-400 text-[10px]">Loading…</p>
+          <p className="py-10 text-center text-gray-400 text-[12px]">Loading…</p>
         ) : countItems.length === 0 ? (
-          <p className="py-4 text-center text-gray-400 text-[10px]">
+          <p className="py-4 text-center text-gray-400 text-[12px]">
             {violation === 'daily' ? 'All daily items counted!'
               : violation === '7day' ? 'All GMC items counted within 7 days!'
               : 'All items up to date!'}
           </p>
         ) : (
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 bg-gray-100 z-10">
               <tr>
                 <th className="text-left px-1.5 py-0.5 font-semibold text-gray-500 border-b border-gray-200">Item</th>
@@ -498,10 +498,10 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-1.5 px-2 py-1 border-b border-gray-200 bg-gray-50 shrink-0">
         <button onClick={() => setShowHistory(false)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
           ← Back
         </button>
-        <span className="text-[9px] font-semibold text-purple-700">Counts History</span>
+        <span className="text-[12px] font-semibold text-purple-700">Counts History</span>
       </div>
       <HistoryPanel keywords={['stock', 'count']} onEntryClick={log => {
         // "counted stock": "ItemName · qty 5"
@@ -533,11 +533,11 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
         <button onClick={() => setShowManual(v => !v)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
           {showManual ? '× Close' : '+ Manual Count'}
         </button>
         <button onClick={() => setShowHistory(true)}
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
         <ColumnsPickerButton prefs={colPrefs} />
@@ -555,7 +555,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
       {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="border-collapse text-[10px]" style={{
+        <table className="border-collapse text-[12px]" style={{
           tableLayout: 'fixed',
           width: colPrefs.getWidth('date', COUNTS_COL_DEFAULTS.date) + colPrefs.getWidth('item', COUNTS_COL_DEFAULTS.item)
             + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, COUNTS_COL_DEFAULTS[c.key] ?? 80), 0)
@@ -601,12 +601,12 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
                   <td className="px-2.5 py-0 border-b border-gray-100 overflow-hidden">
                     <div className="flex gap-1 justify-end whitespace-nowrap">
                       <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)}
-                        className="text-[9px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition">
+                        className="text-[12px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition">
                         {editingId === r.id ? 'Close' : 'Edit'}
                       </button>
                       {canDelete && (
                         <button onClick={() => deleteCount(r)}
-                          className="text-[9px] text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full hover:bg-red-100 transition">
+                          className="text-[12px] text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-full hover:bg-red-100 transition">
                           Del
                         </button>
                       )}
@@ -618,22 +618,22 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
                     <td colSpan={3 + colPrefs.shownColumns.length} className="px-3 py-2.5 border-b border-gray-100">
                       <div className="flex items-end gap-2 flex-wrap">
                         <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Qty Counted</p>
+                          <p className="text-[12px] text-gray-400 mb-0.5">Qty Counted</p>
                           <input type="number" min="0" step="any" value={editQty}
                             onChange={e => setEditQty(e.target.value)} className={inputCls + ' w-24'} />
                         </div>
                         <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Notes</p>
+                          <p className="text-[12px] text-gray-400 mb-0.5">Notes</p>
                           <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
                             placeholder="Optional" className={inputCls + ' w-40'} />
                         </div>
                         <div className="flex gap-1.5">
                           <button onClick={() => saveEdit()} disabled={saving}
-                            className="bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold rounded-lg px-3 py-1.5 disabled:opacity-40 transition">
+                            className="bg-green-600 hover:bg-green-500 text-white text-[12px] font-bold rounded-lg px-3 py-1.5 disabled:opacity-40 transition">
                             {saving ? 'Saving…' : 'Save'}
                           </button>
                           <button onClick={() => setEditingId(null)}
-                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] font-semibold rounded-lg transition">Cancel</button>
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-[12px] font-semibold rounded-lg transition">Cancel</button>
                         </div>
                       </div>
                     </td>
@@ -643,7 +643,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="text-[10px] text-gray-400 text-center py-10">No records</p>}
+        {filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No records</p>}
         </div>
         </div>
       </div>}

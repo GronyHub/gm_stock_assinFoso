@@ -149,10 +149,10 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
             <button key={s.staff_name} type="button" data-keep-embed onClick={() => onOpenStaff(s.staff_name, 'times')}
               title={`${s.staff_name}: ${s.status === 'absent' ? 'not clocked in today' : s.status === 'break' ? 'on break' : s.status === 'out' ? 'clocked out' : 'clocked in'}${s.totalMins != null ? ` · ${fmtHrMin(s.workedMins)}/${fmtHrMin(s.totalMins)}` : ''}`}
               className={`relative flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${on ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
-              {(w?.total ?? 0) > 0 && <span className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[9px] font-extrabold leading-4 text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total > 99 ? '99+' : w!.total}</span>}
+              {(w?.total ?? 0) > 0 && <span className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[12px] font-extrabold leading-4 text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total > 99 ? '99+' : w!.total}</span>}
               <span className="flex w-full min-w-0 items-center gap-1">
                 <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
-                {p !== undefined && <span className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{p}</span>}
+                {p !== undefined && <span className={`rounded-full px-1 py-px text-[12px] font-extrabold leading-none ${p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{p}</span>}
               </span>
               <span className="text-[14px] font-extrabold leading-tight text-green-300 tabular-nums">₵{((salesBy ?? {})[k] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             </button>
@@ -184,24 +184,24 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
           <button key={s.staff_name} type="button" onClick={() => onOpenStaff(s.staff_name, 'times')}
             title={s.status === 'absent' ? 'Not clocked in today' : s.status === 'break' ? 'On break' : s.status === 'out' ? 'Clocked out' : 'View time details'}
             className={`relative shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${activeStaff && activeStaff.toLowerCase() === s.staff_name.toLowerCase() ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-white hover:bg-gray-100 active:bg-gray-200'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
-            {(waitingBy?.[s.staff_name.toLowerCase()]?.total ?? 0) > 0 && <span title={`${waitingBy![s.staff_name.toLowerCase()].total} waiting for ${s.staff_name}${waitingBy![s.staff_name.toLowerCase()].now ? `, ${waitingBy![s.staff_name.toLowerCase()].now} overdue` : ''}`} className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[9px] font-extrabold leading-4 text-white ${waitingBy![s.staff_name.toLowerCase()].now ? 'bg-red-600' : 'bg-amber-500'}`}>{waitingBy![s.staff_name.toLowerCase()].total > 99 ? '99+' : waitingBy![s.staff_name.toLowerCase()].total}</span>}
-            <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
+            {(waitingBy?.[s.staff_name.toLowerCase()]?.total ?? 0) > 0 && <span title={`${waitingBy![s.staff_name.toLowerCase()].total} waiting for ${s.staff_name}${waitingBy![s.staff_name.toLowerCase()].now ? `, ${waitingBy![s.staff_name.toLowerCase()].now} overdue` : ''}`} className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[12px] font-extrabold leading-4 text-white ${waitingBy![s.staff_name.toLowerCase()].now ? 'bg-red-600' : 'bg-amber-500'}`}>{waitingBy![s.staff_name.toLowerCase()].total > 99 ? '99+' : waitingBy![s.staff_name.toLowerCase()].total}</span>}
+            <span className="text-[12px] font-semibold text-gray-700 leading-tight whitespace-nowrap flex items-center gap-1">
               <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
               <span className={`hidden sm:inline ${s.status === 'absent' ? 'line-through' : ''}`}>{s.staff_name}</span>
-              {pts[s.staff_name.toLowerCase()] !== undefined && <span title={`${s.staff_name}: penalty points so far`} className={`rounded-full px-1 py-px text-[8px] font-extrabold leading-none ${pts[s.staff_name.toLowerCase()] >= 20 ? 'bg-red-600 text-white' : pts[s.staff_name.toLowerCase()] >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{pts[s.staff_name.toLowerCase()]}</span>}
+              {pts[s.staff_name.toLowerCase()] !== undefined && <span title={`${s.staff_name}: penalty points so far`} className={`rounded-full px-1 py-px text-[12px] font-extrabold leading-none ${pts[s.staff_name.toLowerCase()] >= 20 ? 'bg-red-600 text-white' : pts[s.staff_name.toLowerCase()] >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{pts[s.staff_name.toLowerCase()]}</span>}
             </span>
-            <span title="Sales this person has recorded today" className="text-[9px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">₵{((salesBy ?? {})[s.staff_name.toLowerCase()] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span title="Sales this person has recorded today" className="text-[12px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">₵{((salesBy ?? {})[s.staff_name.toLowerCase()] ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
             {s.status !== 'absent' && s.totalMins != null && (
-              <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
+              <span className="text-[12px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(s.workedMins)}/{fmtHrMin(s.totalMins)}</span>
             )}
           </button>
         ))}
         <button type="button" onClick={() => onOpenShop?.()} title="The Shop: Done, Laws, Times"
           className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${shopActive ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-gray-100 hover:bg-gray-200 active:bg-gray-300'}`}>
-          <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
+          <span className="text-[12px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
           {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}
-          {salesTotal && <span title="Today's total sales so far" className="text-[10px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">{salesTotal}</span>}
-          <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
+          {salesTotal && <span title="Today's total sales so far" className="text-[12px] font-extrabold text-green-700 leading-tight whitespace-nowrap tabular-nums">{salesTotal}</span>}
+          <span className="text-[12px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
         </button>
       </div>
     </>

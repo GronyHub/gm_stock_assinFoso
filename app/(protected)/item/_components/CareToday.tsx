@@ -22,12 +22,12 @@ function PastDays({ routine, photos, now, flash }: { routine: RoutineItem[]; pho
         {[1, 2, 3, 4, 5, 6, 7].map(n => {
           const x = new Date(now.getTime() - n * 86400000)
           return <button key={n} type="button" onClick={() => setBack(back === n ? 0 : n)}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${back === n ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{x.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })}</button>
+            className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${back === n ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{x.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })}</button>
         })}
       </div>
       {back > 0 && (
         <>
-          <p className="text-[11px] text-gray-500">Tap a tile to record it at the right time, or change what was recorded.</p>
+          <p className="text-[12px] text-gray-500">Tap a tile to record it at the right time, or change what was recorded.</p>
           <DayTiles items={routine} events={events} photos={photos} date={d} offset={-back} now={now} onTap={setPick} onEdit={setPick} />
         </>
       )}
@@ -133,10 +133,10 @@ export default function CareToday() {
             <div key={offset} className="space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-gray-800">{label} · {d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}{offset === 0 ? ` · ${clock}` : ''}</h2>
-                {offset === 0 && <button type="button" onClick={toggleAsk} className={`mr-1 rounded-full px-2.5 py-1.5 text-[11px] font-bold ${askOnTap ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{askOnTap ? 'Options on tap: ON' : 'Options on tap: off'}</button>}
+                {offset === 0 && <button type="button" onClick={toggleAsk} className={`mr-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold ${askOnTap ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}>{askOnTap ? 'Options on tap: ON' : 'Options on tap: off'}</button>}
                 {offset === 0 && <button type="button" onClick={() => setAddExtra(true)} className="rounded-full bg-purple-600 px-3 py-1.5 text-xs font-bold text-white">+ Extra activity</button>}
               </div>
-              {offset > 0 && <p className="text-[11px] text-gray-500">Look only. These can be recorded on the day.</p>}
+              {offset > 0 && <p className="text-[12px] text-gray-500">Look only. These can be recorded on the day.</p>}
               <DayTiles items={routine.items} events={events} photos={photos} date={d} offset={offset} now={now}
                 onTap={t => t.kind === 'night' ? setNightPick(t) : askOnTap ? openTile(t) : void tapTile(t)} onEdit={openTile} />
             </div>

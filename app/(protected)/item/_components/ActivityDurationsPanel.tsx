@@ -101,21 +101,21 @@ export default function ActivityDurationsPanel() {
             <div key={a.action} className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 capitalize truncate">{a.action}</p>
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[12px] text-gray-400">
                   {a.count} time{a.count !== 1 ? 's' : ''} logged{a.isDefault ? ' · using the default' : ''}
                 </p>
               </div>
               <input type="number" min="0" step="0.5" value={drafts[a.action] ?? ''}
                 onChange={e => setDrafts(prev => ({ ...prev, [a.action]: e.target.value }))}
                 className="w-16 text-right bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-400" />
-              <span className="text-[10px] text-gray-400 shrink-0">min</span>
+              <span className="text-[12px] text-gray-400 shrink-0">min</span>
               <button onClick={() => save(a.action)} disabled={savingAction === a.action}
-                className="text-[10px] font-semibold text-white bg-blue-600 px-2 py-1 rounded hover:bg-blue-700 disabled:opacity-40 shrink-0">
+                className="text-[12px] font-semibold text-white bg-blue-600 px-2 py-1 rounded hover:bg-blue-700 disabled:opacity-40 shrink-0">
                 Save
               </button>
               {!a.isDefault && (
                 <button onClick={() => resetToDefault(a.action)} disabled={savingAction === a.action}
-                  title="Go back to the default" className="text-[10px] font-semibold text-gray-400 hover:text-gray-600 shrink-0">
+                  title="Go back to the default" className="text-[12px] font-semibold text-gray-400 hover:text-gray-600 shrink-0">
                   Reset
                 </button>
               )}

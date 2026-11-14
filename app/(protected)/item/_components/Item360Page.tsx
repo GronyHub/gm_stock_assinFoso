@@ -60,7 +60,7 @@ export default function Item360Page() {
             <button key={h.id} type="button" onClick={() => setSelected({ id: h.id, name: h.name })}
               className="w-full text-left px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-blue-50">
               <span className="text-sm font-semibold text-gray-900">{h.name}</span>
-              <span className="block text-[11px] text-gray-500">
+              <span className="block text-[12px] text-gray-500">
                 {h.group ?? 'No group'} · SOH {Number(h.soh)} · ₵{Number(h.selling_price)}
               </span>
             </button>

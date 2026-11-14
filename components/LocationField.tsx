@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
-const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+const labelCls = 'text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
 // Shared by Customers and Vendors (New + Edit) -- a pick-from-list combobox
 // rather than free text, so a location gets picked from what's already in

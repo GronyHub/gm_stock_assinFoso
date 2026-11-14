@@ -51,7 +51,7 @@ export default function ViolationsAnalyticsSection() {
         </ResponsiveContainer>
         <div className="flex flex-wrap gap-2 mt-2">
           {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
-            <span key={cat} className="flex items-center gap-1 text-[9px] text-gray-500">
+            <span key={cat} className="flex items-center gap-1 text-[12px] text-gray-500">
               <span className="w-2 h-2 rounded-sm inline-block" style={{ background: color }} />{cat}
             </span>
           ))}

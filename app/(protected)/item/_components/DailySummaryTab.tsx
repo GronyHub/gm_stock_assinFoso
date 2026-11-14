@@ -99,9 +99,9 @@ function fmtQty(v: number | null) {
 }
 
 function ItemLineTable({ rows, emptyText }: { rows: ItemLine[]; emptyText: string }) {
-  if (!rows.length) return <p className="text-[11px] text-gray-400">{emptyText}</p>
+  if (!rows.length) return <p className="text-[12px] text-gray-400">{emptyText}</p>
   return (
-    <table className="w-full text-[11px]">
+    <table className="w-full text-[12px]">
       <thead>
         <tr className="text-gray-400 border-b border-gray-100">
           <th className="text-left font-semibold py-1">Item</th>
@@ -276,17 +276,17 @@ export default function DailySummaryTab() {
           className="shrink-0 w-8 h-8 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition font-bold disabled:opacity-30">›</button>
         {!isToday && (
           <button onClick={() => setDate(todayStr())}
-            className="shrink-0 text-[10px] font-semibold text-blue-600">Today</button>
+            className="shrink-0 text-[12px] font-semibold text-blue-600">Today</button>
         )}
       </div>
       <div className="flex items-center justify-between -mt-1">
         <p className="text-xs text-gray-400">{fmtOrdinalDate(date)}</p>
         <div className="flex items-center gap-2">
           {data && data.allVerified && (
-            <span className="text-[10px] font-semibold text-green-700">✅ All Verified</span>
+            <span className="text-[12px] font-semibold text-green-700">✅ All Verified</span>
           )}
           <button onClick={downloadPdf} disabled={!data || downloading}
-            className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 transition">
+            className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 transition">
             {downloading ? 'Preparing…' : '⬇ Download PDF'}
           </button>
         </div>
@@ -301,7 +301,7 @@ export default function DailySummaryTab() {
           {!data.hasReceipt && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
               <span className="text-sm shrink-0">⚠️</span>
-              <p className="text-[11px] text-amber-800 leading-snug">
+              <p className="text-[12px] text-amber-800 leading-snug">
                 No sales receipt has been entered for this day yet -- items bought, cash counted, Work Not Written, and Profit/Loss below will be incomplete until it is.
               </p>
             </div>
@@ -317,14 +317,14 @@ export default function DailySummaryTab() {
           </div>
           <StatCard label={isProfit ? 'Net Profit (today)' : 'Net Loss (today)'} value={fc(Math.abs(data.profitLoss))} tone={isProfit ? 'green' : 'red'} />
           {!data.canSeeAmounts && (
-            <p className="text-[10px] text-gray-400 -mt-1">Salaries are excluded from Expenses and Profit/Loss for your account.</p>
+            <p className="text-[12px] text-gray-400 -mt-1">Salaries are excluded from Expenses and Profit/Loss for your account.</p>
           )}
           <StatCard
             label={`Gross Margin — WIC Sales (SP − CP)${data.grossMarginIncomplete ? ', partial' : ''}`}
             value={fc(data.grossMarginWIC)}
             tone={data.grossMarginWIC >= 0 ? 'green' : 'red'}
           />
-          <p className="text-[10px] text-gray-400 -mt-1 leading-snug">
+          <p className="text-[12px] text-gray-400 -mt-1 leading-snug">
             This is a different number from Net Profit above, and they&apos;re not supposed to match: Net Profit is cash-basis (cash counted minus expenses and bills, including stock bought but not yet sold today), while Gross Margin is what today&apos;s actual WIC sales earned over their cost price, regardless of when they were paid for or restocked.
             {data.grossMarginIncomplete && ' Some items sold today have no cost price on record, so this figure is understated.'}
           </p>
@@ -332,9 +332,9 @@ export default function DailySummaryTab() {
           {/* Team -- everyone's clock times for the day, not one person's */}
           <Section title="Team Present & Times">
             {data.staff.length === 0 ? (
-              <p className="text-[11px] text-gray-400">No staff times recorded for this day.</p>
+              <p className="text-[12px] text-gray-400">No staff times recorded for this day.</p>
             ) : (
-              <table className="w-full text-[11px]">
+              <table className="w-full text-[12px]">
                 <thead>
                   <tr className="text-gray-400 border-b border-gray-100">
                     <th className="text-left font-semibold py-1">Staff</th>
@@ -366,9 +366,9 @@ export default function DailySummaryTab() {
           {/* Daily count */}
           <Section title="Daily Count">
             {data.dailyCount.length === 0 ? (
-              <p className="text-[11px] text-gray-400">No stock counts recorded for this day.</p>
+              <p className="text-[12px] text-gray-400">No stock counts recorded for this day.</p>
             ) : (
-              <table className="w-full text-[11px]">
+              <table className="w-full text-[12px]">
                 <thead>
                   <tr className="text-gray-400 border-b border-gray-100">
                     <th className="text-left font-semibold py-1">Item</th>
@@ -391,12 +391,12 @@ export default function DailySummaryTab() {
 
           {/* Items bought WIC */}
           <Section title="Items Bought — WIC">
-            <p className="text-[10px] text-gray-400 mb-1.5">
+            <p className="text-[12px] text-gray-400 mb-1.5">
               Before/After = stock on record just before and after this sale (informational -- not required for Verify). Verify confirms the sale itself was recorded correctly: ✅ linked to an active item with a valid quantity and amount, ⚠️ inactive item or invalid entry, ❗ not linked to an item at all.
             </p>
             <ItemLineTable rows={data.itemsWIC} emptyText="No walk-in customer purchases recorded for this day." />
             {data.itemsWIC.length > 0 && (
-              <p className="text-[10px] text-amber-700 mt-2">
+              <p className="text-[12px] text-amber-700 mt-2">
                 🔁 Count these tomorrow to confirm they&apos;re intact.
               </p>
             )}

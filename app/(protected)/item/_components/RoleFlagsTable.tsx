@@ -292,7 +292,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[11px] font-semibold text-gray-500">
+      <div className="flex items-center gap-3 px-2.5 py-1.5 bg-gray-50 border-b border-gray-200 text-[12px] font-semibold text-gray-500">
         <label className="flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} />
           Done
@@ -304,7 +304,7 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
         </label>
       </div>
       <div className="overflow-x-auto">
-      <table className="w-full text-[11px] border-collapse table-fixed">
+      <table className="w-full text-[12px] border-collapse table-fixed">
         {anyExpanded && (
           <thead className="bg-gray-50">
             <tr>
@@ -334,30 +334,30 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
             {inlineFix && showSection && (
               <tr onClick={() => toggleSection(submenusBySection.get(section) ?? [submenu])} className="cursor-pointer">
                 <td colSpan={4} className="px-3 py-1 bg-green-600 text-center">
-                  <span className="font-bold text-white text-[11px] uppercase tracking-wide">{section}</span>
+                  <span className="font-bold text-white text-[12px] uppercase tracking-wide">{section}</span>
                 </td>
               </tr>
             )}
             <tr onClick={onBarClick} className="cursor-pointer">
               <td colSpan={2} className="px-3 py-1 bg-blue-600">
-                <span className="font-bold text-white text-[11px]">
+                <span className="font-bold text-white text-[12px]">
                   {!hasContent && onNavigateSubmenu ? '→ ' : showRows ? '▾ ' : '▸ '}{submenu}
                 </span>
               </td>
               <td className="px-3 py-1 bg-blue-600 overflow-hidden">
                 {firstPreview && (
-                  <span className="block font-semibold text-white text-[11px] truncate" title={firstPreview.title}>{firstPreview.title}</span>
+                  <span className="block font-semibold text-white text-[12px] truncate" title={firstPreview.title}>{firstPreview.title}</span>
                 )}
               </td>
               <td className="px-3 py-1 bg-blue-600 text-right">
-                <span className="font-bold text-white text-[11px]">{total > 0 ? total : '✓'}</span>
+                <span className="font-bold text-white text-[12px]">{total > 0 ? total : '✓'}</span>
               </td>
             </tr>
             {restPreview.map(t => (
               <tr key={`preview-${t.id}`} onClick={onBarClick} className="cursor-pointer">
                 <td colSpan={2} className="px-3 py-1 bg-blue-600" />
                 <td className="px-3 py-1 bg-blue-600 overflow-hidden">
-                  <span className="block font-semibold text-white text-[11px] truncate" title={t.title}>{t.title}</span>
+                  <span className="block font-semibold text-white text-[12px] truncate" title={t.title}>{t.title}</span>
                 </td>
                 <td className="px-3 py-1 bg-blue-600" />
               </tr>
@@ -370,8 +370,8 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                 <tr className="hover:bg-blue-50 transition">
                   <td className="px-2 py-1.5">
                     <span className={`block ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
-                    {t.notes && <span className="block text-[9px] text-gray-400">{t.notes}</span>}
-                    {t.created_by && <span className="block text-[9px] text-gray-400">by <span className="capitalize">{t.created_by}</span></span>}
+                    {t.notes && <span className="block text-[12px] text-gray-400">{t.notes}</span>}
+                    {t.created_by && <span className="block text-[12px] text-gray-400">by <span className="capitalize">{t.created_by}</span></span>}
                   </td>
                   <td className={`px-1.5 py-1.5 text-center font-bold ${t.done ? 'text-green-600' : 'text-gray-300'}`}>{t.done ? '✓' : '—'}</td>
                   <td className="px-1.5 py-1.5 whitespace-nowrap text-gray-500">{t.due_date ? fmtOrdinalDate(t.due_date) : '—'}</td>
@@ -379,20 +379,20 @@ export function RoleFlagsTable({ violations, assignments, deadlines, assignedBy,
                     <div className="flex items-center justify-end gap-1.5">
                       {onUpdateTask && (
                         <button onClick={() => { setEditingTaskId(isEditing ? null : t.id); setExpandedTaskId(null) }}
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                          className={`text-[12px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
                             ${isEditing ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                           Edit
                         </button>
                       )}
                       {inlineFix && t.view && (
                         <button onClick={() => { setExpandedTaskId(taskOpen ? null : t.id); setEditingTaskId(null) }}
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                          className={`text-[12px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
                             ${taskOpen ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                           Fix
                         </button>
                       )}
                       <button onClick={() => onToggleTask?.(t)}
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
+                        className={`text-[12px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap transition
                           ${t.done ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
                         {t.done ? '✓ Completed' : 'Completed'}
                       </button>

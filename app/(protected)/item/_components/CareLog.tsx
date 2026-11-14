@@ -42,7 +42,7 @@ export default function CareLog() {
               {checks && <p className="text-xs text-indigo-700">{checks.join(', ')}</p>}
               {e.note && <p className="text-xs text-gray-600">{e.note}</p>}
               {e.photo_url && <a href={e.photo_url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-600">View photo</a>}
-              <p className="text-[10px] text-gray-400">by {e.recorded_by}</p>
+              <p className="text-[12px] text-gray-400">by {e.recorded_by}</p>
             </div>
           )
         })}

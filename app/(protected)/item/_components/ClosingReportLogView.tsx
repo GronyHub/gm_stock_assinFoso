@@ -44,20 +44,20 @@ export default function ClosingReportLogView({ field, label, icon, filterStaff }
   return (
     <div className="py-2 px-2 space-y-2">
       <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">{icon} {label}</p>
+        <p className="text-[12px] text-gray-400 mt-0.5">
           Answered daily in the Closer&apos;s end-of-day questionnaire when clocking out -- shown here as history, not entered separately.
         </p>
       </div>
 
       {(() => {
-        if (reports === null) return <p className="text-[11px] text-gray-400 text-center py-6">Loading…</p>
+        if (reports === null) return <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
         const visible = filterStaff
           ? reports.filter(r => (r.no_tshirt_staff?.split(',').map(s => s.trim().toLowerCase()) ?? []).includes(filterStaff.toLowerCase()))
           : reports
         if (visible.length === 0) {
           return (
-            <p className="text-[11px] text-gray-400 text-center py-6">
+            <p className="text-[12px] text-gray-400 text-center py-6">
               {filterStaff ? `No company T-shirt lapses recorded for ${filterStaff}.` : 'No closing reports yet.'}
             </p>
           )
@@ -68,17 +68,17 @@ export default function ClosingReportLogView({ field, label, icon, filterStaff }
             const noTshirt = r.no_tshirt_staff?.split(',').map(s => s.trim()).filter(Boolean) ?? []
             return (
               <div key={r.id} className="px-2.5 py-1.5">
-                <p className="text-[9px] text-gray-400">{fmtDate(r.work_date)} · Closer: <span className="capitalize">{r.closer_name}</span></p>
+                <p className="text-[12px] text-gray-400">{fmtDate(r.work_date)} · Closer: <span className="capitalize">{r.closer_name}</span></p>
                 {field === 'advert_played' ? (
-                  <p className="text-[11px] text-gray-800">
+                  <p className="text-[12px] text-gray-800">
                     Roadside advert played: <span className={r.advert_played ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
                       {r.advert_played ? 'Yes' : 'No'}
                     </span>
                   </p>
                 ) : filterStaff ? (
-                  <p className="text-[11px] text-red-500 font-semibold">Cited for no company T-shirt</p>
+                  <p className="text-[12px] text-red-500 font-semibold">Cited for no company T-shirt</p>
                 ) : (
-                  <p className="text-[11px] text-gray-800">
+                  <p className="text-[12px] text-gray-800">
                     No company T-shirt: {noTshirt.length
                       ? <span className="text-red-500 font-semibold">{noTshirt.join(', ')}</span>
                       : <span className="text-green-600 font-semibold">None</span>}

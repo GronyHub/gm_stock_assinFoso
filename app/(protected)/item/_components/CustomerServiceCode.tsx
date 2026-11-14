@@ -38,7 +38,7 @@ export default function CustomerServiceCode() {
       {CUSTOMER_SERVICE_CODE.map(sec => (
         <div key={sec.id} className="border border-gray-200 rounded-lg overflow-hidden bg-white">
           <button type="button" onClick={() => toggle(sec.id)} className="w-full flex items-center gap-2 text-left px-3 py-2 bg-gray-50">
-            <span className="text-gray-400 text-[10px]">{open.has(sec.id) ? '▴' : '▾'}</span>
+            <span className="text-gray-400 text-[12px]">{open.has(sec.id) ? '▴' : '▾'}</span>
             <span className="text-sm font-semibold text-gray-800">{sec.id}. {sec.title}</span>
             <span className="text-xs text-gray-400 ml-auto">{sec.rules.length}</span>
           </button>
@@ -46,7 +46,7 @@ export default function CustomerServiceCode() {
             <ul className="divide-y divide-gray-100">
               {sec.rules.map(r => (
                 <li key={r.code} className="flex gap-2 px-3 py-2 text-sm text-gray-800">
-                  <span className="shrink-0 text-[11px] font-bold text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 h-fit mt-0.5">{r.code}</span>
+                  <span className="shrink-0 text-[12px] font-bold text-blue-700 bg-blue-50 rounded px-1.5 py-0.5 h-fit mt-0.5">{r.code}</span>
                   <span>{r.title && <b>{r.title} </b>}{r.text}</span>
                 </li>
               ))}
@@ -73,13 +73,13 @@ export default function CustomerServiceCode() {
             {team.map(t => (
               <li key={t.username} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                 <span className="font-medium text-gray-800">{t.display_name || t.username}</span>
-                <span className={`ml-auto text-[11px] font-semibold ${t.tag_worn == null ? 'text-amber-600' : t.tag_worn ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`ml-auto text-[12px] font-semibold ${t.tag_worn == null ? 'text-amber-600' : t.tag_worn ? 'text-green-600' : 'text-red-600'}`}>
                   {t.tag_worn == null ? 'Card not done' : t.tag_worn ? 'Tag on' : 'Tag NOT on'}
                 </span>
-                <span className={`text-[11px] font-semibold ${t.correct == null ? 'text-gray-300' : t.correct ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-[12px] font-semibold ${t.correct == null ? 'text-gray-300' : t.correct ? 'text-green-600' : 'text-red-600'}`}>
                   {t.correct == null ? '-' : t.correct ? 'Right' : 'Wrong'}
                 </span>
-                <span className="text-[11px] text-gray-500 tabular-nums w-14 text-right">{t.correct_30d}/{t.days_30d}</span>
+                <span className="text-[12px] text-gray-500 tabular-nums w-14 text-right">{t.correct_30d}/{t.days_30d}</span>
               </li>
             ))}
           </ul>
@@ -95,7 +95,7 @@ export default function CustomerServiceCode() {
               return (
                 <li key={a.username} className="flex items-center gap-2 px-3 py-1.5 text-sm">
                   <span className="font-medium text-gray-800">{a.display_name || a.username}</span>
-                  <span className="text-[10px] text-gray-400 capitalize">{a.role.replace('_', ' ')}</span>
+                  <span className="text-[12px] text-gray-400 capitalize">{a.role.replace('_', ' ')}</span>
                   <span className={`ml-auto text-xs font-semibold ${ok ? 'text-green-600' : 'text-amber-600'}`}>
                     {ok ? `✓ ${fmt(a.acknowledged_at!)}` : 'Not yet'}
                   </span>

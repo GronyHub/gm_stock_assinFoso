@@ -26,18 +26,18 @@ export const EMPTY_ITEM_EDIT_FORM = {
 const SIZES = {
   compact: {
     wrap: 'space-y-1 p-1.5 bg-gray-50 border-b border-gray-200',
-    input: 'w-full bg-white border border-gray-300 rounded-md px-1.5 py-1 text-[10px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
+    input: 'w-full bg-white border border-gray-300 rounded-md px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
     // Read-only (not editMode) display -- deliberately NOT the same look as
     // `input` above. A field styled like an open text box even while locked
     // reads as editable when it isn't; plain text with no border makes
     // "you have to press Edit first" obvious at a glance instead of just
     // true-but-invisible.
-    readOnly: 'truncate text-[10px] text-gray-700 leading-tight py-0.5',
-    label: 'text-[7px] font-bold text-gray-500 uppercase tracking-wide block leading-none mb-0.5',
+    readOnly: 'truncate text-[12px] text-gray-700 leading-tight py-0.5',
+    label: 'text-[12px] font-bold text-gray-500 uppercase tracking-wide block leading-none mb-0.5',
     fieldGap: 'gap-1',
-    sectionLabel: 'text-[7px] font-bold text-gray-500 uppercase tracking-wide block',
+    sectionLabel: 'text-[12px] font-bold text-gray-500 uppercase tracking-wide block',
     sectionWrap: 'pt-1 border-t border-gray-200 space-y-1',
-    checkboxLabel: 'flex items-center gap-1 text-[9px] text-gray-700 cursor-pointer select-none',
+    checkboxLabel: 'flex items-center gap-1 text-[12px] text-gray-700 cursor-pointer select-none',
     checkbox: 'w-3 h-3 accent-red-600',
   },
   large: {
@@ -336,12 +336,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
             </div>
           )}
           {gmcError && (
-            <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-red-600 font-semibold`}>
+            <div className={`mt-1 ${large ? 'text-sm' : 'text-[12px]'} text-red-600 font-semibold`}>
               ✗ {gmcError}
             </div>
           )}
           {gmcSaved && (
-            <div className={`mt-1 ${large ? 'text-sm' : 'text-[9px]'} text-green-600 font-semibold`}>
+            <div className={`mt-1 ${large ? 'text-sm' : 'text-[12px]'} text-green-600 font-semibold`}>
               ✓ GMC Type saved
             </div>
           )}
@@ -408,7 +408,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
               </div>
             )}
             {form.derived_from_item_id && form.units_per_pack && (
-              <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-blue-600 mt-1'}>
+              <p className={(large ? 'text-xs' : 'text-[12px]') + ' text-blue-600 mt-1'}>
                 💡 Cost price will be calculated from the parent pack
               </p>
             )}
@@ -418,7 +418,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
       {!hideEditButton && (
         <button
           onClick={() => setEditMode(!editMode)}
-          className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded transition ${large ? 'px-3 py-2 text-sm mt-7' : 'px-1.5 py-0.5 text-[9px] mt-0.5'}`}>
+          className={`shrink-0 ${editMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'} font-semibold rounded transition ${large ? 'px-3 py-2 text-sm mt-7' : 'px-1.5 py-0.5 text-[12px] mt-0.5'}`}>
           {editMode ? '✓ Done' : '✎ Edit'}
         </button>
       )}
@@ -427,7 +427,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
         <div className={s.sectionWrap}>
           <label className={s.sectionLabel}>Stock counts</label>
           {currentCountInterval && (
-            <p className={large ? 'text-xs text-gray-500' : 'text-[8px] text-gray-500 leading-tight'}>
+            <p className={large ? 'text-xs text-gray-500' : 'text-[12px] text-gray-500 leading-tight'}>
               Currently: <span className="font-semibold text-gray-700">{currentCountInterval}</span>
               {!form.count_excluded && !form.count_cadence_days && currentCountInterval !== 'Daily' && (
                 <> (automatic)</>
@@ -465,12 +465,12 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
                 <div>
                   <label className={s.label}>Why is it being excluded?</label>
                   {stockBlocksExclude && (
-                    <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-red-600 font-semibold mb-0.5'}>
+                    <p className={(large ? 'text-xs' : 'text-[12px]') + ' text-red-600 font-semibold mb-0.5'}>
                       Still shows {currentSoh} in stock -- bring it to 0 first.
                     </p>
                   )}
                   {currentSoh === 0 && (
-                    <p className={(large ? 'text-xs' : 'text-[8px]') + ' text-green-600 mb-0.5'}>Stock is 0 -- ready to exclude.</p>
+                    <p className={(large ? 'text-xs' : 'text-[12px]') + ' text-green-600 mb-0.5'}>Stock is 0 -- ready to exclude.</p>
                   )}
                   <select
                     value={customReason ? '__other__' : (form.count_excluded_reason || '')}

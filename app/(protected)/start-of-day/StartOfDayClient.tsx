@@ -39,7 +39,7 @@ export default function StartOfDayClient() {
   return (
     <div className="mx-auto max-w-xl space-y-3 p-3">
       <h1 className="text-base font-extrabold text-gray-900">Before you continue</h1>
-      {lock.owner && <p className="rounded-lg bg-blue-50 p-2 text-xs font-semibold text-blue-800">Owner view of Joe&apos;s block. {l.locked ? `Joe is blocked${l.day ? ` for ${l.day}` : ''}${(l.approvals ?? 0) > 0 ? `; ${l.approvals} clock time${l.approvals === 1 ? '' : 's'} waiting for him` : ''}.` : 'Joe is not blocked.'}{l.locked && l.day && <button type="button" onClick={() => void excuse(l.day!)} className="ml-2 rounded bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">Excuse this day</button>}</p>}
+      {lock.owner && <p className="rounded-lg bg-blue-50 p-2 text-xs font-semibold text-blue-800">Owner view of Joe&apos;s block. {l.locked ? `Joe is blocked${l.day ? ` for ${l.day}` : ''}${(l.approvals ?? 0) > 0 ? `; ${l.approvals} clock time${l.approvals === 1 ? '' : 's'} waiting for him` : ''}.` : 'Joe is not blocked.'}{l.locked && l.day && <button type="button" onClick={() => void excuse(l.day!)} className="ml-2 rounded bg-blue-600 px-2 py-0.5 text-[12px] font-bold text-white">Excuse this day</button>}</p>}
       {!l.locked && !lock.owner && (
         <div className="space-y-2 rounded-xl border border-green-300 bg-green-50 p-3">
           <p className="text-sm font-bold text-green-800">All done. The previous day is closed.</p>

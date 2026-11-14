@@ -111,7 +111,7 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, durationOverrides, c
       {showDateHeader && (
         <tr>
           <td colSpan={FEED_COLUMNS} className="text-center py-1 bg-gray-50/60">
-            <span className="text-[7px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
+            <span className="text-[12px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5">
               {dayLabel(p.created_at)}
             </span>
           </td>
@@ -123,20 +123,20 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, durationOverrides, c
         // (whitespace-nowrap, not wrapped or truncated) -- the shared table
         // wrapper scrolls horizontally when it's long.
         <tr className="hover:bg-gray-50">
-          <td className="pl-2 pr-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{fmtClockTime(p.created_at)}</td>
-          <td className="px-1 py-0.5 text-gray-800 text-[8px] whitespace-nowrap">{p.body}</td>
-          <td className="px-1 py-0.5 font-semibold text-gray-700 capitalize whitespace-nowrap text-[8px]">{p.author}</td>
-          <td className="px-1 py-0.5 text-gray-400 text-[7px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
-          <td className="px-1 pr-2 py-0.5 text-gray-500 font-semibold text-[7px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
+          <td className="pl-2 pr-1 py-0.5 text-gray-400 text-[12px] whitespace-nowrap">{fmtClockTime(p.created_at)}</td>
+          <td className="px-1 py-0.5 text-gray-800 text-[12px] whitespace-nowrap">{p.body}</td>
+          <td className="px-1 py-0.5 font-semibold text-gray-700 capitalize whitespace-nowrap text-[12px]">{p.author}</td>
+          <td className="px-1 py-0.5 text-gray-400 text-[12px] whitespace-nowrap">{durationSeconds > 0 ? formatDuration(durationSeconds) : '—'}</td>
+          <td className="px-1 pr-2 py-0.5 text-gray-500 font-semibold text-[12px] whitespace-nowrap">{formatDuration(staffDayTotalSeconds)}</td>
         </tr>
       ) : (
         <tr>
           <td colSpan={FEED_COLUMNS} className="p-0">
             <div className="px-2 py-1 space-y-0.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-semibold text-gray-700 capitalize">{p.author}</span>
+                <span className="text-[12px] font-semibold text-gray-700 capitalize">{p.author}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[8px] text-gray-400">
+                  <span className="text-[12px] text-gray-400">
                     {fmtClockTime(p.created_at)}
                     {!!durationSeconds && <span className="text-gray-400"> · Dur {formatDuration(durationSeconds)}</span>}
                   </span>
@@ -146,12 +146,12 @@ function PostRow({ p, showDateHeader, staffDayTotalSeconds, durationOverrides, c
                 </div>
               </div>
               {p.reply_to_id && (
-                <div className="text-[8px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
+                <div className="text-[12px] text-gray-500 bg-gray-50 border-l-2 border-gray-300 rounded px-1.5 py-0.5">
                   <span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>
                   {p.reply_to_body && <>: {p.reply_to_body.slice(0, 60)}{p.reply_to_body.length > 60 ? '…' : ''}</>}
                 </div>
               )}
-              {p.body && <Linkify text={p.body} as="p" className="text-[9px] text-gray-800 whitespace-pre-wrap leading-snug" />}
+              {p.body && <Linkify text={p.body} as="p" className="text-[12px] text-gray-800 whitespace-pre-wrap leading-snug" />}
               <MediaGrid items={p.media_urls ?? []} />
             </div>
           </td>
@@ -310,16 +310,16 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="space-y-1 border-b border-gray-200 p-2">
-        <div className="flex flex-wrap gap-1">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
-        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" className="w-full rounded-lg border border-gray-300 p-1.5 text-[11px]" />
+        <div className="flex flex-wrap gap-1">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
+        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" className="w-full rounded-lg border border-gray-300 p-1.5 text-[12px]" />
       </div>
       {posts.length === 0 ? (
-        <p className="text-[9px] text-gray-400 text-center py-3">No announcements yet.</p>
+        <p className="text-[12px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-white">
-              <tr className="text-[7px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
+              <tr className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
                 <th className="text-left pl-2 pr-1 py-0.5 whitespace-nowrap">Time</th>
                 <th className="text-left px-1 py-0.5">Activity</th>
                 <th className="text-left px-1 py-0.5 whitespace-nowrap">Staff</th>
@@ -336,7 +336,7 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
                   canDelete={canDelete} onDelete={removePost} />
               ))}
               {hasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
-              {loadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[7px] text-gray-400 text-center py-2">Loading…</td></tr>}
+              {loadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[12px] text-gray-400 text-center py-2">Loading…</td></tr>}
             </tbody>
           </table>
         </div>

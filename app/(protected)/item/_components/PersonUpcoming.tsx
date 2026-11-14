@@ -25,7 +25,7 @@ export default function PersonUpcoming({ staff }: { staff: string }) {
   if (!rows.length && !clock) return null
   return (
     <div className="mb-2 overflow-hidden rounded-xl border border-blue-200 bg-blue-50/50">
-      <p className="bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700">Today and coming up · planned on the rota</p>
+      <p className="bg-blue-50 px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-blue-700">Today and coming up · planned on the rota</p>
       <div className="divide-y divide-blue-100">
         {!planned && clock && <div className="px-3 py-1 text-xs"><span className="font-bold text-blue-900">Today</span> <span className="text-gray-700">· {clock}</span></div>}
         {rows.map(e => (
@@ -33,9 +33,9 @@ export default function PersonUpcoming({ staff }: { staff: string }) {
             <div className="flex items-center gap-2">
               <span className="w-24 shrink-0 font-bold text-blue-900">{e.rota_date === todayKey ? 'Today' : new Date(e.rota_date + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
               <span className={`flex-1 font-semibold italic ${e.is_off ? 'text-gray-400 not-italic' : 'text-blue-700'}`}>{e.is_off ? 'Off' : `${e.sched_in ?? '?'} to ${e.sched_out ?? '?'}`}</span>
-              {!e.is_off && (e.role === 'opener' || e.role === 'closer') && <span className="rounded-full bg-indigo-100 px-2 py-px text-[10px] font-bold capitalize text-indigo-800">{e.role}</span>}
+              {!e.is_off && (e.role === 'opener' || e.role === 'closer') && <span className="rounded-full bg-indigo-100 px-2 py-px text-[12px] font-bold capitalize text-indigo-800">{e.role}</span>}
             </div>
-            {e.rota_date === todayKey && clock && <p className="mt-0.5 text-[11px] text-gray-700">{clock}</p>}
+            {e.rota_date === todayKey && clock && <p className="mt-0.5 text-[12px] text-gray-700">{clock}</p>}
           </div>))}
       </div>
     </div>

@@ -25,7 +25,7 @@ type ExistingCustomer = {
 }
 
 const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-400'
-const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
+const labelCls = 'text-[12px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5 block'
 
 // Moved out of customers/page.tsx -- "New Customer" is now its own
 // left-pane item/page (see item/page.tsx's 'newCustomer' LossView), not a
@@ -232,7 +232,7 @@ export default function NewCustomerForm({ onCreated, onCancel, initialDisplayNam
               </button>
             </div>
             {locationError && <p className="text-xs text-red-600">{locationError}</p>}
-            <p className="text-[10px] text-gray-500">Add new locations that will be available for all customers and vendors.</p>
+            <p className="text-[12px] text-gray-500">Add new locations that will be available for all customers and vendors.</p>
           </div>
         )}
 

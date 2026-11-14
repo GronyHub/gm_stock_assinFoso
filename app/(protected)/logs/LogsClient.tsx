@@ -121,7 +121,7 @@ export default function LogsPage() {
                   className="bg-white border border-gray-200 rounded-xl px-3 py-2.5 flex items-start gap-3">
                   {/* Timestamp */}
                   <div className="shrink-0 text-right min-w-[72px]">
-                    <p className="text-[11px] text-gray-400 leading-tight">
+                    <p className="text-[12px] text-gray-400 leading-tight">
                       {new Date(entry.created_at).toLocaleTimeString('en-GH', {
                         timeZone: 'Africa/Accra', hour: '2-digit', minute: '2-digit', hour12: true
                       })}
@@ -132,7 +132,7 @@ export default function LogsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-gray-900">{entry.staff_name}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${actionColor(entry.action)}`}>
+                      <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${actionColor(entry.action)}`}>
                         {entry.action}
                       </span>
                     </div>

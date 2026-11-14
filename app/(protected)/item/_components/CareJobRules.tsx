@@ -145,7 +145,7 @@ export default function CareJobRules() {
       {canObserve && (
         <section className="space-y-1">
           <h2 className="text-sm font-bold uppercase text-gray-700">General observations</h2>
-          <p className="text-[11px] text-gray-500">Not tied to one rule. Private: the caretaker cannot see any observations.</p>
+          <p className="text-[12px] text-gray-500">Not tied to one rule. Private: the caretaker cannot see any observations.</p>
           <ObsBlock ruleId={null} list={general} onChanged={() => void load()} open />
         </section>
       )}
@@ -157,7 +157,7 @@ export default function CareJobRules() {
               {JOB_SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <textarea value={editing.text} onChange={e => setEditing({ ...editing, text: e.target.value })} rows={4} className="w-full rounded-xl border border-gray-300 p-3 text-sm" />
-            {editing.id && <p className="text-[11px] text-gray-500">If you change the wording, the caretaker must sign this rule again.</p>}
+            {editing.id && <p className="text-[12px] text-gray-500">If you change the wording, the caretaker must sign this rule again.</p>}
             <button type="button" disabled={!editing.text.trim()} onClick={() => void saveRule()} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save</button>
             <button type="button" onClick={() => setEditing(null)} className="w-full py-2 text-sm font-semibold text-gray-500">Cancel</button>
           </div>

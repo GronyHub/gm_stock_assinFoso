@@ -65,7 +65,7 @@ export default function PayslipFlagsPanel() {
             <div key={month} className="px-4 py-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">{monthLabel(month)}</span>
-                <span className="text-[10px] text-orange-600 font-semibold">{staffMissing.length} missing</span>
+                <span className="text-[12px] text-orange-600 font-semibold">{staffMissing.length} missing</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {staffMissing.map(s => (

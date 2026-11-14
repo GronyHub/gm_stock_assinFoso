@@ -31,7 +31,7 @@ export default function AnnouncementsClient() {
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!tasks && !error && <p className="text-sm text-gray-400">Loading…</p>}
-      {tasks && <p className="mb-2 text-[11px] text-gray-500">{list.length} of {tasks.length}</p>}
+      {tasks && <p className="mb-2 text-[12px] text-gray-500">{list.length} of {tasks.length}</p>}
       <div className="space-y-4">
         {groups.map(([g, ts]) => (
           <div key={g}>
@@ -41,7 +41,7 @@ export default function AnnouncementsClient() {
                 <div key={t.id} className={`rounded-xl border p-3 ${t.done ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white'}`}>
                   <p className={`text-sm font-semibold ${t.done ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{t.title}</p>
                   {t.notes && <p className="mt-1 whitespace-pre-line text-[13px] text-gray-700">{t.notes}</p>}
-                  <p className="mt-1.5 text-[11px] text-gray-500">
+                  <p className="mt-1.5 text-[12px] text-gray-500">
                     {t.task_type ? `${t.task_type} · ` : ''}{t.assigned_to ? `For ${t.assigned_to} · ` : ''}{t.due_date ? `Due ${String(t.due_date).slice(0, 10)} · ` : ''}Added {new Date(t.created_at).toLocaleDateString()}{t.created_by ? ` by ${t.created_by}` : ''}{t.done ? ` · Done${t.completed_by ? ` by ${t.completed_by}` : ''}` : ''}
                   </p>
                 </div>

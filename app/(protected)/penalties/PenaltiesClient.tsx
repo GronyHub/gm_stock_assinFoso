@@ -50,8 +50,8 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
       {d && (<>
         <div className={`mb-3 rounded-xl p-3 text-xs font-semibold ${counting ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-800'}`}>
           {counting ? `Points are counting (since ${dlabel(d.settings.startCounting)}).` : `PILOT until ${dlabel(d.settings.startCounting)}: the points below are practice. They show here so everyone can see how it will work, and they are reset when counting starts.`}
-          {isOwner && <span className="ml-2 inline-flex items-center gap-1">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[11px]" />
-            <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[11px] font-bold text-white">Save</button></span>}
+          {isOwner && <span className="ml-2 inline-flex items-center gap-1">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[12px]" />
+            <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[12px] font-bold text-white">Save</button></span>}
         </div>
 
         {(d.sanctions.some(s => s.status === 'proposed') || d.pending.length > 0) && (
@@ -64,7 +64,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
             <div key={p.staff} className="rounded-xl border border-gray-200 bg-white p-2 text-center">
               <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl text-lg font-extrabold ${counting ? bandCls(p.points) : 'bg-blue-100 text-blue-900'}`}>{counting ? p.points : (p.pilot ?? 0)}</div>
               <p className="mt-1 text-sm font-bold text-gray-900">{p.display_name || cap(p.staff)}</p>
-              <p className="text-[10px] text-gray-500">{counting ? `${p.warnings} warning${p.warnings === 1 ? '' : 's'}` : `pilot · ${p.warnings} entr${p.warnings === 1 ? 'y' : 'ies'}`}</p>
+              <p className="text-[12px] text-gray-500">{counting ? `${p.warnings} warning${p.warnings === 1 ? '' : 's'}` : `pilot · ${p.warnings} entr${p.warnings === 1 ? 'y' : 'ies'}`}</p>
             </div>
           ))}
         </div>
@@ -100,21 +100,21 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
             <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Penalty points that count ({a.length})</p>
             <div className="mb-4 space-y-1">{a.map(row)}{a.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
             <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Recorded without points ({b.length})</p>
-            <p className="mb-1 text-[11px] text-gray-500">On record, but they add nothing to the total: ones that count towards a later point, and pilot or warning ones from before points started counting.</p>
+            <p className="mb-1 text-[12px] text-gray-500">On record, but they add nothing to the total: ones that count towards a later point, and pilot or warning ones from before points started counting.</p>
             <div className="space-y-1">{b.map(row)}{b.length === 0 && <p className="text-sm text-gray-400">None yet.</p>}</div>
           </>)
         })()}
       </>)}
       {rt && (
         <div className="mt-6">
-          <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Customer ratings {rt.star && <span className="ml-1 rounded-full bg-yellow-300 px-2 py-0.5 text-[10px] text-[#14213D]">⭐ Service Star this week: {cap(rt.star)}</span>}</p>
+          <p className="mb-1 text-xs font-extrabold uppercase text-[#14213D]">Customer ratings {rt.star && <span className="ml-1 rounded-full bg-yellow-300 px-2 py-0.5 text-[12px] text-[#14213D]">⭐ Service Star this week: {cap(rt.star)}</span>}</p>
           {rt.month.length === 0 && <p className="text-sm text-gray-400">No ratings yet. They arrive when customers tap the link in a receipt message.</p>}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {rt.month.map(r => { const w = rt.week.find(x => x.staff === r.staff); return (
               <div key={r.staff} className="rounded-xl border border-gray-200 bg-white p-2 text-center">
                 <p className="text-lg font-extrabold text-amber-600">{r.avg.toFixed(1)} <span className="text-xs">★</span></p>
                 <p className="text-sm font-bold text-gray-900">{cap(r.staff)}</p>
-                <p className="text-[10px] text-gray-500">{r.n} in 30 days{r.low ? ` · ${r.low} low` : ''}{w ? ` · ${w.avg.toFixed(1)} this week` : ''}</p>
+                <p className="text-[12px] text-gray-500">{r.n} in 30 days{r.low ? ` · ${r.low} low` : ''}{w ? ` · ${w.avg.toFixed(1)} this week` : ''}</p>
               </div>) })}
           </div>
           {rt.recent.length > 0 && (<div className="mt-2 space-y-1">{rt.recent.map((r, i) => (

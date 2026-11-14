@@ -63,7 +63,7 @@ export default function ServicesGroupTable({ items }: { items: ServiceItem[] }) 
         <ColumnsPickerButton prefs={colPrefs} />
       </div>
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="border-collapse text-[11px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
+        <table className="border-collapse text-[12px]" style={{ tableLayout: 'fixed', width: tableWidth }}>
           <colgroup>
             <col style={{ width: colPrefs.getWidth('item', COL_DEFAULTS.item) }} />
             {visibleKeys.map(k => <col key={k} style={{ width: colPrefs.getWidth(k, COL_DEFAULTS[k] ?? 80) }} />)}

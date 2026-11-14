@@ -62,12 +62,12 @@ export default function GroupsBuilder() {
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900">{g.name}</p>
-              <p className="text-[11px] text-gray-500">{WHO[g.assignment ?? 'all'] ?? g.assignment} · from {g.time ?? '—'} · {g.items.length} question{g.items.length === 1 ? '' : 's'}{g.law_id ? '' : ' · no law behind it (cannot cost points)'}</p>
+              <p className="text-[12px] text-gray-500">{WHO[g.assignment ?? 'all'] ?? g.assignment} · from {g.time ?? '—'} · {g.items.length} question{g.items.length === 1 ? '' : 's'}{g.law_id ? '' : ' · no law behind it (cannot cost points)'}</p>
             </div>
             <button type="button" onClick={() => edit(g)} className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">Edit</button>
             <button type="button" onClick={() => void remove(g)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">Remove</button>
           </div>
-          <ol className="mt-1.5 list-decimal space-y-0.5 pl-5 text-[12px] text-gray-700">{g.items.map(i => <li key={i.id}>{i.text} <span className="text-[10px] text-gray-400">({KIND_LABEL[i.kind]})</span></li>)}</ol>
+          <ol className="mt-1.5 list-decimal space-y-0.5 pl-5 text-[12px] text-gray-700">{g.items.map(i => <li key={i.id}>{i.text} <span className="text-[12px] text-gray-400">({KIND_LABEL[i.kind]})</span></li>)}</ol>
         </div>))}
       {!f && groups.length === 0 && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600">No groups yet. Press New group.</p>}
 
@@ -75,12 +75,12 @@ export default function GroupsBuilder() {
         <div className="space-y-3 rounded-xl border-2 border-blue-300 bg-white p-3">
           <input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="Group name, for example Opening questions" className={inp} />
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-gray-700">Who answers it
+            <label className="text-[12px] font-semibold text-gray-700">Who answers it
               <select value={f.assignment} onChange={e => setF({ ...f, assignment: e.target.value })} className={`${inp} mt-0.5`} disabled={!!f.lawId}>{Object.entries(WHO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
-            <label className="text-[11px] font-semibold text-gray-700">Due from
+            <label className="text-[12px] font-semibold text-gray-700">Due from
               <input type="time" value={f.time} onChange={e => setF({ ...f, time: e.target.value })} className={`${inp} mt-0.5`} disabled={!!f.lawId} /></label>
           </div>
-          <label className="block text-[11px] font-semibold text-gray-700">The law behind this tile (it decides the schedule and costs the point if left undone)
+          <label className="block text-[12px] font-semibold text-gray-700">The law behind this tile (it decides the schedule and costs the point if left undone)
             <select value={f.lawId ?? ''} onChange={e => setF({ ...f, lawId: e.target.value ? Number(e.target.value) : null })} className={`${inp} mt-0.5`}>
               <option value="">None (own schedule above; no penalty)</option>
               {parentChoices.map(l => <option key={l.id} value={l.id}>{(l.category ?? '') + ' · ' + first(l.text).slice(0, 80)}</option>)}
@@ -91,7 +91,7 @@ export default function GroupsBuilder() {
             {f.items.map((i, n) => (
               <div key={n} className="space-y-1.5 rounded-lg border border-gray-200 bg-gray-50 p-2">
                 <textarea value={i.text} onChange={e => setItem(n, { text: e.target.value })} rows={2} readOnly={!!i.law_id} title={i.law_id ? 'The wording comes from the law. Edit the law to change it.' : undefined} className={`${inp} ${i.law_id ? 'bg-gray-100 text-gray-600' : ''}`} />
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
                   <select value={i.kind} onChange={e => setItem(n, { kind: e.target.value as ItemKind })} className="rounded border border-gray-300 bg-white p-1">{(Object.keys(KIND_LABEL) as ItemKind[]).map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}</select>
                   {i.kind === 'yesno' && <select value={i.detail_on ?? ''} onChange={e => setItem(n, { detail_on: (e.target.value || null) as 'yes' | 'no' | null })} className="rounded border border-gray-300 bg-white p-1"><option value="">No detail asked</option><option value="yes">Ask what happened on Yes</option><option value="no">Ask what happened on No</option></select>}
                   <label className="flex items-center gap-1 font-semibold"><input type="checkbox" checked={i.required} onChange={e => setItem(n, { required: e.target.checked })} />Required</label>
@@ -113,7 +113,7 @@ export default function GroupsBuilder() {
               <select value={pick} onChange={e => setPick(e.target.value)} className={inp}><option value="">Choose a law…</option>{shown.map(l => <option key={l.id} value={l.id}>{(l.category ?? '') + ' · ' + first(l.text).slice(0, 90)}</option>)}</select>
               <button type="button" disabled={!pick} onClick={() => { addLaw(Number(pick)); setPick('') }} className="shrink-0 rounded-lg bg-blue-600 px-3 text-xs font-bold text-white disabled:opacity-40">Add</button>
             </div>
-            <p className="text-[10px] text-gray-500">The law&apos;s own tile is replaced by this question, so it is never asked twice.</p>
+            <p className="text-[12px] text-gray-500">The law&apos;s own tile is replaced by this question, so it is never asked twice.</p>
           </div>
 
           {msg && <p className="text-sm text-red-600">{msg}</p>}

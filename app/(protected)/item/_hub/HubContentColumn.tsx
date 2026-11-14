@@ -89,10 +89,10 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                   const total = g.rows.reduce((a, r) => a + r.n, 0)
                   return (
                     <div key={g.title} className="rounded-2xl border border-gray-200 bg-white p-2">
-                      <p className="mb-1 flex items-center gap-2 px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{g.title}<span className={`rounded-full px-2 py-0.5 text-[10px] ${total > 0 ? 'bg-red-600 text-white' : 'bg-green-100 text-green-800'}`}>{total > 0 ? total : 'clear'}</span></p>
+                      <p className="mb-1 flex items-center gap-2 px-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{g.title}<span className={`rounded-full px-2 py-0.5 text-[12px] ${total > 0 ? 'bg-red-600 text-white' : 'bg-green-100 text-green-800'}`}>{total > 0 ? total : 'clear'}</span></p>
                       <div className="space-y-1">{g.rows.map(r => (
                         <button key={r.label} type="button" disabled={r.n === 0} onClick={r.go} className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm ${r.n > 0 ? 'bg-red-50 font-semibold text-gray-900' : 'bg-gray-50 text-gray-400'}`}>
-                          <span>{r.label}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${r.n > 0 ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{r.n}</span>
+                          <span>{r.label}</span><span className={`rounded-full px-2 py-0.5 text-[12px] font-extrabold ${r.n > 0 ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{r.n}</span>
                         </button>))}</div>
                     </div>
                   )

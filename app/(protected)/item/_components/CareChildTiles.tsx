@@ -20,7 +20,7 @@ export default function CareChildTiles({ onOpen }: { onOpen: (name: string) => v
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={k.photo_url} alt={k.name} className="h-11 w-11 rounded-full object-cover" />
             : <span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-200 text-base font-bold text-blue-800">{k.name[0]}</span>}
-          <span className="text-[10px] font-semibold text-white">{k.name}</span>
+          <span className="text-[12px] font-semibold text-white">{k.name}</span>
         </button>
       ))}
     </div>

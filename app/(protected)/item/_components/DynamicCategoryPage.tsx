@@ -137,7 +137,7 @@ export default function DynamicCategoryPage({ categoryId, categoryLabel, canMana
             {activeTab.content_type === 'payslip_flags' && <PayslipFlagsPanel />}
             {canManage && (
               <div className="px-3 pb-4">
-                <button onClick={() => removeTab(activeTab.id)} className="text-[10px] text-red-400 hover:text-red-600 font-semibold">
+                <button onClick={() => removeTab(activeTab.id)} className="text-[12px] text-red-400 hover:text-red-600 font-semibold">
                   Delete this tab
                 </button>
               </div>

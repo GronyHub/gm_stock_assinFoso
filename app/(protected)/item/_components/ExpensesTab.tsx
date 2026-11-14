@@ -54,7 +54,7 @@ function fmtTotal(expenses: Expense[]) {
   return total.toLocaleString('en-GH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
-const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[10px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
+const inputCls = 'w-full bg-gray-100 border border-gray-200 rounded px-2 py-1 text-[12px] text-gray-900 outline-none focus:ring-1 focus:ring-blue-400'
 
 // Cheap edit-distance check for the "similar account names" flag -- catches
 // near-duplicates like "Office Expense" vs "Office Expenses" without
@@ -92,7 +92,7 @@ function looksLikeDelivery(e: Expense): boolean {
   return /delivery/i.test(e.expense_account) || /delivery/i.test(e.description ?? '')
 }
 
-const TH = 'text-left px-1 py-0.5 font-bold text-gray-400 text-[9px] uppercase tracking-wide border-b border-gray-200'
+const TH = 'text-left px-1 py-0.5 font-bold text-gray-400 text-[12px] uppercase tracking-wide border-b border-gray-200'
 const TD = 'px-1 py-0'
 
 const EXPENSES_COL_DEFAULTS: Record<string, number> = {
@@ -227,7 +227,7 @@ function FilterHeaderCell({ label, options, value, onChange, onResize, onResetWi
       <button onClick={() => setOpen(o => !o)}
         className={`flex items-center gap-0.5 ${value ? 'text-blue-600' : ''}`}>
         <span className="break-words">{value ?? label}</span>
-        <span className="text-[8px] shrink-0">▾</span>
+        <span className="text-[12px] shrink-0">▾</span>
       </button>
       {open && (
         <div className="absolute z-30 left-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto min-w-[140px] normal-case font-normal">
@@ -300,7 +300,7 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
   if (!open) {
     return (
       <button onClick={openPicker}
-        className="px-3 py-1 bg-purple-50 text-purple-700 text-[10px] font-semibold rounded hover:bg-purple-100">
+        className="px-3 py-1 bg-purple-50 text-purple-700 text-[12px] font-semibold rounded hover:bg-purple-100">
         Migrate to Bill →
       </button>
     )
@@ -310,21 +310,21 @@ function MigrateToBillButton({ expenseId, onMigrated }: { expenseId: number; onM
     <span className="flex items-center gap-1 flex-wrap">
       <input value={query} onChange={ev => { setQuery(ev.target.value); setPickedId(null) }}
         placeholder="Search bill # or vendor…"
-        className="text-[10px] bg-gray-100 border border-gray-200 rounded px-1.5 py-1 outline-none w-36" />
+        className="text-[12px] bg-gray-100 border border-gray-200 rounded px-1.5 py-1 outline-none w-36" />
       <select value={pickedId ?? ''} onChange={ev => setPickedId(ev.target.value ? Number(ev.target.value) : null)}
-        className="text-[10px] bg-white border border-gray-200 rounded px-1 py-1 max-w-[180px]">
+        className="text-[12px] bg-white border border-gray-200 rounded px-1 py-1 max-w-[180px]">
         <option value="">{loadingBills ? 'Loading…' : 'Select bill…'}</option>
         {filtered.map(b => (
           <option key={b.id} value={b.id}>{b.bill_number} · {fmtShort(b.bill_date)} · {b.vendor_name ?? 'No vendor'} · ₵{Number(b.total).toFixed(0)}</option>
         ))}
       </select>
       <button onClick={migrate} disabled={!pickedId || saving}
-        className="px-2 py-1 bg-purple-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
+        className="px-2 py-1 bg-purple-600 text-white text-[12px] font-bold rounded disabled:opacity-40">
         {saving ? 'Moving…' : 'Move'}
       </button>
       <button onClick={() => setOpen(false)}
-        className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
-      {error && <span className="text-[9px] text-red-600 font-semibold w-full">{error}</span>}
+        className="px-2 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
+      {error && <span className="text-[12px] text-red-600 font-semibold w-full">{error}</span>}
     </span>
   )
 }
@@ -352,7 +352,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   function bodyCellFor(key: ColKey, e: Expense) {
     if (key === 'group') return <td key={key} className={`${TD} text-gray-700 break-words`}>{e.expense_group ?? '—'}</td>
     if (key === 'is_property') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.is_property ? '✓ Yes' : '✗ No'}</td>
-    if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.cf_expense_type ?? '—'}</td>
+    if (key === 'expense_type') return <td key={key} className={`${TD} text-gray-600 break-words text-[12px]`}>{e.cf_expense_type ?? '—'}</td>
     if (key === 'vendor') return <td key={key} className={`${TD} text-gray-500 break-words`}>{e.vendor_name ?? '—'}</td>
     if (key === 'source') return <td key={key} className={`${TD} text-gray-400 break-words`}>{e.source_sheet ?? e.source ?? '—'}</td>
     if (key === 'by') return <td key={key} className={`${TD} text-blue-500 break-words`}>{e.entered_by ?? '—'}</td>
@@ -361,13 +361,13 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
       const propName = relatedItems.find(p => p.id === e.related_to_property_id)?.name
       return <td key={key} className={`${TD} text-gray-600 break-words`}>{propName ?? '—'}</td>
     }
-    if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.related_expense_reasons ?? '—'}</td>
-    if (key === 'property_status') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.property_status ?? '—'}</td>
+    if (key === 'related_reasons') return <td key={key} className={`${TD} text-gray-600 break-words text-[12px]`}>{e.related_expense_reasons ?? '—'}</td>
+    if (key === 'property_status') return <td key={key} className={`${TD} text-gray-600 break-words text-[12px]`}>{e.property_status ?? '—'}</td>
     if (key === 'property_type') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.property_type ?? '—'}</td>
     if (key === 'availability') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.availability ? (e.availability === 'available' ? '✓ Available' : '✗ Away') : '—'}</td>
     if (key === 'working') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.working ? (e.working === 'working' ? '✓ Working' : '✗ Not Working') : '—'}</td>
     if (key === 'location') return <td key={key} className={`${TD} text-gray-600 break-words`}>{e.location ?? '—'}</td>
-    if (key === 'reason') return <td key={key} className={`${TD} text-gray-600 break-words text-[9px]`}>{e.not_working_reason ?? e.not_available_reason ?? '—'}</td>
+    if (key === 'reason') return <td key={key} className={`${TD} text-gray-600 break-words text-[12px]`}>{e.not_working_reason ?? e.not_available_reason ?? '—'}</td>
     return <td key={key} className={`${TD} text-gray-500`}>—</td>
   }
 
@@ -390,7 +390,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
       <Fragment key={e.id}>
         <tr id={`expense-${e.id}`}
           onClick={() => { if (e.amount_hidden) return; if (editId === e.id) onCloseEdit(); else onEdit(e) }}
-          className={`transition-colors text-[9px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
+          className={`transition-colors text-[12px] font-bold leading-tight ${e.amount_hidden ? '' : 'cursor-pointer'} ${highlightId === e.id ? 'bg-yellow-100' : i % 2 === 1 ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50/60`}>
           <td className="pl-0 pr-1 py-0 sticky left-0 z-10 text-gray-600 break-words bg-inherit">{fmtShort(e.expense_date)}</td>
           {/* Display only -- expense_account/description stay separate
               columns in the database and in the edit form below; this
@@ -410,20 +410,20 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
             <td colSpan={3 + visibleKeys.length} className="px-3 py-3">
               <div className="grid grid-cols-2 gap-1 max-w-lg">
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Date</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Date</p>
                   <input type="date" value={form.expense_date}
                     onChange={ev => onFormChange({ ...form, expense_date: ev.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Amount (₵)</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Amount (₵)</p>
                   <input type="number" min="0" step="0.01" inputMode="decimal" value={form.amount}
                     onChange={ev => onFormChange({ ...form, amount: ev.target.value })} className={inputCls} />
                 </div>
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-0.5">
-                    <p className="text-[9px] text-gray-400">Account</p>
+                    <p className="text-[12px] text-gray-400">Account</p>
                     <button onClick={() => { onSetShowAccountsPanel(!showAccountsPanel); if (!showAccountsPanel) onFetchAccountsData() }}
-                      className="text-[8px] text-blue-600 hover:text-blue-700 font-semibold">
+                      className="text-[12px] text-blue-600 hover:text-blue-700 font-semibold">
                       {showAccountsPanel ? '✕ Hide' : '⚙ Manage'}
                     </button>
                   </div>
@@ -435,47 +435,47 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                   {showAccountsPanel && (
                     <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200 space-y-2">
                       {accountError && (
-                        <div className="text-[9px] text-red-600 p-1 bg-red-50 rounded border border-red-200">
+                        <div className="text-[12px] text-red-600 p-1 bg-red-50 rounded border border-red-200">
                           {accountError}
                         </div>
                       )}
                       <div>
-                        <p className="text-[9px] text-gray-600 mb-1">New Account</p>
+                        <p className="text-[12px] text-gray-600 mb-1">New Account</p>
                         <div className="flex gap-1">
                           <input type="text" value={newAccountName} onChange={e => onSetNewAccountName(e.target.value)}
                             onKeyPress={ev => ev.key === 'Enter' && onCreateAccount()}
-                            placeholder="Account name…" className="flex-1 text-[10px] px-1.5 py-1 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-400 outline-none" />
+                            placeholder="Account name…" className="flex-1 text-[12px] px-1.5 py-1 border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-400 outline-none" />
                           <button onClick={onCreateAccount} disabled={!newAccountName.trim() || accountSaving}
-                            className="px-1.5 py-1 bg-green-600 text-white text-[9px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">
+                            className="px-1.5 py-1 bg-green-600 text-white text-[12px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">
                             Add
                           </button>
                         </div>
                       </div>
                       <div>
-                        <p className="text-[9px] text-gray-600 mb-1">Manage Accounts</p>
+                        <p className="text-[12px] text-gray-600 mb-1">Manage Accounts</p>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
                           {accountsData.length === 0 ? (
-                            <p className="text-[9px] text-gray-400">No accounts</p>
+                            <p className="text-[12px] text-gray-400">No accounts</p>
                           ) : (
                             accountsData.map(acc => (
-                              <div key={acc.id} className="flex items-center gap-1 p-1 bg-white rounded border border-gray-200 text-[9px]">
+                              <div key={acc.id} className="flex items-center gap-1 p-1 bg-white rounded border border-gray-200 text-[12px]">
                                 {editingAccountId === acc.id ? (
                                   <>
                                     <input type="text" value={editingAccountName} onChange={e => onSetEditingAccountName(e.target.value)}
                                       onKeyPress={ev => ev.key === 'Enter' && onRenameAccount()}
-                                      className="flex-1 px-1 py-0.5 border border-blue-300 rounded text-[9px] bg-white outline-none" autoFocus />
+                                      className="flex-1 px-1 py-0.5 border border-blue-300 rounded text-[12px] bg-white outline-none" autoFocus />
                                     <button onClick={onRenameAccount} disabled={accountSaving}
-                                      className="px-1 py-0.5 bg-green-600 text-white text-[8px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">✓</button>
+                                      className="px-1 py-0.5 bg-green-600 text-white text-[12px] font-semibold rounded hover:bg-green-700 disabled:opacity-50">✓</button>
                                     <button onClick={() => { onSetEditingAccountId(null); onSetEditingAccountName('') }} disabled={accountSaving}
-                                      className="px-1 py-0.5 bg-gray-300 text-gray-700 text-[8px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50">✕</button>
+                                      className="px-1 py-0.5 bg-gray-300 text-gray-700 text-[12px] font-semibold rounded hover:bg-gray-400 disabled:opacity-50">✕</button>
                                   </>
                                 ) : (
                                   <>
                                     <span className="flex-1 truncate">{acc.name}</span>
                                     <button onClick={() => { onSetEditingAccountId(acc.id); onSetEditingAccountName(acc.name); onSetAccountError(null) }}
-                                      className="px-1 py-0.5 bg-blue-100 text-blue-700 text-[8px] hover:bg-blue-200 rounded">Rename</button>
+                                      className="px-1 py-0.5 bg-blue-100 text-blue-700 text-[12px] hover:bg-blue-200 rounded">Rename</button>
                                     <button onClick={() => onDeleteAccount(acc.id)}
-                                      className="px-1 py-0.5 bg-red-100 text-red-700 text-[8px] hover:bg-red-200 rounded">Delete</button>
+                                      className="px-1 py-0.5 bg-red-100 text-red-700 text-[12px] hover:bg-red-200 rounded">Delete</button>
                                   </>
                                 )}
                               </div>
@@ -487,40 +487,40 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                   )}
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Description</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Description</p>
                   <input value={form.description}
                     onChange={ev => onFormChange({ ...form, description: ev.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Vendor</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Vendor</p>
                   <input value={form.vendor_name}
                     onChange={ev => onFormChange({ ...form, vendor_name: ev.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <p className="text-[9px] text-gray-400 mb-0.5">Type</p>
+                  <p className="text-[12px] text-gray-400 mb-0.5">Type</p>
                   <input value={form.cf_expense_type}
                     onChange={ev => onFormChange({ ...form, cf_expense_type: ev.target.value })} className={inputCls} />
                 </div>
               </div>
               <div className="mt-2">
-                <p className="text-[9px] text-gray-400 mb-0.5">Property?</p>
+                <p className="text-[12px] text-gray-400 mb-0.5">Property?</p>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === true}
                       onChange={() => onFormChange({ ...form, is_property: true })}
                       className="w-3 h-3 accent-blue-600" />
-                    <span className="text-[10px] text-gray-700">Property</span>
+                    <span className="text-[12px] text-gray-700">Property</span>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="radio" name={`is-property-${e.id}`} checked={form.is_property === false}
                       onChange={() => onFormChange({ ...form, is_property: false })}
                       className="w-3 h-3 accent-blue-600" />
-                    <span className="text-[10px] text-gray-700">Not a property</span>
+                    <span className="text-[12px] text-gray-700">Not a property</span>
                   </label>
                 </div>
               </div>
               <div className="mt-2">
-                <p className="text-[9px] text-gray-400 mb-0.5">Group</p>
+                <p className="text-[12px] text-gray-400 mb-0.5">Group</p>
                 <select value={form.expense_group ?? ''} onChange={ev => onFormChange({ ...form, expense_group: ev.target.value || null })}
                   className={inputCls}>
                   <option value="">Select…</option>
@@ -528,45 +528,45 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                 </select>
               </div>
               <div className="mt-2">
-                <p className="text-[9px] text-gray-400 mb-0.5">Related to another property?</p>
+                <p className="text-[12px] text-gray-400 mb-0.5">Related to another property?</p>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === false}
                       onChange={() => onFormChange({ ...form, is_related_expense: false, related_to_property_id: null, related_expense_reasons: null })}
                       className="w-3 h-3 accent-blue-600" />
-                    <span className="text-[10px] text-gray-700">No</span>
+                    <span className="text-[12px] text-gray-700">No</span>
                   </label>
                   <label className="flex items-center gap-1 cursor-pointer">
                     <input type="radio" name={`is-related-${e.id}`} checked={form.is_related_expense === true}
                       onChange={() => { onFormChange({ ...form, is_related_expense: true }); onFetchRelatedItems() }}
                       className="w-3 h-3 accent-blue-600" />
-                    <span className="text-[10px] text-gray-700">Yes</span>
+                    <span className="text-[12px] text-gray-700">Yes</span>
                   </label>
                 </div>
               </div>
               {form.is_related_expense && (
                 <div className="mt-2 space-y-2 p-2 bg-amber-50 rounded border border-amber-200">
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Select the related property</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Select the related property</p>
                     {relatedItemsLoading && (
-                      <div className="text-[9px] text-amber-600 mb-1">Loading properties...</div>
+                      <div className="text-[12px] text-amber-600 mb-1">Loading properties...</div>
                     )}
                     {relatedItemsError && (
-                      <div className="text-[9px] text-red-600 mb-1 p-1 bg-red-50 rounded border border-red-200">
+                      <div className="text-[12px] text-red-600 mb-1 p-1 bg-red-50 rounded border border-red-200">
                         ⚠️ {relatedItemsError}
                       </div>
                     )}
                     <select value={form.related_to_property_id?.toString() ?? ''} onChange={ev => onFormChange({ ...form, related_to_property_id: ev.target.value ? parseInt(ev.target.value) : null })}
-                      className={`${inputCls} text-[9px]`}>
+                      className={`${inputCls} text-[12px]`}>
                       <option value="">Choose a property…</option>
                       {relatedItems.length > 0 ? relatedItems.map(item => <option key={item.id} value={String(item.id)}>{item.name}</option>) : null}
                     </select>
                     {relatedItems.length > 0 && (
-                      <div className="text-[9px] text-green-600 mt-1">✓ {relatedItems.length} properties available</div>
+                      <div className="text-[12px] text-green-600 mt-1">✓ {relatedItems.length} properties available</div>
                     )}
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Reason(s)</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Reason(s)</p>
                     <div className="space-y-1">
                       {RELATED_EXPENSE_REASONS.map(reason => {
                         const reasonsArray = form.related_expense_reasons
@@ -586,7 +586,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                                 }
                               }}
                               className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">{reason}</span>
+                            <span className="text-[12px] text-gray-700">{reason}</span>
                           </label>
                         )
                       })}
@@ -597,76 +597,76 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
               {form.is_property && (
                 <div className="mt-3 space-y-2 p-2 bg-blue-50 rounded border border-blue-200">
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Property Group</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Property Group</p>
                     <select value={form.property_type ?? ''} onChange={ev => {
                       const newType = ev.target.value
                       onFormChange({ ...form, property_type: newType, related_item_id: null })
                       if (newType) onFetchItemsForType(newType)
                     }}
-                      className={`${inputCls} text-[9px]`}>
+                      className={`${inputCls} text-[12px]`}>
                       <option value="">Select…</option>
                       {PROPERTY_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                     </select>
                   </div>
                   {form.property_type && (
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Related {form.property_type}</p>
+                      <p className="text-[12px] text-gray-400 mb-0.5">Related {form.property_type}</p>
                       <select value={form.related_item_id ?? ''} onChange={ev => onFormChange({ ...form, related_item_id: ev.target.value ? parseInt(ev.target.value) : null })}
-                        className={`${inputCls} text-[9px]`}>
+                        className={`${inputCls} text-[12px]`}>
                         <option value="">Select a {form.property_type}…</option>
                         {(itemsByType[form.property_type] || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                       </select>
                     </div>
                   )}
                   <div>
-                    <p className="text-[9px] text-gray-400 mb-0.5">Availability</p>
+                    <p className="text-[12px] text-gray-400 mb-0.5">Availability</p>
                     <div className="flex items-center gap-3">
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'available'}
                           onChange={() => onFormChange({ ...form, availability: 'available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
                           className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">Available</span>
+                        <span className="text-[12px] text-gray-700">Available</span>
                       </label>
                       <label className="flex items-center gap-1 cursor-pointer">
                         <input type="radio" name={`availability-${e.id}`} checked={form.availability === 'not_available'}
                           onChange={() => onFormChange({ ...form, availability: 'not_available', working: null, location: null, not_working_reason: null, not_available_reason: null })}
                           className="w-3 h-3 accent-blue-600" />
-                        <span className="text-[10px] text-gray-700">Not Available</span>
+                        <span className="text-[12px] text-gray-700">Not Available</span>
                       </label>
                     </div>
                   </div>
                   {form.availability === 'available' && (
                     <>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Condition</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Condition</p>
                         <div className="flex items-center gap-3">
                           <label className="flex items-center gap-1 cursor-pointer">
                             <input type="radio" name={`working-${e.id}`} checked={form.working === 'working'}
                               onChange={() => onFormChange({ ...form, working: 'working', not_working_reason: null })}
                               className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Working</span>
+                            <span className="text-[12px] text-gray-700">Working</span>
                           </label>
                           <label className="flex items-center gap-1 cursor-pointer">
                             <input type="radio" name={`working-${e.id}`} checked={form.working === 'not_working'}
                               onChange={() => onFormChange({ ...form, working: 'not_working' })}
                               className="w-3 h-3 accent-blue-600" />
-                            <span className="text-[10px] text-gray-700">Not Working</span>
+                            <span className="text-[12px] text-gray-700">Not Working</span>
                           </label>
                         </div>
                       </div>
                       <div>
-                        <p className="text-[9px] text-gray-400 mb-0.5">Location</p>
+                        <p className="text-[12px] text-gray-400 mb-0.5">Location</p>
                         <select value={form.location ?? ''} onChange={ev => onFormChange({ ...form, location: ev.target.value })}
-                          className={`${inputCls} text-[9px]`}>
+                          className={`${inputCls} text-[12px]`}>
                           <option value="">Select…</option>
                           {PROPERTY_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                         </select>
                       </div>
                       {form.working === 'not_working' && (
                         <div>
-                          <p className="text-[9px] text-gray-400 mb-0.5">Reason</p>
+                          <p className="text-[12px] text-gray-400 mb-0.5">Reason</p>
                           <select value={form.not_working_reason ?? ''} onChange={ev => onFormChange({ ...form, not_working_reason: ev.target.value })}
-                            className={`${inputCls} text-[9px]`}>
+                            className={`${inputCls} text-[12px]`}>
                             <option value="">Select…</option>
                             {NOT_WORKING_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                           </select>
@@ -676,9 +676,9 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                   )}
                   {form.availability === 'not_available' && (
                     <div>
-                      <p className="text-[9px] text-gray-400 mb-0.5">Reason / Location</p>
+                      <p className="text-[12px] text-gray-400 mb-0.5">Reason / Location</p>
                       <select value={form.not_available_reason ?? ''} onChange={ev => onFormChange({ ...form, not_available_reason: ev.target.value })}
-                        className={`${inputCls} text-[9px]`}>
+                        className={`${inputCls} text-[12px]`}>
                         <option value="">Select…</option>
                         {NOT_AVAILABLE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                       </select>
@@ -687,17 +687,17 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                 </div>
               )}
               {saveError && (
-                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-[9px]">
+                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-[12px]">
                   {saveError}
                 </div>
               )}
               <div className="flex items-center gap-1 mt-2">
                 <button onClick={onSaveEdit} disabled={saving}
-                  className="bg-green-600 text-white text-[10px] font-bold rounded px-3 py-1 disabled:opacity-40">
+                  className="bg-green-600 text-white text-[12px] font-bold rounded px-3 py-1 disabled:opacity-40">
                   {saving ? 'Saving…' : 'Save'}
                 </button>
                 <button onClick={onCloseEdit}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                 <MigrateToBillButton expenseId={e.id} onMigrated={onMigrated} />
                 {/* Delete lives here, inside Edit, rather than as its own
                     button on every row -- one extra tap discourages
@@ -705,15 +705,15 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
                 {confirmDeleteId === e.id ? (
                   <span className="ml-auto flex items-center gap-1">
                     <button onClick={() => onDeleteConfirm(e.id)} disabled={deleting}
-                      className="px-3 py-1 bg-red-600 text-white text-[10px] font-bold rounded disabled:opacity-40">
+                      className="px-3 py-1 bg-red-600 text-white text-[12px] font-bold rounded disabled:opacity-40">
                       {deleting ? 'Deleting…' : 'Yes, Delete'}
                     </button>
                     <button onClick={onDeleteCancel}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded">Cancel</button>
+                      className="px-3 py-1 bg-gray-100 text-gray-600 text-[12px] font-semibold rounded">Cancel</button>
                   </span>
                 ) : (
                   <button onClick={() => onDeleteStart(e.id)}
-                    className="ml-auto px-3 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded hover:bg-red-100">
+                    className="ml-auto px-3 py-1 bg-red-50 text-red-600 text-[12px] font-semibold rounded hover:bg-red-100">
                     Delete
                   </button>
                 )}
@@ -727,7 +727,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
 
   return (
     <div ref={wrapRef} className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-    <table className="border-collapse text-[9px]" style={{ tableLayout: 'fixed', width: tableWidth, zoom: zoomFor(tableWidth) }}>
+    <table className="border-collapse text-[12px]" style={{ tableLayout: 'fixed', width: tableWidth, zoom: zoomFor(tableWidth) }}>
       <colgroup>
         <col style={{ width: dateWidth }} />
         <col style={{ width: accountWidth }} />
@@ -778,7 +778,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
             <td colSpan={3 + visibleKeys.length} className="px-3 py-0.5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold text-white">{g.label}</p>
-                <p className="text-[10px] text-blue-100">
+                <p className="text-[12px] text-blue-100">
                   {g.rows.length} record{g.rows.length !== 1 ? 's' : ''} · {g.rows.some(r => r.amount_hidden) ? '🔒 Hidden' : `₵${fmtTotal(g.rows)}`}
                 </p>
               </div>
