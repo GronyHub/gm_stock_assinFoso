@@ -108,6 +108,16 @@ export async function mergeDuplicateItemsOnce() {
   } catch (e) { console.error('merge duplicate items failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// C-EXV33 (id 400) merged into C-EXV 33 - Black (id 425), owner's decision 14 Nov 2026: the app's own merge moves its sales and counts over.
+export async function mergeToner33Once() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('merge-toner33-2026-11-14') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { mergeItems } = await import('./mergeItems')
+    await mergeItems(400, 425, 'C-EXV 33 - Black', 'app')
+  } catch (e) { console.error('merge C-EXV33 failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Laws at the moment they apply (2026-11-13): the attendance laws are shown before work (the login moment), with the other "before work" laws.
 export async function lawMomentsOnce() {
   try {

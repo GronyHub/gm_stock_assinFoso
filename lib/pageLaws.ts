@@ -88,6 +88,7 @@ async function ensureCompanyLawsImpl() {
   await (await import('./conflictFixes')).dropQuizOnce()
   await (await import('./conflictFixes')).joeBackdatesOnce()
   await (await import('./conflictFixes')).mergeDuplicateItemsOnce()
+  await (await import('./conflictFixes')).mergeToner33Once()
   await (await import('./conflictFixes')).lawMomentsOnce()
   await (await import('./renameLive')).renameLiveOnce()
   await pendingJobsConfirmOnce()
