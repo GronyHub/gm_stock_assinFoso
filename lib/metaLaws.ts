@@ -1,6 +1,5 @@
 import sql from '@/lib/db'
 import { addPoint } from '@/lib/penalties'
-import { notifyOwners } from '@/lib/checklistAlerts'
 import { SIGNERS, OWNER_SIGNERS, isManagerName } from '@/lib/signers'
 import { videosDue } from '@/lib/videoDue'
 import { featureOn } from '@/lib/featuresServer'
@@ -105,7 +104,7 @@ export async function metaTick(day: string) {
     const award = async (i: number, code: string | undefined, ref: string, why: string, pts = 1) => {
       if (awarded >= 3) return
       const r = await addPoint({ staff: s, points: pts, reason: `${code ? code + ': ' : ''}${why}`, source: 'meta', ref, lawId: ids[i], by: 'system', lawCode: code ?? null, violation: why })
-      if (r) { awarded++; void notifyOwners(`Automatic point: ${s}`, why) }
+      if (r) awarded++   // shown on Penalty Points; no push (nobody did anything)
     }
     // 1. signatures and 2. quizzes: dropped (2026-11-13) -- the laws are statutory, nobody signs them; the daily law question replaces the quizzes.
     // 3. videos: only the tile videos the person is actually shown (videosDue: staff tiles with a video, not owner-only), overdue 7 days after going live.

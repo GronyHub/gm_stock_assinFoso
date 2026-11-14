@@ -1,7 +1,6 @@
 import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { addPoint, ensurePenalties } from '@/lib/penalties'
-import { pushToUsers } from '@/lib/checklistAlerts'
 
 // THE DAILY FLAGS LAW. Every working day the manager (Joe) fixes at least FLAGS_PER_DAY flags (or every flag, when there are fewer), starting with the negative stock.
 // How it is counted: in the morning the app writes down every flag that is open (each item with negative stock, and each entry of the other flag lists); a flag counts as
@@ -72,7 +71,7 @@ export async function assess(day: string) {
   await sql`UPDATE flag_quota SET fixed = ${p.fixed}, assessed_at = now() WHERE day = ${day}`
   if (p.fixed < p.needed) {
     await addPoint({ staff: FLAG_MANAGER, points: 1, reason: `Only ${p.fixed} of ${p.needed} flags fixed on ${day} (the law: at least ${FLAGS_PER_DAY} a day, starting with the negative stock)`, source: 'flags', ref: `flags:${day}`, day, by: 'system' })
-    void pushToUsers([FLAG_MANAGER], 'Flags: 1 penalty point', `Only ${p.fixed} of ${p.needed} flags were fixed today.`)
+    // No push: the point is shown on Penalty Points (pushes are only for something a person did).
   }
 }
 export const progressText = msg

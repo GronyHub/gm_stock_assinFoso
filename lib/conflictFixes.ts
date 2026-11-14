@@ -97,6 +97,17 @@ export async function joeBackdatesOnce() {
   } catch (e) { console.error('joe backdates failed:', e instanceof Error ? e.message : String(e)) }
 }
 
+// Two duplicate items (owner approved 14 Nov 2026): the copy is merged into the one with the stock-count history (it becomes Inactive, its bill line moves over).
+export async function mergeDuplicateItemsOnce() {
+  try {
+    const c = await sql`INSERT INTO law_migrations (key) VALUES ('merge-items-2026-11-14') ON CONFLICT DO NOTHING RETURNING key`
+    if (!c.length) return
+    const { mergeItems } = await import('./mergeItems')
+    await mergeItems(622, 284, 'Display cable', 'app').catch(e => console.error('merge 622->284 failed:', e instanceof Error ? e.message : String(e)))
+    await mergeItems(461, 514, 'Wedding cards', 'app').catch(e => console.error('merge 461->514 failed:', e instanceof Error ? e.message : String(e)))
+  } catch (e) { console.error('merge duplicate items failed:', e instanceof Error ? e.message : String(e)) }
+}
+
 // Laws at the moment they apply (2026-11-13): the attendance laws are shown before work (the login moment), with the other "before work" laws.
 export async function lawMomentsOnce() {
   try {

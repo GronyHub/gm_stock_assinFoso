@@ -5,6 +5,8 @@ import { ensureCompanyLaws } from '@/lib/pageLaws'
 import { isManagerName } from '@/lib/signers'
 import { viewablePeople } from '@/lib/myDay'
 import { NextRequest } from 'next/server'
+import { LAW_AREAS } from '@/lib/lawAreas'
+import { videosDue } from '@/lib/videoDue'
 
 // GET ?staff=name -- one person's record with the laws: which laws they have signed (and when), and their quiz results.
 // A person sees their own; a supervisor sees the people they may look at (the same rule as Waiting for me).
@@ -33,6 +35,13 @@ export async function GET(req: NextRequest) {
         quiz: m && m.law_hash === l.h ? { score: Number(m.score), total: Number(m.total), taken_at: m.taken_at } : null,
       }
     })
-    return success({ staff: who, laws: out, categoryQuizzes: cats })
+    // The tile videos (staff tiles with a video): watched to the end or not, and when each is due.
+    const seen = await sql`SELECT area, MIN(watched_at) AS at FROM law_video_views WHERE staff = ${who} GROUP BY area`.catch(() => []) as unknown as { area: string; at: string }[]
+    const due = new Map((await videosDue(who).catch(() => [])).map(v => [v.key, v]))
+    const videos = LAW_AREAS.filter(a => a.video && !a.ownerOnly).map(a => { const w = seen.find(s => s.area === a.key), dv = due.get(a.key)
+      return { key: a.key, label: a.label, watched_at: w?.at ?? null, due: dv?.dueDate ?? null, overdue: !!dv?.overdue } })
+    // The question of the day: the last 30 days.
+    const questions = await sql`SELECT q.day, q.correct, l.title FROM law_daily_questions q LEFT JOIN page_laws l ON l.id = q.law_id WHERE q.staff = ${who} AND q.day >= ${new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)} ORDER BY q.day DESC`.catch(() => []) as unknown as { day: string; correct: boolean | null; title: string | null }[]
+    return success({ staff: who, laws: out, categoryQuizzes: cats, videos, questions })
   } catch (e) { return handleError('law-record GET', e) }
 }
