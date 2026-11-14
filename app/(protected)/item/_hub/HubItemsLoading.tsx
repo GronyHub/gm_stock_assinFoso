@@ -17,7 +17,7 @@ export default function HubItemsLoading({ h }: { h: HubCtx }) {
                     {liveCurrentView ? 'No items in this view' : 'No items found'}
                   </p>
                 ) : (
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-0 p-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-0 p-0">
                   {<HubCatalogueGrid h={h} />}
                   </div>
                 )}</>)

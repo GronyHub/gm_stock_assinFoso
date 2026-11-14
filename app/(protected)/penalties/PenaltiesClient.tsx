@@ -50,7 +50,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
       {d && (<>
         <div className={`mb-3 rounded-xl p-3 text-xs font-semibold ${counting ? 'bg-green-50 text-green-800' : 'bg-blue-50 text-blue-800'}`}>
           {counting ? `Points are counting (since ${dlabel(d.settings.startCounting)}).` : `PILOT until ${dlabel(d.settings.startCounting)}: the points below are practice. They show here so everyone can see how it will work, and they are reset when counting starts.`}
-          {isOwner && <span className="ml-2 inline-flex items-center gap-1">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[12px]" />
+          {isOwner && <span className="mt-2 flex w-full flex-wrap items-center gap-2">Counting starts <input type="date" value={start} onChange={e => setStart(e.target.value)} className="rounded border border-gray-300 p-0.5 text-[12px]" />
             <button type="button" onClick={() => void call('/api/penalties/settings', { method: 'PATCH', headers: json, body: JSON.stringify({ start_counting: start }) }, 'Date saved')} className="rounded bg-[#14213D] px-2 py-0.5 text-[12px] font-bold text-white">Save</button></span>}
         </div>
 

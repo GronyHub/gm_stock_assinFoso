@@ -24,7 +24,7 @@ export default function DateStrip({ dates, sel, today, onSel, more }: { dates: s
         return (
           <button key={d} type="button" role="tab" aria-selected={on} data-today={isT ? '1' : undefined} onClick={() => onSel(d)}
             title={dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })}
-            className={`flex w-8 shrink-0 select-none flex-col items-center rounded-md border py-px leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : isT ? 'border-blue-500 bg-blue-50 text-gray-800' : isPast ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-gray-300 bg-white text-gray-800'}`}>
+            className={`flex w-12 shrink-0 select-none flex-col items-center rounded-md border py-px leading-none ${on ? 'border-[#14213D] bg-[#14213D] text-white' : isT ? 'border-blue-500 bg-blue-50 text-gray-800' : isPast ? 'border-gray-200 bg-gray-50 text-gray-500' : 'border-gray-300 bg-white text-gray-800'}`}>
             <span className={`text-[12px] font-bold uppercase ${on ? 'text-blue-200' : 'text-gray-500'}`}>{isT ? 'Today' : dt.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })}</span>
             <span className="text-[12px] font-extrabold">{dt.getUTCDate()}</span>
             <span className={`text-[12px] font-bold ${on ? 'text-blue-200' : 'text-gray-400'}`}>{dt.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}</span>

@@ -30,7 +30,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && liveDueCatalogueCount > 0 && (
-                          <div className="col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
+                          <div className="col-span-2 sm:col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
                             {liveDueCatalogueCount} item{liveDueCatalogueCount !== 1 ? 's' : ''} need{liveDueCatalogueCount === 1 ? 's' : ''} counting
                           </div>
                         )}
@@ -109,7 +109,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                           <div className="px-1 py-0.5 flex flex-col">
                             {liveSaleViolationFilter === 'countDue' ? (
                               <>
-                                <div className={`text-[12px] font-semibold leading-tight truncate text-left`}>
+                                <div className={`text-[12px] font-semibold leading-tight truncate text-left pr-5`}>
                                   {renderClickableItemName(item.name, `text-[12px] leading-tight truncate text-left text-blue-600`)}
                                 </div>
                                 <p className="text-[12px] text-gray-600 leading-tight mt-0.5">
@@ -131,7 +131,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                               </>
                             ) : (
                               <>
-                                <div className={`text-[12px] font-semibold leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
+                                <div className={`text-[12px] font-semibold leading-tight truncate text-left pr-5 ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : ''}`}>
                                   {renderClickableItemName(item.name, `text-[12px] leading-tight truncate text-left ${item.product_type !== 'service' && Number(item.soh) === 0 ? 'line-through text-gray-400' : 'text-blue-600'}`)}
                                 </div>
                                 {liveSaleViolationFilter === 'noViolations' ? (
