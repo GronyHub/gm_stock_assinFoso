@@ -8,6 +8,8 @@ import { parseViolations } from '@/lib/lawViolations'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
 
+const APP_CHECKED = 'The app already checks this law and gives the point itself.'
+
 // GET (owner and manager) -- everyone's points, items waiting for a decision, and the latest entries.
 export async function GET() {
   const { session, error } = await requireAuth()
@@ -47,11 +49,13 @@ export async function POST(req: NextRequest) {
     const lawId = Number(b.law_id) || null
     let points = Math.round(Number(b.points)), reason = note, violation: string | undefined, lawCode: string | null = null
     if (lawId) {
-      const [l] = await sql`SELECT code, text, points, violations FROM page_laws WHERE id = ${lawId}`
+      const [l] = await sql`SELECT code, text, points, violations, law_type FROM page_laws WHERE id = ${lawId}`
       if (!l) return badRequest('That law no longer exists.')
       const vs = parseViolations(l.violations)
       const v = vs[Number(b.violation_index)]
       if (vs.length && !v) return badRequest('Choose which violation it was.')
+      // A law the app checks itself already gives its own point: a manual one would charge twice.
+      if (l.law_type === 'app' || v?.by === 'app' || (!v && vs.length > 0 && vs.every(x => x.by === 'app'))) return badRequest(APP_CHECKED)
       if (v && v.points === 0) return badRequest('That rule has no penalty, so no point can be logged for it.')
       if (v) { violation = v.text; points = v.points } else if (!Number.isFinite(points) || points < 1) points = Number(l.points) || 1
       lawCode = (l.code as string | null) ?? null
@@ -60,6 +64,17 @@ export async function POST(req: NextRequest) {
     const max = points >= 50 ? 50 : 20
     if (!Number.isFinite(points) || points < 1 || points > max) points = 1
     const by = getActorName(session), confirm = logsNeedConfirm(session.user as any)
+    // The app already gave an automatic point for this law, person and day: refuse the manual one.
+    if (lawId) {
+      const onDay = day ?? new Date().toISOString().slice(0, 10)
+      const [auto] = await sql`SELECT 1 FROM staff_penalties WHERE staff = ANY(${staffs}) AND law_id = ${lawId} AND day = ${onDay} AND source <> 'manual' AND status IN ('active', 'pending') LIMIT 1`
+      if (auto) return badRequest(APP_CHECKED)
+      // The day-end "tasks left undone" point carries no law id: a law whose checklist task was not done that day is already in it.
+      const [missed] = await sql`SELECT 1 FROM staff_penalties p JOIN page_laws l ON l.id = ${lawId} AND l.tile_id IS NOT NULL
+        WHERE p.staff = ANY(${staffs}) AND p.ref = ${'missed:' + onDay} AND p.status IN ('active', 'pending')
+        AND NOT EXISTS (SELECT 1 FROM daily_check_events e WHERE e.tile_id = l.tile_id AND e.day = ${onDay} AND e.value = 'Done') LIMIT 1`.catch(() => [])
+      if (missed) return badRequest(APP_CHECKED)
+    }
     const rows = []
     for (const staff of staffs) {
       const row = await addPoint({ staff, points, reason, source: 'manual', lawId, by, violation, lawCode, day, status: confirm ? 'pending' : 'active' })

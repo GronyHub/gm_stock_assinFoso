@@ -54,7 +54,9 @@ export function useHubState() {
   // own; now it's a liveMode tab like Sales/Bills, so it's handled the same
   // way 'losses' already is -- lands on 'loss', finished via the mount
   // effect below (jumpToLiveSaleTab isn't defined yet this early).
-  const initialTab = (rawInitialTab === 'losses' || rawInitialTab === 'expenses' || oldTabView ? 'loss' : rawInitialTab) as OuterTab | null
+  // Old ?tab=today / ?tab=staff links open the Shop on Done (see the ?open= effect below).
+  const doneTabLink = rawInitialTab === 'today' || rawInitialTab === 'staff'
+  const initialTab = (rawInitialTab === 'losses' || rawInitialTab === 'expenses' || oldTabView || doneTabLink ? 'loss' : rawInitialTab) as OuterTab | null
   // A fresh login lands on a bare /item with no ?tab= at all -- that used to
   // default to Today, whose own pane is intentionally empty (same treatment
   // as UK/C&H), so the very first thing anyone saw was a near-blank screen.
@@ -72,7 +74,8 @@ export function useHubState() {
   )
   const rawInitialView = searchParams.get('view')
   const initialExtraView = rawInitialView ? OLD_LOSSVIEW_TO_EXTRA[rawInitialView] : undefined
-  const initialView = (initialExtraView ? 'items' : rawInitialView) as LossView | null
+  // ?view=teamTimes opens the Shop's Times tab instead (see the searchParams sync effect).
+  const initialView = (initialExtraView ? 'items' : rawInitialView === 'teamTimes' ? null : rawInitialView) as LossView | null
   // 'losses' (the old standalone Loss Feed tab) lands on Live Sale now --
   // Loss by Date is one of its embedded tabs, jumped to via the mount
   // effect below (jumpToLiveSaleTab isn't defined yet this early in the
@@ -85,7 +88,7 @@ export function useHubState() {
   // would otherwise snap this straight back to 'items'.
   const [lossView, setLossView]         = useState<LossView>(
     rawInitialTab === 'losses' || rawInitialTab === 'expenses' ? 'sales'
-      : oldTabView ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'sales')
+      : (doneTabLink ? null : oldTabView) ?? initialView ?? (outerTab === 'ch' ? CH_ITEMS[0].key : 'sales')
   )
   const [itemsExtraView, setItemsExtraView] = useState<ItemsExtraView>(initialExtraView ?? 'none')
   // Alias Wide / Service Match only make sense while actually on Items --
@@ -212,10 +215,11 @@ export function useHubState() {
           : item.key === 'closer' ? (globalFlags?.missingClosingReports?.length ?? 0)
           : 0,
       })) : []),
-      ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => !paneHidden[t.key] && !hideForStaff(t.key)).map(t => ({
+      // Team Times is the Shop's Times tab, not a Manage section.
+      ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => t.key !== 'teamTimes' && !paneHidden[t.key] && !hideForStaff(t.key)).map(t => ({
         key: t.key as LossView,
         label: t.label,
-        badge: t.key === 'staff_dress' ? dressFlagsCount : t.key === 'teamTimes' ? staffTimesFlagsCount : 0,
+        badge: t.key === 'staff_dress' ? dressFlagsCount : 0,
       })) : []),
     ]
   }
@@ -869,7 +873,7 @@ export function useHubState() {
     if (path === '/todo' || path.startsWith('/todo?')) return { tab: 'todo', src: path }
     if (path === '/standards' || path.startsWith('/standards?')) { const q = path.split('?')[1]; return { tab: 'todo', src: '/todo' + (q ? '?' + q : '') } }
     if (path.startsWith('/laws')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); if (q.get('view') === 'today') { q.delete('view'); return { tab: 'todo', src: '/todo' + (q.toString() ? '?' + q.toString() : '') } } return { tab: 'laws', src: path } }
-    if (path === '/penalties') return { tab: 'violations', src: path }
+    if (path === '/penalties') return { tab: 'penalties', src: path }
     if (path === '/staff-times') return { tab: 'times', src: path }
     return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
   }
@@ -881,6 +885,7 @@ export function useHubState() {
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const open = new URLSearchParams(window.location.search).get('open')
+    if (doneTabLink) setShop({ tab: 'home' })
     if (open === '/my-day') wantMyDay.current = true   // opened below, once the signed-in name is known (the session is often still loading at this moment)
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
     const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) { const r = shopRoute(e.data.path); if (r) { setEmbedUrl(null); setPersonal(null); setShop(r) } else { setShop(null); setPersonal(null); setEmbedUrl(e.data.path) } }; if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
@@ -945,13 +950,13 @@ export function useHubState() {
   // else.
   // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
   const voiceDests: Dest[] = [
-    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('todo') },
+    { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('home') },
     { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
-    { label: 'Waiting for team', names: ['waiting for team', 'team', 'daily checklist', 'checklist', 'to do'], run: () => openShop('todo') },
+    { label: 'Waiting for team', names: ['waiting for team', 'team', 'daily checklist', 'checklist'], run: () => openShop('todo') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
     { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },
     { label: 'Announcements', names: ['announcements'], run: () => openEmbed('/handbook-announcements') },
-    { label: 'Penalties', names: ['penalties', 'penalty points'], run: () => openEmbed('/penalties') },
+    { label: 'Penalty Points', names: ['penalties', 'penalty points'], run: () => (isOwnerOrJoe ? openShop('penalties') : openPersonal(username, 'violations')) },
     { label: 'Waiting for me', names: ['my day', 'waiting for me', 'my tasks', 'to do', 'what is waiting'], run: () => openPersonal(username, 'waiting') },
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
     { label: 'System check', names: ['system check', 'integrity', 'health check'], run: () => openEmbed('/integrity') },
@@ -960,14 +965,14 @@ export function useHubState() {
     { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },
     { label: 'Customers', names: ['customers'], run: () => jumpToCustomersTab() },
     { label: 'Counts', names: ['counts', 'counting'], run: () => goCountMode() },
-    { label: 'Team Times', names: ['team times', 'times'], run: () => pickLossView('teamTimes') },
+    { label: 'Times', names: ['times', 'staff times'], run: () => openShop('times') },
     { label: 'Flags', names: ['flags'], run: () => pickLossView('flags') },
     { label: 'Item 360', names: ['item 360', 'item three sixty'], run: () => pickLossView('item360') },
     { label: 'Bills', names: ['bills'], run: () => goItemsMode('bills') },
     { label: 'Expenses', names: ['expenses'], run: () => goItemsMode('expenses') },
     { label: 'Purchase Orders', names: ['purchase orders', 'orders'], run: () => pickLossView('purchaseOrders') },
     { label: 'Vendors', names: ['vendors', 'suppliers'], run: () => pickLossView('vendors') },
-    { label: 'Home', names: ['home', 'today'], run: () => pickLossView('home') },
+    { label: 'Done', names: ['done', 'home', 'today'], run: () => openShop('home') },
     { label: 'my page', names: ['my profile', 'profile', 'my times'], run: () => openPersonal(username, 'times') },
     { label: 'my payslips', names: ['payslips', 'my payslips', 'payslip'], run: () => openPersonal(username, 'payslips') },
   ]
@@ -998,10 +1003,7 @@ export function useHubState() {
   // Expenses' "+ New Bill"/"+ New Expense" is one click away on its own tab
   // rather than opening pre-expanded); the rest reopen via a per-target
   // signal since their forms are local component state with no addForm
-  // equivalent. Staff Time lands on Team Times, not a per-person page --
-  // Personal has no Times row of its own anymore (see Team Times' own
-  // history), but TimesTab's admin "add entry" form works the same
-  // regardless of whose page it's opened from.
+  // equivalent. Staff Time opens the Shop's Times tab.
   function handleShortcut(key: ShortcutKey) {
     switch (key) {
       case 'sale':       jumpToLiveSaleTab('sale'); break
@@ -1010,11 +1012,7 @@ export function useHubState() {
       case 'expense':    jumpToLiveSaleTab('expenses'); break
       case 'cabConfirm': pickLossView('cab');       setCabConfirmSignal(n => n + 1); break
       case 'vendor':     pickLossView('vendors');   setVendorSignal(n => n + 1); break
-      case 'staffTime': {
-        pickLossView('teamTimes')
-        setStaffTimeSignal(n => n + 1)
-        break
-      }
+      case 'staffTime': openShop('times'); break
     }
   }
 
@@ -1124,11 +1122,16 @@ export function useHubState() {
   // matches what's live once our own push above has run.
   useEffect(() => {
     const urlTab = searchParams.get('tab')
-    const nextTab: OuterTab = urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'loss'
+    const urlDone = urlTab === 'today' || urlTab === 'staff'
+    const nextTab: OuterTab = !urlDone && urlTab && VALID_TABS.includes(urlTab as OuterTab) ? (urlTab as OuterTab) : 'loss'
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (nextTab !== outerTab) setOuterTab(nextTab)
     if (nextTab === 'loss') {
-      const rawUrlView = searchParams.get('view')
+      const rawUrlView0 = searchParams.get('view')
+      // Team Times is the Shop's Times tab now.
+      const urlTeamTimes = rawUrlView0 === 'teamTimes'
+      const rawUrlView = urlTeamTimes ? null : rawUrlView0
+      if (urlTeamTimes) openShop('times')
       const urlExtraView = rawUrlView ? OLD_LOSSVIEW_TO_EXTRA[rawUrlView] : undefined
       // No ?view= at all -> land on Live Sale, matching the initial-state
       // fallback above. A recognized extra-view link (Alias Wide Table etc.)
@@ -1526,7 +1529,7 @@ export function useHubState() {
   const routablePages: string[] = [
     ...(canSeeCash ? CASH_ITEMS.map(v => v.label) : []),
     ...(canSeeManage ? MANAGE_LIST_ITEMS.map(v => v.label) : []),
-    ...(myStaffName ? ['Payslips', 'Penalty Points', 'Violations', 'Analytics'] : []),
+    ...(myStaffName ? ['Payslips', 'Penalty Points'] : []),
     ...(canSeeTeam ? STAFF_TEAM_ITEMS.filter(t => t.key !== 'staff_meeting').map(t => t.label) : []),
     ...(canSeeUK ? ['UK'] : []),
     ...(canSeeCH ? CH_ITEMS.map(v => v.label) : []),
@@ -1549,9 +1552,10 @@ export function useHubState() {
   // pages weren't turning up in search. Deriving from the source arrays
   // means anything added there is searchable with zero extra upkeep here.
   const navDestinations: { label: string; action: () => void }[] = [
-    { label: 'Home', action: () => changeTab('today') },
+    { label: 'Done', action: () => openShop('home') },
     ...(canSeeCash ? [
-      ...CASH_ITEMS.map(v => ({ label: v.label, action: () => pickLossView(v.key) })),
+      // Items is listed as "Live" by hand below (one entry for the sale screen).
+      ...CASH_ITEMS.filter(v => v.key !== 'items').map(v => ({ label: v.label, action: () => pickLossView(v.key) })),
       { label: 'Daily', action: () => pickLossView('dailySummary') },
       { label: 'Alias Wide Table', action: () => { pickLossView('items'); setItemsExtraView('aliasWide') } },
       { label: 'Service Matches', action: () => { pickLossView('items'); setItemsExtraView('serviceMatches') } },
@@ -1562,7 +1566,7 @@ export function useHubState() {
       // gone (dropped in favor of Sale mode's own tap-a-sale flow), so
       // there's no entry for it any more.
       { label: 'Live', action: () => jumpToLiveSaleTab('sale') },
-      { label: 'Sale Log', action: () => jumpToLiveSaleTab('log') },
+      { label: 'Sales Log', action: () => jumpToLiveSaleTab('log') },
       // Vendors/Customers/Purchase Orders/P&L/CAB aren't CASH_ITEMS entries
       // either any more (each folded into a tab/radio of its own inside
       // Items -- see CASH_ITEMS' own comment above), so the map above never
@@ -1571,7 +1575,7 @@ export function useHubState() {
       // lossView destination (kept alive for exactly this) rather than the
       // new radio button, same as Expense Orders below already did.
       { label: 'Vendors', action: () => pickLossView('vendors') },
-      { label: 'Customers', action: () => pickLossView('customers') },
+      { label: 'Customers', action: () => jumpToCustomersTab() },
       { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
       ...(canSeePL ? [
         { label: 'P&L', action: () => pickPL() },
@@ -4767,53 +4771,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // second row when there isn't room for all buttons.
     return (
       <div className="flex gap-6 overflow-x-auto max-w-full">
-        {/* Sale/Log/Sales used to be three separate tabs -- merged into one
-            "Sales" tab since they're all the same domain (tap a sale,
-            review it, look up its record). Log/Receipts are now just two
-            more radios in Sale mode's own filter row (see pickSaleFilter,
-            further down) rather than a separate switch of their own -- this
-            button's active state lights up for any of the three. */}
-        <button type="button" onClick={() => pickItemsMode('sale')} title="Sales" className={btnCls(onItemsGrid && !inCountTab && (itemsPageMode === 'sale' || itemsPageMode === 'log' || itemsPageMode === 'sales'), 'bg-blue-600')}>Sales</button>
-        {/* Count's own tab-switcher button retired -- Count Due/Negative SOH
-            are now reachable straight from the "Critical, Do Now" bar (see
-            renderCriticalBar) and the full Records/history list moved to its
-            own sidebar page (lossView 'counts', CountsTab.tsx), so this was
-            a second, redundant way into overlapping functionality. Count
-            mode itself (inCountTab, pickCountMode) is untouched -- still
-            reachable via the Critical bar and the GMC overage gate's own
-            "Go to Count" button (resolveOverageGate), and once in it, its
-            own sub-nav (see the countSubView row below) still switches
-            between Records/Count Due/Negative SOH same as before. */}
-        {isOwnerOrJoe && <button type="button" onClick={() => pickItemsMode('bills')} title="Bills" className={btnCls(onItemsGrid && itemsPageMode === 'bills', 'bg-orange-600')}>Bills</button>}
-        {isOwnerOrJoe && <button type="button" onClick={() => pickItemsMode('expenses')} title="Expenses" className={btnCls(onItemsGrid && itemsPageMode === 'expenses', 'bg-rose-600')}>Expenses</button>}
-        {/* P&L/CAB were previously reachable only via the sidebar (pickLossView)
-            or a small radio button buried in Sale mode's own filter row (see
-            liveSaleViolationFilter) -- promoted to full tabs here since owners
-            open them often enough to want one tap from anywhere in this row,
-            same gate (canSeePL) either way. Unlike the other buttons above,
-            these switch lossView rather than itemsPageMode/liveMode -- they
-            render as their own full-screen report (see lossView === 'pl'/'cab'
-            further down this same flex-col), not a mode within the Items/Sales
-            grid, so active state reads off lossView instead. */}
-        {canSeePL && isOwnerOrJoe && (
-          <button type="button" onClick={() => pickLossView('cab')} title="CAB" className={btnCls(lossView === 'cab', 'bg-amber-600')}>CAB</button>
-        )}
-        {/* Customers used to only be reachable as a radio inside Receipts'
-            own view-toggle row (liveSalesShowCustomers) -- promoted to a
-            full tab here instead, same lossView === 'customers'
-            destination CustomersPage already rendered on its own further
-            down this same flex-col (search results/shortcuts already
-            landed there too), just not previously reachable from this row. */}
-        {<button type="button" onClick={() => pickLossView('customers')} title="Customers" className={btnCls(lossView === 'customers', 'bg-pink-600')}>Customers</button>}
-        {isOwnerOrJoe && (canSeeManage || canSeeTeam) && (
-          <button type="button" onClick={() => pickItemsMode('manage')} title="Manage" className={btnCls(onItemsGrid && itemsPageMode === 'manage', 'bg-indigo-600')}>Manage</button>
-        )}
-        {isOwnerOrJoe && canSeeManage && (
-          <button type="button" onClick={() => pickItemsMode('advert')} title="Advert" className={btnCls(onItemsGrid && itemsPageMode === 'advert', 'bg-purple-600')}>Advert</button>
-        )}
-        {isOwnerOrJoe && canSeeManage && (
-          <button type="button" onClick={() => pickItemsMode('gronyChecks')} title="Shop checks" className={btnCls(onItemsGrid && itemsPageMode === 'gronyChecks', 'bg-teal-600')}>Grony 1-10 checks</button>
-        )}
+        {/* The sale screen is "Live". Bills, Expenses, CAB and Customers live in the
+            left sidebar; Manage, Advert and Shop checks in the Shop's Manage tab. */}
+        <button type="button" onClick={() => pickItemsMode('sale')} title="Live" className={btnCls(onItemsGrid && !inCountTab && (itemsPageMode === 'sale' || itemsPageMode === 'log' || itemsPageMode === 'sales'), 'bg-blue-600')}>Live</button>
       </div>
     )
   }

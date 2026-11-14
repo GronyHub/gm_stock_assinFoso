@@ -1,7 +1,7 @@
 import sql from '@/lib/db'
 import { getClockState } from '@/lib/clockState'
 import { rotaShifts } from '@/lib/allocation'
-import { addPoint, ensurePenalties } from '@/lib/penalties'
+import { addPoint, ensurePenalties, suspendedMessage } from '@/lib/penalties'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 
 // The owner's rule: a staff member who is late or absent and has NOT told the shop in the app first costs 1 point (late) or 2 points (absent without notice).
@@ -16,6 +16,16 @@ export async function ensureAbsenceColumns() {
 
 const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 
+// The real moment a clock-in was recorded (the GPS row or the "clocked in" log), in minutes of the day; null when none was found.
+// A picked clock-in time can be earlier than this, so lateness uses the later of the two.
+async function recordedInMins(staff: string, day: string): Promise<number | null> {
+  const mins = (m: unknown) => { if (!m) return null; const d = new Date(m as string); return isNaN(d.getTime()) ? null : d.getUTCHours() * 60 + d.getUTCMinutes() }
+  const [a] = await sql`SELECT MIN(created_at) AS m FROM clock_locations WHERE LOWER(staff_name) = ${staff} AND action = 'in' AND created_at::date = ${day}::date`.catch(() => [])
+  const [b] = await sql`SELECT MIN(created_at) AS m FROM activity_logs WHERE LOWER(staff_name) = ${staff} AND action = 'clocked in' AND created_at::date = ${day}::date`.catch(() => [])
+  const xs = [mins(a?.m), mins(b?.m)].filter((x): x is number => x != null)
+  return xs.length ? Math.min(...xs) : null
+}
+
 // Charges the people on the rota for `day`. Safe to run again: each charge is unique per person and day.
 export async function assessAttendance(day: string) {
   await ensurePenalties(); await ensureAbsenceColumns()
@@ -26,6 +36,7 @@ export async function assessAttendance(day: string) {
   const done: string[] = []
   for (const s of shifts) {
     if (!ACTIVE_STAFF.includes(s.n) || s.n === 'grony') continue
+    if (await suspendedMessage(s.n, day)) continue   // suspended that day: not absent, not late
     const arrived = clock.ins[s.n]
     const lateRep = rows.find(r => r.n === s.n && r.t === 'late')
     if (arrived == null) {
@@ -33,9 +44,13 @@ export async function assessAttendance(day: string) {
       await addPoint({ staff: s.n, points: ABSENT_POINTS, reason: `Absent without notice on ${day} (rostered from ${hm(s.from)}, did not clock in or report it)`, source: 'attendance', ref: `absent:${day}`, day })
       done.push(`${s.n}: absent`); continue
     }
-    if (arrived > s.from + LATE_GRACE_MIN) {
-      const told = lateRep && new Date(lateRep.created_at).getTime() <= new Date(`${day}T00:00:00Z`).getTime() + arrived * 60000
-      if (!told) { await addPoint({ staff: s.n, points: LATE_POINTS, reason: `Late without telling the shop on ${day} (rostered ${hm(s.from)}, clocked in ${hm(arrived)})`, source: 'attendance', ref: `late:${day}`, day }); done.push(`${s.n}: late`) }
+    // A time set by an approved correction or the owner's edit stands; otherwise the later of the picked time and the moment it was recorded.
+    const [src] = await sql`SELECT in_source FROM staff_times WHERE LOWER(staff_name) = ${s.n} AND work_date = ${day} AND actual_in IS NOT NULL LIMIT 1`.catch(() => [])
+    const rec = src?.in_source === 'approved' || src?.in_source === 'manual' ? null : await recordedInMins(s.n, day)
+    const came = rec != null ? Math.max(arrived, rec) : arrived
+    if (came > s.from + LATE_GRACE_MIN) {
+      const told = lateRep && new Date(lateRep.created_at).getTime() <= new Date(`${day}T00:00:00Z`).getTime() + came * 60000
+      if (!told) { await addPoint({ staff: s.n, points: LATE_POINTS, reason: `Late without telling the shop on ${day} (rostered ${hm(s.from)}, clocked in ${hm(came)})`, source: 'attendance', ref: `late:${day}`, day }); done.push(`${s.n}: late`) }
     }
   }
   return done

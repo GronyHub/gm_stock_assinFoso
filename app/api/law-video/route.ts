@@ -4,7 +4,7 @@ import sql from '@/lib/db'
 import { once } from '@/lib/once'
 import { actorKey } from '@/lib/clockState'
 import { SIGNERS } from '@/lib/signers'
-import { notifyOwners } from '@/lib/checklistAlerts'
+import { notifyInput } from '@/lib/checklistAlerts'
 import { NextRequest } from 'next/server'
 import { videosDue } from '@/lib/videoDue'
 
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (!area) return success({ ok: true })
     const day = new Date().toISOString().slice(0, 10)
     const r = await sql`INSERT INTO law_video_views (day, staff, area) VALUES (${day}, ${me}, ${area}) ON CONFLICT DO NOTHING RETURNING area`
-    if (r.length) void notifyOwners(`${cap(me)} watched a law video`, `${label}, to the end.`)
+    if (r.length) void notifyInput(me, `${cap(me)} watched a law video`, `${label}, to the end.`)
     return success({ ok: true })
   } catch (e) { return handleError('law-video POST', e) }
 }

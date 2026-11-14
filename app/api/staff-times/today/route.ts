@@ -10,7 +10,8 @@ import { suspendedMessage } from '@/lib/penalties'
 import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
-import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
+import { notifyManagement } from '@/lib/checklistAlerts'
+import { missingCashCounted, saveCashCounted } from '@/lib/managerLock'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time: sentTime, picked, presence, absent, latitude, longitude, accuracy, closing_report, no_gps } = await req.json()
+  const { action, time: sentTime, picked, presence, absent, latitude, longitude, accuracy, closing_report, no_gps, cash_counted } = await req.json()
   if (!action) return badRequest('Missing fields')
   // The time is the SERVER's clock (Ghana = UTC), never the device's: a phone or computer with a wrong clock once recorded a 7:50pm clock-out at 6:32pm
   // (James, 2026-11-13). Only a time the person deliberately picked ("Pick a different time") is taken from them, and only when it is not later than now.
@@ -266,6 +267,18 @@ export async function POST(req: NextRequest) {
     if (action === 'in' && existingRow?.actual_in) return badRequest(`You already clocked in today at ${existingRow.actual_in}. To correct it, ask Joe or Grony.`)
     if (action === 'out' && existingRow?.actual_out) return badRequest(`You already clocked out today at ${existingRow.actual_out}. To correct it, ask Joe or Grony.`)
 
+    // The manager gives the previous working day's Cash Counted before he clocks in (unless he gave it in his closing questions).
+    if (action === 'in' && String(username).toLowerCase() === 'joe' && sessionUser?.role !== 'owner') {
+      const miss = await missingCashCounted(today).catch(() => null)
+      if (miss) {
+        const v = cash_counted === '' || cash_counted == null ? NaN : Number(cash_counted)
+        if (!Number.isFinite(v) || v < 0)
+          return NextResponse.json({ error: `Enter the Cash Counted for ${miss.day} before you clock in.`, requires_cash_counted: true, ...miss }, { status: 409 })
+        await saveCashCounted(miss.receiptId, Math.round(v * 100) / 100)
+        void recordActivity(enteredBy ?? username, 'entered Cash Counted', `${miss.day}: ₵${v.toFixed(2)} (sales ₵${miss.salesTotal.toFixed(2)})`)
+      }
+    }
+
     await ensureSourceCols()
 
     if (existingRow) {
@@ -326,18 +339,22 @@ export async function POST(req: NextRequest) {
       isOpener = openerOf(todayRows) === username
     }
 
+    // One push per clock-in/out, with every detail (sent below); the Done record is written here without its own push.
     await logActivity(
       enteredBy ?? username,
       action === 'in' ? 'clocked in' : 'clocked out',
-      isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time)
+      isOpener ? `${time} — Opener for today` : (action === 'out' && isCloser ? `${time} — Closer for today` : time),
+      undefined, undefined, true
     )
+    const me = String(username).toLowerCase(), meName = me.charAt(0).toUpperCase() + me.slice(1)
+    const extra: string[] = [isOpener ? 'Opener for today' : '', action === 'out' && isCloser ? 'Closer for today' : '']
 
     // The presence answer: recorded in Done and told to the owner and Joe. "No" also asks each of them to confirm they are at the shop within a minute.
     if (action === 'out' && stillIn.length) {
-      const me = String(username).toLowerCase(), who = me.charAt(0).toUpperCase() + me.slice(1), names = stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1))
+      const who = meName, names = stillIn.map(n => n.charAt(0).toUpperCase() + n.slice(1))
       if (presence === 'yes') {
         void recordActivity(who, 'said others are still at the shop', names.join(', '))
-        void notifyInput(me, `${who} clocked out`, `${who} says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop.`)
+        extra.push(`says ${names.join(' and ')} ${names.length === 1 ? 'is' : 'are'} still at the shop`)
       } else {
         const gone = (Array.isArray(absent) ? absent.map((x: unknown) => String(x).toLowerCase()) : []).filter((x: string) => stillIn.includes(x))
         const here = stillIn.filter(n => !gone.includes(n)).map(n => n.charAt(0).toUpperCase() + n.slice(1))
@@ -355,17 +372,18 @@ export async function POST(req: NextRequest) {
         const r = await recordBackdate(who, today, time, nowM - wm).catch(() => null)
         if (r) {
           backdated = { minutes: nowM - wm, ...r }
-          const nm = who.charAt(0).toUpperCase() + who.slice(1)
-          void notifyManagement(who, `${nm} wrote an earlier clock-in time`, `Wrote ${time}, ${nowM - wm} minutes before it was recorded. Violation ${r.count % 5 === 0 ? 5 : r.count % 5} of 5${r.pointAwarded ? ': 1 penalty point added' : ''}.`)
+          extra.push(`written ${nowM - wm} min early (violation ${r.count % 5 === 0 ? 5 : r.count % 5} of 5${r.pointAwarded ? ', 1 penalty point added' : ''})`)
         }
       }
       if (unverified) {
         await sql`UPDATE clock_corrections SET status = 'rejected', note = 'Replaced by a newer entry' WHERE staff = ${who} AND work_date = ${today} AND field = 'in' AND status = 'pending'`.catch(() => {})
         await sql`INSERT INTO clock_corrections (staff, work_date, kind, proposed_out, basis, field) VALUES (${who}, ${today}, 'entered', ${time}, ${'No GPS: the manager checks the CCTV and approves the time in'}, 'in')`.catch(() => {})
         pendingApproval = true
-        void notifyManagement(who, `${who.charAt(0).toUpperCase() + who.slice(1)} clocked in without GPS`, `Time in ${time}. Check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon).`)
+        extra.push('no GPS: check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon)')
       }
     }
+    const detail = extra.filter(Boolean).join('; ')
+    void notifyManagement(me, `${meName} clocked ${action}`, `${meName} clocked ${action} ${time}${detail ? ' — ' + detail : ''}.`)
 
     return success({
       ...updated,

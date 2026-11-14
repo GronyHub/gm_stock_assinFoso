@@ -162,18 +162,38 @@ export async function fadeTick(day = dayKey()) {
 
 // Day end: every task left undone costs the person it falls on a point, at most MISSED_DAILY_CAP each. Who it falls on and whether it was done come from the one
 // duties calculation that Waiting for team and Waiting for me read, so what the screens show is exactly what is charged.
+// The undone tasks of a day, by the person they fall on. Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law),
+// and only while that law is live; a COUNT NOW task is covered by the manager's daily counts law instead.
+async function owedByOwner(day: string) {
+  const clock = await getClockState(day)
+  const byOwner = new Map<string, Awaited<ReturnType<typeof dutiesForDate>>>()
+  if (!clock.everIn.length) return byOwner
+  const live = new Set((await sql`SELECT id FROM page_laws WHERE status = 'live' AND COALESCE(text, '') NOT ILIKE 'COUNT NOW%'`.catch(() => [])).map(r => Number(r.id)))
+  const owed = (await dutiesForDate(day)).filter(d => d.lawId != null && live.has(Number(d.lawId)) && !/^COUNT NOW/i.test(d.title) && d.state !== 'done' && d.state !== 'no' && d.owner && clock.everIn.includes(d.owner))
+  for (const d of owed) byOwner.set(d.owner!, [...(byOwner.get(d.owner!) ?? []), d])
+  return byOwner
+}
+
 export async function dayEndAssess(day = dayKey()) {
   await ensurePenalties()
-  const clock = await getClockState(day)
-  if (!clock.everIn.length) return
-  // Only a task that a law stands behind can cost a point (the owner's rule: everything rests on a law).
-  const owed = (await dutiesForDate(day)).filter(d => d.lawId != null && d.state !== 'done' && d.state !== 'no' && d.owner && clock.everIn.includes(d.owner))
-  const byOwner = new Map<string, typeof owed>()
-  for (const d of owed) byOwner.set(d.owner!, [...(byOwner.get(d.owner!) ?? []), d])
+  const byOwner = await owedByOwner(day)
   for (const [name, mine] of byOwner) {
     const pts = Math.min(mine.length, MISSED_DAILY_CAP)
     const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
     await addPoint({ staff: name, points: pts, reason: `${mine.length} checklist task${mine.length === 1 ? '' : 's'} left undone today (${first}${mine.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })
+  }
+}
+
+// A task of an earlier day done late (the manager's closing questions, answered the next morning): the day-end point is taken back, or made smaller when other tasks stay undone.
+export async function recheckMissed(day: string, note = 'Withdrawn: answered the next morning') {
+  await ensurePenalties()
+  const pts = await sql`SELECT id, staff, points FROM staff_penalties WHERE ref = ${'missed:' + day} AND source = 'missed' AND status IN ('active', 'pending')` as unknown as { id: number; staff: string; points: number }[]
+  if (!pts.length) return
+  const byOwner = await owedByOwner(day)
+  for (const p of pts) {
+    const left = byOwner.get(String(p.staff))?.length ?? 0
+    if (left === 0) await sql`UPDATE staff_penalties SET status = 'withdrawn', withdraw_reason = ${note}, note = ${note} WHERE id = ${p.id}`
+    else if (Math.min(left, MISSED_DAILY_CAP) < Number(p.points)) await sql`UPDATE staff_penalties SET points = ${Math.min(left, MISSED_DAILY_CAP)}, note = ${'Reduced: a task was done the next morning'} WHERE id = ${p.id}`
   }
 }
 

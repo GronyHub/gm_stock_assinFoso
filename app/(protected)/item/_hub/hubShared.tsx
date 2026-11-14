@@ -59,7 +59,6 @@ export const CABTab         = dynamic(() => import('../_components/CABTab'),    
 
 export const TodayContent   = dynamic(() => import('../_components/TodayContent'),    { ssr: false, loading: () => loading('Loading…') })
 
-export const MyDayClient     = dynamic(() => import('../../my-day/MyDayClient'),                { ssr: false, loading: () => loading('Loading…') })
 
 export const NewExpenseForm = dynamic(() => import('../../expenses/new/page'),          { ssr: false, loading: () => loading('Loading…') })
 
@@ -313,7 +312,7 @@ export const REPORT_VIEWS = new Set<LossView>([
 // keeping related things together. Items is the only row left here as a
 // result.
 export const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: string }[] = [
-  { key: 'items',    label: 'Items',    icon: '📦' },
+  { key: 'items',    label: 'Live',     icon: '📦' },
   // The full Counts page -- see LossView's own 'counts' comment. Kept as
   // its own row (not folded under Items) since it's a distinct destination
   // now, not just a mode inside the Sale/Log/Sales/Bills switcher.
@@ -863,8 +862,8 @@ export function itemAttentionFlags(
   // this page.
   export type ItemsInlineExtra = { kind: 'serviceGroup'; group: string }
 
-  // The Shop page (the Total box): the Daily Checklist, Company Laws, Home and (for the owner and manager) the Manage sections, as tabs.
-  export type ShopTab = 'todo' | 'notdone' | 'laws' | 'home' | 'manage' | 'times' | 'violations' | 'tasks' | 'guide' | 'checks'
+  // The Shop page: Waiting for team, Done, Laws, Times and (owner and manager) Penalty Points, Manage and more, as tabs.
+  export type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'penalties' | 'tasks' | 'guide' | 'checks'
 
   // Everything Sales Rec / Summary held, merged into the Sales Log: the day receipts (cash counted, photos, who
   // entered them) and the receipt lines no tap stands behind (history imported back to 2023, lines typed in by

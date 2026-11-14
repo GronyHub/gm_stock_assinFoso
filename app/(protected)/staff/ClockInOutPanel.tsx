@@ -113,7 +113,10 @@ export default function ClockInOutPanel({
   // Compulsory before clocking out (the server refuses without it): is any of the staff still clocked in at the shop?
   const [presenceAsk, setPresenceAsk] = useState<{ others: string[]; time: string } | null>(null)
   const [notHere, setNotHere] = useState<string[] | null>(null)   // after "No": who is not at the shop
-  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean; presence?: 'yes' | 'no'; absent?: string[] }) {
+  // The manager must give the previous working day's Cash Counted before he clocks in (the server asks with a 409).
+  const [cashAsk, setCashAsk] = useState<{ day: string; salesTotal: number; time: string; noGps?: boolean } | null>(null)
+  const [cashVal, setCashVal] = useState('')
+  async function clock(action: 'in' | 'out', opts?: { time?: string; closingReport?: ClosingAnswers; noGps?: boolean; presence?: 'yes' | 'no'; absent?: string[]; cashCounted?: number }) {
     const time = opts?.time ?? (pickingTime ? hhmmTo12h(customTime) : nowAs12h())
     setErr('')
     setRoleBanner(null)
@@ -136,7 +139,7 @@ export default function ClockInOutPanel({
 
     const res = await fetch('/api/staff-times/today', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, time, picked: pickingTime || undefined, presence: opts?.presence, absent: opts?.absent, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined }),
+      body: JSON.stringify({ action, time, picked: pickingTime || undefined, presence: opts?.presence, absent: opts?.absent, latitude, longitude, accuracy, closing_report: opts?.closingReport, no_gps: opts?.noGps || undefined, cash_counted: opts?.cashCounted }),
     })
     setSaving(false)
     if (res.ok) {
@@ -145,6 +148,7 @@ export default function ClockInOutPanel({
       setPickingTime(false)
       setCustomTime(nowAsHHMM())
       setCloserPrompt(null)
+      setCashAsk(null); setCashVal('')
       const parts: string[] = []
       if (updated.pending_approval) parts.push('You clocked in without GPS. Your manager will check the CCTV and approve your time. You will be told the decision.')
       if (updated.backdated) parts.push(`The time you wrote is ${updated.backdated.minutes} minutes earlier than now. That is recorded as a violation (${updated.backdated.count % 5 === 0 ? 5 : updated.backdated.count % 5} of 5; every 5 cost 1 penalty point).${updated.backdated.pointAwarded ? ' This was the 5th: 1 penalty point.' : ''}`)
@@ -157,6 +161,7 @@ export default function ClockInOutPanel({
       afterAction?.()
     } else {
       const d = await res.json().catch(() => ({}))
+      if (res.status === 409 && d.requires_cash_counted) { setCashAsk({ day: String(d.day ?? ''), salesTotal: Number(d.salesTotal ?? 0), time, noGps: opts?.noGps }); return }
       if (res.status === 409 && d.requires_presence) { setPresenceAsk({ others: Array.isArray(d.others) ? d.others : [], time }); return }
       if (d.offer_cctv && action === 'in') { setNoGps({ time, why: d.error ?? 'Your location could not be confirmed.' }) }
       else if (res.status === 409 && d.requires_closing_report) {
@@ -226,6 +231,17 @@ export default function ClockInOutPanel({
           <div className="flex gap-2">
             <button type="button" disabled={saving} onClick={() => void clock('in', { time: noGps.time, noGps: true })} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Clock in without GPS</button>
             <button type="button" onClick={() => setNoGps(null)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Cancel</button>
+          </div>
+        </div>
+      )}
+      {cashAsk && (
+        <div className="space-y-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-extrabold text-amber-900">Cash counted for {cashAsk.day} (₵)</p>
+          <p className="text-[12px] text-amber-900">Required before you clock in. Sales written down for the day: <b>₵{cashAsk.salesTotal.toFixed(2)}</b>.</p>
+          <input type="number" inputMode="decimal" min="0" step="0.01" value={cashVal} onChange={e => setCashVal(e.target.value)} placeholder="Cash counted" className={inputCls} />
+          <div className="flex gap-2">
+            <button type="button" disabled={saving || cashVal.trim() === '' || !(Number(cashVal) >= 0)} onClick={() => void clock('in', { time: cashAsk.time, noGps: cashAsk.noGps, cashCounted: Number(cashVal) })} className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Save and clock in</button>
+            <button type="button" onClick={() => setCashAsk(null)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-gray-700">Cancel</button>
           </div>
         </div>
       )}
@@ -374,7 +390,7 @@ export default function ClockInOutPanel({
             {savingBreak ? '…' : (mine?.on_break ? 'End Break' : 'Take a Break')}
           </button>
         )}
-        <p className="text-[10px] text-gray-400 text-center">📍 Location must be enabled — you must be at the shop to clock in/out.</p>
+        <p className="text-[10px] text-gray-400 text-center">Clock in at the shop with GPS on. No GPS? You can still clock in: the manager checks the CCTV and approves your time.</p>
       </div>
     </>
   )

@@ -28,6 +28,24 @@ export async function previousWorkingDay(today = dayKey()): Promise<string | nul
   return null
 }
 
+// Cash Counted still missing for the previous working day (not excused), or null. Used to make it compulsory before the manager clocks in.
+export async function missingCashCounted(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
+  const day = await previousWorkingDay(today)
+  if (!day) return null
+  await ensurePenalties()
+  const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
+  if (ex) return null
+  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
+  return rc && rc.cash_counted == null ? { day, receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0) } : null
+}
+
+// Saves Cash Counted on a day's sales receipt, the same as the Sales Log (PUT /api/sales/[id]).
+export async function saveCashCounted(receiptId: number, counted: number) {
+  await sql`UPDATE sales_receipts SET cash_counted = ${counted} WHERE id = ${receiptId}`
+  ;(await import('@/lib/itemsCache')).clearItemsCache()
+  cache = null
+}
+
 let cache: { at: number; today: string; v: LockState } | null = null
 // Cached for 30 seconds (every page change asks); `fresh` bypasses it, for the page where the manager has just entered something.
 export async function lockStateForManager(today = dayKey(), fresh = false): Promise<LockState> {

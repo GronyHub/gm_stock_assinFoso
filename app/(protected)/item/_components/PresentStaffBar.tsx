@@ -1,11 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
-import dynamic from 'next/dynamic'
 import { parseTimeMins } from '@/lib/staffTimes'
 import { usePolling } from '@/lib/usePolling'
 import StaffAvatar from '@/components/StaffAvatar'
-
-const TodayContent = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-gray-400 text-xs">Loading…</p> })
 
 type StaffRow = { staff_name: string; actual_in: string; actual_out: string | null; on_break: boolean; worked_seconds: number }
 type RosterEntry = { username: string; active: boolean; photo_url?: string | null }
@@ -35,12 +32,8 @@ function fmtHrMin(totalMinutes: number): string {
 // sums today's announcements' estimated_duration_seconds; total time is from
 // clock-in to now (or to clock-out time if already logged out) -- neither
 // applies to someone absent, so their chip has no second line. A trailing
-// "Total" entry sums both figures across everyone actually present today,
-// same format as each person's own entry -- clicking it opens Home as an
-// inline modal (same treatment as a per-person chip below) rather than
-// navigating away to it, since Home's own announcement feed is the actual
-// activity record the worked-time half of every figure here is summed
-// from. Tapping a person's own chip instead opens their whole personal
+// "Shop" entry sums both figures across everyone present today; tapping it
+// opens the Shop on Done (onOpenShop). Tapping a person's own chip instead opens their whole personal
 // page (StaffMemberModal -- the same page the pane's own "Staff Members"
 // row opens, just as a modal here), landing on its Times tab, rather than
 // a narrow detail-only modal -- this works identically whether they're
@@ -53,7 +46,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
   shopActive?: boolean          // the Shop is open
   // What each person has recorded today (lowercase name -> cedis), from the hub's own live sale list.
   salesBy?: Record<string, number>
-  // Tapping the Shop box (was Total) opens the hub's Shop page: Waiting for team, Company Laws, Home, Manage.
+  // Tapping the Shop box opens the hub's Shop page on Done.
   onOpenShop?: () => void
   // For supervisors: how many things wait for each person (lowercase name), shown as a red count on their avatar.
   waitingBy?: Record<string, { total: number; now: number }>
@@ -78,7 +71,6 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
 }) {
   const [staff, setStaff] = useState<StaffRow[]>([])
   const [now, setNow] = useState(() => new Date())
-  const [homeModalOpen, setHomeModalOpen] = useState(false)
   useEffect(() => {
     let cancelled = false
     function load() {
@@ -204,7 +196,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
             )}
           </button>
         ))}
-        <button type="button" onClick={() => (onOpenShop ? onOpenShop() : setHomeModalOpen(true))} title="Open the Shop: Waiting for team, Company Laws, Home"
+        <button type="button" onClick={() => onOpenShop?.()} title="The Shop: Done, Laws, Times"
           className={`shrink-0 flex flex-col items-center justify-center gap-px px-1.5 py-0.5 rounded-lg border shadow-sm transition ${shopActive ? 'border-blue-600 bg-blue-100 ring-2 ring-blue-500' : 'border-gray-300 bg-gray-100 hover:bg-gray-200 active:bg-gray-300'}`}>
           <span className="text-[10px] font-semibold text-gray-700 leading-tight whitespace-nowrap">Shop</span>
           {/* Today's total sales sits inside this box, like each person's own amount sits in theirs. */}
@@ -212,19 +204,6 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
           <span className="text-[8px] text-gray-400 leading-tight whitespace-nowrap">{fmtHrMin(totalWorkedMins)}/{fmtHrMin(totalPresentMins)}</span>
         </button>
       </div>
-      {homeModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4" onClick={() => setHomeModalOpen(false)}>
-          <div onClick={e => e.stopPropagation()} className="bg-white rounded-xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 shrink-0">
-              <p className="text-sm font-bold text-gray-900">🏠 Home</p>
-              <button onClick={() => setHomeModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-2">
-              <TodayContent />
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

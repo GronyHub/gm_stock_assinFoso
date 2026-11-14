@@ -7,7 +7,6 @@ import StaffTimesView from './StaffTimesView'
 import ProfileTab from './ProfileTab'
 import SupervisorClockOut from './SupervisorClockOut'
 import { PenaltyCard } from '@/components/PenaltyChip'
-import MyDayClient from '../../my-day/MyDayClient'
 import PersonWaiting from '@/components/PersonWaiting'
 import PersonLaws from './PersonLaws'
 import PersonUpcoming from './PersonUpcoming'
@@ -15,7 +14,7 @@ import dynamic from 'next/dynamic'
 const PersonRecord = dynamic(() => import('./TodayContent'), { ssr: false, loading: () => <p className="py-10 text-center text-xs text-gray-400">Loading…</p> })
 import { PayslipsTab } from '../../staff/StaffClient'
 
-export type TabKey = 'waiting' | 'notdone' | 'done' | 'laws' | 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'dressCode' | 'meeting'
+export type TabKey = 'waiting' | 'done' | 'laws' | 'times' | 'violations' | 'payslips' | 'profile' | 'tasks' | 'dressCode' | 'meeting'
 
 const TABS: { key: TabKey; icon: string; label: string }[] = [
   { key: 'waiting', icon: '📋', label: 'Waiting for me' },
@@ -51,7 +50,7 @@ export default function StaffMemberPersonalTab({
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab ?? 'tasks')
   // Supervisors see a team member's Waiting for me here (read-only), if they may look at that person.
   const [mayView, setMayView] = useState(false)
-  useEffect(() => { if (isSelf) return; fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { const ok = Array.isArray(d?.people) && d.people.includes(staffName.toLowerCase()); setMayView(ok); if (!ok) setActiveTab(t => (t === 'waiting' || t === 'notdone' ? 'times' : t)) }).catch(() => setActiveTab(t => (t === 'waiting' || t === 'notdone' ? 'times' : t))) }, [isSelf, staffName])
+  useEffect(() => { if (isSelf) return; fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { const ok = Array.isArray(d?.people) && d.people.includes(staffName.toLowerCase()); setMayView(ok); if (!ok) setActiveTab(t => (t === 'waiting' ? 'times' : t)) }).catch(() => setActiveTab(t => (t === 'waiting' ? 'times' : t))) }, [isSelf, staffName])
   const [tasksData, setTasksData] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
 

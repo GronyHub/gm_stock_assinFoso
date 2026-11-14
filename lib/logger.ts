@@ -23,17 +23,18 @@ const ensureSchema = once(async () => {
 // Actions that shouldn't also become a public Announcements post: login/logout
 // fire twice a day per staff member with no real info, 'posted announcement'
 // is already an announcement itself (posting it again would duplicate the
-// feed), and view-as is an owner/Joe-only concern (see OWNER_ONLY_ACTIONS)
+// feed), and view-as is an owner/Joe-only concern
 // that other staff -- including whoever is being viewed as -- shouldn't see.
 const ANNOUNCEMENT_EXCLUDED_ACTIONS = new Set([
   'logged in', 'logged out', 'posted announcement',
   'started viewing portal as', 'stopped viewing portal as',
 ])
 
-// Notified to owner-level (Grony/Joe) only, never broadcast to all staff.
-const OWNER_ONLY_ACTIONS = new Set(['started viewing portal as', 'stopped viewing portal as'])
+// Pushes go to the owner and Joe only (never the actor). The only exception: a message a person
+// posted for the whole shop, which every colleague needs to see.
+const ALL_STAFF_ACTIONS = new Set(['posted announcement'])
 
-// silent: put it in the Home record without a push to everyone (used for the many small events of the day: ticks, signatures, points, approvals).
+// silent: put it in the Home record without a push (used for the many small events of the day: ticks, signatures, points, approvals).
 export const recordActivity = (staffName: string, action: string, details?: string) => logActivity(staffName, action, details, undefined, undefined, true).catch(() => {})
 
 export async function logActivity(staffName: string, action: string, details?: string, estimatedDurationSeconds?: number, sourceId?: number, silent = false) {
@@ -65,7 +66,7 @@ export async function logActivity(staffName: string, action: string, details?: s
   }
 
   // fire push (non-blocking)
-  if (!silent) sendPush(staffName, action, details, OWNER_ONLY_ACTIONS.has(action)).catch(() => {})
+  if (!silent) sendPush(staffName, action, details, !ALL_STAFF_ACTIONS.has(action)).catch(() => {})
 }
 
 async function sendPush(staffName: string, action: string, details: string | undefined, ownerOnly: boolean) {
@@ -87,9 +88,10 @@ async function sendPush(staffName: string, action: string, details: string | und
           SELECT ps.endpoint, ps.p256dh, ps.auth
           FROM push_subscriptions ps
           JOIN app_users au ON LOWER(au.username) = LOWER(ps.username)
-          WHERE au.role = 'owner' OR LOWER(au.username) = 'joe'
+          WHERE (au.role = 'owner' OR LOWER(au.username) = 'joe') AND LOWER(ps.username) <> LOWER(${staffName})
         `
-      : await sql`SELECT endpoint, p256dh, auth FROM push_subscriptions`
+      : await sql`SELECT ps.endpoint, ps.p256dh, ps.auth FROM push_subscriptions ps JOIN app_users au ON LOWER(au.username) = LOWER(ps.username)
+          WHERE au.role <> 'children_manager' AND au.active IS NOT FALSE AND LOWER(ps.username) <> LOWER(${staffName})`
     if (!subs.length) return
 
     const payload = JSON.stringify({

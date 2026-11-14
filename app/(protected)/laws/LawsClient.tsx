@@ -30,7 +30,7 @@ const lab = 'mb-0.5 block text-[11px] font-bold uppercase text-gray-500'
 // The laws are statutory: nobody signs them, so there are no signature columns.
 const SIGNING = false
 const COLS = 'grid-cols-[0.95fr_1.25fr_1.5fr_1.3fr_0.55fr]'
-const HEAD = ['Law', 'When', 'What to do', 'If it is broken', 'Quiz']
+const HEAD = ['Law', 'When', 'What to do', 'If it is broken', 'Practice quiz (optional)']
 const FILLER = /^a staff member does not follow this law/i   // the auto-written violation that only repeats the law's own title
 const typeName = (t: string) => t === 'recurring' ? 'Recurring task' : t === 'app' ? 'App-enforced' : 'Standing order'
 const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law_type === 'recurring' ? 'App: task left undone at day end' : l.law_type === 'app' || v.by === 'app' ? 'App checks it' : 'A manager or superior logs it: seen in the shop or on the CCTV')
@@ -236,7 +236,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             )}
           </div>
           <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 5, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
-            {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[10px] font-bold text-white">📝 Quiz {l.quiz_n}</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[10px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[10px] text-gray-300">-</span>}
+            {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[10px] font-bold text-white">📝 Practice quiz (optional)</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[10px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[10px] text-gray-300">-</span>}
           </div>
           {(SIGNING ? (sig?.staff ?? []) : []).map(n => {
             const done = (sig?.by?.[n] ?? []).includes(l.id)
@@ -247,7 +247,6 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                   : <>
                     {mark && <span title={`${n}: quiz mark`} className="text-[10px] font-extrabold text-indigo-700">{mark}</span>}
                     {done ? <span title={`${n} signed`} className="text-sm font-extrabold text-green-600">✓</span>
-                      : n === sig?.me ? <button type="button" onClick={() => void signLaws([l.id])} title="Sign: I have read this and will follow it" className="rounded-md bg-green-600 px-1 py-1 text-[11px] font-bold text-white">✍</button>
                       : <span className="text-[10px] text-gray-300">·</span>}
                   </>}
               </div>
@@ -277,7 +276,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             )
           })}
         </div>
-        {area?.flags && /^Fix flags/i.test(l.text) && <div className="px-2 pb-2"><FlagList av={av} /></div>}
+        {area?.flags && /^(Fix flags|Every working day the manager fixes at least 5 flags)/i.test(l.text) && <div className="px-2 pb-2"><FlagList av={av} /></div>}
       </div>
     )
   }
@@ -352,7 +351,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         ]
         return (
           <div className="space-y-4">
-            <p className="text-[11px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Today.</p>
+            <p className="text-[11px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>
             {groups.filter(([, list]) => list.length).map(([title, list]) => (
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
@@ -392,7 +391,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                       <span className="text-4xl leading-none">{c.icon}</span>
                       <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.label}</span>
                       <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
-                      {(t || c.video) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${t && quizMine[t]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>{t && quizMine[t]?.passed ? '🎬 Quiz passed' : t ? '🎬 Video + quiz' : '🎬 Video'}</span>}
+                      {(t || c.video) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${t && quizMine[t]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>🎬 Video</span>}
                       <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{live.length} law{live.length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
                       {sig?.signer && todo > 0 && <span className="text-[10px] font-extrabold text-amber-700">✍ {todo} to sign</span>}
                       {list.some(l => l.status === 'draft') && canManage && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}
@@ -425,7 +424,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
-          {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : catLaws.some(l => l.status !== 'draft') ? <p className="rounded-xl bg-green-50 p-2 text-center text-sm font-bold text-green-800">✍ You have signed every law here.</p> : null })()}
+          {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : null })()}
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
             const live = catLaws.filter(l => l.status !== 'draft' || canManage)
@@ -505,7 +504,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
         <div><label className={lab}>Who sees and keeps this law</label><select value={d.audience} onChange={e => set('audience', e.target.value)} className={inp}><option value="staff">All staff</option><option value="managers">Managers and owners only</option></select></div>
         {d.law_type === 'standing' && <div><label className={lab}>App reminder (standing orders)</label><select value={d.reminder} onChange={e => set('reminder', e.target.value)} className={inp}><option value="none">No reminder</option><option value="login">After login, before work starts</option><option value="first_sale">After the staff member&apos;s first sale of the day</option></select></div>}
         <div><label className={lab}>Short title (shown in the table)</label><input value={d.title} onChange={e => set('title', e.target.value)} placeholder="For example: Record every sale as soon as it happens" className={inp} /></div>
-        <div><label className={lab}>The law (full statement, used for the checklist)</label><textarea value={d.text} onChange={e => set('text', e.target.value)} rows={4} className={inp} /></div>
+        <div><label className={lab}>The law (full statement, used for the tasks)</label><textarea value={d.text} onChange={e => set('text', e.target.value)} rows={4} className={inp} /></div>
         <div className="grid grid-cols-2 gap-2">
           <div><label className={lab}>Category (required)</label><select value={d.category} onChange={e => set('category', e.target.value)} className={inp}><option value="" disabled>Choose…</option>{LAW_CATEGORIES.map(c => <option key={c.key}>{c.key}</option>)}</select></div>
           <div><label className={lab}>Subcategory</label><input list="law-subs" value={d.subcategory} onChange={e => set('subcategory', e.target.value)} className={inp} /><datalist id="law-subs">{subs.map(s => <option key={s} value={s} />)}</datalist></div>
@@ -524,7 +523,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <div><label className={lab}>Time</label><input type="time" value={d.law_time} onChange={e => set('law_time', e.target.value)} className={inp} /></div>
               <div><label className={lab}>Minutes</label><input type="number" min={1} max={240} value={d.minutes} onChange={e => set('minutes', e.target.value)} className={inp} /></div>
             </div>
-            {d.frequency === 'monthly' && <div><label className={lab}>Day of the month (1 to 31)</label><input type="number" min={1} max={31} value={d.month_day} onChange={e => set('month_day', e.target.value)} placeholder="for example 15" className={inp} /><p className="mt-0.5 text-[10px] text-gray-500">Shown on that date in To do. A short month uses its last day. Empty = sometime in the month.</p></div>}
+            {d.frequency === 'monthly' && <div><label className={lab}>Day of the month (1 to 31)</label><input type="number" min={1} max={31} value={d.month_day} onChange={e => set('month_day', e.target.value)} placeholder="for example 15" className={inp} /><p className="mt-0.5 text-[10px] text-gray-500">Shown on that date in Waiting for team. A short month uses its last day. Empty = sometime in the month.</p></div>}
             <div><label className={lab}>Who does it</label><select value={d.assignment} onChange={e => set('assignment', e.target.value)} className={inp}>{ASSIGNMENTS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}</select>
               <p className="mt-0.5 text-[10px] text-gray-500">If it is left undone at day end, the point goes to these people only.</p></div>
             <div><label className={lab}>How staff prove it</label><select value={d.proof} onChange={e => set('proof', e.target.value)} className={inp}>{PROOFS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
@@ -611,7 +610,7 @@ function LawQuiz({ law, onClose, onDone }: { law: Law; onClose: () => void; onDo
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={onClose}>
       <div className="mx-auto max-h-[92vh] w-full max-w-lg space-y-3 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
-        <p className="text-base font-bold">Quiz: {law.code} {law.title}</p>
+        <p className="text-base font-bold">Practice quiz (optional): {law.code} {law.title}</p>
         {!qs && <p className="text-sm text-gray-400">Loading…</p>}
         {qs?.map((q, i) => (
           <div key={i}>

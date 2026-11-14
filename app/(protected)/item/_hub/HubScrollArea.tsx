@@ -757,7 +757,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
             </div>
           )}
 
-          {/* Grony Checks tab ("Grony 1-10 checks") -- same split as Advert
+          {/* Shop checks (opened from the Shop's Manage tab) -- same split as Advert
               just above, for the same reason (its own sub-nav: the Grony
               Checks Grid table, plus Arrangement/Cleanliness/Customer
               Display/Repair Works/Grony 1-10/Security chk). Just renders

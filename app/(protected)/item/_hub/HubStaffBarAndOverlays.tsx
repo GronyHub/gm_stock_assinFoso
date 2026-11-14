@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { setPageToolbarEl } from '@/lib/pageToolbar'
-import { TodayContent, MyDayClient, ShopTeamTimes, StaffMemberPersonalTab, STAFF_ROSTER, formatPrice, type ShopTab } from './hubShared'
+import { TodayContent, ShopTeamTimes, StaffMemberPersonalTab, STAFF_ROSTER, formatPrice, type ShopTab } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubFilterBar from './HubFilterBar'
 import HubContentColumn from './HubContentColumn'
@@ -21,14 +21,14 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               before. */}
           {outerTab === 'loss' && !isDesktop && h.sidePaneHidden && (
             <>
-              <div ref={barRef}><PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('todo')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
+              <div ref={barRef}><PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('home')} roster={activeStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'}
                 selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} /></div>
             </>
           )}
           {outerTab === 'loss' && isDesktop && navSlotEl && createPortal(
             <div className="flex items-center gap-3">
               <div className="flex min-w-0 max-w-[55%] shrink items-center gap-3 overflow-x-auto">
-              <PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('todo')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
+              <PresentStaffBar activeStaff={personal?.name ?? null} shopActive={!!shop} waitingBy={waitingBy} onOpenShop={() => openShop('home')} embedded roster={activeStaff} selfName={username} onOpenStaff={openPersonal} salesBy={salesByStaff} salesTotal={liveTapsStatus === 'ok' ? `₵${formatPrice(liveTodaySalesTotal)}` : '₵…'} />
               </div>
               {/* The open page's own controls (filters, search, columns) land here -- see lib/pageToolbar.tsx.
                   Outside the scrolling staff row so their drop-down panels are not clipped. Empty for pages
@@ -43,7 +43,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               {shop ? (<>
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['violations', '⚖ Penalty Points'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
+                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide'], ['checks', '🩺 System check']] : [])] as [ShopTab, string][]).map(([k, label]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
                     ))}
                   </div>
@@ -54,7 +54,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
-                  {shop.tab === 'violations' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
+                  {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
                   {shop.tab === 'checks' && <iframe key="k" src="/integrity" title="System check" className="h-full w-full border-0" />}
