@@ -290,6 +290,8 @@ export async function GET() {
       ) be ON true
       WHERE srl.item_price IS NOT NULL
         AND srl.item_price > 0
+        -- Last 30 days only (owner, 14 Nov 2026): older history stays in Item 360, so the count shows what can still be acted on.
+        AND sr.receipt_date >= CURRENT_DATE - INTERVAL '30 days'
         AND (vcp_src.unit_price + CASE WHEN grp.total_qty > 0 THEN COALESCE(be.total, 0) / grp.total_qty ELSE 0 END) >= srl.item_price
       ORDER BY sr.receipt_date DESC
     `),
