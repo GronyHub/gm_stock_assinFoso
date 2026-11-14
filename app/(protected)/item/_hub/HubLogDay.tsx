@@ -4,7 +4,8 @@ import { fmtTime } from '@/lib/fmtDate'
 import { formatGapMins } from '@/lib/fmtGap'
 import DayCashCell from '../_components/DayCashCell'
 import LogDayPhotos from '../_components/LogDayPhotos'
-import { formatPrice, staffInitials, type Item, type Tap } from './hubShared'
+import { money } from '@/lib/money'
+import { staffInitials, type Item, type Tap } from './hubShared'
 import type { HubCtx } from './useHubState'
 
 export default function HubLogDay({ h }: { h: HubCtx }) {
@@ -43,14 +44,14 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                   setLiveEditingCurrentDate(date)
                                 }}
                                 title="Edit a log entry from this day"
-                                className="text-green-600 hover:text-green-800 font-bold text-[12px] leading-none p-0 border-0 bg-transparent"
+                                className="text-green-700 hover:text-green-900 font-bold text-[12px] leading-none p-0 border-0 bg-transparent underline"
                               >
-                                ✏️
+                                Edit
                               </button>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5" />
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[12px] leading-none font-semibold text-green-700 whitespace-nowrap">
-                              ₵{formatPrice(dateTotal)}
+                              {money(dateTotal)}
                             </td>
                             <td colSpan={8} className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-left">
                               <span className="inline-flex items-center gap-1.5">
@@ -78,7 +79,7 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                               </span>
                             </td>
                             <td className="sticky top-[13px] z-10 bg-green-50 h-[13px] px-0.5 text-right text-[12px] leading-none font-semibold whitespace-nowrap">
-                              <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>₵{formatPrice(dateProfitTotal)}</span>
+                              <span className={dateProfitTotal < 0 ? 'text-red-600' : 'text-green-700'}>{money(dateProfitTotal)}</span>
                             </td>
                           </tr>
 
@@ -178,7 +179,7 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : 'text-blue-600'}`}>
-                                  ₵{formatPrice(Number(tap.price) * tap.quantity)}
+                                  {money(Number(tap.price) * tap.quantity)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
@@ -186,17 +187,17 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
-                                  ₵{formatPrice(tap.price)}
+                                  {money(Number(tap.price))}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600 line-through' : 'text-gray-900'}`}>
-                                  ₵{formatPrice(tapCostPrice)}
+                                  {money(tapCostPrice)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-right">
                                 <span className={`text-[12px] leading-none font-semibold whitespace-nowrap ${tap.undone ? 'text-red-600' : tapProfit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                  ₵{formatPrice(tapProfit)}
+                                  {money(tapProfit)}
                                 </span>
                               </td>
                               <td className="leading-none px-0.5 py-0 text-center">
@@ -264,11 +265,11 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                 </td>
                                 <td className="bg-gray-50" />
                                 <td className="bg-gray-50" />
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] font-semibold whitespace-nowrap text-gray-700">₵{formatPrice(amt)}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] font-semibold whitespace-nowrap text-gray-700">{money(amt)}</span></td>
                                 <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[12px] text-gray-400">record</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-700">{l.item_price != null ? `₵${formatPrice(Number(l.item_price))}` : '—'}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-500">{cp !== null ? `₵${formatPrice(cp)}` : '—'}</span></td>
-                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className={`text-[12px] whitespace-nowrap ${pf !== null && pf < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{pf !== null ? `₵${formatPrice(pf)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-700">{l.item_price != null ? `${money(Number(l.item_price))}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className="text-[12px] whitespace-nowrap text-gray-500">{cp !== null ? `${money(cp)}` : '—'}</span></td>
+                                <td className="bg-gray-50 leading-none px-0.5 py-0 text-right"><span className={`text-[12px] whitespace-nowrap ${pf !== null && pf < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{pf !== null ? `${money(pf)}` : '—'}</span></td>
                                 <td className="bg-gray-50 leading-none px-0.5 py-0 text-center"><span className="text-[12px] text-gray-700">{q !== null ? q : '—'}</span></td>
                                 <td className="bg-gray-50" />
                                 <td className="bg-gray-50" />

@@ -62,7 +62,7 @@ export default function DayCashCell({ receiptId, cashCounted, salesTotal, onSave
       )}
       {err && <span className="text-red-600" title="Could not save the cash counted. Try again.">⚠</span>}
       <span className={wnwCls} title="Work not written: cash counted minus the day's walk-in sales">
-        WNW {wnw === null ? '—' : `₵${money(wnw)}`}
+        WNW {wnw === null ? 'not counted' : money(wnw)}
       </span>
     </span>
   )

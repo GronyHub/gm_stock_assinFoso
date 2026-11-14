@@ -27,7 +27,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
                 <PageGuide page="log" />
-                <div className="flex flex-wrap justify-end items-center gap-1.5">
+                <div className="flex min-w-0 max-w-full flex-wrap justify-end items-center gap-1.5">
                   {/* Sales Rec / Summary's filters, now the Log's: Period, W / G, Bars only, Flags (+ History). */}
                   <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })}
                     title="Period: pick a year (and month) to see older sales and records, back to 2023"
@@ -43,9 +43,9 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                     </select>
                   )}
                   <button type="button" onClick={() => setLogShowW(v => !v)} title="Walk-in (WIC) sales"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowW ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>W</button>
+                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowW ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>WIC</button>
                   <button type="button" onClick={() => setLogShowG(v => !v)} title="GMC (internal use)"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowG ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>G</button>
+                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowG ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>GMC</button>
                   <button type="button" onClick={() => setLogBarsOnly(v => !v)} title="Show only each day's row (totals, cash counted, WNW, photos)"
                     className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logBarsOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Bars only</button>
                   {/* The Log's flags are on the Flags page (left sidebar); only the change history stays here. A flag opened from the Flags page still filters the Log. */}

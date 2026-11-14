@@ -34,11 +34,11 @@ export default function WaitingBar() {
   if (total <= 0 || later || onPage || framed) return null
   return (
     <div className="fixed bottom-3 left-20 right-0 z-[60] flex justify-center px-3 sm:left-24 print:hidden">
-      <div className={`w-full max-w-sm rounded-xl border bg-white p-2.5 shadow-xl ${now ? 'border-red-300' : 'border-amber-300'}`}>
+      <div className={`w-full max-w-sm rounded-xl border bg-white p-2 shadow-xl ${now ? 'border-red-300' : 'border-amber-300'}`}>
         <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm font-bold text-gray-900">📋 {total} thing{total === 1 ? '' : 's'} waiting for you{now ? <span className="text-red-700"> ({now} urgent)</span> : null}</p>
-          <button type="button" onClick={open} className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white">Open</button>
-          <button type="button" onClick={() => setChoose(c => !c)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-bold text-gray-700">Later</button>
+          <p className="min-w-0 flex-1 truncate text-xs font-bold text-gray-900">📋 {total} waiting{now ? <span className="text-red-700"> · {now} urgent</span> : null}</p>
+          <button type="button" onClick={open} className="shrink-0 rounded-lg bg-green-600 px-2.5 py-1 text-xs font-bold text-white">Open</button>
+          <button type="button" onClick={() => setChoose(c => !c)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">Later</button>
         </div>
         {choose && <div className="mt-2"><SnoozeChips storageKey={KEY} title="Remind me in" onDone={() => { setLater(true); setChoose(false) }} /></div>}
       </div>
