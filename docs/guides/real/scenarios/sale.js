@@ -22,8 +22,8 @@ const LAWS = [
   law(3, 'Recording', 'Record shop use as GMC and a customer sale as WIC.'),
   law(4, 'Recording', 'Give the customer a receipt for every sale.'),
   law(5, 'Recording', 'Never force a sale the app refuses: tell Joe.'),
-  law(6, 'Recording', 'Enter every sale in the app: no sale is ever made without an entry.', 20),
-  law(7, 'Recording', 'Never steal or pilfer money, goods or stock belonging to the shop.', 20),
+  law(6, 'Recording', 'Enter every sale in the app: no sale is ever made without an entry.', 0),
+  law(7, 'Recording', 'Never steal or pilfer money, goods or stock belonging to the shop.', 0),
   law(8, 'Recording', 'Before uploading the attachments, mark those you have entered.'),
   law(9, 'Item list', 'Always have a printed list of items, their SP and Count.'),
   law(10, 'Item list', 'Every sellable item at the shop must be on the item list.'),
@@ -91,7 +91,7 @@ module.exports = {
 
     { caption: 'Every sale in the app. <b>Dismissal</b>', lawRe: 'without an entry|steal|pilfer|GM app',
       say: 'Enter every sale in the app: no sale is ever made without an entry. That is dismissal. Never steal or pilfer money, goods or stock belonging to the shop. That is dismissal too. All sales, bills and expenses are recorded in the G M app. Written work forms are no longer used. One point.',
-      run: async (h, page) => { await h.point(page.locator('a[title^="Sales Log"], button:has-text("Sales Log")').first()); await h.wait(1500) } },
+      run: async (h, page) => { await h.point(page.getByPlaceholder('Search item…').first()); await h.wait(1500) } },
 
     { caption: 'Attachments: <b>mark</b> what you have entered first', lawRe: 'attachments',
       say: 'Before uploading the attachments, mark those you have entered. One point.',
