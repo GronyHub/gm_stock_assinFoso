@@ -642,13 +642,19 @@ export async function GET() {
     FROM staff_profiles
   `)
 
+  // Past days someone clocked in and never clocked out (owner, 14 Nov 2026: flagged here so Joe can close them).
+  const openClocks = await safeQuery(() => sql`
+    SELECT LOWER(staff_name) AS staff_name, work_date::text AS missing_date FROM staff_times
+    WHERE actual_in IS NOT NULL AND actual_out IS NULL AND staff_name <> '__shop_open__' AND work_date < CURRENT_DATE
+    ORDER BY work_date, staff_name
+  `)
   const todayStr = new Date().toISOString().slice(0, 10)
   const shirtOverdue = tshirtProfiles
     .filter((p: any) => !p.has_company_tshirt && p.tshirt_due_date && p.tshirt_due_date < todayStr)
     .map((p: any) => ({ staff_name: p.staff_name, due_date: p.tshirt_due_date }))
 
   const data = {
-    noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes,
+    noCash, missingDays, duplicates: filteredDups, costGteSell, vcpJumps, notInInventory, noGroup, noStaffTimes, openClocks,
     uncheckedCab, dupReceipts, unlinkedNamed, groupNames: groupNames.map((r: any) => r.group_name),
     noAdvert, jingleOverdue, equipmentCheckOverdue, missingClosingReports,
     shirtOverdue, noAttachment, noVendorBills, noItemsBills, billTotalMismatch, billNoAttachment, billNoExpense, highWnw,

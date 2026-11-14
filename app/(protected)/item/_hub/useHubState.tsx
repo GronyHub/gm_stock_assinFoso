@@ -875,7 +875,7 @@ export function useHubState() {
     if (path.startsWith('/laws')) { const q = new URLSearchParams(path.split('?')[1] ?? ''); if (q.get('view') === 'today') { q.delete('view'); return { tab: 'todo', src: '/todo' + (q.toString() ? '?' + q.toString() : '') } } return { tab: 'laws', src: path } }
     if (path === '/penalties') return { tab: 'penalties', src: path }
     if (path === '/staff-times') return { tab: 'times', src: path }
-    return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'checks', src: path } : null
+    return path === '/owner-guide' ? { tab: 'guide', src: path } : path === '/handbook-announcements' ? { tab: 'tasks', src: path } : path === '/integrity' ? { tab: 'todo', src: '/todo' } : null
   }
   // Old standalone pages that are now a tab of the signed-in person's own page (they redirect to /item?me=<tab>).
   const MINE_PATHS: Record<string, string> = { '/my-day': 'waiting', '/profile': 'profile', '/payslips': 'payslips', '/personal': 'payslips', '/staff': 'times' }
@@ -966,7 +966,6 @@ export function useHubState() {
     { label: 'Penalty Points', names: ['penalties', 'penalty points'], run: () => (isOwnerOrJoe ? openShop('penalties') : openPersonal(username, 'violations')) },
     { label: 'Waiting for me', names: ['my day', 'waiting for me', 'my tasks', 'to do', 'what is waiting'], run: () => openPersonal(username, 'waiting') },
     { label: 'CCTV review', names: ['cctv review', 'cctv'], run: () => openEmbed('/cctv-review') },
-    { label: 'System check', names: ['system check', 'integrity', 'health check'], run: () => openEmbed('/integrity') },
     { label: 'Barcode labels', names: ['barcode labels', 'labels', 'barcodes'], run: () => openEmbed('/barcode-labels') },
     { label: 'Live', names: ['live', 'live sale', 'items'], run: () => jumpToLiveSaleTab('sale') },
     { label: 'Sales Log', names: ['sales log', 'sales'], run: () => goItemsMode('log') },

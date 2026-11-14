@@ -863,7 +863,7 @@ export function itemAttentionFlags(
   export type ItemsInlineExtra = { kind: 'serviceGroup'; group: string }
 
   // The Shop page: Waiting for team, Done, Laws, Times and (owner and manager) Penalty Points, Manage and more, as tabs.
-  export type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'penalties' | 'tasks' | 'guide' | 'checks'
+  export type ShopTab = 'todo' | 'laws' | 'home' | 'manage' | 'times' | 'penalties' | 'tasks' | 'guide'
 
   // Everything Sales Rec / Summary held, merged into the Sales Log: the day receipts (cash counted, photos, who
   // entered them) and the receipt lines no tap stands behind (history imported back to 2023, lines typed in by

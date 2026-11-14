@@ -170,6 +170,11 @@ export function useViolations(counts?: Record<string, number>) {
       label: 'day' + (flags.noStaffTimes.length !== 1 ? 's' : '') + ' with no team times recorded',
       count: flags.noStaffTimes.length, days: oldestDays(flags.noStaffTimes, 'missing_date'),
     })
+    if (flags.openClocks?.length) list.push({
+      type: 'open_clocks',
+      label: 'day' + (flags.openClocks.length !== 1 ? 's' : '') + ' still clocked in with no time out',
+      count: flags.openClocks.length, days: oldestDays(flags.openClocks, 'missing_date'),
+    })
     if (flags.uncheckedCab?.length) list.push({
       type: 'unchecked_cab',
       label: 'week' + (flags.uncheckedCab.length !== 1 ? 's' : '') + ' with no Cash at Bank confirmation',
