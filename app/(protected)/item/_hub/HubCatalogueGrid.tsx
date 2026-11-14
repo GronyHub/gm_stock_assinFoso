@@ -200,7 +200,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             onLabel={l => setLiveLabelByKey(prev => ({ ...prev, [String(item.id)]: l ?? '' }))}
                                             onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
-                                            placeholder="Who? (required)"
+                                            placeholder="Who? (optional)"
                                             className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>)}

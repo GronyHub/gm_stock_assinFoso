@@ -2,7 +2,7 @@
 // 'featureSwitches' as { key: boolean }; a key that was never set uses its default (on). The server and every screen read the same values.
 export type FeatureKey = 'live_who' | 'sale_needs_clockin' | 'presence_question' | 'due_prompt' | 'video_gate' | 'law_question' | 'law_reminder' | 'notify_input' | 'manager_block'
 export const FEATURES: { key: FeatureKey; label: string; detail: string; group: string }[] = [
-  { key: 'live_who', group: 'Live', label: 'Ask who a sale is for', detail: 'The "Who?" box on each Live tile (a customer, a phone number or a label like "man in white shirt"). Off: the box is hidden and a sale is recorded without it.' },
+  { key: 'live_who', group: 'Live', label: 'Show the "Who?" box (optional)', detail: 'The optional "Who?" box on each Live tile: a customer, a phone number or a label like "man in white shirt". Filling it is optional; a sale records without it. Off: the box is hidden.' },
   { key: 'sale_needs_clockin', group: 'Live', label: 'Sales only while clocked in', detail: 'Staff can record a sale only while they are clocked in at the shop.' },
   { key: 'presence_question', group: 'Clock', label: 'Presence question at clock-out', detail: '"Is any of the following staff still at the shop?" must be answered before clocking out (your voice recording plays).' },
   { key: 'due_prompt', group: 'Tasks', label: '"It\'s time for ..." prompt', detail: 'When a task of mine falls due, a card asks me to tick it Done, mark it Not required (with a reason) or remind me in 10 minutes.' },

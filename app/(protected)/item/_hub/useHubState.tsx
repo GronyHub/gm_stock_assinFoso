@@ -3555,12 +3555,6 @@ export function useHubState() {
 
     const cidValue = inlineCidRef.current ?? liveCID
     const labelText = (inlineCidRef.current !== null ? curLabelRef.current : (liveLabelByKey.main ?? '')).trim()
-    // Every Live sale says who it is for (unless that switch is off): a customer (GM number, phone or name) or a label.
-    if (liveSaleType !== 'GMC' && features.live_who && !cidValue && !labelText) {   // Settings > Switches: 'Ask who a sale is for'
-      const msg = 'Say who this sale is for: a customer (GM number, phone or name) or a label such as "Man on motor" or "Policeman".'
-      setLiveTapError(msg); showToast(msg, 'error'); setLiveSaving(false)
-      return
-    }
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 15000)
 
@@ -3581,7 +3575,7 @@ export function useHubState() {
           customerPhone: /^0\d{9}$/.test(cidValue) ? cidValue : undefined,
           customerName: /^0\d{9}$/.test(cidValue) && custNameRef.current ? custNameRef.current : undefined,
           customerLabel: !cidValue && labelText ? labelText : undefined,
-          requireWho: liveSaleType !== 'GMC' && features.live_who ? true : undefined,
+          // The 'who' box is optional (owner, 14 Nov 2026): a sale records without a name.
           skipWhatsapp: skipWaRef.current || undefined,
         }),
         signal: controller.signal,

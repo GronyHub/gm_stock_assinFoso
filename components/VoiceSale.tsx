@@ -59,7 +59,7 @@ export default function VoiceSale({ onRecorded, openSignal, spoken, scanItem, sc
     const gm = /^(?:gm)?\s*(\d{1,6})$/i.exec(w)
     setBusy(true); setMsg('')
     const r = await fetch('/api/sales/live-tap', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      itemId, quantity: qn, customPrice: price ? Number(price) : undefined, requireWho: true,
+      itemId, quantity: qn, customPrice: price ? Number(price) : undefined,
       customerIdCode: gm ? `GM${gm[1]}` : undefined, customerPhone: /^0\d{9}$/.test(w) ? w : undefined,
       customerLabel: !gm && !/^0\d{9}$/.test(w) ? w : undefined,
     }) })
