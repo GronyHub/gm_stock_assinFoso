@@ -150,7 +150,7 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
               title={`${s.staff_name}: ${s.status === 'absent' ? 'not clocked in today' : s.status === 'break' ? 'on break' : s.status === 'out' ? 'clocked out' : 'clocked in'}${s.totalMins != null ? ` · ${fmtHrMin(s.workedMins)}/${fmtHrMin(s.totalMins)}` : ''}`}
               className={`relative flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${on ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
               {(w?.total ?? 0) > 0 && <span className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[12px] font-extrabold leading-4 text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total > 99 ? '99+' : w!.total}</span>}
-              <span className="flex w-full min-w-0 items-center gap-1">
+              <span className="flex w-full min-w-0 flex-wrap items-center gap-1">
                 <span className={`shrink-0 rounded-full border-[3px] ${s.status === 'present' || s.status === 'break' ? 'border-green-500' : 'border-red-600'}`}><StaffAvatar name={s.staff_name} url={s.photo_url} size={18} /></span>
                 {p !== undefined && <span className={`rounded-full px-1 py-px text-[12px] font-extrabold leading-none ${p >= 20 ? 'bg-red-600 text-white' : p >= 10 ? 'bg-amber-400 text-gray-900' : 'bg-green-500 text-white'}`}>⚖{p}</span>}
               </span>

@@ -205,13 +205,13 @@ export default function HubLogDay({ h }: { h: HubCtx }) {
                                   {tap.quantity}
                                 </span>
                               </td>
-                              <td className="leading-none px-0.5 py-0" title={tap.staff_name}>
+                              <td className="hidden sm:table-cell leading-none px-0.5 py-0" title={tap.staff_name}>
                                 <span className="text-[12px] leading-none text-gray-600 whitespace-nowrap">{staffInitials(tap.staff_name)}</span>
                               </td>
-                              <td className="leading-none px-0.5 py-0 text-center">
+                              <td className="hidden sm:table-cell leading-none px-0.5 py-0 text-center">
                                 <span className="text-[12px] leading-none text-gray-500 whitespace-nowrap">{tap.soh !== null && tap.soh !== undefined ? Math.ceil(tap.soh) : '-'}</span>
                               </td>
-                              <td className="leading-none px-0.5 py-0 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
+                              <td className="hidden sm:table-cell leading-none px-0.5 py-0 text-right" title={isNewest ? 'Until last sign-out' : isOldest ? 'Since shop opening' : 'Since previous tap'}>
                                 <span className="text-[12px] leading-none text-gray-500 whitespace-nowrap">{gapMins !== null ? formatGapMins(gapMins) : '-'}</span>
                               </td>
                               <td className="leading-none px-0.5 py-0">

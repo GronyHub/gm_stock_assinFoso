@@ -43,9 +43,9 @@ export default function HubLogFlags({ h }: { h: HubCtx }) {
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">CP</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap">PF</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">Qty</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Staff</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase whitespace-nowrap">SOH</th>
-                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left hidden sm:table-cell whitespace-nowrap">Staff</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase hidden sm:table-cell whitespace-nowrap">SOH</th>
+                        <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase hidden sm:table-cell text-right whitespace-nowrap" title="Time since the previous tap -- since shop opening for the day's first, until the last staff signed out for the day's last">Gap</th>
                         <th className="sticky top-0 z-10 bg-gray-50 h-[13px] px-0.5" />
                       </tr>
                     </thead>
