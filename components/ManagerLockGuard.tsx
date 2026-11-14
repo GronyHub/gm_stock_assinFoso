@@ -19,7 +19,8 @@ export default function ManagerLockGuard() {
   const [short, setShort] = useState<{ day: string; short: number } | null>(null)
   const features = useFeatures()   // Settings > Switches: manager_block
   useEffect(() => {
-    if (!features.manager_block || skipped() || !isJoe || FREE.some(p => pathname === p || pathname.startsWith(p + '/'))) { setShort(null); return }
+    const meProfile = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('me') === 'profile'   // his own Profile (e.g. to add a photo)
+    if (meProfile || !features.manager_block || skipped() || !isJoe || FREE.some(p => pathname === p || pathname.startsWith(p + '/'))) { setShort(null); return }
     let off = false
     fetch('/api/manager-lock?fresh=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
       if (off) return

@@ -99,7 +99,7 @@ export default function ClockInOutPanel({
   const [asked, setAsked] = useState<string[] | null>(null)
   // On clocking out: the next shift on the rota, and a reminder that being late or absent must be reported in the app.
   const [bye, setBye] = useState<{ next: { date: string; in: string; out: string | null; role: string | null } | null } | null>(null)
-  function reportNow() { const d = { handled: false }; window.dispatchEvent(new CustomEvent('open-absence-report', { detail: d })); if (!d.handled) window.location.href = '/staff'; setBye(null) }
+  function reportNow() { const d = { handled: false }; window.dispatchEvent(new CustomEvent('open-absence-report', { detail: d })); if (!d.handled) window.location.href = '/item?me=times'; setBye(null) }
   async function reportEmpty() {
     const r = await fetch('/api/clock/presence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'report_empty' }) })
     const d = await r.json().catch(() => ({}))

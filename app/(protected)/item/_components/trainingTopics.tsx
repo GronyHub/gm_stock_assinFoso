@@ -77,13 +77,12 @@ export const TOPICS: Topic[] = [
       <div className="space-y-3">
         <p className="text-sm text-gray-700">Everything opens from the left sidebar (on a phone, tap the menu icon to bring it back). The buttons you can use have a yellow label for the owner and Joe; staff only see their own buttons.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Company Laws</strong> -- the rules of each area, with a video and a short quiz for every category.</li>
           <li><strong>Waiting for team</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
           <li><strong>Live</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
-          <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong>, <strong>Team Times</strong> -- the rest of your day-to-day tools.</li>
+          <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong> -- the rest of your day-to-day tools.</li>
           <li><strong>Payslips</strong> and <strong>Profile</strong> -- your own pay and your own details and photo.</li>
         </ul>
-        <p className="text-sm text-gray-700">The staff bar across the top shows who is clocked in. Tap the <strong>Total</strong> chip to open the Home feed.</p>
+        <p className="text-sm text-gray-700">The staff bar across the top shows who is clocked in. Tap <strong>Shop</strong> in the sidebar; it opens on <strong>Done</strong> (what was done today). The Shop's other tabs include <strong>Laws</strong> (the Company Laws: the rules of each area, each with a video (watch it to the end within 7 days) and one question of the day) and <strong>Times</strong> (everyone's clock times).</p>
       </div>
     ),
   },
@@ -111,7 +110,7 @@ export const TOPICS: Topic[] = [
     keywords: 'home feed announcements photos voice notes news',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Tap the <strong>Total</strong> chip in the staff bar across the top. It opens the activity feed: announcements, photos and voice notes, newest first.</p>
+        <p className="text-sm text-gray-700">Tap <strong>Shop</strong> in the sidebar; it opens on <strong>Done</strong> (what was done today): announcements, photos and voice notes, newest first.</p>
       </div>
     ),
   },
@@ -122,10 +121,10 @@ export const TOPICS: Topic[] = [
     keywords: 'clock in out opener closer gps location closing report time break',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Clock in and out from the <strong>Times</strong> tab of your own profile (tap your name in the bar at the top). It is GPS-checked: you have to be at the shop, or it will not let you. You can only tick Waiting for team tiles once you are clocked in.</p>
+        <p className="text-sm text-gray-700">Clock in once a day, at the shop, with GPS on. The time is the app's own clock. Writing a time 30 or more minutes earlier than now is a violation (every 5th costs 1 point). No GPS: your time waits for the manager's CCTV check. You can record sales and tick tasks only while clocked in.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Opener</strong> -- whoever clocks in earliest that day.</li>
-          <li><strong>Closer</strong> -- whoever is last to clock out. Their clock-out is held until they answer a short closing questionnaire.</li>
+          <li><strong>Closer</strong> -- whoever is last to clock out. When anyone clocks out while others are still clocked in, they must answer &lsquo;Is any of the following staff still at the shop?&rsquo;. The Closer answers the closing questions from Waiting for team. At 7pm anyone still clocked in is asked &lsquo;Are you still at the shop?&rsquo;.</li>
           <li><strong>Take a Break</strong> -- once clocked in, tap it to show a red dot on the staff bar. It does not clock you out or change your worked time.</li>
         </ul>
       </div>
@@ -138,7 +137,7 @@ export const TOPICS: Topic[] = [
     keywords: 'daily checklist tiles now late tick photo question persons minutes clock in',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Tap <strong>Shop</strong> in the sidebar (or the Shop box in the top bar): it opens on <strong>Waiting for team</strong>. Each small tile is one job. The <strong>Now</strong> box shows what is due this minute; late jobs turn red and the owner and Joe are told.</p>
+        <p className="text-sm text-gray-700">Tap <strong>Waiting for team</strong> in the sidebar. Each small tile is one job. The <strong>Now</strong> box shows what is due this minute; late tasks turn red on screen.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li>You can only tick tiles once you are <strong>clocked in</strong>. The day starts at the first clock-in.</li>
           <li>Tap a tile to see what it means and how to do it before you confirm.</li>
@@ -151,12 +150,12 @@ export const TOPICS: Topic[] = [
   },
   {
     id: 'company-laws-how',
-    title: 'Company Laws, videos, quizzes and penalty points',
+    title: 'Company Laws, videos, the daily question and penalty points',
     group: 'Getting Started',
-    keywords: 'company laws categories video quiz penalty points sanction suspension learning period',
+    keywords: 'company laws categories video question quiz penalty points sanction suspension pilot',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Open <strong>Company Laws</strong> and tap a category. Each category has a short video, the laws with their do's and don'ts, and a 4-question quiz. Pass the quiz with 3 right.</p>
+        <p className="text-sm text-gray-700">Open <strong>Laws</strong> in the Shop and tap a category. Each tile has a video; watch it to the end within 7 days (unwatched videos are shown after login). Every day you get one question from the laws; a wrong answer shows the law and its video. The laws are in force for everyone; nobody signs them.</p>
         <p className="text-sm text-gray-700">Breaking a law costs penalty points. 20 points is a 3-day suspension, 30 is a week, and 50 is dismissal. Points start counting on the date shown on the Penalty Points page (until then they are a pilot and reset), and each clean week takes 5 points off. The owner approves every sanction.</p>
       </div>
     ),
@@ -192,7 +191,7 @@ export const TOPICS: Topic[] = [
     body: (
       <div className="space-y-3">
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Staff</strong> -- the shop team. You use Company Laws, Waiting for team, Live, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, Team Times, How To, your own Payslips and your own Profile.</li>
+          <li><strong>Staff</strong> -- the shop team. You use Waiting for team, Live, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, the Shop (Done, Laws, Times), How To, your own Payslips and your own Profile.</li>
           <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals.</li>
         </ul>
         <Callout>Anything you cannot see is not part of your job in the app. If you think you need it, ask Joe.</Callout>
@@ -475,7 +474,7 @@ export const TOPICS: Topic[] = [
     title: 'The flags/laws icon',
     group: 'Everywhere',
     keywords: 'laws flags rules violations panel scale icon',
-    body: <p className="text-sm text-gray-700">Opens a panel of standing flags/rules and outstanding violations relevant to whichever tab you are on (e.g. items with negative stock, missing prices) -- a running checklist rather than a one-off popup.</p>,
+    body: <p className="text-sm text-gray-700">Flags are on the Flags page in the sidebar (managers). The manager makes sure at least 5 are fixed a day, starting with Negative Stock.</p>,
   },
   {
     id: 'large-screen',

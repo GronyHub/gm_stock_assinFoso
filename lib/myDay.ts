@@ -104,8 +104,8 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
 
   // Standing duties and the personal items that wait until dealt with. Cards that answer the item right here (clock notices, approvals, questions, CCTV, sanctions) hide their tile.
   const STAND: Record<string, { href?: string; hub?: string; inline?: boolean; own?: string }> = {
-    sign: { href: '/laws?sign=1' }, quiz: { href: '/laws' }, cctv: { href: '/cctv-review', inline: true }, approve: { hub: 'waiting', inline: true },
-    mytasks: { hub: 'tasks', own: 'Tasks assigned to you' }, queries: { inline: true, own: 'Questions waiting for your answer' }, ack: { hub: 'violations', own: 'Violations logged against you' },
+    cctv: { href: '/cctv-review' }, approve: { hub: 'waiting', inline: true },
+    mytasks: { hub: 'tasks', own: 'Tasks assigned to you' }, queries: { inline: true, own: 'Questions waiting for your answer' }, ack: { hub: 'violations', own: 'Penalty points logged against you' },
     'clock-prev': { inline: true, own: 'You did not clock out' }, 'clock-auto': { inline: true, own: 'Check your clock times' }, sanctions: { href: '/penalties', inline: true },
     violations: { href: '/penalties', inline: true }, drafts: { href: '/laws' }, 'pending-jobs': { href: '/pending-jobs' },
   }

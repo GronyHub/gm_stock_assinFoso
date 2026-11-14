@@ -189,6 +189,8 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
   const out: Duty[] = []
   const rr = await rotaRolesFor(date).catch(() => null)
   const w = dowOf(date)
+  // The Opener is whoever clocked in first that day (the rota only for a day ahead).
+  const openerNow = future ? null : (await getClockState(date).catch(() => null))?.opener ?? null
   try {
     const tiles = await sql`SELECT t.id, t.title, t.time, t.minutes, t.frequency, t.days, t.weekday, t.assignment, l.id AS law_id, l.month_day, l.category, l.law_type
       FROM daily_check_tiles t JOIN page_laws l ON l.id = t.law_id AND l.tile_id = t.id
@@ -200,7 +202,7 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
       const ev = evs.filter(e => e.tile_id === t.id && inPeriod(t.frequency as Frequency, e.day, date)).at(-1)
       const doneNow = !!ev && ev.value !== 'Not done'
       out.push({ kind: 'periodic', key: `p${t.id}`, id: t.id, title: t.title, time: t.time ?? t.frequency, due: 23 * 60, role: a === 'opener' ? 'Opener' : a === 'closer' ? 'Closer' : a === 'managers' ? 'Joe' : null,
-        owner: a === 'opener' ? rr?.opener ?? null : a === 'closer' ? rr?.closer ?? null : a === 'managers' ? 'joe' : null, category: t.category, lawType: t.law_type, lawId: t.law_id,
+        owner: a === 'opener' ? (future ? rr?.opener ?? null : openerNow ?? rr?.opener ?? null) : a === 'closer' ? rr?.closer ?? null : a === 'managers' ? 'joe' : null, category: t.category, lawType: t.law_type, lawId: t.law_id,
         state: future ? 'plan' : doneNow ? 'done' : isToday ? 'now' : 'miss', by: doneNow ? ev!.recorded_by : undefined, note: t.frequency === 'monthly' && !t.month_day ? 'Sometime this month' : null })
     }
   } catch { /* leave out */ }
