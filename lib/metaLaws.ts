@@ -7,8 +7,6 @@ import { featureOn } from '@/lib/featuresServer'
 // Laws about the laws. Each is checked by the app once a day (19:25) and costs 1 point. Penalties already treats the first two weeks
 // as a learning period (a warning, not a point), so these start counting then. A law's clock starts when it went live (page_laws.live_at).
 export const META = [
-  { title: 'Sign each new law within 24 hours', violation: 'A new law stays unsigned for more than 24 hours after it goes live', how: 'Open Company Laws, read the law, tick to sign it\nThe app checks every evening\nYou get a reminder before the deadline' },
-  { title: 'Pass each law quiz within 7 days', violation: 'The quiz of a tile is not passed (75% or more) within 7 days of its laws going live', how: 'Open the tile in Company Laws and take its quiz\nYou can retake it until you pass' },
   { title: 'Watch each tile video to the end within 7 days', violation: 'The video of a tile is not watched to the end within 7 days of its laws going live', how: 'Open the tile in Company Laws and play its video to the end' },
   { title: 'Confirm the laws shown before work', violation: 'The login reminder of laws is not confirmed before work starts on a day you are clocked in', how: 'After you log in the reminder appears\nRead it, tick once to agree, and confirm' },
 ]
@@ -92,30 +90,31 @@ export async function metaTick(day: string) {
   const staff = SIGNERS.filter(s => !OWNER_SIGNERS.includes(s))
   // A prompt switched off in Settings > Switches is never shown, so it cannot cost a point.
   const [loginOn, videoOn] = [await featureOn('law_reminder'), await featureOn('video_gate')]
-  const metaCode = async (i: number) => (await sql`SELECT code FROM page_laws WHERE seed = ${SEED} ORDER BY id OFFSET ${i} LIMIT 1`)[0]?.code as string | undefined
-  const [cVid, cLogin] = [await metaCode(2), await metaCode(3)]
-  const metaId = async (i: number) => Number((await sql`SELECT id FROM page_laws WHERE seed = ${SEED} ORDER BY id OFFSET ${i} LIMIT 1`)[0]?.id) || null
-  const ids = [await metaId(0), await metaId(1), await metaId(2), await metaId(3)]
+  // Found by title (not position), so retired laws in the list cannot shift them.
+  const metaRow = async (title: string) => (await sql`SELECT id, code FROM page_laws WHERE seed = ${SEED} AND title = ${title} ORDER BY id LIMIT 1`)[0] as { id: number; code: string | null } | undefined
+  const vidRow = await metaRow('Watch each tile video to the end within 7 days'), loginRow = await metaRow('Confirm the laws shown before work')
+  const idVid = vidRow ? Number(vidRow.id) : null, idLogin = loginRow ? Number(loginRow.id) : null
+  const cVid = vidRow?.code ?? undefined, cLogin = loginRow?.code ?? undefined
   await metaTickJoe(day).catch(e => console.error('meta joe failed:', e instanceof Error ? e.message : String(e)))
   for (const s of staff) {
     const clocked = (await sql`SELECT 1 FROM staff_times WHERE LOWER(staff_name) = ${s} AND work_date = ${day} AND actual_in IS NOT NULL`).length > 0
     if (!clocked) continue
     let awarded = 0
-    const award = async (i: number, code: string | undefined, ref: string, why: string, pts = 1) => {
+    const award = async (lawId: number | null, code: string | undefined, ref: string, why: string, pts = 1) => {
       if (awarded >= 3) return
-      const r = await addPoint({ staff: s, points: pts, reason: `${code ? code + ': ' : ''}${why}`, source: 'meta', ref, lawId: ids[i], by: 'system', lawCode: code ?? null, violation: why })
+      const r = await addPoint({ staff: s, points: pts, reason: `${code ? code + ': ' : ''}${why}`, source: 'meta', ref, lawId: lawId, by: 'system', lawCode: code ?? null, violation: why })
       if (r) awarded++   // shown on Penalty Points; no push (nobody did anything)
     }
     // 1. signatures and 2. quizzes: dropped (2026-11-13) -- the laws are statutory, nobody signs them; the daily law question replaces the quizzes.
     // 3. videos: only the tile videos the person is actually shown (videosDue: staff tiles with a video, not owner-only), overdue 7 days after going live.
     if (videoOn) {
-      for (const v of await videosDue(s)) if (v.overdue) await award(2, cVid, `video:${v.key}`, `The ${v.label} video was not watched to the end within 7 days`)
+      for (const v of await videosDue(s)) if (v.overdue) await award(idVid, cVid, `video:${v.key}`, `The ${v.label} video was not watched to the end within 7 days`)
     }
     // 4. login reminders on a day worked: the same laws the reminder screen shows this person (app/api/law-reminders GET).
     const login = loginOn ? await sql`SELECT id FROM page_laws WHERE status = 'live' AND law_type = 'standing' AND reminder = 'login' AND (audience <> 'managers' OR ${isManagerName(s)}) ORDER BY id` as unknown as { id: number }[] : []
     if (login.length) {
       const done = new Set((await sql`SELECT law_id FROM law_reminder_confirms WHERE staff = ${s} AND day = ${day}`).map(r => Number(r.law_id)))
-      if (login.some(l => !done.has(l.id))) await award(3, cLogin, `login:${day}`, `The login law reminder was not confirmed on ${day}`)
+      if (login.some(l => !done.has(l.id))) await award(idLogin, cLogin, `login:${day}`, `The login law reminder was not confirmed on ${day}`)
     }
   }
 }
