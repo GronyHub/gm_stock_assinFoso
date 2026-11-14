@@ -44,6 +44,15 @@ export async function missingCashCounted(today = dayKey()): Promise<{ day: strin
   return rc && rc.cash_counted == null ? { day, receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0) } : null
 }
 
+// Today's receipt, when Cash Counted is still missing on it (for the manager's clock-out).
+export async function missingCashToday(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
+  await ensurePenalties()
+  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${today}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
+  return rc && rc.cash_counted == null ? { day: today, receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0) } : null
+}
+// Today's Cash Counted may be skipped by the manager only up to and including this day (owner, 14 Nov 2026); from the next day it is compulsory.
+export const CASH_SKIP_LAST_DAY = '2026-11-14'
+
 // Saves Cash Counted on a day's sales receipt, the same as the Sales Log (PUT /api/sales/[id]).
 export async function saveCashCounted(receiptId: number, counted: number) {
   await sql`UPDATE sales_receipts SET cash_counted = ${counted} WHERE id = ${receiptId}`

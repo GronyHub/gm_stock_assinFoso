@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
 import { notifyManagement } from '@/lib/checklistAlerts'
-import { missingCashCounted, saveCashCounted } from '@/lib/managerLock'
+import { missingCashCounted, missingCashToday, saveCashCounted, CASH_SKIP_LAST_DAY } from '@/lib/managerLock'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
 // counts before their clock-in counts as fully complete -- see
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
 
   const sessionUser = session?.user as any
 
-  const { action, time: sentTime, picked, presence, absent, latitude, longitude, accuracy, closing_report, no_gps, cash_counted } = await req.json()
+  const { action, time: sentTime, picked, presence, absent, latitude, longitude, accuracy, closing_report, no_gps, cash_counted, skip_cash } = await req.json()
   if (!action) return badRequest('Missing fields')
   // The time is the SERVER's clock (Ghana = UTC), never the device's: a phone or computer with a wrong clock once recorded a 7:50pm clock-out at 6:32pm
   // (James, 2026-11-13). Only a time the person deliberately picked ("Pick a different time") is taken from them, and only when it is not later than now.
@@ -266,6 +266,23 @@ export async function POST(req: NextRequest) {
     // Once only: a time in or a time out already recorded for the day cannot be recorded again (that would be a way to change it).
     if (action === 'in' && existingRow?.actual_in) return badRequest(`You already clocked in today at ${existingRow.actual_in}. To correct it, ask Joe or Grony.`)
     if (action === 'out' && existingRow?.actual_out) return badRequest(`You already clocked out today at ${existingRow.actual_out}. To correct it, ask Joe or Grony.`)
+
+    // The manager gives today's Cash Counted when he clocks out (owner, 14 Nov 2026). He may skip it today only; from tomorrow it is compulsory.
+    if (action === 'out' && String(username).toLowerCase() === 'joe' && sessionUser?.role !== 'owner') {
+      const todayCash = await missingCashToday(today).catch(() => null)
+      if (todayCash) {
+        const v = cash_counted === '' || cash_counted == null ? NaN : Number(cash_counted)
+        const canSkip = today <= CASH_SKIP_LAST_DAY
+        if (Number.isFinite(v) && v >= 0) {
+          await saveCashCounted(todayCash.receiptId, Math.round(v * 100) / 100)
+          void recordActivity(enteredBy ?? username, 'entered Cash Counted', `Cash Counted for ${today}: ₵${v.toFixed(2)} (sales ₵${todayCash.salesTotal.toFixed(2)})`)
+        } else if (!(skip_cash === true && canSkip)) {
+          return NextResponse.json({ error: `Enter today's Cash Counted before you clock out.`, requires_cash_counted: true, can_skip: canSkip, ...todayCash }, { status: 409 })
+        } else {
+          void recordActivity(enteredBy ?? username, 'skipped Cash Counted at clock-out', `${today}: not yet counted (skipped for today)`)
+        }
+      }
+    }
 
     // The manager gives the previous working day's Cash Counted before he clocks in (unless he gave it in his closing questions).
     let cashNote = ''
