@@ -69,9 +69,22 @@ function subscribe(listener: () => void) {
 function getSnapshot() { return currentMode }
 function getServerSnapshot(): DisplayMode { return 'both' }
 
+// On a phone (under 640px wide) the sidebar is always icons only, so the
+// menu takes a narrow strip and the Sales Log, Live and the rest keep the
+// width. The saved choice still applies on a computer or tablet.
+const PHONE_QUERY = '(max-width: 639px)'
+function subscribePhone(listener: () => void) {
+  const mq = window.matchMedia(PHONE_QUERY)
+  mq.addEventListener('change', listener)
+  return () => mq.removeEventListener('change', listener)
+}
+function getPhoneSnapshot() { return window.matchMedia(PHONE_QUERY).matches }
+function getPhoneServerSnapshot() { return false }
+
 export function useSidePaneDisplayMode(): [DisplayMode, (mode: DisplayMode) => void] {
   const mode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-  return [mode, setGlobalMode]
+  const phone = useSyncExternalStore(subscribePhone, getPhoneSnapshot, getPhoneServerSnapshot)
+  return [phone ? 'icon' : mode, setGlobalMode]
 }
 
 export function paneWidthClass(mode: DisplayMode) {
