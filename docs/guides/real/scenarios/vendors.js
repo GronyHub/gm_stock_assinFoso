@@ -1,5 +1,7 @@
 // Vendors guide: the real page, driven step by step (see ../record.js).
 const S = require('../sample')
+// The page is wider than the phone: after tapping a button at its right edge, slide the page back to the left.
+const resetX = page => page.evaluate(() => { document.querySelectorAll('*').forEach(e => { if (e.scrollLeft) e.scrollLeft = 0 }); window.scrollTo(0, window.scrollY) })
 module.exports = {
   key: 'vendors',
   nav: '🏭 Vendors',
@@ -19,7 +21,7 @@ module.exports = {
 
     { caption: '1. Tap <b>+ New Vendor</b>',
       say: 'To add a supplier, tap plus New Vendor.',
-      run: async (h, page) => { await h.tap(page.getByRole('button', { name: '+ New Vendor' })); await h.wait(1000) } },
+      run: async (h, page) => { await h.tap(page.getByRole('button', { name: '+ New Vendor' })); await h.wait(400); await resetX(page); await h.wait(800) } },
 
     { caption: '2. Type their <b>name</b> and <b>phone</b>',
       say: 'Type the supplier\'s name and their phone number. The company, email and notes are optional.',
@@ -39,6 +41,7 @@ module.exports = {
     { caption: '<b>🚩 No contact</b>: vendors to complete',
       say: 'The red flag button lists vendors with no contact number or location, so you can complete them. Tap it again to see everyone.',
       run: async (h, page) => {
+        await h.tap(page.getByRole('button', { name: '×', exact: true }).first()); await resetX(page); await h.wait(600)
         const f = page.getByRole('button', { name: /No contact/ }); await h.tap(f); await h.wait(1800); await h.tap(f); await h.wait(600)
       } },
 

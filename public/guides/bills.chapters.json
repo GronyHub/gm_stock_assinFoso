@@ -6,37 +6,37 @@
    "text": "This is Bills. Every purchase the shop makes, from stock to supplies, is recorded here as a bill. The bills are listed with their items."
   },
   {
-   "t": 19,
+   "t": 18,
    "title": "Tap + New Bill",
    "text": "To record a bill, tap plus New Bill."
   },
   {
-   "t": 24,
+   "t": 23,
    "title": "Pick the date, then search for the item you bought",
    "text": "Check the date, then search for an item you bought, and tap it in the results."
   },
   {
-   "t": 32,
+   "t": 31,
    "title": "Type the quantity, the cost price and the vendor",
    "text": "Type the quantity you bought, the cost price for each one, and the name of the vendor you bought it from."
   },
   {
-   "t": 46,
+   "t": 44,
    "title": "Tap Save Bill",
    "text": "Add every item on the bill the same way. When you are done, tap Save Bill. The stock of those items goes up."
   },
   {
-   "t": 56,
+   "t": 54,
    "title": "Find a bill: filter by vendor, month and year",
    "text": "To find a bill, filter by vendor, month and year at the top."
   },
   {
-   "t": 65,
+   "t": 63,
    "title": "Bars Only shows just the bill totals",
    "text": "Bars Only shows just the bill totals, without the items. History lists every change made to bills."
   },
   {
-   "t": 75,
+   "t": 72,
    "title": "Keep every bill complete",
    "text": "Keep every bill complete: a vendor, an item list, its receipt attached, and its related expense. The Flags page shows any bill that is missing one of these, so it can be fixed. The laws of this page, and this video, are on the Laws button."
   }

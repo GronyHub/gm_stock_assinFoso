@@ -1,22 +1,22 @@
 {
  "chapters": [
   {
-   "t": 5,
+   "t": 7,
    "title": "Expenses: money spent running the shop",
    "text": "This is Expenses, for money spent on running the shop, such as transport, repairs, electricity and rent."
   },
   {
-   "t": 14,
+   "t": 15,
    "title": "Tap + New",
    "text": "To record an expense, tap plus New."
   },
   {
-   "t": 19,
+   "t": 20,
    "title": "Say what it was for, and the category",
    "text": "Check the date. Describe what the money was spent on, and pick or type a category, such as transport or rent."
   },
   {
-   "t": 31,
+   "t": 32,
    "title": "Type the amount, then Save Expense",
    "text": "Type the amount, and tap Save Expense."
   },

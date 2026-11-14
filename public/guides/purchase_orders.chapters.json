@@ -6,7 +6,7 @@
    "text": "This is Purchase Orders, for what we order from suppliers before the goods arrive. Each order shows its vendor and its dates."
   },
   {
-   "t": 18,
+   "t": 17,
    "title": "A new order: + New PO",
    "text": "To make an order, tap plus New P O. Pick the vendor and the dates, add each item with its quantity and price, then send it to the supplier on WhatsApp."
   },
@@ -16,22 +16,22 @@
    "text": "When the goods arrive, open the order by tapping it. Its items show how much was ordered."
   },
   {
-   "t": 39,
+   "t": 38,
    "title": "Tap Receive Items",
    "text": "Tap Receive Items."
   },
   {
-   "t": 44,
+   "t": 43,
    "title": "Type the quantity that really arrived",
    "text": "Type the quantity you actually received, for each item. Count them, do not just copy the order."
   },
   {
-   "t": 53,
+   "t": 51,
    "title": "Tap Confirm Receipt",
    "text": "Then tap Confirm Receipt. The stock goes up, and the delivery is kept in Receiving History."
   },
   {
-   "t": 62,
+   "t": 60,
    "title": "Check vs Bills: order against the supplier's bill",
    "text": "Check versus Bills compares an order with the supplier's bill, item by item, and lists any differences to report to the supplier. The laws of this page, and this video, are on the Laws button."
   }

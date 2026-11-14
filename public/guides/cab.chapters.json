@@ -1,32 +1,32 @@
 {
  "chapters": [
   {
-   "t": 7,
+   "t": 5,
    "title": "CAB: cash at bank, week by week",
    "text": "This is C A B, cash at bank. It checks, week by week, that the money we should have matches the money we really have."
   },
   {
-   "t": 18,
+   "t": 15,
    "title": "Each day: cash in, bills, expenses, running balance",
    "text": "Each day shows the cash counted, the bills and expenses paid, and the running balance, which is the money we should have."
   },
   {
-   "t": 27,
+   "t": 24,
    "title": "End of the week: tap + New CAB Confirm",
    "text": "At the end of the week, tap plus New C A B Confirm."
   },
   {
-   "t": 32,
+   "t": 29,
    "title": "Type the real bank, MoMo and cash amounts",
    "text": "Check the bank balance and the MoMo balance, count the physical cash, and type the real amounts."
   },
   {
-   "t": 44,
-   "title": "Tap Verify: the difference shows",
-   "text": "Then confirm it. The difference shows anything that does not match, and weeks not yet confirmed still need checking."
+   "t": 40,
+   "title": "Tap Save: the difference shows",
+   "text": "Then tap Save. The Diff column shows anything that does not match, and weeks not yet confirmed still need checking."
   },
   {
-   "t": 53,
+   "t": 49,
    "title": "The laws and this video: 📜 Laws",
    "text": "The laws of this page, and this video, are on the Laws button."
   }

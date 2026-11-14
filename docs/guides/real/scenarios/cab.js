@@ -14,7 +14,7 @@ module.exports = {
   nav: '🏦 CAB',
   url: '/item?tab=loss&view=cab',
   mock(p, m, q, body) {
-    if (p === '/api/cash-at-bank' && m === 'GET') return rows
+    if (p === '/api/cash-at-bank' && m === 'GET') return [...rows].reverse()   // the page expects the most recent day first
     if (p === '/api/cash-at-bank' && m === 'POST') {
       const r = rows.find(x => x.entry_date.slice(0, 10) === body.entry_date.slice(0, 10)) || rows[rows.length - 1]
       r.cab_bank = body.cab_bank; r.cab_momo = body.cab_momo; r.cab_physical = body.cab_physical; r.cab_total = body.cab_bank + body.cab_momo + body.cab_physical; r.deficit = r.running_cash_at_bank - r.cab_total
@@ -28,7 +28,10 @@ module.exports = {
 
     { caption: 'Each day: cash in, bills, expenses, <b>running balance</b>',
       say: 'Each day shows the cash counted, the bills and expenses paid, and the running balance, which is the money we should have.',
-      run: async (h, page) => { await h.wait(3500) } },
+      run: async (h, page) => {
+        await h.wait(1200); await h.point(page.locator('th', { hasText: /^Running$/ }).first()); await h.wait(1500)
+        await page.locator('th', { hasText: /^Running$/ }).first().evaluate(e => { let n = e.parentElement; while (n && n.scrollWidth <= n.clientWidth) n = n.parentElement; if (n) n.scrollTo({ left: 0, behavior: 'smooth' }) }); await h.wait(800)
+      } },
 
     { caption: 'End of the week: tap <b>+ New CAB Confirm</b>',
       say: 'At the end of the week, tap plus New C A B Confirm.',
@@ -38,15 +41,15 @@ module.exports = {
       say: 'Check the bank balance and the MoMo balance, count the physical cash, and type the real amounts.',
       run: async (h, page) => {
         const n = page.locator('input[placeholder="0"]')
-        for (const [i, v] of [[0, '32000'], [1, '4900'], [2, '5100']]) { const el = n.nth(i); await h.tap(el); await h.type(el, v) }
+        for (const [i, v] of [[0, '60000'], [1, '7400'], [2, '5000']]) { const el = n.nth(i); await h.tap(el); await h.type(el, v) }
       } },
 
-    { caption: 'Tap <b>Verify</b>: the difference shows',
-      say: 'Then confirm it. The difference shows anything that does not match, and weeks not yet confirmed still need checking.',
-      run: async (h, page) => { await h.tap(page.getByRole('button', { name: /Verify|Save|Confirm/ }).first()); await h.wait(2500) } },
+    { caption: 'Tap <b>Save</b>: the difference shows',
+      say: 'Then tap Save. The Diff column shows anything that does not match, and weeks not yet confirmed still need checking.',
+      run: async (h, page) => { await h.tap(page.getByRole('button', { name: 'Save', exact: true }).first()); await h.wait(1500); await h.point(page.locator('th', { hasText: /^Diff$/ }).first()); await h.wait(800) } },
 
     { caption: 'The laws and this video: <b>📜 Laws</b>',
       say: 'The laws of this page, and this video, are on the Laws button.',
-      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
+      run: async (h, page) => { await page.evaluate(() => document.querySelectorAll('main *').forEach(e => { if (e.scrollLeft) e.scrollLeft = 0 })); await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }

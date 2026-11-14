@@ -29,16 +29,20 @@ module.exports = {
       say: 'At the top are the totals: the cash counted, the bills and expenses paid, the stock losses, and the profit.',
       run: async (h, page) => { await h.wait(3000) } },
 
-    { caption: 'Then each <b>month</b>',
-      say: 'Below them, each month is shown the same way, so you can see which months did well.',
-      run: async (h, page) => { await page.mouse.wheel(0, 380); await h.wait(3000) } },
+    { caption: 'Then each <b>day</b>: cash, bills, expenses, losses, <b>P/L</b>',
+      say: 'Below them, each day. It shows the cash counted, the bills and expenses paid, the total cash out, and the day\'s stock losses. The last column is the profit or loss for the day.',
+      run: async (h, page) => {
+        await h.point(page.getByText('Daily Profit & Loss').first())
+        const wrap = page.locator('table').first().locator('xpath=..'); await wrap.evaluate(e => e.scrollTo({ left: e.scrollWidth, behavior: 'smooth' })); await h.wait(2500)
+        await wrap.evaluate(e => e.scrollTo({ left: 0, behavior: 'smooth' })); await h.wait(800)
+      } },
 
-    { caption: 'And each <b>day</b>: cash, bills, expenses, losses, <b>P/L</b>',
-      say: 'Then each day. It shows the cash counted, the bills and expenses paid, the total cash out, and the day\'s stock losses. The last column is the profit or loss for the day.',
-      run: async (h, page) => { await page.mouse.wheel(0, 600); await h.wait(3500) } },
+    { caption: 'And each <b>month</b>',
+      say: 'Further down, each month is shown the same way, so you can see which months did well.',
+      run: async (h, page) => { await h.point(page.getByText('Monthly Profit & Loss').first()); await page.getByText('Monthly Profit & Loss').first().evaluate(e => e.scrollIntoView({ block: 'start', behavior: 'smooth' })); await h.wait(2500) } },
 
     { caption: 'The laws and this video: <b>📜 Laws</b>',
       say: 'Enter the cash counted every day, so these figures are right. The laws of this page, and this video, are on the Laws button.',
-      run: async (h, page) => { await page.mouse.wheel(0, -2000); await h.wait(600); await h.point(page.getByText('📜 Laws').first()) } },
+      run: async (h, page) => { await h.point(page.getByText('📜 Laws').first()) } },
   ],
 }
