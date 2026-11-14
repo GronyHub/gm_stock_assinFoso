@@ -391,7 +391,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                       <span className="text-4xl leading-none">{c.icon}</span>
                       <span className="mt-2 text-sm font-bold leading-tight text-gray-900">{c.label}</span>
                       <span className="mt-1 text-[10px] leading-tight text-gray-500">{c.blurb}</span>
-                      {(t || c.video) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${t && quizMine[t]?.passed ? 'bg-green-100 text-green-800' : 'bg-indigo-100 text-indigo-800'}`}>🎬 Video</span>}
+                      {(t || c.video) && <span className={`mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-800`}>🎬 Video</span>}
                       <span className="mt-auto pt-2 text-[11px] font-bold text-[#14213D]">{live.length} law{live.length === 1 ? '' : 's'}{sched ? ` · ${sched} scheduled` : ''}</span>
                       {sig?.signer && todo > 0 && <span className="text-[10px] font-extrabold text-amber-700">✍ {todo} to sign</span>}
                       {list.some(l => l.status === 'draft') && canManage && <span className="text-[10px] font-extrabold text-amber-700">{list.filter(l => l.status === 'draft').length} draft{list.filter(l => l.status === 'draft').length === 1 ? '' : 's'} to approve</span>}

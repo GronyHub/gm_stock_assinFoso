@@ -518,7 +518,7 @@ const VIOLATION_RULES: { re: RegExp; title: string; v: VL[]; not?: string }[] = 
     V('A receipt is typed by hand into Customer Receipts', 'Issue the receipt from MI, or from the Sales Log', 'Wrong sale|Undo|Sales Log'),
     V('A sale the app refused is forced through instead of telling Joe', 'If the app refuses a sale, such as a price below cost or not enough stock, do not force it\nTell Joe', 'Wrong sale|Undo|Sales Log')] },
   { re: /Item groups checked/i, title: 'Keep every item in the right group', v: [
-    V('The weekly item group check is not done on its day', 'Open the Flags dropdown and look at No Group\nOpen each item, tap Edit, pick the right group, tap Save', 'right group|Item groups'),
+    V('The weekly item group check is not done on its day', 'Open Flags in the left sidebar and look at No Group\nOpen each item, tap Edit, pick the right group, tap Save', 'right group|Item groups'),
     V('An item is left in the wrong group, or in no group, after the check', 'Open the item, tap Edit, pick the right group, tap Save', 'right group|Item groups')] },
   { re: /price list is current/i, title: 'Keep the price list current', v: [
     V('The monthly price check is not done', 'Compare the price list with the prices on the cards\nCorrect a price: open the item, tap Edit, type the price, tap Save', 'current price|Prices'),
@@ -668,7 +668,7 @@ const SHARP: { old: string; title: string; violation: string; points?: number; q
     q('How many receipts for that purchase?', 'One', 'Three', 'None', 'One basket, one receipt.')] },
   { old: 'Never force a sale the app refuses: tell Joe', title: 'Never force a sale the app refuses: tell Joe at once', violation: 'A refused sale is forced through, or not reported to Joe the same day', quiz: [
     q('The app refuses a sale because stock is too low. What do you do?', 'Tell Joe and do not force it', 'Force it through', 'Delete the item', 'A forced sale makes the books untrue.')] },
-  { old: 'Do the weekly item group check on its day', title: 'Complete the weekly item group check on its checklist day', violation: 'The weekly item group check is not completed by its checklist time', quiz: [
+  { old: 'Do the weekly item group check on its day', title: 'Complete the weekly item group check on its day in Waiting for team', violation: 'The weekly item group check is not completed by its checklist time', quiz: [
     q('How do you fix an item that has no group?', 'Open it, tap Edit, pick the group, tap Save', 'Delete it', 'Ignore it', 'The group is set in the item sheet.'),
     q('Why do item groups matter?', 'Reports, filters and counts depend on them', 'They are decoration', 'They do not matter', 'A wrongly grouped item hides in the wrong report.')] },
   { old: 'Leave no item in the wrong group or in no group', title: 'Leave no item in the wrong group, or in no group, for more than 24 hours after a check', violation: 'An item stays in the wrong group, or in no group, more than 24 hours after a check', quiz: [

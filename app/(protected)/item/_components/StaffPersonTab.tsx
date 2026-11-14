@@ -1,7 +1,7 @@
 'use client'
 import dynamic from 'next/dynamic'
 import {
-  TimesTab, PayslipsTab, TeamProfilesTab, ViolationsTab, RotaTab, ALL_STAFF_NAMES,
+  TimesTab, PayslipsTab, TeamProfilesTab, RotaTab, ALL_STAFF_NAMES,
 } from '../../staff/StaffClient'
 import ProfileTab from './ProfileTab'
 import ManageLogPanel from './ManageLogPanel'
@@ -116,7 +116,6 @@ export default function StaffContent({
     )}
     {canManage && view === 'teamPayslips' && <PayslipsTab role={role} username={username} />}
     {canManage && view === 'teamProfiles' && <TeamProfilesTab />}
-    {canSeeTeam && view === 'allStaff' && <ViolationsTab role={role} username={username} />}
     {canSeeTeam && view === 'team_behaviour' && (<>
       <ContentPage contentKey="team_behaviour_laws" title="🚦 Team Behaviour Laws" submenu="Team Behaviour" />
       <ManageLogPanel category="team_behaviour_log" label="Behaviour Incidents" icon="🚦" aboutStaffRoster={staffRoster} />

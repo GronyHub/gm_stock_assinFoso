@@ -68,7 +68,7 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
             <div className="h-full overflow-y-auto px-3 pb-24 pt-3">
               <p className="mb-1 text-lg font-bold text-[#14213D]">🚩 Flags</p>
               <FlagQuotaLine />
-              <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900">👔 Managers and owners only. Staff never see flags. Company law: the manager fixes at least 5 flags a day, starting with the negative stock. Tap a flag to open it where it is fixed.</p>
+              <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-900">👔 Managers fix flags; staff may be asked to help. Company law: the manager fixes at least 5 flags a day, starting with the negative stock. Tap a flag to open it where it is fixed.</p>
               {(() => {
                 type Row = { label: string; n: number; go: () => void }
                 const groups: { title: string; rows: Row[] }[] = [

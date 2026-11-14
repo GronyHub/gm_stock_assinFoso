@@ -4,7 +4,7 @@ import { type LossView } from './hubShared'
 import type { HubCtx } from './useHubState'
 
 export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
-  const { setLossView, search, jumpToLiveSaleTab, globalSearchQuery, globalSearchLoading, globalSearchResults, setCustomerSearchText, setVendorSearchText, ch, closeGlobalSearch, changeTab, openPersonSubmenu, canSeeUK, canSeeCH, navMatches, openEditGridItem } = h
+  const { setLossView, search, jumpToLiveSaleTab, jumpToCustomersTab, openShop, globalSearchQuery, globalSearchLoading, globalSearchResults, setCustomerSearchText, setVendorSearchText, ch, closeGlobalSearch, changeTab, openPersonSubmenu, canSeeUK, canSeeCH, navMatches, openEditGridItem } = h
   return (<><div className="flex-1 overflow-y-auto">
               {navMatches.length > 0 && (
                 <div>
@@ -45,7 +45,7 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                       <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Customers</p>
                       {r.customers.map(c => (
                         <button key={c.id}
-                          onClick={() => { changeTab('loss'); setLossView('customers'); setCustomerSearchText(c.display_name); closeGlobalSearch() }}
+                          onClick={() => { jumpToCustomersTab(); setCustomerSearchText(c.display_name); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {c.display_name}
                           {c.company_name && <span className="text-gray-400 text-xs ml-1.5">· {c.company_name}</span>}
@@ -94,9 +94,9 @@ export default function HubGlobalSearchResults({ h }: { h: HubCtx }) {
                   )}
                   {!!r.announcements?.length && (
                     <div>
-                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Announcements</p>
+                      <p className="px-3 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Done</p>
                       {r.announcements.map(a => (
-                        <button key={a.id} onClick={() => { changeTab('today'); closeGlobalSearch() }}
+                        <button key={a.id} onClick={() => { openShop('home'); closeGlobalSearch() }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition truncate">
                           {a.body || '(no text)'}
                           <span className="text-gray-400 text-xs ml-1.5">· {a.author}</span>

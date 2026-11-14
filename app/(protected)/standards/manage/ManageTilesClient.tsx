@@ -65,7 +65,7 @@ export default function ManageTilesClient() {
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
       <div className="mb-2 flex items-center gap-2">
-        <a href="/standards" className="text-sm text-gray-500">&larr; Checklist</a>
+        <a href="/todo" className="text-sm text-gray-500">&larr; Waiting for team</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Tile Manager</h1>
         <button type="button" onClick={() => setDraft(blank(group || 'Daytime'))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ New tile</button>
       </div>

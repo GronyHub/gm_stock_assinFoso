@@ -3,7 +3,7 @@ import sql from '@/lib/db'
 import { recordActivity } from '@/lib/logger'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
-import { notifyOwners, notifyManagement, notifyInput } from '@/lib/checklistAlerts'
+import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
 import { addPoint, suspendedMessage } from '@/lib/penalties'
 import { isOwnerLevel } from '@/lib/roles'
@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // A second Done for the same task and day (a double tap) records nothing new.
+    if (b.value !== 'Not done') {
+      const [have] = await sql`SELECT id, tile_id, day, value, note, extra, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ${id} AND day = ${dayKey(now)} AND value = 'Done' ORDER BY id LIMIT 1`
+      if (have) return success({ ...have, already: true })
+    }
+
     const [row] = await sql`INSERT INTO daily_check_events (tile_id, day, value, note, extra, recorded_by)
       VALUES (${id}, ${dayKey(now)}, ${b.value === 'Not done' ? 'Not done' : 'Done'}, ${note},
               ${JSON.stringify(extra)}::jsonb, ${actor})
@@ -85,7 +91,10 @@ export async function POST(req: NextRequest) {
     const what = `${String(t.title).slice(0, 120)}${reply ? ' — ' + reply.slice(0, 200) : ''}`
     if (b.value === 'Not done') void recordActivity(actor, 'marked a task not done', what)
     else void sql`INSERT INTO activity_logs (staff_name, action, details) VALUES (${actor}, 'did a task', ${what})`.catch(() => {})
-    void notifyInput(actor, `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`, what)
+    // One push: a reported problem always reaches the owner and Joe (with the problem in it); a plain tick follows the notify_input switch.
+    const head = `${actor.charAt(0).toUpperCase() + actor.slice(1)}: ${b.value === 'Not done' ? 'task marked not done' : 'task done'}`
+    if (problem) void notifyManagement(actor, head, `${what} — ${actor} reported: ${problem}`.slice(0, 500))
+    else void notifyInput(actor, head, what)
 
     // Mirror into the Grony Manage log that matches this tile, so that page's history keeps filling.
     if (t.log_category && logs.length) {
@@ -96,17 +105,11 @@ export async function POST(req: NextRequest) {
         }
       } catch (e) { console.error('daily-checks mirror to manage_logs failed:', e instanceof Error ? e.message : String(e)) }
     }
-    // Penalty points: a person marked as not complying with the dress code gets a point at once; a behaviour report waits
+    // The dress code costs no point (owner's decision): who was not complying is only recorded (the manage log above). A behaviour report waits
     // for the owner or manager to confirm it.
-    if (t.kind === 'persons' && extra.persons) {
-      for (const [name, v] of Object.entries(extra.persons as Record<string, string>)) {
-        if (v === 'not') await addPoint({ staff: name, reason: 'Not wearing the company T-shirt and employee tag', source: 'dress', ref: `dress:${dayKey(now)}:${id}`, day: dayKey(now), by: actor }).catch(() => {})
-      }
-    }
     if (t.kind === 'question' && extra.answer === 'issue' && t.log_category === 'team_behaviour_log' && aboutStaff) {
       await addPoint({ staff: aboutStaff, reason: `Behaviour report: ${String(note ?? '').slice(0, 140)}`, source: 'behaviour', ref: `behaviour:${row.id}`, day: dayKey(now), status: 'pending', by: actor }).catch(() => {})
     }
-    if (problem) void notifyOwners(`Checklist: ${String(t.title).split(':')[0]}`, `${actor} reported: ${problem}`)
     // The answer (a typed reply, the people picked, a photo's caption) goes in the Done record with the task, not only its title.
     if (row.value === 'Done') await creditWork(actor, reply ? `${String(t.title)} — ${reply.slice(0, 400)}` : String(t.title), Number(t.minutes ?? 5), Number(row.id))
     return success(row, 201)

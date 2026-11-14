@@ -2,7 +2,7 @@ import { requireAuth, badRequest, success, handleError, getActorName } from '@/l
 import sql from '@/lib/db'
 import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { getClockState, actorKey } from '@/lib/clockState'
-import { suspendedMessage } from '@/lib/penalties'
+import { suspendedMessage, recheckMissed } from '@/lib/penalties'
 import { recordActivity } from '@/lib/logger'
 import { clearMyDayCache } from '@/lib/myDay'
 import { groupForTile, saveAnswers, bridgeClosing, type AnswerIn } from '@/lib/questionGroups'
@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
       const lines = ansIn.map(a => { const it = g.items.find(i => i.id === Number(a.item_id)); const d = String(a.detail ?? '').trim()
         return it ? `${it.text.slice(0, 50)}: ${String(a.answer).slice(0, 60) || '-'}${d ? ` (${d.slice(0, 80)})` : ''}` : null }).filter(Boolean)
       if (lines.length) {
-        void notifyInput(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
+        // One push with every answer (the details of a "yes, something happened" are in it). Such an answer always reaches the owner and Joe; plain answers follow the notify_input switch.
+        const happened = ansIn.some(a => { const it = g.items.find(i => i.id === Number(a.item_id)); return !!it && it.kind === 'yesno' && it.detail_on && String(a.answer) === it.detail_on && String(a.detail ?? '').trim().length >= 3 })
+        void (happened ? notifyManagement : notifyInput)(me, `${actor}: ${g.name}${complete ? '' : ' (part)'}`, lines.join(' · ').slice(0, 900))
         // The answers themselves go in the Done record, not just "answered".
         void recordActivity(actor, complete ? 'answered a question group' : 'answered part of a question group', `${g.name.slice(0, 80)} — ${lines.join(' · ')}`.slice(0, 1500))
       }
@@ -47,13 +49,10 @@ export async function POST(req: NextRequest) {
     if (complete) {
       const [have] = await sql`SELECT id FROM daily_check_events WHERE tile_id = ${g.tile_id} AND day = ${day} AND value = 'Done' LIMIT 1`
       if (!have) {
-      // A "yes, something happened" answer with its explanation (lost property, an unfortunate event, a new customer...) is told to the owner and Joe straight away.
-      for (const a of ansIn) {
-        const it = g.items.find(i => i.id === Number(a.item_id))
-        if (it && it.kind === 'yesno' && it.detail_on && String(a.answer) === it.detail_on && String(a.detail ?? '').trim().length >= 3) void notifyManagement(me, `${g.name}: ${it.text.slice(0, 60)}`, `${actor}: ${String(a.detail).trim().slice(0, 140)}`)
-      }
         const [row] = await sql`INSERT INTO daily_check_events (tile_id, day, value, note, extra, recorded_by) VALUES (${g.tile_id}, ${day}, 'Done', NULL, ${JSON.stringify({ group: g.id })}::jsonb, ${actor}) RETURNING id`
         await creditWork(actor, g.name, Number(g.minutes ?? 5), Number(row.id))
+        // Answered the next morning: the day-end point for this task is taken back.
+        if (forLockDay) await recheckMissed(day).catch(e => console.error('missed recheck failed:', e instanceof Error ? e.message : String(e)))
       }
       await bridgeClosing(day).catch(e => console.error('closing bridge failed:', e instanceof Error ? e.message : String(e)))
     }

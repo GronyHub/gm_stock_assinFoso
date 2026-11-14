@@ -268,6 +268,7 @@ export async function POST(req: NextRequest) {
     if (action === 'out' && existingRow?.actual_out) return badRequest(`You already clocked out today at ${existingRow.actual_out}. To correct it, ask Joe or Grony.`)
 
     // The manager gives the previous working day's Cash Counted before he clocks in (unless he gave it in his closing questions).
+    let cashNote = ''
     if (action === 'in' && String(username).toLowerCase() === 'joe' && sessionUser?.role !== 'owner') {
       const miss = await missingCashCounted(today).catch(() => null)
       if (miss) {
@@ -275,7 +276,8 @@ export async function POST(req: NextRequest) {
         if (!Number.isFinite(v) || v < 0)
           return NextResponse.json({ error: `Enter the Cash Counted for ${miss.day} before you clock in.`, requires_cash_counted: true, ...miss }, { status: 409 })
         await saveCashCounted(miss.receiptId, Math.round(v * 100) / 100)
-        void recordActivity(enteredBy ?? username, 'entered Cash Counted', `${miss.day}: ₵${v.toFixed(2)} (sales ₵${miss.salesTotal.toFixed(2)})`)
+        cashNote = `Cash Counted for ${miss.day}: ₵${v.toFixed(2)} (sales ₵${miss.salesTotal.toFixed(2)})`
+        void recordActivity(enteredBy ?? username, 'entered Cash Counted', cashNote)
       }
     }
 
@@ -347,7 +349,7 @@ export async function POST(req: NextRequest) {
       undefined, undefined, true
     )
     const me = String(username).toLowerCase(), meName = me.charAt(0).toUpperCase() + me.slice(1)
-    const extra: string[] = [isOpener ? 'Opener for today' : '', action === 'out' && isCloser ? 'Closer for today' : '']
+    const extra: string[] = [isOpener ? 'Opener for today' : '', action === 'out' && isCloser ? 'Closer for today' : '', cashNote]
 
     // The presence answer: recorded in Done and told to the owner and Joe. "No" also asks each of them to confirm they are at the shop within a minute.
     if (action === 'out' && stillIn.length) {

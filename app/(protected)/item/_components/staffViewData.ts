@@ -7,7 +7,7 @@
 // instead, plus a personalized summary in Tasks (see TasksView.tsx).
 export type StaffView =
   | 'staffPayslips' | 'staffProfile'
-  | 'teamTimes' | 'team_payments' | 'allStaff' | 'team_behaviour' | 'users' | 'roles'
+  | 'teamTimes' | 'team_payments' | 'team_behaviour' | 'users' | 'roles'
   | 'staff_meeting' | 'staff_display' | 'rota' | 'logs' | 'staff_dress'
   | 'teamPayslips' | 'teamProfiles'
 
@@ -15,7 +15,7 @@ export type StaffView =
 // each staff member's own pay record (Profile is a separate always-shown
 // row, not part of this list -- see item/page.tsx's pane). Times moved to
 // Team Times (it already covers "my own" as a special case of "everyone"),
-// Violations to Team Penalty Points, and Ana had no team equivalent so it's
+// Penalty Points to the Shop's Penalty Points tab and each person's own page, and Ana had no team equivalent so it's
 // just gone -- there was no write action tied to any of the three, only
 // Times' embedded clock-in button, which Team Times still provides.
 export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string }[] = [
@@ -54,7 +54,6 @@ export const STAFF_PERSONAL_ITEMS: { key: StaffView; label: string; icon: string
 export const STAFF_TEAM_ITEMS: { key: StaffView; label: string; icon: string }[] = [
   { key: 'teamTimes', label: 'Team Times', icon: '🕐' },
   { key: 'team_payments', label: 'Team Payments', icon: '💳' },
-  { key: 'allStaff', label: 'Team Penalty Points', icon: '🏢' },
   { key: 'team_behaviour', label: 'Team Behaviour', icon: '🚦' },
   { key: 'staff_dress', label: 'Team Dress Code', icon: '👕' },
   { key: 'staff_display', label: 'Team Display', icon: '📌' },

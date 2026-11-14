@@ -93,6 +93,27 @@ export async function answersFor(groupId: number, day: string) {
   return await sql`SELECT a.item_id, a.answer, a.detail, a.by_who FROM question_group_answers a JOIN question_group_items i ON i.id = a.item_id WHERE a.day = ${day} AND i.group_id = ${groupId}` as unknown as { item_id: number; answer: string; detail: string | null; by_who: string | null }[]
 }
 
+// The manager's optional "Cash counted today" question: the answer is that day's Cash Counted, saved the same way as the Sales Log
+// (sales_receipts.cash_counted on the day's walk-in receipt, as PUT /api/sales/[id] does). A day with no walk-in receipt has nothing to save it on.
+export const CASH_KEY = 'cash_counted'
+const CASH_TEXT = 'Cash counted today (₵)'   // optional: skipped when the manager does not know it yet
+const GMC = 'Grony Multimedia as Customer'
+export async function saveCashCounted(day: string, amount: number): Promise<boolean> {
+  const r = await sql`UPDATE sales_receipts SET cash_counted = ${amount} WHERE id = (SELECT id FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1) RETURNING id`
+  if (r.length) (await import('@/lib/itemsCache')).clearItemsCache()
+  return r.length > 0
+}
+async function addCashQuestionOnce() {
+  const c = await sql`INSERT INTO law_migrations (key) VALUES ('question-groups-cash-counted-2026-11-14') ON CONFLICT DO NOTHING RETURNING key`
+  if (!c.length) return
+  const [g] = await sql`SELECT g.id FROM question_groups g JOIN daily_check_tiles t ON t.id = g.tile_id WHERE g.active AND g.bridge = 'closing' AND t.assignment = 'managers' ORDER BY g.id LIMIT 1`
+  if (!g) return
+  const [have] = await sql`SELECT 1 FROM question_group_items WHERE group_id = ${g.id} AND active AND key = ${CASH_KEY}`
+  if (have) return
+  const [{ p }] = await sql`SELECT COALESCE(MAX(position), -1) + 1 AS p FROM question_group_items WHERE group_id = ${g.id}`
+  await sql`INSERT INTO question_group_items (group_id, position, text, kind, key, required) VALUES (${g.id}, ${Number(p)}, ${CASH_TEXT}, 'number', ${CASH_KEY}, FALSE)`
+}
+
 const needsDetail = (i: GroupItem, a: string) => i.kind === 'yesno' && i.detail_on != null && a === i.detail_on
 // Saves the answers; returns whether every required question now has one. Throws a plain message when an answer is not acceptable.
 export async function saveAnswers(group: Group, day: string, who: string, answers: AnswerIn[]): Promise<{ complete: boolean }> {
@@ -106,6 +127,7 @@ export async function saveAnswers(group: Group, day: string, who: string, answer
     if (i.kind === 'number' && !Number.isFinite(Number(ans))) throw new Error(`Enter a number: ${i.text.slice(0, 60)}`)
     const detail = String(a.detail ?? '').trim().slice(0, 500)
     if (needsDetail(i, ans) && detail.length < 3) throw new Error(`Say what happened: ${i.text.slice(0, 60)}`)
+    if (i.key === CASH_KEY) { const v = Number(ans); if (!Number.isFinite(v) || v < 0) throw new Error('Enter the cash counted as a number, or leave it empty.'); await saveCashCounted(day, v) }
     await sql`INSERT INTO question_group_answers (day, item_id, answer, detail, by_who) VALUES (${day}, ${i.id}, ${ans}, ${detail || null}, ${who})
       ON CONFLICT (day, item_id) DO UPDATE SET answer = EXCLUDED.answer, detail = EXCLUDED.detail, by_who = EXCLUDED.by_who, at = now()`
   }
@@ -141,6 +163,10 @@ export async function bridgeClosing(day: string) {
 // tick tasks plus the closing questions about the shop) and the Manager's group (the judgement questions). Each rests on the law its old tile rested on, so the point still works.
 export async function seedQuestionGroupsOnce() {
   await ensureQuestionGroups()
+  await seedGroups()
+  await addCashQuestionOnce().catch(e => console.error('cash counted question failed:', e instanceof Error ? e.message : String(e)))
+}
+async function seedGroups() {
   const c = await sql`INSERT INTO law_migrations (key) VALUES ('question-groups-seed-2026-11-13') ON CONFLICT DO NOTHING RETURNING key`
   if (!c.length) return
   try {
@@ -161,6 +187,7 @@ export async function seedQuestionGroupsOnce() {
     if (cl) await saveGroup({ name: 'Closing questions (manager)', bridge: 'closing', assignment: 'managers', time: '19:05', category: 'Staff management', items: [
       { text: 'Is there a new customer of interest today?', kind: 'yesno', detail_on: 'yes', key: 'new_customer' },
       { text: 'Did anything unfortunate happen today?', kind: 'yesno', detail_on: 'yes', key: 'unfortunate_event' },
+      { text: CASH_TEXT, kind: 'number', key: CASH_KEY, required: false },
     ] }, 'seed')
   } catch (e) { console.error('question groups seed failed:', e instanceof Error ? e.message : String(e)) }
 }

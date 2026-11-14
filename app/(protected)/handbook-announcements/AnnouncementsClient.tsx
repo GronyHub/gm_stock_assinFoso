@@ -22,7 +22,7 @@ export default function AnnouncementsClient() {
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
       <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
-        <h1 className="ml-2 mr-auto text-xl font-bold text-[#14213D]">Announcements</h1>
+        <h1 className="ml-2 mr-auto text-xl font-bold text-[#14213D]">Tasks &amp; notices</h1>
       </div>
       <p className="mb-2 text-xs text-gray-500">Everything saved as an announcement: tasks and notices saved in the app, grouped by where they were written.</p>
       <div className="mb-3 flex flex-wrap items-center gap-2">

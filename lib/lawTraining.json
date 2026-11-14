@@ -299,7 +299,7 @@
    {
     "q": "A customer buys several items at once. How do you sell them?",
     "options": [
-     "One Live Sale tap for each item",
+     "One Live tap for each item",
      "Through MI: one basket, one receipt",
      "Write it on paper"
     ],
