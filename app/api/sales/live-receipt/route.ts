@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       VALUES
         (${`INTERNAL_${number}_${Date.now()}`}, ${number}, ${date}, NULL, 'Closed', 'Receipt', ${cust.display_name}, ${cust.id}, 'GHS',
          ${phone}, ${cust.company_name ?? null}, ${(cust.location as string | null)?.split(',')[0]?.trim() ?? null}, NULL,
-         ${total}, ${total}, 0, 0, 'Live Sale (MI)')
+         ${total}, ${total}, 0, 0, 'Live (MI)')
       RETURNING id`
     for (const t of taps) {
       await sql`INSERT INTO invoice_lines (invoice_id, raw_item_name, quantity, item_price, item_total, tap_id)

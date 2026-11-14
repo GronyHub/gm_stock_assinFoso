@@ -273,7 +273,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
         {noContactCount > 0 && (
           <button onClick={() => setShowFlagged(v => !v)} title="Vendors with no contact number or location"
             className={`shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg transition ${showFlagged ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
-            🚩 No contact ({noContactCount})
+            No contact ({noContactCount}) ▾
           </button>
         )}
         <input

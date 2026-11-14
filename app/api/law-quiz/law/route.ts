@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (law_id, staff) DO UPDATE SET score = GREATEST(CASE WHEN law_quiz_marks.law_hash = ${l.h} THEN law_quiz_marks.score ELSE 0 END, ${score}), total = ${qs.length}, law_hash = ${l.h}, taken_at = now()`
     const [lw] = await sql`SELECT code, title FROM page_laws WHERE id = ${id}`
     void recordActivity(me, 'took a law quiz', `${lw?.code ?? ''} ${String(lw?.title ?? '').slice(0, 60)}: ${score}/${qs.length}`.trim())
-    void notifyOwners(`${cap(me)} scored ${score}/${qs.length} on a law quiz`, `${lw?.code ?? ''} ${String(lw?.title ?? '').slice(0, 80)}`)
+    // practice quiz result: no push (it is optional practice)
     return success({ score, total: qs.length, results })
   } catch (e) { return handleError('law-quiz law POST', e) }
 }

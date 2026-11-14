@@ -179,7 +179,7 @@ export const TOPICS: Topic[] = [
     keywords: 'item 360 losses loss by date loss by items analytics least sales',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700"><strong>Item 360</strong> shows one item's sales, stock, counts and price history on one screen. <strong>Losses</strong> opens Loss by Date and Loss by Items; <strong>Analytics</strong> shows the services and goods that sell least and the goods unbought longest.</p>
+        <p className="text-sm text-gray-700"><strong>Item 360</strong> shows one item's sales, stock, counts and price history on one screen. <strong>Losses</strong> opens Loss by Date and Loss by Item; <strong>Analytics</strong> shows the services and goods that sell least and the goods unbought longest.</p>
       </div>
     ),
   },
@@ -192,7 +192,7 @@ export const TOPICS: Topic[] = [
       <div className="space-y-3">
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
           <li><strong>Staff</strong> -- the shop team. You use Waiting for team, Live, the Sales Log, Customers, Counts, Item 360, Losses, Analytics, the Shop (Done, Laws, Times), How To, your own Payslips and your own Profile.</li>
-          <li><strong>Owner</strong> (Grony, and Joe, who has the same rights) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals.</li>
+          <li><strong>Owner</strong> (Grony) -- sees everything, including bills, expenses, purchase orders, vendors, P&amp;L, CAB, penalties and approvals. <strong>Joe</strong> (manager) has the same pages and decides sanctions for the other staff; Grony decides for Joe. Nobody decides their own.</li>
         </ul>
         <Callout>Anything you cannot see is not part of your job in the app. If you think you need it, ask Joe.</Callout>
       </div>
@@ -691,7 +691,7 @@ export const TOPICS: Topic[] = [
           <p><strong>What changed:</strong></p>
           <ul className="space-y-1 list-disc list-inside">
             <li><strong>Online presence</strong> ("who's online" status) no longer touches the database at all -- it's tracked in the running app's own memory instead, since the app now runs as one persistent server process rather than disposable serverless functions.</li>
-            <li>Every other background poll across the app (staff bar, activity toaster, analytics sections, closing report, logs auto-refresh, etc.) was slowed to <strong>10 minutes</strong>, comfortably past the 5-minute auto-suspend window.</li>
+            <li>Background polls run between 1 and <strong>10 minutes</strong>, and the staff bar and the other always-on screens are tuned so the database can sleep between visits.</li>
           </ul>
         </div>
         <Callout>This is the same reason some lists/summaries can lag up to 2 hours -- see "Why do some numbers take a while to update?" above. Sale taps, counts, and edits are still always instant; it's only background badges/summaries/"who's online" style data that intentionally trades a little freshness for keeping the database bill under control.</Callout>

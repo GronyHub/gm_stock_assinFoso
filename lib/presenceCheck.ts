@@ -83,7 +83,7 @@ export async function expireDue(): Promise<number> {
       if (!rec || rec.actual_out) continue
       const inM = parseTimeMins(String(rec.actual_in)); if (inM == null) continue
       const a = await lastActivity(c.staff, c.day, inM)
-      if (!a.found) { void pushToUsers([c.staff], 'You did not confirm you are at the shop', 'Open the app and enter the time you left.'); continue }
+      if (!a.found) continue   // automatic: shown on screen when they next open the app
       const out = to12h(a.mins)
       await setClockOut(c.staff, c.day, out, 'auto', 'system')
       await sql`INSERT INTO clock_autos (staff, work_date, out_time, basis) VALUES (${c.staff}, ${c.day}, ${out}, ${cap(c.raised_by) + ' said you were not at the shop and you did not confirm: your last action at the shop'}) ON CONFLICT DO NOTHING`
@@ -91,7 +91,7 @@ export async function expireDue(): Promise<number> {
       n++
       void recordActivity('app', 'clocked someone out after no confirmation', `${cap(c.staff)} at ${out} (last action at the shop)`)
       void notifyManagement(c.staff, `${cap(c.staff)} was clocked out`, `${cap(c.raised_by)} said nobody else was at the shop and ${cap(c.staff)} did not confirm. Time out ${out} (last action).`)
-      void pushToUsers([c.staff], 'You were clocked out', `You did not confirm you were at the shop. Your time out is ${out}, your last action. Open the app to tap OK or send the correct time.`)
+      // automatic clock-out: shown on screen (no push)
     } catch (e) { console.error('presence expiry failed:', e instanceof Error ? e.message : String(e)) }
   }
   return n
