@@ -824,9 +824,9 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
               while the sidebar is hidden) so the two never overlap. */}
           <GlobalMic frame={embedRef} dests={voiceDests}
             onVoiceSale={outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal ? (t: string) => { setVoiceSaleText(t); setVoiceSaleSignal(n => n + 1) } : undefined}
-            className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'}`} />
+            className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-20 sm:bottom-4' : 'bottom-20 sm:bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'}`} />
           {/* Scan a barcode: on Live Sale it opens the sale card with that item; on any other page the item's name goes into the page's search box. */}
-          <ScanButton className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-4' : 'bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} -translate-y-14`}
+          <ScanButton className={`fixed ${outerTab === 'loss' && canSeeCash && !sidePaneHidden ? 'bottom-20 sm:bottom-4' : 'bottom-20 sm:bottom-16'} ${isDesktop && outerTab === 'loss' && (canSeeManage || canSeeTeam) ? 'right-40' : 'right-4'} -translate-y-14`}
             onItem={it => {
               if (outerTab === 'loss' && lossView === 'items' && liveSaleType !== 'GMC' && !embedUrl && !personal) { setScanItem(it); setScanSignal(n => n + 1); return }
               const ev = { item: { id: it.id, name: it.name }, handled: false }

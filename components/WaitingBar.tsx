@@ -33,7 +33,7 @@ export default function WaitingBar() {
   }
   if (total <= 0 || later || onPage || framed) return null
   return (
-    <div className="fixed bottom-3 left-20 right-0 z-[60] flex justify-center px-3 sm:left-24 print:hidden">
+    <div className="fixed bottom-16 left-2 right-0 z-[60] sm:bottom-3 sm:left-24 flex justify-center px-3 print:hidden">
       <div className={`w-full max-w-sm rounded-xl border bg-white p-2 shadow-xl ${now ? 'border-red-300' : 'border-amber-300'}`}>
         <div className="flex items-center gap-2">
           <p className="min-w-0 flex-1 truncate text-xs font-bold text-gray-900">📋 {total} waiting{now ? <span className="text-red-700"> · {now} urgent</span> : null}</p>

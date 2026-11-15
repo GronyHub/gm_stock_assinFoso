@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { SidePaneToggle } from '../_components/SidePane'
 import SettingsPane from '../_components/SettingsPane'
@@ -6,11 +7,18 @@ import { UKSettingsPanel, UKTab } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubSidePane from './HubSidePane'
 import HubStaffBarAndOverlays from './HubStaffBarAndOverlays'
+import HubPhoneTabs from './HubPhoneTabs'
 
 export default function HubMainRow({ h }: { h: HubCtx }) {
   const { outerTab, settingsOpen, uk, setUkPaneRefresh, role, isGrony, canOpenSettings } = h
-  return (<><div className="relative flex-1 min-h-0 flex overflow-hidden">
-        {<HubSidePane h={h} />}
+  // On a phone the menu is hidden behind the bottom More tab; it opens as a full-height overlay and closes on any tap inside it.
+  const [moreOpen, setMoreOpen] = useState(false)
+  return (<><div className="relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0">
+        {moreOpen && <div className="fixed inset-0 z-40 bg-black/40 sm:hidden" onClick={() => setMoreOpen(false)} />}
+        <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle')) setMoreOpen(false) }}
+          className={moreOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden sm:flex'}>
+          <HubSidePane h={h} />
+        </div>
         {/* Restore button while the pane is hidden -- floats over the
             content area's own bottom-left corner rather than taking a
             layout slot of its own, same reasoning as SidePaneToggle's onHide
@@ -28,5 +36,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
         )}
 
         <HubStaffBarAndOverlays h={h} />
-      </div></>)
+      </div>
+      <HubPhoneTabs h={h} moreOpen={moreOpen} onToggleMore={() => setMoreOpen(o => !o)} onNavigate={() => setMoreOpen(false)} />
+      </>)
 }
