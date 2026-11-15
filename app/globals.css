@@ -119,3 +119,9 @@ html.framed .no-frame { display: none !important; }
   .cash-strip nav button > span:first-child { font-size: 20px; line-height: 1; }
   .cash-strip nav button > span:last-child { text-align: center; line-height: 1.1; }
 }
+
+/* Live strip: these live elsewhere too, so they are not repeated here. */
+@media (max-width: 639px) {
+  .cash-strip nav button[aria-label="Shop"], .cash-strip nav button[aria-label="Waiting for team"], .cash-strip nav button[aria-label="How To"],
+  .cash-strip nav button[aria-label="Settings"], .cash-strip nav button[aria-label="UK Settings"], .cash-strip nav button[aria-label="Sign out"] { display: none; }
+}

@@ -7,6 +7,7 @@ import PresentStaffBar from '../_components/PresentStaffBar'
 import { setPageToolbarEl } from '@/lib/pageToolbar'
 import { TabErrorBoundary, GronyManageContent, StaffContent, MANAGE_VIEW_KEYS, TodayContent, ShopTeamTimes, StaffMemberPersonalTab, STAFF_ROSTER, formatPrice, type ShopTab } from './hubShared'
 import type { HubCtx } from './useHubState'
+import ShopRota from '../_components/ShopRota'
 import HubFilterBar from './HubFilterBar'
 import HubContentColumn from './HubContentColumn'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
@@ -49,7 +50,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                 {(
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([...(['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) ? [['dashboard', '🏠 Home'], ['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws']] : []), ...(['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) ? [] : [['times', '🕐 Times']]), ...(!['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) && isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
+                    {([...(['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) ? [['dashboard', '🏠 Home'], ['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws']] : []), ...(['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) ? [] : [['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!['dashboard', 'todo', 'home', 'laws'].includes(shop.tab) && isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${(shop.tab === 'manage' ? `m:${manageSideOptions()[0]?.key}` : shop.tab) === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}{badge ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{badge}</span> : null}</button>
                     ))}
                   </div>
@@ -60,6 +61,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'todo' && <iframe key={'t' + (shop.src ?? '')} src={shop.src ?? '/todo'} title="Waiting for team" className="h-full w-full border-0" />}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
+                  {shop.tab === 'rota' && isOwnerOrJoe && <div className="p-2"><ShopRota canManage /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
