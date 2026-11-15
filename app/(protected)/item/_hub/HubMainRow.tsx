@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { SidePaneToggle } from '../_components/SidePane'
 import SettingsPane from '../_components/SettingsPane'
@@ -15,6 +15,18 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
   // On a phone there is no side menu: the bottom More tab opens the same grouped menu as a full-screen page (Menu header, close button),
   // and it closes on any tap on one of its buttons. Computers keep the sidebar.
   const [moreOpen, setMoreOpen] = useState(false)
+  // On a phone, the owner and Joe land on Home (the day at a glance) once per browser session, unless a link asked for a particular page.
+  useEffect(() => {
+    try {
+      if (!window.matchMedia('(max-width: 639px)').matches || !h.isOwnerOrJoe) return
+      const p = new URLSearchParams(window.location.search)
+      if (['mode', 'view', 'open', 'me', 'tab'].some(k => p.get(k))) return
+      if (sessionStorage.getItem('homeShown')) return
+      sessionStorage.setItem('homeShown', '1')
+      h.openShop('dashboard')
+    } catch { /* never block the app for this */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (<><div className="relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0">
         <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle') && !b.hasAttribute('data-menu-close')) setMoreOpen(false) }}
           className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : 'hidden sm:flex'}>

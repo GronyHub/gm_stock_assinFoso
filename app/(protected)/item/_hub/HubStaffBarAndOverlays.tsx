@@ -1,4 +1,5 @@
 'use client'
+import HubHome from './HubHome'
 import HubStatusStrip from './HubStatusStrip'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -42,6 +43,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
           {(embedUrl || personal || shop) && (
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
               {shop ? (<>
+                {shop.tab !== 'dashboard' && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                     {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as [ShopTab, string][]).map(([k, label]) => (
@@ -50,7 +52,9 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   </div>
                   <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
                 </div>
+                )}
                 <div className="min-h-0 flex-1 overflow-y-auto">
+                  {shop.tab === 'dashboard' && <HubHome h={h} />}
                   {shop.tab === 'todo' && <iframe key={'t' + (shop.src ?? '')} src={shop.src ?? '/todo'} title="Waiting for team" className="h-full w-full border-0" />}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
