@@ -115,6 +115,7 @@ html.framed .no-frame { display: none !important; }
   .cash-strip nav div { display: contents; }
   .cash-strip nav p, .cash-strip [data-team-list], .cash-strip [data-team-card] { display: none; }
   .cash-strip nav button { flex: 0 0 auto; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 76px; max-width: 92px; min-height: 60px; padding: 6px 4px; border: 0 !important; font-size: 12px; text-align: center; }
+  .cash-strip nav button[aria-current="page"] { background: rgba(255,255,255,.22) !important; color: #fff !important; border-radius: 28px; margin: 4px 2px; min-height: 52px; }
   .cash-strip nav button > span:first-child { font-size: 22px; line-height: 1; }
   .cash-strip nav button > span:last-child { text-align: center; line-height: 1.1; }
 }
