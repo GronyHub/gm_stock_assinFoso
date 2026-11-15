@@ -10,7 +10,7 @@ import type { HubCtx } from './useHubState'
 import HubFilterBar from './HubFilterBar'
 import HubContentColumn from './HubContentColumn'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
-import type { ManageView } from '../_components/manageViewData'
+import { ADVERT_ITEMS, type ManageView } from '../_components/manageViewData'
 
 export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { initialTab, outerTab, lossView, search, setLiveManageSection, manageSideOptions, fixedCategoryIds, activeStaff, items, waitingBy, embedRef, embedUrl, personal, setPersonal, barH, barRef, shop, setShop, openShop, openPersonal, navSlotEl, isDesktop, role, username, isOwnerOrJoe, canManage, canSeeManage, canSeeTeam, routablePages, liveTapsStatus, liveTodaySalesTotal, salesByStaff, pickItemsMode, renderSectionFlags, goItemsMode, renderTabSwitcher } = h
@@ -49,7 +49,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                 {shop.tab !== 'dashboard' && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [['m:advert', '📣 Advert'], ['m:grony_checks', '✔ Shop checks']] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
+                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ['m:grony_checks', '✔ Shop checks']] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${(shop.tab === 'manage' ? `m:${manageSideOptions()[0]?.key}` : shop.tab) === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}{badge ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{badge}</span> : null}</button>
                     ))}
                   </div>
@@ -70,7 +70,9 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                     return (
                       <div className="p-2">
                         <TabErrorBoundary>
-                          {(MANAGE_VIEW_KEYS.has(key as never) || key === 'advert' || key === 'grony_checks') && canSeeManage && <GronyManageContent key={key} view={key as ManageView} {...mv} />}
+                          {(MANAGE_VIEW_KEYS.has(key as never) || key === 'advert' || key === 'grony_checks') && canSeeManage && (ADVERT_ITEMS.some(a => a.key === key)
+                            ? <GronyManageContent key={key} view="advert" advertSub={key as ManageView} {...mv} />
+                            : <GronyManageContent key={key} view={key as ManageView} {...mv} />)}
                           {canSeeTeam && STAFF_TEAM_ITEMS.some(t => t.key === key) && (myStaffName
                             ? <StaffContent key={key} view={key as StaffView} viewingName={viewingName} role={role} username={username} canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} openAddSignal={staffTimeSignal} />
                             : <p className="py-10 text-center text-sm text-gray-400">No staff profile is set up for your account.</p>)}

@@ -23,7 +23,7 @@ import { useState, Fragment } from 'react'
 export default function GronyManageContent({
   view, canManage, categoryIds,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, onSelectCheckType, missingClosingReportsCount, onOpenStaff, propertiesInitialTab,
+  onGoToViolation, onSelectCheckType, missingClosingReportsCount, onOpenStaff, propertiesInitialTab, advertSub,
 }: {
   view: ManageView
   canManage: boolean
@@ -39,6 +39,8 @@ export default function GronyManageContent({
   missingClosingReportsCount: number
   onOpenStaff: () => void
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
+  // Shows just this Advert page, with no radio row (the Shop page gives each one its own tab).
+  advertSub?: ManageView
 }) {
   // Both default to their first sub-page (rather than null) since Advert and
   // Grony Checks are now their own top-level tabs (see item/page.tsx's
@@ -47,7 +49,7 @@ export default function GronyManageContent({
   // radio row with nothing picked yet. Grony Checks' first item is the Grid
   // table itself (GRONY_CHECKS_ITEMS[0].key === 'grony_checks').
   const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView>(GRONY_CHECKS_ITEMS[0].key)
-  const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(ADVERT_ITEMS[0].key)
+  const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(advertSub ?? ADVERT_ITEMS[0].key)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
 
@@ -72,7 +74,7 @@ export default function GronyManageContent({
           (selectedAdvertItem had no way left to ever change) -- restored
           here, no back button needed: picking a different radio just swaps
           what's shown below directly. */}
-      <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+      {!advertSub && <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
         {ADVERT_ITEMS.map((item, i) => (
           <Fragment key={item.key}>
             {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
@@ -82,7 +84,7 @@ export default function GronyManageContent({
             </label>
           </Fragment>
         ))}
-      </div>
+      </div>}
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
       {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
