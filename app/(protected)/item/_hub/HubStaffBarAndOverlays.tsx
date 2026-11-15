@@ -5,13 +5,16 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { setPageToolbarEl } from '@/lib/pageToolbar'
-import { TodayContent, ShopTeamTimes, StaffMemberPersonalTab, STAFF_ROSTER, formatPrice, type ShopTab } from './hubShared'
+import { TabErrorBoundary, GronyManageContent, StaffContent, MANAGE_VIEW_KEYS, TodayContent, ShopTeamTimes, StaffMemberPersonalTab, STAFF_ROSTER, formatPrice, type ShopTab } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubFilterBar from './HubFilterBar'
 import HubContentColumn from './HubContentColumn'
+import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
+import type { ManageView } from '../_components/manageViewData'
 
 export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { initialTab, outerTab, lossView, search, setLiveManageSection, manageSideOptions, fixedCategoryIds, activeStaff, items, waitingBy, embedRef, embedUrl, personal, setPersonal, barH, barRef, shop, setShop, openShop, openPersonal, navSlotEl, isDesktop, role, username, isOwnerOrJoe, canManage, canSeeManage, canSeeTeam, routablePages, liveTapsStatus, liveTodaySalesTotal, salesByStaff, pickItemsMode, renderSectionFlags, goItemsMode, renderTabSwitcher } = h
+  const { canSeeUsers, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, goToViolation, globalFlags, propertiesInitialTab, myStaffName, viewingName, staffTimeSignal } = h as any
   useEffect(() => { window.dispatchEvent(new CustomEvent('waiting-view', { detail: personal?.tab === 'waiting' || shop?.tab === 'todo' })) }, [personal, shop])
   return (<><div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar + tab switcher: on desktop these portal into
@@ -46,11 +49,10 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                 {shop.tab !== 'dashboard' && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ['manage', '🛠 Manage'], ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as [ShopTab, string][]).map(([k, label]) => (
-                      <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${shop.tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
+                    {([['todo', '✅ Waiting for team'], ['home', '✔ Done'], ['laws', '📜 Laws'], ['times', '🕐 Times'], ...(isOwnerOrJoe && (canSeeManage || canSeeTeam) ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [['m:advert', '📣 Advert'], ['m:grony_checks', '✔ Shop checks']] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
+                      <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${(shop.tab === 'manage' ? `m:${manageSideOptions()[0]?.key}` : shop.tab) === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}{badge ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{badge}</span> : null}</button>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setShop(null)} className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">✕ Close</button>
                 </div>
                 )}
                 <div className="min-h-0 flex-1 overflow-y-auto">
@@ -62,16 +64,19 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
-                  {shop.tab === 'manage' && (
-                    <div className="space-y-1 p-3">
-                      <p className="text-xs text-gray-500">Pick a section. It opens in the main area.</p>
-                      {manageSideOptions().map(o => (
-                        <button key={o.key} type="button" onClick={() => { setShop(null); setLiveManageSection(o.key); goItemsMode('manage') }} className="flex w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">
-                          <span>{o.label}</span>{o.badge > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[12px] font-bold text-white">{o.badge}</span>}
-                        </button>))}
-                      {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('advert') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">📣 Advert</button>}
-                      {canSeeManage && <button type="button" onClick={() => { setShop(null); goItemsMode('gronyChecks') }} className="flex w-full items-center rounded-xl border border-gray-200 bg-white px-3 py-3 text-left text-sm font-semibold text-gray-900">✔ Shop checks</button>}
-                    </div>)}
+                  {(shop.tab === 'manage' || shop.tab.startsWith('m:')) && (() => {
+                    const key = shop.tab === 'manage' ? String(manageSideOptions()[0]?.key ?? '') : shop.tab.slice(2)
+                    const mv = { canManage, categoryIds: fixedCategoryIds, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation: goToViolation, missingClosingReportsCount: globalFlags?.missingClosingReports?.length ?? 0, onOpenStaff: () => openShop('times'), propertiesInitialTab }
+                    return (
+                      <div className="p-2">
+                        <TabErrorBoundary>
+                          {(MANAGE_VIEW_KEYS.has(key as never) || key === 'advert' || key === 'grony_checks') && canSeeManage && <GronyManageContent key={key} view={key as ManageView} {...mv} />}
+                          {canSeeTeam && STAFF_TEAM_ITEMS.some(t => t.key === key) && (myStaffName
+                            ? <StaffContent key={key} view={key as StaffView} viewingName={viewingName} role={role} username={username} canSeeTeam={canSeeTeam} canSeeUsers={canSeeUsers} canSeeRoles={canManage} canManage={canManage} staffRoster={STAFF_ROSTER} routablePages={routablePages} categoryIds={fixedCategoryIds} openAddSignal={staffTimeSignal} />
+                            : <p className="py-10 text-center text-sm text-gray-400">No staff profile is set up for your account.</p>)}
+                        </TabErrorBoundary>
+                      </div>)
+                  })()}
                 </div>
               </>) : personal ? (<>
                 <div className="min-h-0 flex-1 overflow-y-auto">
