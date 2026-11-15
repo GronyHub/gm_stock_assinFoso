@@ -198,12 +198,12 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
 
   return (
     <>
-    <button data-keep-embed={keepEmbed ? '' : undefined} onClick={e => { if (!noNewTab && (e.ctrlKey || e.metaKey)) openNewTab(); else onClick() }} title={label} aria-label={label}
+    <button data-keep-embed={keepEmbed ? '' : undefined} onClick={e => { if (!noNewTab && (e.ctrlKey || e.metaKey)) openNewTab(); else onClick() }} title={label} aria-label={label} aria-current={active ? 'page' : undefined}
       onContextMenu={noNewTab ? undefined : e => { if (!window.matchMedia('(pointer: fine)').matches) return /* touch: a long press must not pop a menu in the way of the tap */; e.preventDefault(); setMenu({ x: Math.min(e.clientX, window.innerWidth - 170), y: Math.min(e.clientY, window.innerHeight - 90) }) }}
       onMouseDown={noNewTab ? undefined : e => { if (e.button === 1) e.preventDefault() }}
       onAuxClick={noNewTab ? undefined : e => { if (e.button === 1) { e.preventDefault(); openNewTab() } }}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-start justify-center gap-0 px-1.5 py-[3px] [@media(pointer:coarse)]:min-h-[34px] touch-manipulation text-[14px] font-bold leading-[1.1] text-left transition
+      className={`relative flex flex-col items-start justify-center gap-0 px-1.5 py-[3px] [@media(pointer:coarse)]:min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white touch-manipulation text-[14px] font-bold leading-[1.1] text-left transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : shared ? 'text-yellow-300 hover:bg-white/10' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
@@ -258,13 +258,13 @@ export function SidePaneContainer({ mode, footer, children, accent = '#00072d', 
   onAnyClick?: () => void
 }) {
   return (
-    <div style={{ '--pane-accent': accent } as React.CSSProperties}
+    <nav aria-label="Main menu" style={{ '--pane-accent': accent } as React.CSSProperties}
       onClickCapture={onAnyClick ? (e => { if ((e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('[data-keep-embed]')) onAnyClick() }) : undefined}
-      className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0`}>
+      className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]`}>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {children}
       </div>
       {footer}
-    </div>
+    </nav>
   )
 }
