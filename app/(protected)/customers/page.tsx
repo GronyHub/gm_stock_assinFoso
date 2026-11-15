@@ -75,7 +75,7 @@ const CUSTOMER_COLUMNS: CustomerColumn[] = [
   { key: 'email',    label: 'Email Address', align: 'left', tdClass: 'text-gray-600', render: v => v.email ?? '—' },
   { key: 'location', label: 'Location', align: 'left', tdClass: 'text-gray-600', render: v => v.location ?? '—' },
   { key: 'status',   label: 'Status', align: 'left', tdClass: '', render: v => (
-      <span className={`text-[12px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+      <span className={`inline-block whitespace-nowrap text-[12px] font-semibold px-2 py-0.5 rounded-full ${v.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
         {v.status ?? '—'}
       </span>
     ) },
@@ -267,6 +267,9 @@ export default function CustomersPage({
   const { compact, wrapRef, zoomFor } = useFitWidth()
   // On a phone the compact widths win over widths saved from an earlier drag.
   const idColWidth = compact ? 50 : 120
+  // On a phone the table keeps Company, Contact and Status; Email, Location and Last Visited stay one tap away (the customer's own page).
+  const phoneHidden = new Set(['email', 'location', 'lastVisited'])
+  const tableCols = compact ? colPrefs.shownColumns.filter(c => !phoneHidden.has(c.key)) : colPrefs.shownColumns
   const custWidth = (key: string) => compact ? (CUSTOMERS_COL_COMPACT[key] ?? 60) : colPrefs.getWidth(key, CUSTOMERS_COL_DEFAULTS[key] ?? 100)
   const cellPx = compact ? 'px-1' : 'px-3'
 
@@ -362,6 +365,7 @@ export default function CustomersPage({
           sits on the top bar beside the staff names (PageToolbar), so the table starts at the very top. Totals
           live in the table's own Sales / Outstanding / Receipts columns. */}
       <PageToolbar>
+        <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-1.5">
         <PageGuide page="customers" />
         <select value={activeFlag ?? ''} onChange={e => setActiveFlag((e.target.value || null) as FlagKey | null)}
           title="Show only customers missing something"
@@ -386,6 +390,7 @@ export default function CustomersPage({
           className="min-w-[120px] flex-1 bg-gray-100 border border-gray-200 rounded-lg px-2.5 py-1 text-sm outline-none focus:ring-2 focus:ring-blue-400"
         />
         <ColumnsPickerButton prefs={colPrefs} />
+        </div>
       </PageToolbar>
 
       {/* Selected customer detail */}
@@ -479,13 +484,13 @@ export default function CustomersPage({
           <table className="border-collapse text-[12px]" style={{
             tableLayout: 'fixed',
             width: idColWidth + custWidth('name')
-              + colPrefs.shownColumns.reduce((s, c) => s + custWidth(c.key), 0),
-            zoom: zoomFor(idColWidth + custWidth('name') + colPrefs.shownColumns.reduce((s, c) => s + custWidth(c.key), 0)),
+              + tableCols.reduce((s, c) => s + custWidth(c.key), 0),
+            zoom: zoomFor(idColWidth + custWidth('name') + tableCols.reduce((s, c) => s + custWidth(c.key), 0)),
           }}>
             <colgroup>
               <col style={{ width: idColWidth }} />
               <col style={{ width: custWidth('name') }} />
-              {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: custWidth(c.key) }} />)}
+              {tableCols.map(c => <col key={c.key} style={{ width: custWidth(c.key) }} />)}
             </colgroup>
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[12px] uppercase tracking-wide">
@@ -496,8 +501,8 @@ export default function CustomersPage({
                   <span className="block truncate">Name</span>
                   <ColResizeHandle onResize={d => colPrefs.resizeWidth('name', d, CUSTOMERS_COL_DEFAULTS.name)} onReset={() => colPrefs.resetWidth('name')} />
                 </th>
-                {colPrefs.shownColumns.map((col, i) => (
-                  <ResizableTh key={col.key} align={CUSTOMER_COL_BY_KEY.get(col.key)!.align} noDivider={i === colPrefs.shownColumns.length - 1}
+                {tableCols.map((col, i) => (
+                  <ResizableTh key={col.key} align={CUSTOMER_COL_BY_KEY.get(col.key)!.align} noDivider={i === tableCols.length - 1}
                     onResize={d => colPrefs.resizeWidth(col.key, d, CUSTOMERS_COL_DEFAULTS[col.key] ?? 100)} onReset={() => colPrefs.resetWidth(col.key)}>
                     {col.label}
                   </ResizableTh>
@@ -515,7 +520,7 @@ export default function CustomersPage({
                   </td>
                   <td style={{ left: idColWidth }} className={`${cellPx} py-0 font-semibold text-gray-900 ${compact ? 'break-words leading-tight' : 'truncate'} sticky z-10 bg-inherit border-r border-gray-200`}>
                     <span className="inline-flex items-center gap-1">
-                      {isIncomplete && (
+                      {isIncomplete && activeFlag && (
                         <span className="text-amber-500 font-bold" title="Incomplete profile">⚠️</span>
                       )}
                       {v.is_internal && (
@@ -524,7 +529,7 @@ export default function CustomersPage({
                       {v.display_name}
                     </span>
                   </td>
-                  {colPrefs.shownColumns.map(col => {
+                  {tableCols.map(col => {
                     const meta = CUSTOMER_COL_BY_KEY.get(col.key)!
                     return (
                       <td key={col.key} className={`${cellPx} py-0 truncate ${meta.align === 'right' ? 'text-right' : ''} ${meta.tdClass}`}>

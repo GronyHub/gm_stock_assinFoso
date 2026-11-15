@@ -260,23 +260,21 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 <button onClick={() => changeTab('loss')} title="Biz"
                   style={{ color: PANE_ACCENT.loss }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
-                    ${outerTab === 'loss' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                    ${outerTab === 'loss' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>
                   💰 Biz
                 </button>
               )}
               {canSeeUK && (
                 <button onClick={() => changeTab('uk')} title="UK"
-                  style={{ color: PANE_ACCENT.uk }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
-                    ${outerTab === 'uk' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                    ${outerTab === 'uk' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>
                   🇬🇧 UK
                 </button>
               )}
               {canSeeCHTab && (
                 <button onClick={() => changeTab('ch')} title="C&H"
-                  style={{ color: PANE_ACCENT.ch }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
-                    ${outerTab === 'ch' ? 'bg-white/10 border-2 border-current' : 'border-2 border-transparent text-white/40 hover:text-white/70'}`}>
+                    ${outerTab === 'ch' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>
                   🏢 C&H
                 </button>
               )}
