@@ -12,12 +12,19 @@ import HubSelectionBar from './HubSelectionBar'
 
 export default function HubMainRow({ h }: { h: HubCtx }) {
   const { outerTab, settingsOpen, uk, setUkPaneRefresh, role, isGrony, canOpenSettings } = h
-  // On a phone the menu is hidden behind the bottom More tab; it opens as a full-height overlay and closes on any tap inside it.
+  // On a phone there is no side menu: the bottom More tab opens the same grouped menu as a full-screen page (Menu header, close button),
+  // and it closes on any tap on one of its buttons. Computers keep the sidebar.
   const [moreOpen, setMoreOpen] = useState(false)
   return (<><div className="relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0">
-        {moreOpen && <div className="fixed inset-0 z-40 bg-black/40 sm:hidden" onClick={() => setMoreOpen(false)} />}
-        <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle')) setMoreOpen(false) }}
-          className={moreOpen ? 'fixed bottom-[56px] left-0 top-0 z-50 flex' : 'hidden sm:flex'}>
+        <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle') && !b.hasAttribute('data-menu-close')) setMoreOpen(false) }}
+          className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : 'hidden sm:flex'}>
+          {moreOpen && (
+            <div className="flex shrink-0 items-center justify-between border-b border-white/20 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:hidden">
+              <h1 className="text-lg text-white">Menu</h1>
+              <button type="button" data-menu-close onClick={() => setMoreOpen(false)} aria-label="Close menu"
+                className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-white hover:bg-white/10">✕</button>
+            </div>
+          )}
           <HubSidePane h={h} />
         </div>
         {/* Restore button while the pane is hidden -- floats over the

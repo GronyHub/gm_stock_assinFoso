@@ -141,12 +141,12 @@ export default function PresentStaffBar({ roster, selfName, onOpenStaff, onOpenS
   if (vertical) {
     const others = computed.filter(s => s.staff_name.toLowerCase() !== selfName.toLowerCase())
     return (
-      <div className="flex flex-col gap-1 px-1 pt-1">
+      <div data-team-list className="flex flex-col gap-1 px-1 pt-1">
         {others.map(s => {
           const k = s.staff_name.toLowerCase(), w = waitingBy?.[k], p = pts[k]
           const on = !!activeStaff && activeStaff.toLowerCase() === k
           return (
-            <button key={s.staff_name} type="button" data-keep-embed onClick={() => onOpenStaff(s.staff_name, 'times')}
+            <button key={s.staff_name} type="button" data-keep-embed data-team-card onClick={() => onOpenStaff(s.staff_name, 'times')}
               title={`${s.staff_name}: ${s.status === 'absent' ? 'not clocked in today' : s.status === 'break' ? 'on break' : s.status === 'out' ? 'clocked out' : 'clocked in'}${s.totalMins != null ? ` · ${fmtHrMin(s.workedMins)}/${fmtHrMin(s.totalMins)}` : ''}`}
               className={`relative flex w-full min-w-0 flex-col items-start gap-px rounded-lg px-1 py-0.5 text-left ${on ? 'bg-white/35 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20'} ${s.status === 'absent' ? 'opacity-60' : ''}`}>
               {(w?.total ?? 0) > 0 && <span className={`absolute -right-1 -top-1 z-10 min-w-[16px] rounded-full px-1 text-center text-[12px] font-extrabold leading-4 text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total > 99 ? '99+' : w!.total}</span>}

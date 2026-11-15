@@ -62,6 +62,18 @@ body {
   --font-weight-extrabold: 700;
   --font-weight-black: 700;
 }
+/* The phone Menu page (the bottom More tab, see HubMainRow): menu rows have the icon and the label side by side with a
+   comfortable height, and the team cards sit two across. The sidebar on a computer is not touched by these rules. */
+.menu-page nav button:not([data-team-card]) {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.menu-page [data-team-list] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 /* Headings are medium weight (unlayered, so it wins over a heading's own bold class). */
 h1, h2, h3, h4 { font-weight: 500; }
 
