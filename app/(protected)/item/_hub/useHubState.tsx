@@ -5817,7 +5817,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
   // liveMode check the way the original LiveSaleForm's searchControlsNode
   // did (it was one shared function reachable from a slot the host could
   // in principle request from any mode).
-  function renderLiveSearchControls(compact: boolean) {
+  function renderLiveSearchControls(compact: boolean, cameraSlot?: React.ReactNode) {
     const pickedItem = livePickedItemId !== null ? liveAllItems.find(i => i.id === livePickedItemId) : null
     const displayValue = pickedItem ? pickedItem.name : liveItemPickerQuery
     return (
@@ -5840,8 +5840,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 setLiveItemPickerQuery('')
               }
             }}
-            placeholder={compact ? 'Search item…' : 'Search & pick item…'}
-            className={`border focus:outline-none focus:ring-1 w-full pr-7 ${
+            placeholder={compact ? (cameraSlot ? 'Search…' : 'Search item…') : 'Search & pick item…'}
+            className={`border focus:outline-none focus:ring-1 w-full ${cameraSlot ? 'pr-14' : 'pr-7'} ${
               compact ? 'text-[12px] px-2 py-1 rounded-md bg-white' : 'text-sm px-3 py-1.5 w-32 sm:w-48 rounded-lg'
             } ${
               livePickedItemId !== null
@@ -5849,6 +5849,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 : 'border-gray-300 focus:ring-blue-400'
             }`}
           />
+          {compact && cameraSlot && (
+            <span className={`absolute top-1/2 -translate-y-1/2 ${(liveItemPickerQuery || livePickedItemId !== null) ? 'right-6' : 'right-1'}`}>{cameraSlot}</span>
+          )}
           {(liveItemPickerQuery || livePickedItemId !== null) && (
             <span
               onClick={() => {

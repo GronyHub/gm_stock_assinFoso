@@ -1,4 +1,5 @@
 'use client'
+import HubStatusStrip from './HubStatusStrip'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PresentStaffBar from '../_components/PresentStaffBar'
@@ -89,6 +90,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               back to Sale/Log/etc. from either is one tap. Every other
               lossView (Vendors, Expenses, Opener, etc.) still has nothing
               to do with this switcher and doesn't show it. */}
+          <HubStatusStrip h={h} />
           {<HubFilterBar h={h} />}
           {/* ── Content ── */}
           <HubContentColumn h={h} />
