@@ -101,11 +101,11 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 <SidePaneButton icon="•" label="Loss by Items" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_items')} onClick={() => goLossSubView('loss_by_items')} />
                 {liveNetLossCount > 0 && (
-                  <SidePaneButton icon="•" label={`Net Loss (${liveNetLossCount})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                  <SidePaneButton icon="•" label="Net Loss" badge={fl(liveNetLossCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'net_loss')} onClick={() => goLossSubView('net_loss')} />
                 )}
                 {liveAcpGteSpCount > 0 && (
-                  <SidePaneButton icon="•" label={`Cost ≥ Selling Price (${liveAcpGteSpCount})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                  <SidePaneButton icon="•" label="Cost ≥ Selling Price" badge={fl(liveAcpGteSpCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
                 )}
               </>)}

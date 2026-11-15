@@ -23,7 +23,7 @@ export default function PaneDaily({ mode, onDaily, dailyActive }: {
 }) {
   return (
     <div className="border-t border-white/10 flex items-stretch shrink-0">
-      <SidePaneButton icon={DailyIcon} label="Daily" mode={mode} active={dailyActive}
+      <SidePaneButton icon={DailyIcon} label="Daily Summary" mode={mode} active={dailyActive}
         onClick={onDaily} className="w-full" />
     </div>
   )
