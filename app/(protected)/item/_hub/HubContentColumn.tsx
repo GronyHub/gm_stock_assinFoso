@@ -33,7 +33,10 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                   Sales tab's own violations row for the same reason -- both
                   are an actual per-sale loss rather than a data-hygiene gap
                   (see renderCostGteSpTable/renderSoldBelowCostTable). */}
-              {plSubView === 'pl' ? <><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="pl" /></PageToolbar><ProfitLossTab /></> :
+              {plSubView === 'pl' ? <><div className="flex gap-2 px-2 pt-2">
+                  <button type="button" onClick={() => pickPL()} className={`rounded-lg px-3 py-1 text-xs font-bold ${'bg-blue-600 text-white'}`}>P&amp;L</button>
+                  <button type="button" onClick={() => pickLossView('cab')} className={`rounded-lg px-3 py-1 text-xs font-bold ${'bg-gray-100 text-gray-700'}`}>Cash at bank{cabFlagsCount ? ` (${cabFlagsCount})` : ''}</button>
+                </div><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="pl" /></PageToolbar><ProfitLossTab /></> :
                 plSubView === 'loss_by_date' ? renderLossesByDateTable() :
                 plSubView === 'loss_by_items' ? renderLossesByItemsTable() :
                 plSubView === 'net_loss' ? renderLossesByItemsTable(true) :
@@ -226,7 +229,12 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
             <div className="flex-1 overflow-y-auto min-h-0"><ExpenseOrdersPanel /></div>
           </TabErrorBoundary>
         )}
-        {outerTab === 'loss' && lossView === 'cab' && <><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="cab" /></PageToolbar><CABTab openConfirmSignal={cabConfirmSignal} /></>}
+        {outerTab === 'loss' && lossView === 'cab' && <>
+          <div className="flex gap-2 px-2 pt-2">
+            <button type="button" onClick={() => pickPL()} className="rounded-lg bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700">P&amp;L</button>
+            <button type="button" onClick={() => pickLossView('cab')} className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white">Cash at bank</button>
+          </div>
+          <PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="cab" /></PageToolbar><CABTab openConfirmSignal={cabConfirmSignal} /></>}
         {/* Items pill selected -> ItemsTab's filtered fix view; otherwise the
             submenu's normal content (LossTab). Same swap pattern for
             Sales/Counts/Feed below -- each of those already knows how to

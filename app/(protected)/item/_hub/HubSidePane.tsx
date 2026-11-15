@@ -161,11 +161,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               </>)}
               {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
-                  active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
-              )}
-              {canSeePL && isOwnerOrJoe && (
-                <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
-                  active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
+                  active={paneActive((lossView === 'pl' && plSubView === 'pl') || lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickPL()} />
               )}
             </div>
             )}
