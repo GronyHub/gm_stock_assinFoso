@@ -4,14 +4,18 @@ import type { HubCtx } from './useHubState'
 // Phone only (hidden from 640px wide): five places used most, along the bottom where a thumb reaches them.
 // More opens the full grouped menu (Work, Records, Money, Reports, Admin) as an overlay (see HubMainRow).
 export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: { h: HubCtx; moreOpen: boolean; onToggleMore: () => void; onNavigate: () => void }) {
-  const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap } = h
+  const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap, isOwnerOrJoe, canSeeManage, canSeeTeam } = h
+  const manage = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const liveActive = !moreOpen && !!paneActive(modeActive('sale'))
   const goLive = () => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }
   // Five places: Home (the day at a glance), Waiting, the central + (a new sale on Live), Sales Log, More. The + is the most common action, so it is raised.
   // Customers is under More > Records.
   const tabs = [
     { key: 'home', icon: '🏠', label: 'Home', active: !moreOpen && !!shop && shop.tab === 'dashboard', go: () => openShop('dashboard') },
-    { key: 'todo', icon: '✅', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
+    // Owner-level people get Manage (Times, Penalty Points, the Manage sections, Advert...); everyone else keeps Waiting.
+    manage
+      ? { key: 'todo', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'laws'].includes(shop.tab), go: () => openShop('times') }
+      : { key: 'todo', icon: '✅', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
     { key: 'sale', icon: '+', label: 'New sale', active: liveActive, go: goLive },
     { key: 'log', icon: '📈', label: 'Sales Log', active: !moreOpen && !!paneActive(modeActive('log')), go: () => goItemsMode('log') },
     { key: 'more', icon: '☰', label: 'More', active: moreOpen, go: onToggleMore },
