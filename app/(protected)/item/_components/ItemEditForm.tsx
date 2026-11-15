@@ -26,14 +26,14 @@ export const EMPTY_ITEM_EDIT_FORM = {
 const SIZES = {
   compact: {
     wrap: 'space-y-1 p-1.5 bg-gray-50 border-b border-gray-200',
-    input: 'w-full bg-white border border-gray-300 rounded-md px-1.5 py-1 text-[12px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
+    input: 'w-full bg-white border border-gray-300 rounded-md px-1.5 py-1.5 sm:py-1 text-[14px] sm:text-[12px] text-gray-900 outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition',
     // Read-only (not editMode) display -- deliberately NOT the same look as
     // `input` above. A field styled like an open text box even while locked
     // reads as editable when it isn't; plain text with no border makes
     // "you have to press Edit first" obvious at a glance instead of just
     // true-but-invisible.
-    readOnly: 'truncate text-[12px] text-gray-700 leading-tight py-0.5',
-    label: 'text-[12px] font-bold text-gray-500 uppercase tracking-wide block leading-none mb-0.5',
+    readOnly: 'text-[14px] sm:text-[12px] sm:truncate text-gray-900 sm:text-gray-700 leading-snug sm:leading-tight py-0.5',
+    label: 'text-[13px] sm:text-[12px] font-semibold sm:font-bold text-gray-500 normal-case sm:uppercase tracking-normal sm:tracking-wide block leading-none mb-0.5',
     fieldGap: 'gap-1',
     sectionLabel: 'text-[12px] font-bold text-gray-500 uppercase tracking-wide block',
     sectionWrap: 'pt-1 border-t border-gray-200 space-y-1',
@@ -174,7 +174,7 @@ export function ItemEditForm({ form, onChange, groups, itemId, isService, allIte
   return (
     <div className={s.wrap}>
       <div className={`flex items-start justify-between gap-3 ${large ? 'mb-4' : ''}`}>
-      <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-4 ${s.fieldGap} flex-1`}>
+      <div className={large ? 'grid grid-cols-3 gap-3 flex-1' : `grid grid-cols-2 sm:grid-cols-4 ${s.fieldGap} flex-1`}>
         {/* Item name isn't a field in this grid -- the grid-edit sheet
             renames it inline via its own red title bar instead (see
             item/page.tsx), so there's no separate "Item name" box

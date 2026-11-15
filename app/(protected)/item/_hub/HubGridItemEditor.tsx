@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemEditForm } from '../_components/ItemEditForm'
 import { ItemDetailErrorBoundary } from '../_components/ItemDetailErrorBoundary'
@@ -6,71 +7,77 @@ import { ItemDetailPanel, AliasPicker, MatchPicker, MergeItemPicker, LossTab, fo
 import type { HubCtx } from './useHubState'
 
 export default function HubGridItemEditor({ h }: { h: HubCtx }) {
+  // Phones: the aliases list and the rarely used Backdate / Count forms start folded away. On a computer they always show.
+  const [showAliases, setShowAliases] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const { items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem } = h
   return (<>{liveEditingGridItemId != null && (() => {
             const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
             return (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2">
-                <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                  <div className="px-2 py-1 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10 gap-2">
+              <div className="fixed inset-0 z-[70] flex items-stretch justify-center bg-black/50 sm:items-center sm:p-2">
+                <div className="h-full w-full overflow-y-auto bg-white shadow-xl sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-lg">
+                  <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-gray-200 bg-white px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:pt-2">
+                    <button type="button" onClick={() => setLiveEditingGridItemId(null)} aria-label="Back"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl text-gray-700 hover:bg-gray-100 sm:hidden">←</button>
                     {liveGridEditRelationsOpen ? (
                       <input
                         value={liveEditForm.item_name}
                         onChange={e => setLiveEditForm({ ...liveEditForm, item_name: e.target.value })}
                         placeholder="Item name *"
-                        className="min-w-0 flex-1 text-xs font-bold text-red-600 uppercase bg-red-50 border border-red-200 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-red-400"
+                        className="min-w-0 flex-1 rounded border border-gray-300 bg-white px-2 py-1 text-base font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-400"
                       />
                     ) : (
-                      <h2 className="text-xs font-bold text-red-600 truncate">{editItem?.name.toUpperCase()}</h2>
+                      <h2 className="min-w-0 flex-1 truncate text-base font-bold text-gray-900">{editItem?.name}</h2>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setLiveEditingGridItemId(null)}
-                      className="text-gray-500 hover:text-gray-700 text-xl font-light"
-                    >
-                      ×
-                    </button>
+                    <button type="button" onClick={() => setLiveEditingGridItemId(null)} aria-label="Close"
+                      className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl font-light text-gray-500 hover:bg-gray-100 hover:text-gray-700 sm:flex">×</button>
                   </div>
                   <div className="overflow-y-auto">
                     {editItem && !liveGridEditLoading && (
                       <div className="border-b border-gray-200 bg-gray-50 px-1.5 py-1">
                         {!liveGridEditRelationsOpen ? (
-                          <div className="flex items-center justify-between gap-1.5">
-                            <div className="flex flex-wrap gap-1.5 flex-1 items-center text-[12px]">
-                              <div className="flex items-center gap-1">
-                                <span className="font-semibold text-gray-600">Aliases:</span>
-                                {liveGridEditAliases.length === 0 ? (
-                                  <span className="text-gray-400">—</span>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1 space-y-1.5 text-[13px]">
+                              {(() => {
+                                // The same name saved twice shows once; names marked old are faded.
+                                const uniq = Array.from(new Map(liveGridEditAliases.map(x => [x.name.trim().toLowerCase(), x])).values())
+                                return uniq.length === 0 ? (
+                                  <p className="text-gray-500"><span className="font-semibold text-gray-700">Aliases:</span> none</p>
                                 ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {liveGridEditAliases.map(a => (
-                                      <span key={a.id} className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
-                                        {a.name}
-                                      </span>
-                                    ))}
+                                  <div>
+                                    <button type="button" onClick={() => setShowAliases(v => !v)} aria-expanded={showAliases} className="flex items-center gap-1 font-semibold text-gray-700">
+                                      Aliases ({uniq.length}) <span className="text-gray-400">{showAliases ? '▾' : '▸'}</span>
+                                    </button>
+                                    {showAliases && (
+                                      <div className="mt-1 flex flex-wrap gap-1">
+                                        {uniq.map(a => (
+                                          <span key={a.id} className={`inline-block rounded-full px-2 py-0.5 text-[12px] font-semibold ${/\bold\b/i.test(a.name) ? 'bg-gray-100 text-gray-400' : 'bg-blue-50 text-blue-700'}`}>
+                                            {a.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="font-semibold text-gray-600">
+                                )
+                              })()}
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="font-semibold text-gray-700">
                                   {editItem.product_type === 'service' ? 'Goods used:' : 'Services used:'}
                                 </span>
                                 {liveGridEditMatches.length === 0 ? (
-                                  <span className="text-gray-400">—</span>
+                                  <span className="text-gray-400">none</span>
                                 ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {liveGridEditMatches.map(m => (
-                                      <span key={m.id} className="inline-block bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-full text-[12px] font-semibold">
-                                        {m.name}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  liveGridEditMatches.map(m => (
+                                    <span key={m.id} className="inline-block rounded-full bg-purple-50 px-2 py-0.5 text-[12px] font-semibold text-purple-700">
+                                      {m.name}
+                                    </span>
+                                  ))
                                 )}
                               </div>
                             </div>
                             <button
                               onClick={() => setLiveGridEditRelationsOpen(true)}
-                              className="shrink-0 text-[12px] font-semibold px-1.5 py-0.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition whitespace-nowrap">
+                              className="shrink-0 whitespace-nowrap rounded border border-gray-300 bg-white px-2.5 py-1.5 text-[13px] font-semibold text-gray-700 transition hover:bg-gray-100">
                               ✎ Edit
                             </button>
                           </div>
@@ -186,10 +193,17 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                         </div>
                       )}
                     </div>
+                    {editItem && !liveGridEditLoading && (
+                      <button type="button" onClick={() => setMoreOpen(v => !v)} aria-expanded={moreOpen}
+                        className="flex w-full items-center justify-between border-b border-gray-200 px-3 py-3 text-left text-sm font-semibold text-gray-700 sm:hidden">
+                        <span>More actions <span className="font-normal text-gray-500">· Backdate a sale, Count now</span></span>
+                        <span className="text-gray-400">{moreOpen ? '▾' : '▸'}</span>
+                      </button>
+                    )}
                     {editItem && !liveGridEditLoading && (() => {
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
                       return (
-                      <div ref={liveGridEditSaleTapRef} className="px-2 py-1.5 border-b border-gray-200">
+                      <div ref={liveGridEditSaleTapRef} className={`px-2 py-1.5 border-b border-gray-200 ${moreOpen ? '' : 'hidden sm:block'}`}>
                         <p className="text-xs text-gray-500 mb-1">Backdate a sale (only if it wasn't tapped on the item card)</p>
                         {liveTapStatus.length > 0 && (
                           <div className="mb-1.5 p-1.5 bg-gray-50 border border-gray-200 rounded text-[12px] font-mono text-gray-600 max-h-24 overflow-y-auto">
@@ -198,7 +212,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                             ))}
                           </div>
                         )}
-                        <div className="flex gap-1 items-center">
+                        <div className="flex flex-wrap gap-1.5 items-center">
                           <input
                             ref={liveGridEditQtyInputRef}
                             type="number"
@@ -228,7 +242,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                             value={liveTapTime}
                             onChange={e => { setLiveTapTime(e.target.value); setLiveTapTimeTouched(true) }}
                             title="Only sent to the server if you actually change it -- otherwise the tap records the real current time."
-                            className="flex-1 min-w-0 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
+                            className="min-w-[10rem] flex-1 text-xs text-gray-900 bg-white border border-gray-300 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-blue-400"
                           />
                           <button
                             onClick={async () => {
@@ -251,7 +265,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
                       const currentCount = overdueItem ? Math.ceil(Number(overdueItem.calculated_soh)) : null
                       return (
-                      <div className="px-2 py-1.5 border-b border-gray-200">
+                      <div className={`px-2 py-1.5 border-b border-gray-200 ${overdueItem || moreOpen ? '' : 'hidden sm:block'}`}>
                         {overdueItem ? (
                           <>
                             <p className="text-xs text-red-600 font-medium mb-1">
@@ -327,6 +341,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                         </ItemDetailErrorBoundary>
                       </div>
                     )}
+                    <div className="h-[max(1.5rem,env(safe-area-inset-bottom))]" />
                   </div>
                 </div>
               </div>
