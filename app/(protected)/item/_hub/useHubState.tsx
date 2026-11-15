@@ -761,6 +761,8 @@ export function useHubState() {
   // Keyed by item card id, or 'main' for the main Live Sale form.
   const [liveLabelByKey, setLiveLabelByKey] = useState<Record<string, string>>({})
   const [justTappedItemIds, setJustTappedItemIds] = useState<Set<number>>(new Set())
+  // The sale just recorded from a tile: shown with an Undo for a short time (see HubPhoneTabs).
+  const [lastSaleUndo, setLastSaleUndo] = useState<{ tapId: number; name: string } | null>(null)
   // Same idea, own map -- the Count Due chart's per-row qty box (see
   // renderCountDueChart/recordInlineCount below). Kept separate from
   // liveInlineQtyByItemId (a sale qty) rather than shared, since the same
@@ -3762,6 +3764,7 @@ export function useHubState() {
     const batch = targets.length > 1
     const buyerIds: number[] = []
     const doneIds: number[] = []
+    let lastSaleCand: { tapId: number; name: string } | null = null
     for (const t of targets) {
       const qty = liveInlineQtyByItemId[t.id] ?? '1'
       if (!qty) continue
@@ -3773,6 +3776,7 @@ export function useHubState() {
       skipWaRef.current = batch
       lastBuyerIdRef.current = null
       try { await recordTap(t, false, qty, price) } finally { inlineCidRef.current = null; curLabelRef.current = ''; skipWaRef.current = false }
+      if (lastTapIdRef.current != null) lastSaleCand = { tapId: lastTapIdRef.current, name: t.name }
       if (lastBuyerIdRef.current != null) buyerIds.push(lastBuyerIdRef.current)
       doneIds.push(t.id)
       // Clear inline state for this item
@@ -3782,6 +3786,11 @@ export function useHubState() {
       setLiveLabelByKey(prev => (prev[String(t.id)] ? { ...prev, [String(t.id)]: '' } : prev))
     }
     setLiveCID('')
+    if (lastSaleCand) {
+      const cand: { tapId: number; name: string } = lastSaleCand
+      setLastSaleUndo(cand)
+      setTimeout(() => setLastSaleUndo(cur => (cur && cur.tapId === cand.tapId ? null : cur)), 15000)
+    }
     if (batch && buyerIds.length) {
       try {
         const r = await fetch(`/api/sales/buyers/whatsapp?ids=${buyerIds.join(',')}`)
@@ -6263,6 +6272,8 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     liveLabelByKey,
     setLiveLabelByKey,
     justTappedItemIds,
+    lastSaleUndo,
+    setLastSaleUndo,
     setJustTappedItemIds,
     liveInlineCountQtyByItemId,
     setLiveInlineCountQtyByItemId,

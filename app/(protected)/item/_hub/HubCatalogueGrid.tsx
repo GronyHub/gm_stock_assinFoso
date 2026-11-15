@@ -24,9 +24,10 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     // before -- those were nearly invisible against the
                     // white/near-white card backgrounds, so items ran
                     // together with no visible separation between them.
+                    // White cards: the status is a coloured left edge, so red only marks an overdue count (the header strip also says so).
                     const cardBgCls = due
-                      ? (overdue ? 'bg-red-50 border-red-300 hover:bg-red-100' : 'bg-amber-50 border-amber-300 hover:bg-amber-100')
-                      : (flags.length > 0 ? 'bg-orange-50 border-orange-300 hover:bg-orange-100' : 'border-gray-300 hover:bg-gray-50')
+                      ? (overdue ? 'bg-white border-gray-300 border-l-4 border-l-red-500 hover:bg-gray-50' : 'bg-white border-gray-300 border-l-4 border-l-amber-400 hover:bg-gray-50')
+                      : (flags.length > 0 ? 'bg-white border-gray-300 border-l-4 border-l-orange-400 hover:bg-gray-50' : 'bg-white border-gray-300 hover:bg-gray-50')
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && liveDueCatalogueCount > 0 && (
@@ -200,7 +201,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             onLabel={l => setLiveLabelByKey(prev => ({ ...prev, [String(item.id)]: l ?? '' }))}
                                             onRegister={(phone, done) => setRegisterFor({ phone, done })}
                                             onEnter={() => recordInlineTap(item)}
-                                            placeholder="Who?" title="Optional: who the sale is for"
+                                            placeholder="Who?"
                                             className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                                           />
                                         </label>)}
@@ -210,7 +211,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                           onClick={e => { e.stopPropagation(); recordInlineTap(item) }}
                                           aria-label={`Record sale for ${item.name}`}
                                           className={`shrink-0 w-7 h-7 rounded-full text-white text-[13px] font-bold flex items-center justify-center disabled:opacity-50 transition-colors ${
-                                            justTappedItemIds.has(item.id) ? 'bg-green-600' : 'bg-red-600 hover:bg-red-700'
+                                            justTappedItemIds.has(item.id) ? 'bg-green-900 ring-2 ring-green-300' : 'bg-green-600 hover:bg-green-700'
                                           }`}
                                         >
                                           ✓
