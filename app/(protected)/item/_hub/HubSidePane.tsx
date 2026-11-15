@@ -40,7 +40,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}
                 onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
             )}
-              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Work</p>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Work</p>
             {/* One place for everything that is waiting. A person's own list is this page filtered to their name, so there is no second list to contradict it. The badge is how many things wait for the signed-in person. */}
             <SidePaneButton icon="✅" label="Waiting for team" mode={cashDisplayMode} active={shop?.tab === 'todo'} badge={myDayBadge} divider noNewTab onClick={() => openShop('todo')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
@@ -72,7 +72,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             )}
             {show('cashGroup') && (
             <div>
-              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Records</p>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Records</p>
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'customers')} badge={fl(customersFlagsCount)} onClick={() => jumpToCustomersTab()} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
@@ -117,7 +117,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
             {show('moneyGroup') && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Money</p>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Money</p>
               {show('bills') && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
@@ -139,7 +139,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             )}
             {show('cashGroup') && (
             <div>
-              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Reports</p>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Reports</p>
               {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
                 active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
@@ -253,7 +253,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 Settings (add a menu/add a column) replaces the *content*
                 area, not a sidebar, so it keeps its own toggle button. */}
             <div className="mt-1 pt-1 border-t border-white/30">
-              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Admin</p>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Admin</p>
               {canOpenUkSettings && (
                 <SidePaneButton icon="⚙️" label="UK Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />

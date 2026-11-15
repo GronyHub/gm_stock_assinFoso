@@ -203,7 +203,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
       onMouseDown={noNewTab ? undefined : e => { if (e.button === 1) e.preventDefault() }}
       onAuxClick={noNewTab ? undefined : e => { if (e.button === 1) { e.preventDefault(); openNewTab() } }}
       style={tint ? { backgroundColor: active ? '#fff' : tint, color: active ? tint : '#fff' } : undefined}
-      className={`relative flex flex-col items-start justify-center gap-0 px-1.5 py-[3px] [@media(pointer:coarse)]:min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white touch-manipulation text-[14px] font-bold leading-[1.1] text-left transition
+      className={`relative flex flex-col items-start justify-center gap-0 px-1.5 py-[3px] [@media(pointer:coarse)]:min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white touch-manipulation text-[14px] font-medium leading-[1.1] text-left transition
         ${divider ? 'border-t border-white/35' : ''}
         ${tint ? 'font-semibold' : active ? 'bg-white text-[var(--pane-accent)] font-semibold' : shared ? 'text-yellow-300 hover:bg-white/10' : 'text-white hover:bg-white/10'} ${className}`}>
       {mode !== 'text' && (
@@ -224,7 +224,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
           each side to keep the whole thing centered. */}
       {mode !== 'icon' && (
         (chipLabel || chipBorder)
-          ? <span className="block w-full -mx-1 truncate text-[12px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
+          ? <span className="block w-full -mx-1 truncate text-[12px] font-semibold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
           : <span title={label} className="line-clamp-2 w-full break-words leading-tight">{label}</span>
       )}
     </button>
@@ -261,8 +261,12 @@ export function SidePaneContainer({ mode, footer, children, accent = '#00072d', 
     <nav aria-label="Main menu" style={{ '--pane-accent': accent } as React.CSSProperties}
       onClickCapture={onAnyClick ? (e => { if ((e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('[data-keep-embed]')) onAnyClick() }) : undefined}
       className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]`}>
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {children}
+      <div className="relative min-h-0 flex-1">
+        <div className="h-full overflow-y-auto">
+          {children}
+        </div>
+        {/* A soft fade at the bottom of the list says there is more to scroll to. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[var(--pane-accent)] to-transparent" aria-hidden="true" />
       </div>
       {footer}
     </nav>

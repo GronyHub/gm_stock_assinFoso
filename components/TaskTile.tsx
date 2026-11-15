@@ -5,11 +5,13 @@ import { shortTitle } from '@/lib/dailyChecksShared'
 // One task shown as a small text tile. Compact (six to a row): the time, the short name and who. Full (two to a row): the whole text, who it falls on,
 // the law's category and its type. A mark in the corner says how it ended: green tick = done, red cross = not done at all, dash = marked not done with a reason.
 export type TileDensity = 'compact' | 'full'
-export const tileGrid = (d: TileDensity) => (d === 'full' ? 'grid grid-cols-2 gap-1.5' : 'grid grid-cols-6 gap-1')
+// Small tiles: three to a row on a phone, six from 640px wide. Full tiles: two to a row.
+export const tileGrid = (d: TileDensity) => (d === 'full' ? 'grid grid-cols-2 gap-1.5' : 'grid grid-cols-3 gap-1 sm:grid-cols-6')
 
 export function useTileDensity(): [TileDensity, (d: TileDensity) => void] {
   const [d, setD] = useState<TileDensity>('compact')
-  useEffect(() => { try { if (localStorage.getItem('tileDensity') === 'full') setD('full') } catch { /* default */ } }, [])
+  // A saved choice wins. With none saved, a phone starts on Full (the whole text on each tile) because small tiles cut the words.
+  useEffect(() => { try { const saved = localStorage.getItem('tileDensity'); if (saved === 'full' || (saved === null && window.matchMedia('(max-width: 639px)').matches)) setD('full') } catch { /* default */ } }, [])
   return [d, (v: TileDensity) => { setD(v); try { localStorage.setItem('tileDensity', v) } catch { /* ignore */ } }]
 }
 

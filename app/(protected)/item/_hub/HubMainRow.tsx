@@ -17,7 +17,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
   return (<><div className="relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0">
         {moreOpen && <div className="fixed inset-0 z-40 bg-black/40 sm:hidden" onClick={() => setMoreOpen(false)} />}
         <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle')) setMoreOpen(false) }}
-          className={moreOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden sm:flex'}>
+          className={moreOpen ? 'fixed bottom-[56px] left-0 top-0 z-50 flex' : 'hidden sm:flex'}>
           <HubSidePane h={h} />
         </div>
         {/* Restore button while the pane is hidden -- floats over the

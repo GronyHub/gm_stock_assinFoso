@@ -47,7 +47,23 @@
 body {
   /* The phone's own system font (Roboto on Android, the same face most of the apps on the owner's phone use): sharper and slimmer than Arial. */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Crisper letters: smooth the edges, and never fake a bold (a faked bold looks blurry and heavy). */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
 }
+
+/* Lighter type, like the shopping and banking apps. Phone fonts have regular, medium and bold, so "semibold" (600) would
+   draw as bold. Every heavy weight steps down one notch instead: bold and semibold become medium, extra-bold becomes bold. */
+:root {
+  --font-weight-semibold: 500;
+  --font-weight-bold: 500;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 700;
+}
+/* Headings are medium weight (unlayered, so it wins over a heading's own bold class). */
+h1, h2, h3, h4 { font-weight: 500; }
 
 /* Sales Log: a cancelled (undone) sale. One straight red line runs through the whole row (drawn on every cell
    at mid-height, so the cells join into one line), and every text in the row is red. */
