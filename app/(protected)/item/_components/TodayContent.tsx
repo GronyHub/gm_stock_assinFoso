@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { Fragment, useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePolling } from '@/lib/usePolling'
 import { Linkify } from '@/lib/linkify'
@@ -173,6 +173,42 @@ const KINDS: { key: string; label: string; test: (c: string) => boolean }[] = [
 ]
 const kindOf = (p: { category?: string | null }) => KINDS.find(k => k.test(String(p.category ?? '').toLowerCase()))?.key ?? 'other'
 
+const KIND_LOOK: Record<string, { label: string; cls: string }> = {
+  tasks: { label: 'Task', cls: 'bg-green-100 text-green-800' },
+  laws: { label: 'Law', cls: 'bg-indigo-100 text-indigo-800' },
+  clock: { label: 'Clock', cls: 'bg-amber-100 text-amber-900' },
+  sales: { label: 'Sale', cls: 'bg-blue-100 text-blue-800' },
+  stock: { label: 'Stock', cls: 'bg-teal-100 text-teal-800' },
+  other: { label: 'Other', cls: 'bg-gray-100 text-gray-700' },
+}
+
+// Phone layout of the record: one card per entry, every fact on it (who, when, what, how long, the day's total so far). No sideways scrolling.
+function FeedCard({ p, header, total, overrides, canDelete, onDelete }: { p: Announcement; header: boolean; total: number; overrides: Record<string, number>; canDelete: boolean; onDelete: (id: number) => void }) {
+  const look = KIND_LOOK[kindOf(p)]
+  const dur = effectiveDurationSeconds(p.category, p.estimated_duration_seconds, overrides)
+  return (
+    <Fragment>
+      {header && <li className="sticky top-0 z-10 border-y border-gray-200 bg-gray-50 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-gray-500">{dayLabel(p.created_at)}</li>}
+      <li className="flex items-start gap-3 border-b border-gray-100 px-3 py-2.5">
+        <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#14213D] text-[13px] font-semibold uppercase text-white">{(p.author || '?').charAt(0)}</span>
+        <div className="min-w-0 flex-1">
+          {p.reply_to_id && <p className="mb-1 rounded border-l-2 border-gray-300 bg-gray-50 px-1.5 py-0.5 text-[12px] text-gray-500"><span className="font-semibold capitalize">{p.reply_to_author ?? 'Unknown'}</span>{p.reply_to_body ? `: ${p.reply_to_body.slice(0, 80)}${p.reply_to_body.length > 80 ? '…' : ''}` : ''}</p>}
+          {p.body && <Linkify text={p.body} as="p" className="whitespace-pre-wrap break-words text-[14px] leading-snug text-gray-900" />}
+          <MediaGrid items={p.media_urls ?? []} />
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-gray-500">
+            <span className="font-semibold capitalize text-gray-700">{p.author}</span>
+            <span>{fmtClockTime(p.created_at)}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${look.cls}`}>{look.label}</span>
+            {dur > 0 && <span>Took {formatDuration(dur)}</span>}
+            {total > 0 && <span>Day total {formatDuration(total)}</span>}
+          </p>
+        </div>
+        {canDelete && <button type="button" onClick={() => onDelete(p.id)} aria-label="Delete this post" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg text-gray-300 hover:text-red-500">×</button>}
+      </li>
+    </Fragment>
+  )
+}
+
 function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -276,13 +312,14 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
 
   // Auto-loads older announcements as the bottom sentinel scrolls into view.
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const sentinelRef2 = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const el = sentinelRef.current
-    if (!el) return
+    const els = [sentinelRef.current, sentinelRef2.current].filter(Boolean) as HTMLDivElement[]
+    if (!els.length) return
     const observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) loadMore()
+      if (entries.some(e => e.isIntersecting)) loadMore()
     }, { rootMargin: '200px' })
-    observer.observe(el)
+    els.forEach(el => observer.observe(el))
     return () => observer.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts.length, hasMore])
@@ -310,13 +347,20 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="space-y-1 border-b border-gray-200 p-2">
-        <div className="flex flex-wrap gap-1">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
-        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" className="w-full rounded-lg border border-gray-300 p-1.5 text-[12px]" />
+        <div className="-mx-2 flex gap-1.5 overflow-x-auto px-2 pb-0.5 sm:mx-0 sm:flex-wrap sm:px-0" role="tablist" aria-label="Filter the record">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} role="tab" aria-selected={kind === k.key} className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold sm:px-2 sm:py-0.5 sm:text-[12px] ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
+        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" aria-label="Search the record" className="w-full rounded-lg border border-gray-300 p-2 text-[14px] sm:p-1.5 sm:text-[12px]" />
       </div>
       {posts.length === 0 ? (
         <p className="text-[12px] text-gray-400 text-center py-3">No announcements yet.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        <ol className="sm:hidden" aria-label="What was done">
+          {shown.map((p, i) => <FeedCard key={p.id} p={p} header={i === 0 || dayKey(p.created_at) !== dayKey(shown[i - 1].created_at)} total={runningTotals[p.id] ?? 0} overrides={durationOverrides} canDelete={canDelete} onDelete={removePost} />)}
+          {shown.length === 0 && <li className="px-3 py-8 text-center text-sm text-gray-500">Nothing matches. Try another filter or search.</li>}
+          {hasMore && <li><div ref={sentinelRef} className="h-1" /></li>}
+          {loadingMore && <li className="py-3 text-center text-xs text-gray-400">Loading…</li>}
+        </ol>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-white">
               <tr className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-200">
@@ -335,11 +379,12 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
                   durationOverrides={durationOverrides}
                   canDelete={canDelete} onDelete={removePost} />
               ))}
-              {hasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef} className="h-1" /></td></tr>}
+              {hasMore && <tr><td colSpan={FEED_COLUMNS}><div ref={sentinelRef2} className="h-1" /></td></tr>}
               {loadingMore && <tr><td colSpan={FEED_COLUMNS} className="text-[12px] text-gray-400 text-center py-2">Loading…</td></tr>}
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )
