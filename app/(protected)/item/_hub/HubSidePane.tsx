@@ -1,4 +1,5 @@
 'use client'
+import { SIDEBAR_RULES, type SidebarPerms, type SidebarRule } from '@/lib/sidebarAccess'
 import { Fragment } from 'react'
 import { signOut } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
@@ -19,6 +20,8 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
   const { outerTab, lossView, setLossView, search, settingsOpen, setSettingsOpen, liveMode, itemsPageMode, liveManageSection, plSubView, lossesOpen, setLossesOpen, analyticsOpen, setAnalyticsOpen, liveSaleViolationFilter, sidePaneHidden, jumpToCustomersTab, setGlobalSearchOpen, uk, ukAllSubmenus, ukGeneralSubmenus, ch, items, globalFlags, violationCounts, salesFlagsCount, itemsFlagsCount, billsFlagsCount, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, countsFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount, taskCountFor, changeTab, myDayBadge, pendingJobsBadge, setEmbedUrl, personal, setPersonal, shop, setShop, openEmbed, openShop, openPersonal, pickLossView, pickCHView, pickViewing, cashDisplayMode, changeCashDisplayMode, session, username, isOwnerOrJoe, showFlags, fl, canManage, paneOrder, paneLabel, paneHidden, cashItemActive, cashItemClick, cashItemTaskScope, combinedCashItems, perm, canSeeCash, isCaretakerOnly, canSeePL, canSeeUsers, canViewPortalAs, canSeeUK, canSeeCaretake, canSeeCH, canSeeCHTab, canOpenSettings, canOpenUkSettings, myStaffName, viewingName, paneActive, embedActive, paneAccent, liveNetLossCount, liveAcpGteSpCount, salesByStaff, liveSaleFlagTotal, pickSaleFilter, pickPL, goItemsMode, goSaleFilter, modeActive, goLossSubView } = h
   const { isDesktop, activeStaff, waitingBy, liveTapsStatus, liveTodaySalesTotal } = h
   const purchasingOpen = paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
+  const perms: SidebarPerms = { isOwnerOrJoe, canSeeCash, canSeePL, showFlags, canSeeCH, canSeeCaretake, careLog: perm('care_log'), canOpenSettings }
+  const show = (rule: SidebarRule) => SIDEBAR_RULES[rule](perms)
   return (<>{!sidePaneHidden && (
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null); setShop(null) }}
             footer={<>
@@ -49,7 +52,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 relationship to any of these, so the list is just empty
                 (toggle + View/Sign out only) while on either of them. */}
             {outerTab === 'loss' && (<>
-            {canSeeCash && (
+            {show('cashGroup') && (
             <div>
               {/* Home moved to the tab switcher itself (first tab, above
                   Sale/Log/Sales/Bills/Expenses) -- no longer needs a row
@@ -88,7 +91,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {showFlags && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
+              {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
                 active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
@@ -144,9 +147,9 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 left intact. */}
 
             {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
-            {canSeeCash && isOwnerOrJoe && (
+            {show('moneyGroup') && (
             <div className="mt-1 pt-1 border-t border-white/30">
-              {isOwnerOrJoe && (<>
+              {show('bills') && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
               {/* Purchase Orders and Vendors belong to buying, so they open under Bills (only while Bills or one of them is showing) instead of taking two rows of their own. */}
@@ -159,7 +162,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
               </>)}
-              {canSeePL && isOwnerOrJoe && (
+              {show('pl') && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
                   active={paneActive((lossView === 'pl' && plSubView === 'pl') || lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickPL()} />
               )}
@@ -175,7 +178,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 once selected, exactly like UK's own person rows below --
                 driven by the `ch` useUKData() instance instead of `uk`. */}
             {outerTab === 'ch' && (<>
-              {(canSeeCH || canSeeCaretake || perm('care_log')) && (
+              {show('chCare') && (
                 <CareChildTiles onOpen={name => { if (lossView !== 'ch_care_today') pickCHView('ch_care_today'); requestOpenChild(name) }} />
               )}
               {CH_ITEMS.filter(item => (canSeeCH || item.key.startsWith('ch_care_'))
@@ -243,7 +246,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
               {/* Settings: the on/off switches and the private pages (team payslips and profiles, users, view as, lists, activity times, push devices, barcode labels). */}
-              {outerTab !== 'uk' && isOwnerOrJoe && canOpenSettings && (
+              {outerTab !== 'uk' && show('settings') && (
                 <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} divider active={paneActive(['settings', 'teamPayslips', 'teamProfiles', 'users', 'roles', 'viewPortalAs', 'reorderLists', 'activityDurations'].includes(lossView)) || embedActive('/notifications') || embedActive('/barcode-labels')}
                   noNewTab onClick={() => pickLossView('settings')} />
               )}
