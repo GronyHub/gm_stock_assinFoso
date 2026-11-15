@@ -20,7 +20,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
   const { outerTab, lossView, setLossView, search, settingsOpen, setSettingsOpen, liveMode, itemsPageMode, liveManageSection, plSubView, lossesOpen, setLossesOpen, analyticsOpen, setAnalyticsOpen, liveSaleViolationFilter, sidePaneHidden, jumpToCustomersTab, setGlobalSearchOpen, uk, ukAllSubmenus, ukGeneralSubmenus, ch, items, globalFlags, violationCounts, salesFlagsCount, itemsFlagsCount, billsFlagsCount, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, countsFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount, taskCountFor, changeTab, myDayBadge, pendingJobsBadge, setEmbedUrl, personal, setPersonal, shop, setShop, openEmbed, openShop, openPersonal, pickLossView, pickCHView, pickViewing, cashDisplayMode, changeCashDisplayMode, session, username, isOwnerOrJoe, showFlags, fl, canManage, paneOrder, paneLabel, paneHidden, cashItemActive, cashItemClick, cashItemTaskScope, combinedCashItems, perm, canSeeCash, isCaretakerOnly, canSeePL, canSeeUsers, canViewPortalAs, canSeeUK, canSeeCaretake, canSeeCH, canSeeCHTab, canOpenSettings, canOpenUkSettings, myStaffName, viewingName, paneActive, embedActive, paneAccent, liveNetLossCount, liveAcpGteSpCount, salesByStaff, liveSaleFlagTotal, pickSaleFilter, pickPL, goItemsMode, goSaleFilter, modeActive, goLossSubView } = h
   const { isDesktop, activeStaff, waitingBy, liveTapsStatus, liveTodaySalesTotal } = h
   const purchasingOpen = paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
-  const perms: SidebarPerms = { isOwnerOrJoe, canSeeCash, canSeePL, showFlags, canSeeCH, canSeeCaretake, careLog: perm('care_log'), canOpenSettings }
+  const perms: SidebarPerms = { isOwnerOrJoe, canSeeCash, canSeePL, showFlags, canSeeCH, canSeeCaretake, careLog: perm('care_log'), canOpenSettings, isCaretakerOnly, canSeeUK, canSeeCHTab }
   const show = (rule: SidebarRule) => SIDEBAR_RULES[rule](perms)
   return (<>{!sidePaneHidden && (
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null); setShop(null) }}
@@ -40,6 +40,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <SidePaneButton icon="👁" label="Exit view" mode={cashDisplayMode} divider noNewTab active={false}
                 onClick={() => { void fetch('/api/impersonate', { method: 'DELETE' }).finally(() => { window.location.href = '/item' }) }} />
             )}
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Work</p>
             {/* One place for everything that is waiting. A person's own list is this page filtered to their name, so there is no second list to contradict it. The badge is how many things wait for the signed-in person. */}
             <SidePaneButton icon="✅" label="Waiting for team" mode={cashDisplayMode} active={shop?.tab === 'todo'} badge={myDayBadge} divider noNewTab onClick={() => openShop('todo')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
@@ -67,6 +68,11 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(modeActive('log'))} badge={fl(salesFlagsCount)} onClick={() => goItemsMode('log')} />
+            </div>
+            )}
+            {show('cashGroup') && (
+            <div>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Records</p>
               <SidePaneButton icon="👥" label="Customers" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'customers')} badge={fl(customersFlagsCount)} onClick={() => jumpToCustomersTab()} />
               {/* Cust. Receipts and New Customer are tabs inside Customers (its own tab row), not sidebar rows. */}
@@ -91,10 +97,51 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
-                active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
+            </div>
+            )}
+
+            {/* Manage/Team pane rows retired -- both folded into the "Manage"
+                tab on the Items hub's own internal tab switcher (see
+                liveMode === 'manage' above), same move Cash's
+                Vendors/Customers/Purchase Orders/P&L/CAB rows already made.
+                GronyManageContent/StaffContent are the same components,
+                just driven by liveManageSection there instead of lossView
+                here -- pickLossView(...) quick actions/search results and
+                the permission-bounce guard above still target these
+                MANAGE_VIEW_KEYS/STAFF_TEAM_ITEMS keys directly, so those and
+                the lossView-driven render blocks lower in this file are
+                left intact. */}
+
+            {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
+            {show('moneyGroup') && (
+            <div className="mt-1 pt-1 border-t border-white/30">
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Money</p>
+              {show('bills') && (<>
+              <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
+              {/* Purchase Orders and Vendors belong to buying, so they open under Bills (only while Bills or one of them is showing) instead of taking two rows of their own. */}
+              {purchasingOpen && (<>
+                <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider className="w-full pl-4"
+                  active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
+                <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider className="w-full pl-4"
+                  active={paneActive(lossView === 'vendors')} badge={fl(vendorsFlagsCount)} onClick={() => pickLossView('vendors')} />
+              </>)}
+              <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
+                active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
+              </>)}
+              {show('pl') && (
+                <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
+                  active={paneActive((lossView === 'pl' && plSubView === 'pl') || lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickPL()} />
+              )}
+            </div>
+            )}
+            {show('cashGroup') && (
+            <div>
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Reports</p>
+              {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
+                active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
               <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={fl(lossByDateFlagsCount)}
                 noNewTab onClick={() => setLossesOpen(o => !o)} />
@@ -131,41 +178,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               </>)}
               <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={embedActive('/how-to')}
                 href="/how-to" onClick={() => openEmbed('/how-to')} />
-            </div>
-            )}
-
-            {/* Manage/Team pane rows retired -- both folded into the "Manage"
-                tab on the Items hub's own internal tab switcher (see
-                liveMode === 'manage' above), same move Cash's
-                Vendors/Customers/Purchase Orders/P&L/CAB rows already made.
-                GronyManageContent/StaffContent are the same components,
-                just driven by liveManageSection there instead of lossView
-                here -- pickLossView(...) quick actions/search results and
-                the permission-bounce guard above still target these
-                MANAGE_VIEW_KEYS/STAFF_TEAM_ITEMS keys directly, so those and
-                the lossView-driven render blocks lower in this file are
-                left intact. */}
-
-            {/* Payslips and Profile are about one person, so they are tabs on that person's own page (tap your photo at the top of this pane). */}
-            {show('moneyGroup') && (
-            <div className="mt-1 pt-1 border-t border-white/30">
-              {show('bills') && (<>
-              <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
-              {/* Purchase Orders and Vendors belong to buying, so they open under Bills (only while Bills or one of them is showing) instead of taking two rows of their own. */}
-              {purchasingOpen && (<>
-                <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider className="w-full pl-4"
-                  active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
-                <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider className="w-full pl-4"
-                  active={paneActive(lossView === 'vendors')} badge={fl(vendorsFlagsCount)} onClick={() => pickLossView('vendors')} />
-              </>)}
-              <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
-                active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
-              </>)}
-              {show('pl') && (
-                <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
-                  active={paneActive((lossView === 'pl' && plSubView === 'pl') || lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickPL()} />
-              )}
             </div>
             )}
 
@@ -241,6 +253,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 Settings (add a menu/add a column) replaces the *content*
                 area, not a sidebar, so it keeps its own toggle button. */}
             <div className="mt-1 pt-1 border-t border-white/30">
+              <p className="px-2 pt-2 pb-0.5 text-[11px] font-extrabold uppercase tracking-wide text-white/60">Admin</p>
               {canOpenUkSettings && (
                 <SidePaneButton icon="⚙️" label="UK Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
@@ -256,7 +269,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
             <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
-              {!isCaretakerOnly && (canSeeUK || canSeeCHTab) && (
+              {show('bizTab') && (
                 <button onClick={() => changeTab('loss')} title="Biz"
                   style={{ color: PANE_ACCENT.loss }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
@@ -264,14 +277,14 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   💰 Biz
                 </button>
               )}
-              {canSeeUK && (
+              {show('ukTab') && (
                 <button onClick={() => changeTab('uk')} title="UK"
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
                     ${outerTab === 'uk' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>
                   🇬🇧 UK
                 </button>
               )}
-              {canSeeCHTab && (
+              {show('chTab') && (
                 <button onClick={() => changeTab('ch')} title="C&H"
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
                     ${outerTab === 'ch' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>

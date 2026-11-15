@@ -14,6 +14,9 @@ export type SidebarPerms = {
   canSeeCH: boolean       // permission 'ch'
   canSeeCaretake: boolean // permission 'caretaker'
   careLog: boolean        // permission 'care_log'
+  isCaretakerOnly: boolean // a childrens-manager account: no Biz, UK or C&H tabs
+  canSeeUK: boolean       // permission 'uk' (or Grony)
+  canSeeCHTab: boolean    // any Care or C&H permission
   canOpenSettings: boolean
 }
 
@@ -30,6 +33,10 @@ export const SIDEBAR_RULES = {
   settings: (p: SidebarPerms) => p.isOwnerOrJoe && p.canOpenSettings,
   // Care (C&H) rows
   chCare: (p: SidebarPerms) => p.canSeeCH || p.canSeeCaretake || p.careLog,
+  // The three area tabs at the bottom of the sidebar
+  bizTab: (p: SidebarPerms) => !p.isCaretakerOnly && (p.canSeeUK || p.canSeeCHTab),
+  ukTab: (p: SidebarPerms) => p.canSeeUK,
+  chTab: (p: SidebarPerms) => p.canSeeCHTab,
 } as const
 
 export type SidebarRule = keyof typeof SIDEBAR_RULES
