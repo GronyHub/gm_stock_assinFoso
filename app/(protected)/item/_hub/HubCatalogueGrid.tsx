@@ -1,5 +1,6 @@
 'use client'
-import { Fragment } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { thumbUrlOf } from '@/lib/itemThumb'
 import { fmtDate } from '@/lib/fmtDate'
 import { formatACP } from '@/lib/fmtNumber'
 import CustomerBox from '../_components/CustomerBox'
@@ -7,7 +8,18 @@ import { formatPrice, shortCountInterval, formatLoss, itemAttentionFlags, type T
 import type { HubCtx } from './useHubState'
 import { useFeatures } from '@/lib/useFeatures'
 
+// The photo strip at the top of a tile in Pictures view: the small copy of the item's photo (falls back to the full photo).
+function TilePhoto({ url }: { url: string | null | undefined }) {
+  if (!url) return <div className="flex h-16 w-full items-center justify-center bg-gray-100 text-[11px] font-semibold text-gray-400">No photo</div>
+  return <img src={thumbUrlOf(url)} alt="" loading="lazy" onError={e => { const el = e.currentTarget; if (!el.dataset.fb) { el.dataset.fb = '1'; el.src = url } }}
+    className="h-16 w-full bg-gray-100 object-cover" />
+}
+
 export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
+  // Compact (the default: fastest to scan) or Pictures: each staff member's choice on this device.
+  const [pics, setPics] = useState(false)
+  useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [])
+  const setView = (on: boolean) => { setPics(on); try { localStorage.setItem('livePictures', on ? '1' : '0') } catch { /* ignore */ } }
   const features = useFeatures()   // Settings > Switches: the Who? box
   const { group, violation, liveSaleViolationFilter, items, liveInlineQtyByItemId, setLiveInlineQtyByItemId, liveInlinePriceByItemId, setLiveInlinePriceByItemId, liveInlineCIDByItemId, setLiveInlineCIDByItemId, liveLabelByKey, setLiveLabelByKey, justTappedItemIds, session, custNameRef, miOn, setRegisterFor, liveSaving, renderClickableItemName, liveCountStatus, liveLastCountDateByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLossByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSalesCounts, liveSortedCatalogueItems, liveDueCatalogueCount, recordInlineTap, openEditGridItem } = h
   return (<>{liveSortedCatalogueItems.map((item, idx) => {
@@ -30,6 +42,13 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                       : (flags.length > 0 ? 'bg-white border-gray-300 border-l-4 border-l-orange-400 hover:bg-gray-50' : 'bg-white border-gray-300 hover:bg-gray-50')
                     return (
                       <Fragment key={item.id}>
+                        {idx === 0 && (
+                          <div className="col-span-2 sm:col-span-3 md:col-span-6 flex items-center justify-end gap-1 border-b border-gray-200 bg-gray-50 px-2 py-1">
+                            <span className="mr-1 text-[12px] font-semibold text-gray-500">View</span>
+                            <button type="button" onClick={() => setView(false)} className={`rounded px-2 py-0.5 text-[12px] font-bold ${!pics ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}>Compact</button>
+                            <button type="button" onClick={() => setView(true)} className={`rounded px-2 py-0.5 text-[12px] font-bold ${pics ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}>Pictures</button>
+                          </div>
+                        )}
                         {idx === 0 && liveDueCatalogueCount > 0 && (
                           <div className="col-span-2 sm:col-span-3 md:col-span-6 px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
                             {liveDueCatalogueCount} item{liveDueCatalogueCount !== 1 ? 's' : ''} need{liveDueCatalogueCount === 1 ? 's' : ''} counting
@@ -107,6 +126,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                               ) : null
                             })
                           })()}
+                          {pics && <TilePhoto url={(item as { image_url?: string | null }).image_url} />}
                           <div className="px-1 py-0.5 flex flex-col">
                             {liveSaleViolationFilter === 'countDue' ? (
                               <>

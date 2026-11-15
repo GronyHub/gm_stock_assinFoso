@@ -219,7 +219,7 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
-      <ItemPicture itemId={item.item_id} />
+      <ItemPicture itemId={item.item_id} name={item.item_name} group={item.cf_group ?? null} />
       <ItemBarcodes itemId={item.item_id} canUnlink={isOwnerLevelUser} />
       {showRelationsEditor && isOwnerLevelUser && (
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
