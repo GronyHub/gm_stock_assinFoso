@@ -222,6 +222,9 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
   const authorQ = forStaff ? `author=${encodeURIComponent(forStaff)}` : ''
   const [kind, setKind] = useState('')
   const [find, setFind] = useState('')
+  const [staff, setStaff] = useState('')
+  const [when, setWhen] = useState('')
+  const [action, setAction] = useState('')
 
   // Each staff member's running cumulative total for the day, keyed by
   // announcement id -- straight from /api/announcements/daily-totals rather
@@ -342,13 +345,41 @@ function AnnouncementsPanel({ forStaff }: { forStaff?: string }) {
     load()
   }
 
-  const shown = posts.filter(p => !isPenalty(p) && (!kind || kindOf(p) === kind) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
+  const dayAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+  const inWhen = (p: Announcement) => {
+    if (!when) return true
+    const d = dayKey(p.created_at)
+    if (when === 'today') return d === dayKey(new Date().toISOString())
+    if (when === 'yesterday') return d === dayAgo(1)
+    if (when === 'week') return d >= dayAgo(6)
+    if (when === 'month') return d >= dayAgo(29)
+    return true
+  }
+  const people = Array.from(new Set(posts.map(p => (p.author || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  const actions = Array.from(new Set(posts.filter(p => !isPenalty(p)).map(p => String(p.category ?? '').trim().toLowerCase()).filter(Boolean))).sort()
+  const shown = posts.filter(p => !isPenalty(p) && (!kind || kindOf(p) === kind) && (!staff || (p.author || '').toLowerCase() === staff.toLowerCase()) && (!action || String(p.category ?? '').trim().toLowerCase() === action) && inWhen(p) && (!find.trim() || (p.body ?? '').toLowerCase().includes(find.trim().toLowerCase())))
+  const filtering = !!(kind || staff || when || action || find.trim())
+  const clearAll = () => { setKind(''); setStaff(''); setWhen(''); setAction(''); setFind('') }
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="space-y-1 border-b border-gray-200 p-2">
-        <div className="-mx-2 flex gap-1.5 overflow-x-auto px-2 pb-0.5 sm:mx-0 sm:flex-wrap sm:px-0" role="tablist" aria-label="Filter the record">{[{ key: '', label: 'Everything' }, ...KINDS, { key: 'other', label: 'Other' }].map(k => <button key={k.key || 'all'} type="button" onClick={() => setKind(k.key)} role="tab" aria-selected={kind === k.key} className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-semibold sm:px-2 sm:py-0.5 sm:text-[12px] ${kind === k.key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{k.label}</button>)}</div>
+        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+          <select value={kind} onChange={e => setKind(e.target.value)} aria-label="Type" className="min-w-0 rounded-lg border border-gray-300 bg-white p-2 text-[14px] sm:p-1.5 sm:text-[12px]">
+            <option value="">All types</option>{KINDS.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}<option value="other">Other</option>
+          </select>
+          <select value={staff} onChange={e => setStaff(e.target.value)} aria-label="Staff" className="min-w-0 rounded-lg border border-gray-300 bg-white p-2 text-[14px] sm:p-1.5 sm:text-[12px]">
+            <option value="">All staff</option>{people.map(n => <option key={n} value={n} className="capitalize">{n}</option>)}
+          </select>
+          <select value={when} onChange={e => setWhen(e.target.value)} aria-label="When" className="min-w-0 rounded-lg border border-gray-300 bg-white p-2 text-[14px] sm:p-1.5 sm:text-[12px]">
+            <option value="">Any day</option><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option>
+          </select>
+          <select value={action} onChange={e => setAction(e.target.value)} aria-label="Activity" className="min-w-0 rounded-lg border border-gray-300 bg-white p-2 text-[14px] sm:p-1.5 sm:text-[12px]">
+            <option value="">All activities</option>{actions.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
         <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search the record (a law, an item, a name)" aria-label="Search the record" className="w-full rounded-lg border border-gray-300 p-2 text-[14px] sm:p-1.5 sm:text-[12px]" />
+        {filtering && <p className="flex items-center justify-between text-[12px] text-gray-500"><span>{shown.length} shown{hasMore ? ' so far' : ''}</span><button type="button" onClick={clearAll} className="font-semibold text-blue-700">Clear filters</button></p>}
       </div>
       {posts.length === 0 ? (
         <p className="text-[12px] text-gray-400 text-center py-3">No announcements yet.</p>
