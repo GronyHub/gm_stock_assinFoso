@@ -18,6 +18,7 @@ import { formatPrice } from './hubShared'
 export default function HubSidePane({ h }: { h: HubCtx }) {
   const { outerTab, lossView, setLossView, search, settingsOpen, setSettingsOpen, liveMode, itemsPageMode, liveManageSection, plSubView, lossesOpen, setLossesOpen, analyticsOpen, setAnalyticsOpen, liveSaleViolationFilter, sidePaneHidden, jumpToCustomersTab, setGlobalSearchOpen, uk, ukAllSubmenus, ukGeneralSubmenus, ch, items, globalFlags, violationCounts, salesFlagsCount, itemsFlagsCount, billsFlagsCount, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, countsFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount, taskCountFor, changeTab, myDayBadge, pendingJobsBadge, setEmbedUrl, personal, setPersonal, shop, setShop, openEmbed, openShop, openPersonal, pickLossView, pickCHView, pickViewing, cashDisplayMode, changeCashDisplayMode, session, username, isOwnerOrJoe, showFlags, fl, canManage, paneOrder, paneLabel, paneHidden, cashItemActive, cashItemClick, cashItemTaskScope, combinedCashItems, perm, canSeeCash, isCaretakerOnly, canSeePL, canSeeUsers, canViewPortalAs, canSeeUK, canSeeCaretake, canSeeCH, canSeeCHTab, canOpenSettings, canOpenUkSettings, myStaffName, viewingName, paneActive, embedActive, paneAccent, liveNetLossCount, liveAcpGteSpCount, salesByStaff, liveSaleFlagTotal, pickSaleFilter, pickPL, goItemsMode, goSaleFilter, modeActive, goLossSubView } = h
   const { isDesktop, activeStaff, waitingBy, liveTapsStatus, liveTodaySalesTotal } = h
+  const purchasingOpen = paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
   return (<>{!sidePaneHidden && (
         <SidePaneContainer mode={cashDisplayMode} accent={paneAccent} onAnyClick={() => { setEmbedUrl(null); setPersonal(null); setShop(null) }}
             footer={<>
@@ -148,12 +149,15 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               {isOwnerOrJoe && (<>
               <SidePaneButton icon="📥" label="Bills" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('bills'))} badge={fl(billsFlagsCount)} onClick={() => goItemsMode('bills')} />
+              {/* Purchase Orders and Vendors belong to buying, so they open under Bills (only while Bills or one of them is showing) instead of taking two rows of their own. */}
+              {purchasingOpen && (<>
+                <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider className="w-full pl-4"
+                  active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
+                <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider className="w-full pl-4"
+                  active={paneActive(lossView === 'vendors')} badge={fl(vendorsFlagsCount)} onClick={() => pickLossView('vendors')} />
+              </>)}
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
-              <SidePaneButton icon="📑" label="Purchase Orders" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'purchaseOrders')} onClick={() => pickLossView('purchaseOrders')} />
-              <SidePaneButton icon="🏭" label="Vendors" mode={cashDisplayMode} divider
-                active={paneActive(lossView === 'vendors')} badge={fl(vendorsFlagsCount)} onClick={() => pickLossView('vendors')} />
               </>)}
               {canSeePL && isOwnerOrJoe && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
