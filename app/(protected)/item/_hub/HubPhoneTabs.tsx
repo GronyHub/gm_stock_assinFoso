@@ -11,8 +11,7 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
   // Five places: Home (the day at a glance), Waiting, the central + (a new sale on Live), Sales Log, More. The + is the most common action, so it is raised.
   // Customers is under More > Records.
   const tabs = [
-    { key: 'home', icon: '🏠', label: 'Home', active: !moreOpen && !!shop && shop.tab === 'dashboard', go: () => openShop('dashboard') },
-    { key: 'waiting', icon: '✅', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
+    { key: 'home', icon: '🏠', label: 'Home', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
     { key: 'sale', icon: '+', label: 'New sale', active: liveActive, go: goLive },
     ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'laws'].includes(shop.tab), go: () => openShop('times') }] : []),
     { key: 'log', icon: '📈', label: 'Sales Log', active: !moreOpen && !!paneActive(modeActive('log')), go: () => goItemsMode('log') },

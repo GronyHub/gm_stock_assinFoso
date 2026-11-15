@@ -890,7 +890,8 @@ export function useHubState() {
   // Opens my own page on a tab; before the signed-in name is known it waits (see the [username] effect below).
   const openMine = (tab: string) => { setEmbedUrl(null); setShop(null); if (usernameRef.current) setPersonal({ name: usernameRef.current, tab }); else wantMine.current = tab }
   const openEmbed = (path: string) => { setPersonal(null); const mine = MINE_PATHS[path.split('?')[0]]; if (mine) { openMine(mine); return } const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
-  const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab }) }
+  // Home and Waiting for team are one page now ('todo'): the day's cards on top, the waiting list below.
+  const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab: tab === 'dashboard' ? 'todo' : tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
