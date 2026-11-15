@@ -8,7 +8,7 @@ import { parseVerb, matchDest, fillSearchBox, type Dest } from '@/lib/voiceComma
 //  - Otherwise the sentence is a command, tried in this order: the page you are on (via the `page-voice` message: Company Laws matches tile names, then law names),
 //    a destination ("open customers", "go to the daily checklist"), a Live Sale ("ghana card, 2 pieces, 40 cedis, man in red"), then the page's search box.
 // `frame` is the page shown in the hub's right pane, when there is one. `dests` are where "open ..." can go. `onVoiceSale` is given only on Live Sale.
-export default function GlobalMic({ frame, dests = [], onVoiceSale, className = '' }: { frame?: React.RefObject<HTMLIFrameElement | null>; dests?: Dest[]; onVoiceSale?: (text: string) => void; className?: string }) {
+export default function GlobalMic({ frame, dests = [], onVoiceSale, className = '', inline = false }: { frame?: React.RefObject<HTMLIFrameElement | null>; dests?: Dest[]; onVoiceSale?: (text: string) => void; className?: string; inline?: boolean }) {
   const [on, setOn] = useState(false)
   const [hint, setHint] = useState('')
   const rec = useRef<{ stop: () => void } | null>(null)
@@ -61,6 +61,8 @@ export default function GlobalMic({ frame, dests = [], onVoiceSale, className = 
   return (<>
     {hint && <div className="fixed bottom-20 right-4 z-40 max-w-[240px] rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-lg print:hidden">{hint}</div>}
     <button type="button" onPointerDown={e => e.preventDefault()} onClick={tap} title="Speak: say where to go, what to search, or a sale" aria-label="Speak"
-      className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full text-lg text-white shadow-lg print:hidden ${on ? 'animate-pulse bg-red-600' : 'bg-red-600 hover:bg-red-700'} ${className}`}>🎤</button>
+      className={inline
+        ? `relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base text-white shadow print:hidden ${on ? 'animate-pulse bg-red-600' : 'bg-red-600 hover:bg-red-700'}`
+        : `fixed z-40 flex h-11 w-11 items-center justify-center rounded-full text-lg text-white shadow-lg print:hidden ${on ? 'animate-pulse bg-red-600' : 'bg-red-600 hover:bg-red-700'} ${className}`}>🎤</button>
   </>)
 }

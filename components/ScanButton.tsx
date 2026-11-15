@@ -10,7 +10,7 @@ type Cand = { id: number; name: string; selling_price: number }
 //  - a USB or Bluetooth barcode scanner (it types the digits and presses Enter: picked up anywhere no box is being typed in),
 //  - typing the number.
 // A barcode the app knows opens its item. A new barcode asks you once to pick its item (search, tap) and remembers it from then on.
-export default function ScanButton({ onItem, className = '' }: { onItem: (it: ScannedItem) => void; className?: string }) {
+export default function ScanButton({ onItem, className = '', inline = false }: { onItem: (it: ScannedItem) => void; className?: string; inline?: boolean }) {
   const [open, setOpen] = useState(false)
   const [code, setCode] = useState('')
   const [typed, setTyped] = useState('')
@@ -93,7 +93,9 @@ export default function ScanButton({ onItem, className = '' }: { onItem: (it: Sc
 
   return (<>
     <button type="button" onPointerDown={e => e.preventDefault()} onClick={() => { setOpen(true); setLink(null); setMsg('') }} title="Scan a barcode" aria-label="Scan a barcode"
-      className={`fixed z-40 flex h-11 w-11 items-center justify-center rounded-full bg-gray-800 text-lg text-white shadow-lg hover:bg-gray-900 print:hidden ${className}`}>📷</button>
+      className={inline
+        ? 'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-800 text-base text-white shadow hover:bg-gray-900 print:hidden'
+        : `fixed z-40 flex h-11 w-11 items-center justify-center rounded-full bg-gray-800 text-lg text-white shadow-lg hover:bg-gray-900 print:hidden ${className}`}>📷</button>
     {open && (
       <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/60 sm:items-center print:hidden" onClick={close}>
         <div onClick={e => e.stopPropagation()} className="max-h-[92vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-6 sm:rounded-3xl">

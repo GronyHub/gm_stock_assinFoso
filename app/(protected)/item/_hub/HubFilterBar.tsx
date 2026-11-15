@@ -1,4 +1,5 @@
 'use client'
+import HubPhoneTools from './HubPhoneTools'
 import { Fragment } from 'react'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
@@ -228,6 +229,7 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2">
                     {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true)}
+                    {(lossView === 'sales' || lossView === 'items') && <HubPhoneTools h={h} />}
                   </div>
                 </div>
               )}
