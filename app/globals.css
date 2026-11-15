@@ -130,3 +130,8 @@ html.framed .no-frame { display: none !important; }
 @media (max-width: 639px) {
   .cash-strip nav button[aria-label="Daily Summary"], .menu-page nav button[aria-label="Daily Summary"] { display: none; }
 }
+
+/* Team profiles live on the Waiting page now (phones), not in the Menu. */
+.home-team [data-team-list] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 4px 6px 0 0; }
+.home-team [data-team-card] { margin: 2px 4px 2px 0; }
+@media (max-width: 639px) { .menu-page [data-team-list] { display: none; } }

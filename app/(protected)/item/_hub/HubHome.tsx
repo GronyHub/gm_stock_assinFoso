@@ -1,4 +1,6 @@
 'use client'
+import PresentStaffBar from '../_components/PresentStaffBar'
+import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
 import MoneyText from '@/components/MoneyText'
 import type { HubCtx } from './useHubState'
@@ -56,6 +58,10 @@ export default function HubHome({ h }: { h: HubCtx }) {
       <div>
         <h1 className="text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
         <p className="text-sm text-gray-500">{dateText}</p>
+      </div>
+      {/* The team's profiles (phones; computers have them in the top bar): tap one to open that person. */}
+      <div className="home-team rounded-xl bg-[#00072d] p-1 sm:hidden">
+        <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={h.openPersonal} onOpenShop={() => openShop('home')} activeStaff={h.personal?.name ?? null} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         {showFlags ? (
