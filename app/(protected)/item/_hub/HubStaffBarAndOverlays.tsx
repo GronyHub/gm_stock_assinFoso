@@ -50,7 +50,8 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
           {(embedUrl || personal || shop) && (
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
               {shop ? (<>
-                {(
+                {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
+                {!(inGroup || (shop.tab === 'laws' && !mgr)) && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                     {([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
