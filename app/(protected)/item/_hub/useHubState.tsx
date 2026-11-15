@@ -902,6 +902,7 @@ export function useHubState() {
     if (me) wantMine.current = me
     else if (open && MINE_PATHS[open]) wantMine.current = MINE_PATHS[open]
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
+    ;(window as unknown as { __gmHub?: boolean }).__gmHub = true
     const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
     const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; openEmbed(d.path) }

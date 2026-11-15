@@ -64,14 +64,14 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const whoOfDuty = (d: Duty) => (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
   // A duty with a task behind it opens that task; the rest (standing duties, one-offs, jobs) are information.
   // A duty that is not a checklist tile (laws to sign, CCTV reviews, pending jobs...) opens the place where it is done: in the hub's frame through the hub, otherwise directly.
-  const goTo = (path: string) => { if (window.parent !== window) window.parent.postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
+  const goTo = (path: string) => { if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
   // A duty that is not a checklist tile: answer it here on this page (clock times, questions: the cards at the top, or the approval box), open the person's own tab (tasks, violations), or open the page where it is done.
   const dutyKind = (d: Duty) => (d.kind === 'standing' ? d.key.split(':')[1] : '')
   const tapDuty = (d: Duty): (() => void) | undefined => {
     const k = dutyKind(d)
     if (k === 'approve') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
-    if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window) window.parent.postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }
+    if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }
     return d.href ? () => goTo(d.href!) : undefined
   }
   const tileOf = (d: Duty) => (d.kind === 'task' || d.kind === 'periodic' ? tiles.find(t => t.id === d.id) : undefined)
@@ -150,9 +150,9 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
     <div className={embedded ? 'pb-24' : 'mx-auto max-w-3xl px-3 pb-24 pt-3'} onClick={e => {
       // inside the Shop's frame, pages that belong in the Shop open there (not inside this frame)
       const a = (e.target as HTMLElement).closest?.('a') as HTMLAnchorElement | null
-      if (!a || window.parent === window) return
+      if (!a || (window.parent === window && !(window as unknown as { __gmHub?: boolean }).__gmHub)) return
       const u = new URL(a.href, window.location.href)
-      if (u.origin === window.location.origin && (u.pathname.startsWith('/pending-jobs') || u.pathname.startsWith('/laws'))) { e.preventDefault(); window.parent.postMessage({ type: 'open-path', path: u.pathname + u.search }, window.location.origin) }
+      if (u.origin === window.location.origin && (u.pathname.startsWith('/pending-jobs') || u.pathname.startsWith('/laws'))) { e.preventDefault(); (window.parent !== window ? window.parent : window).postMessage({ type: 'open-path', path: u.pathname + u.search }, window.location.origin) }
     }}>
       {!embedded && (
       <div className="mb-1 flex items-center gap-2">

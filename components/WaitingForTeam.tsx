@@ -21,12 +21,13 @@ const BANDS: { key: string; label: string; test: (d: Duty) => boolean }[] = [
 ]
 const nm = (n: string | null) => (n ? n.charAt(0).toUpperCase() + n.slice(1) : '')
 // Opens another page in the Shop (the hub's right pane) from inside this frame.
-const go = (path: string) => { if (window.parent !== window) window.parent.postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
+// Inside the Shop's frame the message goes to the hub above; used directly inside the hub (Home page) it goes to the hub itself.
+const go = (path: string) => { if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage({ type: 'open-path', path }, window.location.origin); else window.location.href = path }
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
 // The Shop's first tab. One strip of small date tiles runs across the top (earlier days to the left, today, then the days ahead); the page below
 // holds only what belongs to the chosen date: today's live list, an earlier day's record, or a coming day's planned tasks (named from the rota).
-export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
+export default function WaitingForTeam({ canManage, below }: { canManage: boolean; below?: React.ReactNode }) {
   const today = todayKey()
   const [density, setDensity] = useTileDensity()
   // Filter by person: on Today anyone can; on other dates only the people the signed-in supervisor may look at.
@@ -101,6 +102,7 @@ export default function WaitingForTeam({ canManage }: { canManage: boolean }) {
           ))}
         </div>)}
       </div>
+      {below}
       {msg && <p className="mx-2 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
       {adding && (
         <div className="mx-2 mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
