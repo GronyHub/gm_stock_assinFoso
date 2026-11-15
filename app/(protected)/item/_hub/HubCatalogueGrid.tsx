@@ -73,7 +73,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && (
-                          <div className="col-span-2 sm:col-span-3 md:col-span-6 flex items-center justify-end gap-1 border-b border-gray-200 bg-gray-50 px-2 py-1">
+                          <div className="col-span-2 sm:col-span-3 md:col-span-6 flex items-center justify-end gap-1 border-b border-gray-200 bg-gray-50 px-2 py-0.5">
                             <span className="mr-auto text-[11px] text-gray-500">Hold an item to select several</span>
                             <span className="mr-1 text-[12px] font-semibold text-gray-500">View</span>
                             <button type="button" onClick={() => setView(false)} className={`rounded px-2 py-0.5 text-[12px] font-bold ${!pics ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}>Compact</button>

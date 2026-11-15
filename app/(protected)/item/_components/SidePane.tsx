@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import MySelfChip from './MySelfChip'
 
 // Shared building blocks for the "always-visible narrow left pane, full-
@@ -257,16 +257,28 @@ export function SidePaneContainer({ mode, footer, children, accent = '#00072d', 
   // shown in the right pane, so a tap on a sidebar button always shows what that button opens.
   onAnyClick?: () => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const check = () => setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8)
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el); if (el.firstElementChild) ro.observe(el.firstElementChild)
+    return () => { el.removeEventListener('scroll', check); ro.disconnect() }
+  }, [])
   return (
     <nav aria-label="Main menu" style={{ '--pane-accent': accent } as React.CSSProperties}
       onClickCapture={onAnyClick ? (e => { if ((e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('[data-keep-embed]')) onAnyClick() }) : undefined}
       className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]`}>
       <div className="relative min-h-0 flex-1">
-        <div className="h-full overflow-y-auto">
+        <div ref={scrollRef} className="h-full overflow-y-auto">
           {children}
         </div>
         {/* A soft fade at the bottom of the list says there is more to scroll to. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[var(--pane-accent)] to-transparent" aria-hidden="true" />
+        {more && <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-[var(--pane-accent)] to-transparent pb-1" aria-hidden="true"><span className="rounded-full bg-white/20 px-2 text-[11px] font-medium text-white sm:hidden">More below ▾</span></div>}
       </div>
       {footer}
     </nav>
