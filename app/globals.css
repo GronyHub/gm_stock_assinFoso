@@ -105,3 +105,16 @@ html.framed .no-frame { display: none !important; }
 .menu-page nav button.text-yellow-300 { color: #fff; }
 .menu-page [data-team-list] { padding: 4px 6px 0 0; gap: 8px; }
 .menu-page [data-team-card] { margin: 2px 4px 2px 0; overflow: visible; }
+
+/* Phone, Live page: the Menu buttons as one strip along the top, icon above a short name, scrolling sideways. */
+@media (max-width: 639px) {
+  .cash-strip { background: #00072d; border-bottom: 1px solid rgba(255,255,255,.2); }
+  .cash-strip nav { width: 100% !important; display: flex; flex-direction: row; align-items: stretch; overflow-x: auto; overflow-y: hidden; border: 0; padding: 0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .cash-strip nav::-webkit-scrollbar { display: none; }
+  .cash-strip [data-pane-fade] { display: none; }
+  .cash-strip nav div { display: contents; }
+  .cash-strip nav p, .cash-strip [data-team-list], .cash-strip [data-team-card] { display: none; }
+  .cash-strip nav button { flex: 0 0 auto; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 76px; max-width: 92px; min-height: 60px; padding: 6px 4px; border: 0 !important; font-size: 12px; text-align: center; }
+  .cash-strip nav button > span:first-child { font-size: 22px; line-height: 1; }
+  .cash-strip nav button > span:last-child { text-align: center; line-height: 1.1; }
+}

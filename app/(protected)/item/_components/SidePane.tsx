@@ -274,11 +274,11 @@ export function SidePaneContainer({ mode, footer, children, accent = '#00072d', 
       onClickCapture={onAnyClick ? (e => { if ((e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('[data-keep-embed]')) onAnyClick() }) : undefined}
       className={`${paneWidthClass(mode)} shrink-0 border-r border-white/10 bg-[var(--pane-accent)] flex flex-col min-h-0 pb-[max(0.25rem,env(safe-area-inset-bottom))]`}>
       <div className="relative min-h-0 flex-1">
-        <div ref={scrollRef} className="h-full overflow-y-auto">
+        <div ref={scrollRef} data-pane-scroll className="h-full overflow-y-auto">
           {children}
         </div>
         {/* A soft fade at the bottom of the list says there is more to scroll to. */}
-        {more && <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-[var(--pane-accent)] to-transparent pb-1" aria-hidden="true"><span className="rounded-full bg-white/20 px-2 text-[11px] font-medium text-white sm:hidden">More below ▾</span></div>}
+        {more && <div data-pane-fade className="pointer-events-none absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-[var(--pane-accent)] to-transparent pb-1" aria-hidden="true"><span className="rounded-full bg-white/20 px-2 text-[11px] font-medium text-white sm:hidden">More below ▾</span></div>}
       </div>
       {footer}
     </nav>

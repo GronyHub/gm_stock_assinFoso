@@ -27,9 +27,11 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
     } catch { /* never block the app for this */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  return (<><div className="relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0">
+  // On a phone, the Live page (the + tab) shows the same buttons as the Menu along its top, as a strip that scrolls sideways (icon above name).
+  const strip = !moreOpen && !!h.paneActive(h.modeActive('sale'))
+  return (<><div className={`relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0 ${strip ? 'max-sm:flex-col' : ''}`}>
         <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle') && !b.hasAttribute('data-menu-close')) setMoreOpen(false) }}
-          className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : 'hidden sm:flex'}>
+          className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : strip ? 'cash-strip flex shrink-0 sm:flex' : 'hidden sm:flex'}>
           {moreOpen && (
             <div className="flex shrink-0 items-center justify-between border-b border-white/20 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:hidden">
               <h1 className="text-lg text-white">Menu</h1>
