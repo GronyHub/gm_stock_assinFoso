@@ -14,7 +14,7 @@ import { useFeatures } from '@/lib/useFeatures'
 function TilePhoto({ url, onOpen }: { url: string | null | undefined; onOpen: () => void }) {
   if (!url) return (
     <button type="button" onClick={e => { e.stopPropagation(); onOpen() }}
-      className="flex h-9 w-full items-center justify-center bg-gray-50 text-[12px] font-semibold text-blue-600">+ Add photo</button>
+      className="flex h-28 w-full flex-col items-center justify-center gap-1 bg-gray-50 text-[12px] font-semibold text-blue-600"><span className="text-2xl">📷</span>+ Add photo</button>
   )
   return (
     <button type="button" onClick={e => { e.stopPropagation(); onOpen() }} aria-label="Open this item's photo" className="flex h-28 w-full items-center justify-center bg-white">

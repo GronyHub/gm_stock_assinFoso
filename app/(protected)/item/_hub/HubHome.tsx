@@ -67,8 +67,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
         <Card title="Waiting for you" value={waiting} tone={waiting > 0 ? 'warn' : 'good'} sub={waiting > 0 ? 'Tap to see them' : 'Nothing waiting'} onClick={() => openShop('todo')} />
         <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (
-          <Card title="Cash counted" tone={cash === null ? 'bad' : 'good'} onClick={go(() => goItemsMode('log'))}
-            value={cash === null ? 'Not yet' : <MoneyText v={cash} />} sub={cash === null ? 'Count it in the Sales Log' : 'Entered for today'} />
+          <Card title="Cash counted" tone={cash !== null ? 'good' : new Date().getHours() >= 18 ? 'bad' : 'plain'} onClick={go(() => goItemsMode('log'))}
+            value={cash === null ? 'Not yet' : <MoneyText v={cash} />} sub={cash === null ? 'Count it in the Sales Log before closing' : 'Entered for today'} />
         )}
         {showFlags && (
           <Card title="Flags" value={flagTotal} tone={flagTotal > 0 ? 'warn' : 'good'} sub={flagTotal > 0 ? 'Things to fix' : 'All clear'} onClick={go(() => pickLossView('flags'))} />

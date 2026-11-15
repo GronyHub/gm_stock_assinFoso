@@ -100,3 +100,8 @@ html.framed .no-frame { display: none !important; }
     min-width: 36px;
   }
 }
+
+/* Menu page: shared (yellow) rows read as normal white; team badges get room so they are not clipped */
+.menu-page nav button.text-yellow-300 { color: #fff; }
+.menu-page [data-team-list] { padding: 4px 6px 0 0; gap: 8px; }
+.menu-page [data-team-card] { margin: 2px 4px 2px 0; overflow: visible; }
