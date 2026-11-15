@@ -9,10 +9,19 @@ import type { HubCtx } from './useHubState'
 import { useFeatures } from '@/lib/useFeatures'
 
 // The photo strip at the top of a tile in Pictures view: the small copy of the item's photo (falls back to the full photo).
-function TilePhoto({ url }: { url: string | null | undefined }) {
-  if (!url) return <div className="flex h-16 w-full items-center justify-center bg-gray-100 text-[11px] font-semibold text-gray-400">No photo</div>
-  return <img src={thumbUrlOf(url)} alt="" loading="lazy" onError={e => { const el = e.currentTarget; if (!el.dataset.fb) { el.dataset.fb = '1'; el.src = url } }}
-    className="h-16 w-full bg-gray-100 object-cover" />
+// The whole photo is shown (not cropped to the strip) so the item is easy to recognise; an item with no photo gets a slim,
+// tappable strip that opens its sheet on the Photo tab.
+function TilePhoto({ url, onOpen }: { url: string | null | undefined; onOpen: () => void }) {
+  if (!url) return (
+    <button type="button" onClick={e => { e.stopPropagation(); onOpen() }}
+      className="flex h-9 w-full items-center justify-center bg-gray-50 text-[12px] font-semibold text-blue-600">+ Add photo</button>
+  )
+  return (
+    <button type="button" onClick={e => { e.stopPropagation(); onOpen() }} aria-label="Open this item's photo" className="flex h-28 w-full items-center justify-center bg-white">
+      <img src={thumbUrlOf(url)} alt="" loading="lazy" onError={e => { const el = e.currentTarget; if (!el.dataset.fb) { el.dataset.fb = '1'; el.src = url } }}
+        className="max-h-full max-w-full object-contain" />
+    </button>
+  )
 }
 
 export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
@@ -21,7 +30,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
   useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [])
   const setView = (on: boolean) => { setPics(on); try { localStorage.setItem('livePictures', on ? '1' : '0') } catch { /* ignore */ } }
   // Long-press (half a second, finger not moving) starts a selection; once something is selected, a tap on a tile selects or unselects it.
-  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect } = h
+  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab } = h
   const selecting = liveSelectedIds.length > 0
   const pressTimer = useRef<number | null>(null)
   const pressFrom = useRef({ x: 0, y: 0 })
@@ -159,7 +168,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                               ) : null
                             })
                           })()}
-                          {pics && <TilePhoto url={(item as { image_url?: string | null }).image_url} />}
+                          {pics && <TilePhoto url={(item as { image_url?: string | null }).image_url} onOpen={() => { setLiveGridEditStartTab('photo'); openEditGridItem(item.id) }} />}
                           <div className="px-1 py-0.5 flex flex-col">
                             {liveSaleViolationFilter === 'countDue' ? (
                               <>
