@@ -49,9 +49,12 @@ interface ItemDetailPanelProps {
   // Save button) -- showing this panel's separate copy underneath as well
   // would just be two editors for the same data going in and out of sync.
   showRelationsEditor?: boolean
+  // The item sheet shows the photo and the barcodes on their own tabs, so it asks the history panel to leave them out.
+  hidePicture?: boolean
+  hideBarcodes?: boolean
 }
 
-export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone, showRelationsEditor = true }: ItemDetailPanelProps) {
+export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGone, showRelationsEditor = true, hidePicture = false, hideBarcodes = false }: ItemDetailPanelProps) {
   const { data: session } = useSession()
   const isOwnerLevelUser = isOwnerLevel(session?.user as any)
 
@@ -219,8 +222,8 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
 
   return (
     <div className="overflow-x-auto">
-      <ItemPicture itemId={item.item_id} name={item.item_name} group={item.cf_group ?? null} />
-      <ItemBarcodes itemId={item.item_id} canUnlink={isOwnerLevelUser} />
+      {!hidePicture && <ItemPicture itemId={item.item_id} name={item.item_name} group={item.cf_group ?? null} />}
+      {!hideBarcodes && <ItemBarcodes itemId={item.item_id} canUnlink={isOwnerLevelUser} />}
       {showRelationsEditor && isOwnerLevelUser && (
         <div className="border-t border-b border-gray-200 bg-gray-50 px-3 py-2">
           {!editMode ? (
