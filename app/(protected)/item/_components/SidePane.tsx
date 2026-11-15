@@ -69,22 +69,9 @@ function subscribe(listener: () => void) {
 function getSnapshot() { return currentMode }
 function getServerSnapshot(): DisplayMode { return 'both' }
 
-// On a phone (under 640px wide) the sidebar is always icons only, so the
-// menu takes a narrow strip and the Sales Log, Live and the rest keep the
-// width. The saved choice still applies on a computer or tablet.
-const PHONE_QUERY = '(max-width: 639px)'
-function subscribePhone(listener: () => void) {
-  const mq = window.matchMedia(PHONE_QUERY)
-  mq.addEventListener('change', listener)
-  return () => mq.removeEventListener('change', listener)
-}
-function getPhoneSnapshot() { return window.matchMedia(PHONE_QUERY).matches }
-function getPhoneServerSnapshot() { return false }
-
 export function useSidePaneDisplayMode(): [DisplayMode, (mode: DisplayMode) => void] {
   const mode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-  const phone = useSyncExternalStore(subscribePhone, getPhoneSnapshot, getPhoneServerSnapshot)
-  return [phone ? 'icon' : mode, setGlobalMode]
+  return [mode, setGlobalMode]
 }
 
 export function paneWidthClass(mode: DisplayMode) {
@@ -238,7 +225,7 @@ export function SidePaneButton({ icon, label, active, mode, onClick, badge, task
       {mode !== 'icon' && (
         (chipLabel || chipBorder)
           ? <span className="block w-full -mx-1 truncate text-[12px] font-extrabold text-white bg-[var(--pane-accent)] uppercase tracking-wide px-2 py-1 opacity-80">{label}</span>
-          : <span className="w-full whitespace-normal break-words leading-tight">{label}</span>
+          : <span title={label} className="line-clamp-2 w-full break-words leading-tight">{label}</span>
       )}
     </button>
     {menu && (
