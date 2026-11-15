@@ -102,7 +102,7 @@ const CUSTOMERS_COL_DEFAULTS: Record<string, number> = {
 
 // Phone layout (see useFitWidth).
 const CUSTOMERS_COL_COMPACT: Record<string, number> = {
-  name: 100, customerId: 50, company: 80, phone: 78, email: 100, location: 70, status: 50,
+  name: 130, customerId: 50, company: 80, phone: 78, email: 100, location: 70, status: 64,
   lastVisited: 60, dateRegistered: 62, serviceGoods: 70, addedBy: 70, whatsapp: 55, sales: 55, outstanding: 60, receiptCount: 40,
 }
 
@@ -267,9 +267,9 @@ export default function CustomersPage({
   const { compact, wrapRef, zoomFor } = useFitWidth()
   // On a phone the compact widths win over widths saved from an earlier drag.
   const idColWidth = compact ? 50 : 120
-  // On a phone the table keeps Company, Contact and Status; Email, Location and Last Visited stay one tap away (the customer's own page).
-  const phoneHidden = new Set(['email', 'location', 'lastVisited'])
-  const tableCols = compact ? colPrefs.shownColumns.filter(c => !phoneHidden.has(c.key)) : colPrefs.shownColumns
+  // On a phone the table shows only Company, Contact and Status. Every other column is one tap away on the customer's own page.
+  const phoneShown = new Set(['company', 'phone', 'status'])
+  const tableCols = compact ? colPrefs.shownColumns.filter(c => phoneShown.has(c.key)) : colPrefs.shownColumns
   const custWidth = (key: string) => compact ? (CUSTOMERS_COL_COMPACT[key] ?? 60) : colPrefs.getWidth(key, CUSTOMERS_COL_DEFAULTS[key] ?? 100)
   const cellPx = compact ? 'px-1' : 'px-3'
 
