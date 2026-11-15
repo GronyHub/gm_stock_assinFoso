@@ -268,12 +268,13 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             </div>
 
             {/* Biz/UK/C&H navigation buttons at bottom of sidebar */}
-            <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
+            {/* On Biz these live in Settings; on UK and C&H they stay here so there is a way back. */}
+            {outerTab !== 'loss' && <div className="mt-1 pt-1 border-t border-white/30 flex flex-col gap-1">
               {show('bizTab') && (
                 <button onClick={() => changeTab('loss')} title="Biz"
                   style={{ color: PANE_ACCENT.loss }}
                   className={`w-full text-left px-3 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition
-                    ${outerTab === 'loss' ? 'bg-white/10 border-2 border-white text-white' : 'border-2 border-transparent text-white/80 hover:text-white'}`}>
+                    border-2 border-transparent text-white/80 hover:text-white`}>
                   💰 Biz
                 </button>
               )}
@@ -291,7 +292,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   🏢 C&H
                 </button>
               )}
-            </div>
+            </div>}
         </SidePaneContainer>
         )}</>)
 }

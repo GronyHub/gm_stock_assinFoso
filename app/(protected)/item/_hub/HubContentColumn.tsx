@@ -132,6 +132,8 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
             <SettingsHome canEdit={isOwnerLevel(h.session?.user as never)}
               viewing={h.myStaffName ? { names: [h.myStaffName, ...STAFF_ROSTER.filter(n => n.toLowerCase() !== h.myStaffName!.toLowerCase())], current: h.viewingName, pick: h.pickViewing } : undefined}
               pages={[
+                ...(((h as never as { canSeeUK?: boolean }).canSeeUK) ? [{ icon: '🇬🇧', label: 'UK', detail: 'Open the UK section', onClick: () => h.changeTab('uk') }] : []),
+                ...(((h as never as { canSeeCHTab?: boolean }).canSeeCHTab) ? [{ icon: '🏢', label: 'C&H', detail: 'Open the C&H section', onClick: () => h.changeTab('ch') }] : []),
                 ...(h.canManage ? STAFF_ADMIN_TEAM_ITEMS.map(t => ({ icon: t.icon, label: t.label.replace('Private ', ''), detail: t.key === 'teamPayslips' ? 'Every staff member\'s pay' : 'Every staff member\'s bio and bank details', onClick: () => h.pickLossView(t.key) })) : []),
                 ...(h.canSeeUsers || h.canManage ? [{ icon: '🔐', label: 'Users & Roles', detail: 'Logins and what each role may open', onClick: () => h.pickLossView('users' as never) }] : []),
                 ...(h.canViewPortalAs ? [{ icon: '👁', label: 'View Portal As', detail: 'See the app as a staff member sees it', onClick: () => h.pickLossView('viewPortalAs') }] : []),

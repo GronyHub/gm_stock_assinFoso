@@ -12,11 +12,9 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
   // Customers is under More > Records.
   const tabs = [
     { key: 'home', icon: '🏠', label: 'Home', active: !moreOpen && !!shop && shop.tab === 'dashboard', go: () => openShop('dashboard') },
-    // Owner-level people get Manage (Times, Penalty Points, the Manage sections, Advert...); everyone else keeps Waiting.
-    manage
-      ? { key: 'todo', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'laws'].includes(shop.tab), go: () => openShop('times') }
-      : { key: 'todo', icon: '✅', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
+    { key: 'waiting', icon: '✅', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
     { key: 'sale', icon: '+', label: 'New sale', active: liveActive, go: goLive },
+    ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'laws'].includes(shop.tab), go: () => openShop('times') }] : []),
     { key: 'log', icon: '📈', label: 'Sales Log', active: !moreOpen && !!paneActive(modeActive('log')), go: () => goItemsMode('log') },
     { key: 'more', icon: '☰', label: 'More', active: moreOpen, go: onToggleMore },
   ]

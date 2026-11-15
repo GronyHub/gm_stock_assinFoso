@@ -125,3 +125,8 @@ html.framed .no-frame { display: none !important; }
   .cash-strip nav button[aria-label="Shop"], .cash-strip nav button[aria-label="Waiting for team"], .cash-strip nav button[aria-label="How To"],
   .cash-strip nav button[aria-label="Settings"], .cash-strip nav button[aria-label="UK Settings"], .cash-strip nav button[aria-label="Sign out"] { display: none; }
 }
+
+/* Daily Summary now lives on Home (phones). */
+@media (max-width: 639px) {
+  .cash-strip nav button[aria-label="Daily Summary"], .menu-page nav button[aria-label="Daily Summary"] { display: none; }
+}

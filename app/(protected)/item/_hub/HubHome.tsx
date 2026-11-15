@@ -64,7 +64,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
         ) : (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
-        <Card title="Waiting for you" value={waiting} tone={waiting > 0 ? 'warn' : 'good'} sub={waiting > 0 ? 'Tap to see them' : 'Nothing waiting'} onClick={() => openShop('todo')} />
+        <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
         <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (
           <Card title="Cash counted" tone={cash !== null ? 'good' : new Date().getHours() >= 18 ? 'bad' : 'plain'} onClick={go(() => goItemsMode('log'))}
