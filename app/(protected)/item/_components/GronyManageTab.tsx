@@ -23,7 +23,7 @@ import { useState, Fragment } from 'react'
 export default function GronyManageContent({
   view, canManage, categoryIds,
   openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings,
-  onGoToViolation, onSelectCheckType, missingClosingReportsCount, onOpenStaff, propertiesInitialTab, advertSub,
+  onGoToViolation, onSelectCheckType, missingClosingReportsCount, onOpenStaff, propertiesInitialTab, advertSub, checksSub,
 }: {
   view: ManageView
   canManage: boolean
@@ -41,6 +41,7 @@ export default function GronyManageContent({
   propertiesInitialTab?: 'all' | 'available' | 'away' | null
   // Shows just this Advert page, with no radio row (the Shop page gives each one its own tab).
   advertSub?: ManageView
+  checksSub?: ManageView
 }) {
   // Both default to their first sub-page (rather than null) since Advert and
   // Grony Checks are now their own top-level tabs (see item/page.tsx's
@@ -48,7 +49,7 @@ export default function GronyManageContent({
   // something immediately, same as every other tab, instead of an empty
   // radio row with nothing picked yet. Grony Checks' first item is the Grid
   // table itself (GRONY_CHECKS_ITEMS[0].key === 'grony_checks').
-  const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView>(GRONY_CHECKS_ITEMS[0].key)
+  const [selectedGronyCheckItem, setSelectedGronyCheckItem] = useState<ManageView>(checksSub ?? GRONY_CHECKS_ITEMS[0].key)
   const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(advertSub ?? ADVERT_ITEMS[0].key)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
@@ -118,7 +119,7 @@ export default function GronyManageContent({
           happened to be nested inside -- restored here, no back button
           needed: picking a different radio just swaps what's shown below
           directly. */}
-      <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
+      {!checksSub && <div className="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center flex-wrap gap-x-1.5 gap-y-0.5">
         {GRONY_CHECKS_ITEMS.map((item, i) => (
           <Fragment key={item.key}>
             {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
@@ -128,7 +129,7 @@ export default function GronyManageContent({
             </label>
           </Fragment>
         ))}
-      </div>
+      </div>}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
       {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}
       {selectedGronyCheckItem === 'customer_display' && <ManageLogPanel category="customer_display" label="Customer Display" icon="🖼️" />}
