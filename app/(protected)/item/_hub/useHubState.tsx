@@ -761,6 +761,8 @@ export function useHubState() {
   // Keyed by item card id, or 'main' for the main Live Sale form.
   const [liveLabelByKey, setLiveLabelByKey] = useState<Record<string, string>>({})
   const [justTappedItemIds, setJustTappedItemIds] = useState<Set<number>>(new Set())
+  // Items picked on the Live tiles by long-press (see HubCatalogueGrid / HubSelectionBar): sold together or made into a job.
+  const [liveSelectedIds, setLiveSelectedIds] = useState<number[]>([])
   // The sale just recorded from a tile: shown with an Undo for a short time (see HubPhoneTabs).
   const [lastSaleUndo, setLastSaleUndo] = useState<{ tapId: number; name: string } | null>(null)
   // Same idea, own map -- the Count Due chart's per-row qty box (see
@@ -3695,6 +3697,33 @@ export function useHubState() {
     setTimeout(() => setJustTappedItemIds(prev => { const next = new Set(prev); next.delete(item.id); return next }), 900)
   }
 
+  // ── Long-press selection on the Live tiles ──
+  function toggleLiveSelect(id: number) { setLiveSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])) }
+  function selectedLiveItems(): LiveItem[] {
+    return liveSelectedIds.map(id => liveAllItems.find(i => i.id === id)).filter((i): i is LiveItem => !!i)
+  }
+  // What each selected item would be sold for: the quantity and price typed on its tile, else 1 at the selling price.
+  function selectionLine(it: LiveItem) {
+    return { qty: Number(liveInlineQtyByItemId[it.id] ?? '1') || 1, price: Number(liveInlinePriceByItemId[it.id] ?? it.selling_price) || 0 }
+  }
+  // Sell together: the selected items go into the MI basket (customer, date and the one receipt work as before).
+  function sellSelectedTogether() {
+    const items = selectedLiveItems()
+    if (!items.length) return
+    items.forEach(it => addToBasket(it))
+    setMiOn(true)
+    setLiveSelectedIds([])
+  }
+  // Job: the pending-job form opens with the selected items already on it.
+  function jobFromSelected() {
+    const lines = selectedLiveItems().map(it => { const l = selectionLine(it); return { item_id: it.id, name: it.name, qty: l.qty, price: l.price } })
+    if (!lines.length) return
+    openEmbed(`/pending-jobs?new=1&lines=${encodeURIComponent(JSON.stringify(lines))}`)
+    setLiveSelectedIds([])
+  }
+  // The selection belongs to the Live tiles: leaving them clears it.
+  useEffect(() => { if (liveSelectedIds.length && !(outerTab === 'loss' && (lossView === 'items' || lossView === 'sales'))) setLiveSelectedIds([]) }, [outerTab, lossView, liveSelectedIds.length])
+
   // MI: record every basket item for the customer, then issue ONE receipt for them.
   async function miComplete() {
     if (!miLines.length || miBusy) return
@@ -6277,6 +6306,13 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     justTappedItemIds,
     lastSaleUndo,
     setLastSaleUndo,
+    liveSelectedIds,
+    setLiveSelectedIds,
+    toggleLiveSelect,
+    selectedLiveItems,
+    selectionLine,
+    sellSelectedTogether,
+    jobFromSelected,
     setJustTappedItemIds,
     liveInlineCountQtyByItemId,
     setLiveInlineCountQtyByItemId,

@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { thumbUrlOf } from '@/lib/itemThumb'
 import { fmtDate } from '@/lib/fmtDate'
 import { formatACP } from '@/lib/fmtNumber'
@@ -20,6 +20,26 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
   const [pics, setPics] = useState(false)
   useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [])
   const setView = (on: boolean) => { setPics(on); try { localStorage.setItem('livePictures', on ? '1' : '0') } catch { /* ignore */ } }
+  // Long-press (half a second, finger not moving) starts a selection; once something is selected, a tap on a tile selects or unselects it.
+  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect } = h
+  const selecting = liveSelectedIds.length > 0
+  const pressTimer = useRef<number | null>(null)
+  const pressFrom = useRef({ x: 0, y: 0 })
+  const suppressClick = useRef(false)
+  const cancelPress = () => { if (pressTimer.current !== null) { window.clearTimeout(pressTimer.current); pressTimer.current = null } }
+  const startPress = (e: React.PointerEvent, id: number) => {
+    if (selecting || saleTypeForSelect === 'GMC' || (e.target as HTMLElement).closest('input,select,textarea,[aria-label^="Record sale"]')) return   // the name (a link to the item) can start a selection; the boxes and the sale tick cannot
+    pressFrom.current = { x: e.clientX, y: e.clientY }
+    cancelPress()
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = null
+      suppressClick.current = true
+      window.setTimeout(() => { suppressClick.current = false }, 800)   // the lift that ends the press must not count as a tap
+      toggleLiveSelect(id)
+      try { navigator.vibrate?.(30) } catch { /* ignore */ }
+    }, 500)
+  }
+  const movePress = (e: React.PointerEvent) => { if (pressTimer.current !== null && Math.hypot(e.clientX - pressFrom.current.x, e.clientY - pressFrom.current.y) > 10) cancelPress() }
   const features = useFeatures()   // Settings > Switches: the Who? box
   const { group, violation, liveSaleViolationFilter, items, liveInlineQtyByItemId, setLiveInlineQtyByItemId, liveInlinePriceByItemId, setLiveInlinePriceByItemId, liveInlineCIDByItemId, setLiveInlineCIDByItemId, liveLabelByKey, setLiveLabelByKey, justTappedItemIds, session, custNameRef, miOn, setRegisterFor, liveSaving, renderClickableItemName, liveCountStatus, liveLastCountDateByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLossByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSalesCounts, liveSortedCatalogueItems, liveDueCatalogueCount, recordInlineTap, openEditGridItem } = h
   return (<>{liveSortedCatalogueItems.map((item, idx) => {
@@ -40,10 +60,12 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     const cardBgCls = due
                       ? (overdue ? 'bg-white border-gray-300 border-l-4 border-l-red-500 hover:bg-gray-50' : 'bg-white border-gray-300 border-l-4 border-l-amber-400 hover:bg-gray-50')
                       : (flags.length > 0 ? 'bg-white border-gray-300 border-l-4 border-l-orange-400 hover:bg-gray-50' : 'bg-white border-gray-300 hover:bg-gray-50')
+                    const selected = liveSelectedIds.includes(item.id)
                     return (
                       <Fragment key={item.id}>
                         {idx === 0 && (
                           <div className="col-span-2 sm:col-span-3 md:col-span-6 flex items-center justify-end gap-1 border-b border-gray-200 bg-gray-50 px-2 py-1">
+                            <span className="mr-auto text-[11px] text-gray-500">Hold an item to select several</span>
                             <span className="mr-1 text-[12px] font-semibold text-gray-500">View</span>
                             <button type="button" onClick={() => setView(false)} className={`rounded px-2 py-0.5 text-[12px] font-bold ${!pics ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}>Compact</button>
                             <button type="button" onClick={() => setView(true)} className={`rounded px-2 py-0.5 text-[12px] font-bold ${pics ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-300'}`}>Pictures</button>
@@ -67,8 +89,19 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                           // works via the Count Due filter/tab, just not
                           // from a tap on this default view's card any more.
                           onClick={liveSaleViolationFilter === 'noViolations' ? undefined : () => openEditGridItem(item.id)}
-                          className={`relative flex flex-col border-r-2 border-b-2 group ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} transition`}
+                          onPointerDown={e => startPress(e, item.id)}
+                          onPointerMove={movePress}
+                          onPointerUp={cancelPress}
+                          onPointerCancel={cancelPress}
+                          onPointerLeave={cancelPress}
+                          onContextMenu={e => { if (!(e.target as HTMLElement).closest('input,textarea')) e.preventDefault() }}
+                          onClickCapture={e => {
+                            if (suppressClick.current) { suppressClick.current = false; e.preventDefault(); e.stopPropagation(); return }
+                            if (selecting && !(e.target as HTMLElement).closest('input,select,textarea')) { e.preventDefault(); e.stopPropagation(); toggleLiveSelect(item.id) }
+                          }}
+                          className={`relative flex flex-col border-r-2 border-b-2 group select-none [-webkit-touch-callout:none] [&_input]:select-text ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} ${selected ? 'ring-2 ring-inset ring-green-600' : ''} transition`}
                         >
+                          {selected && <span className="pointer-events-none absolute inset-0 z-[5] bg-green-500/15" role="img" aria-label="Selected" />}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (
                             <div className={`px-2 py-1 text-[12px] font-extrabold text-white tracking-wide flex items-center justify-between gap-2 whitespace-nowrap ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>
                               <span className="truncate">{due.label} {overdue ? 'OVERDUE' : 'DUE'}</span>

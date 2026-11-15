@@ -8,6 +8,7 @@ import type { HubCtx } from './useHubState'
 import HubSidePane from './HubSidePane'
 import HubStaffBarAndOverlays from './HubStaffBarAndOverlays'
 import HubPhoneTabs from './HubPhoneTabs'
+import HubSelectionBar from './HubSelectionBar'
 
 export default function HubMainRow({ h }: { h: HubCtx }) {
   const { outerTab, settingsOpen, uk, setUkPaneRefresh, role, isGrony, canOpenSettings } = h
@@ -38,5 +39,6 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
         <HubStaffBarAndOverlays h={h} />
       </div>
       <HubPhoneTabs h={h} moreOpen={moreOpen} onToggleMore={() => setMoreOpen(o => !o)} onNavigate={() => setMoreOpen(false)} />
+      <HubSelectionBar h={h} />
       </>)
 }

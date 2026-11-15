@@ -41,7 +41,18 @@ export default function PendingJobsClient({ canDelete }: { canDelete: boolean })
     const p = new URLSearchParams(window.location.search)
     const tap = Number(p.get('fromTap'))
     if (tap) fetch(`/api/pending-jobs/from-sale?tapId=${tap}`).then(r => r.ok ? r.json() : null).then(d => { if (!d) return; setAdding(true); setLines(d.lines ?? []); setCustQ(d.customer ?? ''); setForm(f => ({ ...f, customer: d.customer ?? '', customer_id: d.customer_id ?? '', phone: d.phone ?? '', receipt_id: d.receipt_id ?? 0, prepaid: true })) }).catch(() => {})
-    else if (p.get('new')) setAdding(true)
+    else if (p.get('new')) {
+      setAdding(true)
+      // Opened from the Live tiles with items selected (?lines=[{item_id,name,qty,price}]): start with those items on the job.
+      try {
+        const raw = JSON.parse(p.get('lines') ?? 'null')
+        if (Array.isArray(raw)) {
+          const ok = raw.filter((l): l is JobLine => !!l && typeof l.name === 'string' && l.name.trim() !== '' && Number(l.qty) > 0 && Number(l.price) >= 0)
+            .map(l => ({ item_id: typeof l.item_id === 'number' ? l.item_id : null, name: l.name.slice(0, 200), qty: Number(l.qty), price: Number(l.price) }))
+          if (ok.length) setLines(ok)
+        }
+      } catch { /* a bad link just opens the empty form */ }
+    }
   }, [])
   useEffect(() => { const t = setTimeout(() => { if (itemQ.trim().length >= 2) fetch(`/api/items/search?q=${encodeURIComponent(itemQ.trim())}`).then(r => r.ok ? r.json() : []).then(d => setItems(Array.isArray(d) ? d.slice(0, 8) : [])).catch(() => {}); else setItems([]) }, 250); return () => clearTimeout(t) }, [itemQ])
   useEffect(() => { const t = setTimeout(() => { if (custQ.trim().length >= 2 && !form.customer_id) fetch(`/api/customers/search?q=${encodeURIComponent(custQ.trim())}`).then(r => r.ok ? r.json() : []).then(d => setCusts(Array.isArray(d) ? d.slice(0, 6) : [])).catch(() => {}); else setCusts([]) }, 250); return () => clearTimeout(t) }, [custQ, form.customer_id])
