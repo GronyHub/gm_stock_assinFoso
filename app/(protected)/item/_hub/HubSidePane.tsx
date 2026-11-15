@@ -107,10 +107,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   <SidePaneButton icon="•" label={`Cost ≥ Selling Price (${liveAcpGteSpCount})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
                 )}
-                {(globalFlags?.costGteSell?.length ?? 0) > 0 && (
-                  <SidePaneButton icon="•" label={`Sold Below Cost (${globalFlags?.costGteSell?.length ?? 0})`} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                    active={paneActive(lossView === 'pl' && plSubView === 'sold_below_cost')} onClick={() => goLossSubView('sold_below_cost')} />
-                )}
               </>)}
               <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(itemsPageMode === 'sale' && ['leastSalesServices', 'leastSalesGoods', 'leastSalesGroups', 'leastPurchased'].includes(liveSaleViolationFilter))}
@@ -243,7 +239,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 area, not a sidebar, so it keeps its own toggle button. */}
             <div className="mt-1 pt-1 border-t border-white/30">
               {canOpenUkSettings && (
-                <SidePaneButton icon="⚙️" label="Settings" mode={cashDisplayMode} active={settingsOpen}
+                <SidePaneButton icon="⚙️" label="UK Settings" mode={cashDisplayMode} active={settingsOpen}
                   noNewTab onClick={() => setSettingsOpen(v => !v)} />
               )}
               {/* Settings: the on/off switches and the private pages (team payslips and profiles, users, view as, lists, activity times, push devices, barcode labels). */}
