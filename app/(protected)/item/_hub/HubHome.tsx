@@ -57,9 +57,9 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   // Owner, Joe and managers have these pages as tiles on the Manage page, so they are not repeated here.
   const hasManage = !!(h.isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam))
   const onManage = new Set(['laws', 'times', 'violations', 'dressCode', 'meeting'])
-  const tabs = PERSON_TABS.filter(t => !(isSelf && ['waiting', 'done', 'tasks'].includes(t.key)) && !(hasManage && onManage.has(t.key)) && (isSelf || t.others === 'all' || (t.others === 'manage' && may)))
+  const tabs = PERSON_TABS.filter(t => !(isSelf && ['waiting', 'done', 'tasks', 'payslips', 'profile'].includes(t.key)) && !(hasManage && onManage.has(t.key)) && (isSelf || t.others === 'all' || (t.others === 'manage' && may)))
   const w = h.waitingBy?.[who.toLowerCase()]
-  if (!who) return null
+  if (!who || tabs.length === 0) return null
   return (
     <section aria-label={`${nm(who)}'s pages`} className="space-y-1.5">
       {!isSelf && <h2 className="text-[13px] text-gray-500">{nm(who)}</h2>}
@@ -130,6 +130,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
   const [team, setTeam] = useState<Row[] | null>(null)
   // Only my own card and tiles are on this page; the rest of the team is on the Manage page (Team tab).
   const who = username
+  // My payslips and my profile open in a window over this page when my picture is tapped.
+  const [acct, setAcct] = useState<'' | 'payslips' | 'profile'>('')
   useEffect(() => {
     let live = true
     fetch('/api/staff-times/worked-today', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { if (live) setTeam(Array.isArray(d?.staff) ? d.staff : []) }).catch(() => { if (live) setTeam([]) })
@@ -167,8 +169,26 @@ export default function HubHome({ h }: { h: HubCtx }) {
           <p className="text-sm text-gray-500">{dateText}</p>
         </div>
         {/* My own picture (phones; computers have it in the top bar). The rest of the team is on the Manage page. */}
-        {username && <div className="sm:hidden"><MySelfChip name={nm(username)} username={username} sales={mySales} bare onSelect={() => undefined} /></div>}
+        {username && <div className="sm:hidden"><MySelfChip name={nm(username)} username={username} sales={mySales} bare onSelect={() => setAcct('payslips')} /></div>}
       </div>
+      {acct && username && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setAcct('')}>
+          <div role="dialog" aria-label="My account" className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white" onClick={e => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-3 py-2">
+              <div role="tablist" className="flex flex-1 gap-1.5">
+                {([['payslips', '💵 Payslips'], ['profile', '👤 Profile']] as const).map(([k, label]) => (
+                  <button key={k} type="button" role="tab" aria-selected={acct === k} onClick={() => setAcct(k)}
+                    className={`rounded-lg px-3 py-1.5 text-[14px] font-semibold ${acct === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setAcct('')} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500">✕</button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+              <StaffMemberPersonalTab key={acct} hideTabs staffName={username} initialTab={acct as never} username={h.username} role={h.role} canManage={h.canManage} staffRoster={STAFF_ROSTER} routablePages={h.routablePages} categoryIds={h.fixedCategoryIds} />
+            </div>
+          </div>
+        </div>
+      )}
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
       <div className="grid grid-cols-5 gap-1.5">
