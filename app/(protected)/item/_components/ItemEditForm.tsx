@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { COUNT_EXCLUDED_REASONS } from '@/lib/countRules'
+import { COUNT_EXCLUDED_REASONS } from '@/lib/countReasons'
 import { trimZeros, formatACP } from '@/lib/fmtNumber'
 import { formatDuration } from '@/lib/fmtDuration'
 

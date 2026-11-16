@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // serving from .next, then swaps the folders, so a build never takes the site down.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: ['web-push'],
+  // The database driver (pg) is for the server only; browser bundles get an empty stand-in (see lib/emptyPg.ts).
+  turbopack: { resolveAlias: { pg: { browser: './lib/emptyPg.ts' } } },
   // Without this, /sw.js is just a normal static file and can sit in a
   // browser's HTTP cache for a while -- a shipped service-worker fix (like
   // the fetch-passthrough one) can then silently fail to reach an already-

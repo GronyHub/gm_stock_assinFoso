@@ -78,15 +78,7 @@ export const ensureDerivedFromColumn = once(ensureDerivedFromColumnImpl)
 // Fixed reasons the item edit form offers for "Exclude from counts
 // entirely" -- kept here (not just inline in the form) so the PUT route can
 // validate against the same list a custom "Other" reason has to bypass.
-export const COUNT_EXCLUDED_REASONS = [
-  { key: 'stopped_ordering', label: 'Stopped ordering from vendor' },
-  { key: 'off_market', label: 'No longer available on the market' },
-  { key: 'poor_quality', label: 'Poor quality' },
-  { key: 'discontinued', label: 'Discontinued by manufacturer' },
-  { key: 'replaced', label: 'Replaced by another item' },
-  { key: 'seasonal', label: 'Seasonal -- out of season' },
-  { key: 'other', label: 'Other' },
-] as const
+export { COUNT_EXCLUDED_REASONS } from '@/lib/countReasons'
 
 // Called from three separate entry points in this file, several of which run
 // on the same request -- memoizing collapses those into one round trip too.
