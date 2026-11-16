@@ -108,7 +108,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                             if (suppressClick.current) { suppressClick.current = false; e.preventDefault(); e.stopPropagation(); return }
                             if (selecting && !(e.target as HTMLElement).closest('input,select,textarea')) { e.preventDefault(); e.stopPropagation(); toggleLiveSelect(item.id) }
                           }}
-                          className={`relative flex flex-col border-r-2 border-b-2 group select-none [-webkit-touch-callout:none] [&_input]:select-text ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} ${selected ? 'ring-2 ring-inset ring-green-600' : ''} transition`}
+                          className={`relative flex flex-col border-r-2 border-b-2 group select-none [content-visibility:auto] [contain-intrinsic-size:auto_160px] [-webkit-touch-callout:none] [&_input]:select-text ${liveSaleViolationFilter === 'noViolations' ? '' : 'cursor-pointer'} ${cardBgCls} ${selected ? 'ring-2 ring-inset ring-green-600' : ''} transition`}
                         >
                           {selected && <span className="pointer-events-none absolute inset-0 z-[5] bg-green-500/15" role="img" aria-label="Selected" />}
                           {liveSaleViolationFilter !== 'noViolations' && liveSaleViolationFilter === 'countDue' && due && (

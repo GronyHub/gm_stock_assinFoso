@@ -369,7 +369,8 @@ export async function POST(req: NextRequest) {
     // and the Home feed say it too.
     const who = waName ?? pickedName ?? label ?? waLocal
     const forWho = who ? ` · for ${who}${customerIdCode ? ` (${customerIdCode})` : ''}` : customerIdCode ? ` · for ${customerIdCode}` : ''
-    await logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}${forWho}`, estimatedDurationSeconds, tap.id)
+    // The log line is written in the background: the sale is already saved, so the tap does not wait for the history to be written too.
+    void logActivity(staffName, 'live sale tap', `${item.canonical_name} × ${qty} · ₵${lineAmount.toFixed(2)}${forWho}`, estimatedDurationSeconds, tap.id).catch(() => {})
     console.log('[live-tap] Success, returning tap:', tap?.id)
 
     if (smsTo) void sendSms(smsTo, purchaseMessage([{ name: item.canonical_name, qty, price }], customerIdCode), 'purchase')

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import Providers from '@/components/Providers'
 import ClientWidgets from '@/components/ClientWidgets'
+import FetchBoost from '@/components/FetchBoost'
 
 export const metadata: Metadata = {
   title: 'Grony Multimedia',
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-slate-50 text-gray-900 antialiased min-h-screen">
         <Providers>
           <ClientWidgets />
+          <FetchBoost />
           {children}
         </Providers>
       </body>
