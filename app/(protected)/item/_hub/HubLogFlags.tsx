@@ -2,6 +2,7 @@
 import { loading, LogFlagLists, type Item } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubLogRows from './HubLogRows'
+import HubLogCards from './HubLogCards'
 
 export default function HubLogFlags({ h }: { h: HubCtx }) {
   const { shop, liveTapsStatus, logZoomFor, logPeriod, setLogPeriod, logRecsStatus, logPeriodTaps, logFlag, setLogFlag, logFlagsData, setLogFlagsData, loadLiveTapsFresh, logDays } = h
@@ -31,7 +32,8 @@ export default function HubLogFlags({ h }: { h: HubCtx }) {
                   // header row stays sticky top-0, and each date header
                   // spans the full row via a real colSpan -- all standard
                   // table equivalents of what the grid version did by hand.
-                  <table className="border-collapse" style={{ zoom: logZoomFor(520) }}>
+                  <><HubLogCards h={h} />
+                  <table className="hidden border-collapse sm:table" style={{ zoom: logZoomFor(520) }}>
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="sticky left-0 top-0 z-20 bg-gray-50 h-[13px] px-0.5 text-[12px] leading-none font-semibold text-gray-600 uppercase text-left whitespace-nowrap">Item</th>
@@ -50,6 +52,6 @@ export default function HubLogFlags({ h }: { h: HubCtx }) {
                       </tr>
                     </thead>
                     <HubLogRows h={h} />
-                  </table>
+                  </table></>
                 )}</>)
 }
