@@ -39,7 +39,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
                 className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-white hover:bg-white/10">✕</button>
             </div>
           )}
-          <HubSidePane h={strip ? { ...h, cashDisplayMode: 'both' } : h} />
+          <HubSidePane h={strip ? ({ ...h, cashDisplayMode: 'both', stripAll: true } as typeof h) : h} />
         </div>
         {/* Restore button while the pane is hidden -- floats over the
             content area's own bottom-left corner rather than taking a
