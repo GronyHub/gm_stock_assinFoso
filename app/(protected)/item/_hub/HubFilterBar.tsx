@@ -51,7 +51,7 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                   Groups/Filter all share one row now -- Filter used to spill
                   onto its own row by itself since it lived in a separate
                   conditional block with its own wrapping div. */}
-              {showControls && outerTab === 'loss' && (liveMode === 'sale' || liveMode === 'log') && (
+              {showControls && outerTab === 'loss' && liveMode === 'sale' && (
                 <PageToolbar inline={liveExpanded} inlineClassName="w-full flex items-center gap-0.5 px-1.5 py-0.5 bg-white border-b border-gray-200">
                   {liveMode === 'sale' && <PageGuide page="sale" />}
                   {(lossView === 'sales' || lossView === 'items') && (<>
@@ -225,7 +225,7 @@ export default function HubFilterBar({ h }: { h: HubCtx }) {
                   inside their own liveMode block instead). Global Search's
                   own 🔍 now lives once, next to the tab switcher above, not
                   repeated here. */}
-              {!isDesktop && showControls && (liveMode === 'sale' || liveMode === 'log') && (
+              {!isDesktop && showControls && liveMode === 'sale' && (
                 <div className="px-2 py-1 border-b border-green-700">
                   <div className="flex items-center gap-2">
                     {(lossView === 'sales' || lossView === 'items') && renderLiveSearchControls(true, <HubPhoneCamera h={h} />)}
