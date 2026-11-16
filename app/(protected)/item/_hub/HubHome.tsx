@@ -17,12 +17,12 @@ const nm = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // One summary card: a title, one big figure, a short line under it, and an arrow: tap to go to where it is dealt with.
 function Card({ title, value, sub, tone = 'plain', wide = false, onClick }: { title: string; value: React.ReactNode; sub?: React.ReactNode; tone?: Tone; wide?: boolean; onClick: () => void }) {
-  // Small tiles: three to a row, one line each for the title and the number, the note kept to two lines.
+  // Five to a row: title and figure only (the note shows on the wide card, and as the tooltip on the small ones).
   return (
-    <button type="button" onClick={onClick} className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${wide ? 'col-span-3' : ''} ${TONES[tone]}`}>
-      <span className="truncate text-[12px] text-gray-600">{title}</span>
-      <span className="truncate text-[20px] leading-tight text-gray-900">{value}</span>
-      <span className="line-clamp-2 text-[11px] leading-snug text-gray-500">{sub ?? ' '}</span>
+    <button type="button" onClick={onClick} title={typeof sub === 'string' ? sub : undefined} className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${wide ? 'col-span-5 px-2.5 py-2' : ''} ${TONES[tone]}`}>
+      <span className="line-clamp-2 text-[12px] leading-tight text-gray-600">{title}</span>
+      <span className={`truncate leading-tight text-gray-900 ${wide ? 'text-[20px]' : 'text-[16px]'}`}>{value}</span>
+      {wide && <span className="line-clamp-2 text-[11px] leading-snug text-gray-500">{sub ?? ' '}</span>}
     </button>
   )
 }
@@ -54,11 +54,11 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   return (
     <section aria-label={`${nm(who)}'s pages`} className="space-y-1.5">
       <h2 className="text-[13px] text-gray-500">{isSelf ? 'You' : nm(who)}</h2>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {tabs.map(t => (
-          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
             <span aria-hidden="true" className="text-lg leading-none">{t.icon}</span>
-            <span className="w-full truncate text-[12px] text-gray-700">{t.label}</span>
+            <span className="line-clamp-2 w-full text-[12px] leading-tight text-gray-700">{t.label}</span>
             {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
           </button>
         ))}
@@ -95,20 +95,20 @@ function MyShift({ h }: { h: HubCtx }) {
     fetch('/api/staff-times/today').then(r => (r.ok ? r.json() : null)).then(d => { setMine(d?.mine ?? null); setOpener(d?.opener ?? null) }).catch(() => {})
   }, [username])
   const Tile = ({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) => (
-    <button type="button" onClick={onClick} className="flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-left active:opacity-80">
+    <button type="button" onClick={onClick} className="flex min-w-0 flex-col items-start justify-center gap-0.5 rounded-xl border border-gray-200 bg-white px-1.5 py-1.5 text-left active:opacity-80">
       <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
-      <span className="w-full truncate text-[12px] text-gray-700">{label}</span>
+      <span className="w-full truncate text-[12px] leading-tight text-gray-700">{label}</span>
     </button>
   )
+  const extra = (<>
+    {h.canOpenSettings && <Tile icon="⚙️" label="Settings" onClick={() => { h.setShop(null); h.pickLossView('settings') }} />}
+    {h.canOpenUkSettings && <Tile icon="🇬🇧" label="UK" onClick={() => { h.setShop(null); h.changeTab('uk'); setTimeout(() => h.setSettingsOpen(true), 50) }} />}
+    <Tile icon="🚪" label="Sign out" onClick={() => { if (confirm('Sign out?')) void signOut({ callbackUrl: '/login' }) }} />
+  </>)
   return (
     <section aria-label="My shift and account" className="space-y-1.5 sm:hidden">
       <h2 className="text-[13px] text-gray-500">My shift</h2>
-      {username && <ClockInOutPanel username={username} mine={mine} opener={opener} onMineChange={setMine} />}
-      <div className="grid grid-cols-3 gap-2">
-        {h.canOpenSettings && <Tile icon="⚙️" label="Settings" onClick={() => { h.setShop(null); h.pickLossView('settings') }} />}
-        {h.canOpenUkSettings && <Tile icon="🇬🇧" label="UK Settings" onClick={() => { h.setShop(null); h.changeTab('uk'); setTimeout(() => h.setSettingsOpen(true), 50) }} />}
-        <Tile icon="🚪" label="Sign out" onClick={() => { if (confirm('Sign out?')) void signOut({ callbackUrl: '/login' }) }} />
-      </div>
+      {username && <ClockInOutPanel compact compactExtra={extra} username={username} mine={mine} opener={opener} onMineChange={setMine} />}
     </section>
   )
 }
@@ -159,7 +159,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
       </div>
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {showFlags ? (
           <Card wide title="Sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={Number(liveTodaySalesTotal)} />}
             sub={`${todayTaps.length} sale${todayTaps.length === 1 ? '' : 's'} recorded · you ${mySales.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />

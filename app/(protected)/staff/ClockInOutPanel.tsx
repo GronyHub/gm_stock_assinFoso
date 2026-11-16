@@ -72,8 +72,11 @@ function getLocation(): Promise<GeolocationPosition> {
 // caller's own `setMine` state setter directly -- its shape (accepts either
 // a new value or an updater function) is exactly a useState setter's.
 export default function ClockInOutPanel({
-  username, mine, opener, onMineChange, afterAction, onPickingTimeChange,
+  username, mine, opener, onMineChange, afterAction, onPickingTimeChange, compact, compactExtra,
 }: {
+  compactExtra?: React.ReactNode
+  // One row of small tiles (time in/out, the clock button, the break button) for the Waiting page.
+  compact?: boolean
   username: string
   mine: Mine
   opener: string | null
@@ -332,7 +335,35 @@ export default function ClockInOutPanel({
       )}
 
       {/* Clock In/Out panel */}
-      <div className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-2">
+      {compact && (
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-5 gap-1.5">
+            <div className="flex min-w-0 flex-col justify-center rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-[12px] leading-tight">
+              <span className="truncate text-green-700">In {mine?.actual_in ?? '—'}<SourceDot source={mine?.in_source} /></span>
+              <span className="truncate text-orange-600">Out {mine?.actual_out ?? '—'}<SourceDot source={mine?.out_source} /></span>
+              {needsOpeningCount && <span className="truncate text-amber-600">Opening count</span>}
+            </div>
+            {!mine?.actual_in && <button onClick={() => clock('in')} disabled={saving} className="rounded-xl bg-green-600 px-2 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40">{saving ? '…' : 'Clock in'}</button>}
+            {mine?.actual_in && !mine?.actual_out && <button onClick={() => clock('out')} disabled={saving} className="rounded-xl bg-orange-500 px-2 py-1.5 text-[13px] font-semibold text-white disabled:opacity-40">{saving ? '…' : 'Clock out'}</button>}
+            {mine?.actual_in && mine?.actual_out && <p className="flex items-center justify-center rounded-xl bg-gray-100 px-2 py-1.5 text-center text-[12px] font-semibold text-gray-700">Done for today</p>}
+            {mine?.actual_in && !mine?.actual_out
+              ? <button onClick={toggleBreak} disabled={savingBreak} className={`rounded-xl px-2 py-1.5 text-[13px] font-semibold disabled:opacity-40 ${mine?.on_break ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{savingBreak ? '…' : (mine?.on_break ? 'End break' : 'Break')}</button>
+              : <span aria-hidden="true" />}
+            {compactExtra}
+          </div>
+          {!(mine?.actual_in && mine?.actual_out) && (!pickingTime ? (
+            <button onClick={() => setPickingTime(true)} className="text-[12px] font-medium text-blue-600">Different time? Tap to pick →</button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} className={inputCls + ' flex-1'} />
+              <button onClick={() => setPickingTime(false)} className="shrink-0 px-2 py-2.5 text-xs font-medium text-gray-400">Use now</button>
+            </div>
+          ))}
+          {err && <p className="text-xs text-red-500">{err}</p>}
+        </div>
+      )}
+
+      {!compact && <div className="bg-white border border-gray-200 rounded-xl p-2.5 space-y-2">
         <p className="text-xs font-semibold text-gray-700">My Time Today</p>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="bg-green-50 rounded-lg px-2.5 py-1.5">
@@ -392,7 +423,7 @@ export default function ClockInOutPanel({
           </button>
         )}
         <p className="text-[12px] text-gray-400 text-center">Clock in at the shop with GPS on. No GPS? You can still clock in: the manager checks the CCTV and approves your time.</p>
-      </div>
+      </div>}
     </>
   )
 }

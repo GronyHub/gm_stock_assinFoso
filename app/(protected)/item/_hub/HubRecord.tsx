@@ -53,7 +53,7 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
     ] },
     { title: 'Sales, stock and money', items: [
       { kind: 'go', key: 'job', icon: '🧾', label: 'Pending job', need: 'all', run: () => leave(() => h.openEmbed('/pending-jobs?new=1')) },
-      { kind: 'go', key: 'past', icon: '🕐', label: 'Sale for a past day', need: 'cash', run: () => leave(() => { h.goItemsMode('sale'); h.setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); h.setMiOn(true) }) },
+      { kind: 'go', key: 'past', icon: '🕐', label: 'Past sale', need: 'cash', run: () => leave(() => { h.goItemsMode('sale'); h.setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); h.setMiOn(true) }) },
       { kind: 'go', key: 'logentry', icon: '📈', label: 'New log entry', need: 'cash', run: () => leave(() => { h.goItemsMode('log'); h.setLiveNewEntryOpen(true) }) },
       { kind: 'go', key: 'count', icon: '🔢', label: 'Stock count', need: 'cash', run: () => leave(() => h.pickLossView('counts')) },
       { kind: 'go', key: 'expense', icon: '💸', label: 'Expense', need: 'owner', run: () => leave(() => h.goItemsMode('expenses')) },
@@ -76,11 +76,11 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
         return (
           <section key={g.title} aria-label={g.title} className="space-y-1.5">
             <h2 className="text-[13px] text-gray-500">{g.title}</h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {items.map(i => (
                 <button key={i.key} type="button" aria-pressed={i.kind === 'form' ? pick === i.key : undefined}
                   onClick={() => (i.kind === 'form' ? setPick(p => (p === i.key ? '' : i.key)) : i.run(h))}
-                  className={`flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${i.kind === 'form' && pick === i.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+                  className={`flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${i.kind === 'form' && pick === i.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
                   <span aria-hidden="true" className="text-lg leading-none">{i.icon}</span>
                   <span className="line-clamp-2 w-full text-[12px] leading-tight text-gray-700">{i.label}</span>
                 </button>
