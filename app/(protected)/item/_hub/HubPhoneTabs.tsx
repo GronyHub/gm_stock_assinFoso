@@ -4,7 +4,7 @@ import type { HubCtx } from './useHubState'
 // Phone only (hidden from 640px wide): five places used most, along the bottom where a thumb reaches them.
 // More opens the full grouped menu (Work, Records, Money, Reports, Admin) as an overlay (see HubMainRow).
 export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: { h: HubCtx; moreOpen: boolean; onToggleMore: () => void; onNavigate: () => void }) {
-  const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap, isOwnerOrJoe, canSeeManage, canSeeTeam } = h
+  const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap, isOwnerOrJoe, canSeeManage, canSeeTeam, canSeeCash } = h
   const manage = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const liveActive = !moreOpen && !!paneActive(modeActive('sale'))
   const goLive = () => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }
@@ -14,8 +14,8 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
     { key: 'waiting', icon: '⏳', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
     { key: 'done', icon: '✔', label: 'Done', active: !moreOpen && !!shop && shop.tab === 'home', go: () => openShop('home') },
     { key: 'sale', icon: '+', label: 'New sale', active: liveActive, go: goLive },
-    ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home'].includes(shop.tab), go: () => openShop('team') }] : []),
-    { key: 'more', icon: '☰', label: 'More', active: moreOpen, go: onToggleMore },
+    ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'analytics'].includes(shop.tab), go: () => openShop('team') }] : []),
+    ...(canSeeCash ? [{ key: 'analytics', icon: '📊', label: 'Analytics', active: !moreOpen && !!shop && shop.tab === 'analytics', go: () => openShop('analytics') }] : []),
   ]
   return (<>
     {lastSaleUndo && (

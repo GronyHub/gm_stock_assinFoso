@@ -1,6 +1,8 @@
 'use client'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { StaffMemberPersonalTab, STAFF_ROSTER } from './hubShared'
+import { signOut } from 'next-auth/react'
+import ClockInOutPanel, { type Mine } from '../../staff/ClockInOutPanel'
 import MySelfChip from '../_components/MySelfChip'
 import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
@@ -82,6 +84,34 @@ export function HubTeamPanel({ h }: { h: HubCtx }) {
   )
 }
 
+// My shift and my account: clock in or out and take a break (the same panel as the Times tab), then Settings and Sign out.
+function MyShift({ h }: { h: HubCtx }) {
+  const [mine, setMine] = useState<Mine>(null)
+  const [opener, setOpener] = useState<string | null>(null)
+  const username = h.username
+  useEffect(() => {
+    if (!username) return
+    fetch('/api/staff-times/today').then(r => (r.ok ? r.json() : null)).then(d => { setMine(d?.mine ?? null); setOpener(d?.opener ?? null) }).catch(() => {})
+  }, [username])
+  const Tile = ({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) => (
+    <button type="button" onClick={onClick} className="flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-left active:opacity-80">
+      <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
+      <span className="w-full truncate text-[12px] text-gray-700">{label}</span>
+    </button>
+  )
+  return (
+    <section aria-label="My shift and account" className="space-y-1.5 sm:hidden">
+      <h2 className="text-[13px] text-gray-500">My shift</h2>
+      {username && <ClockInOutPanel username={username} mine={mine} opener={opener} onMineChange={setMine} />}
+      <div className="grid grid-cols-3 gap-2">
+        {h.canOpenSettings && <Tile icon="⚙️" label="Settings" onClick={() => { h.setShop(null); h.pickLossView('settings') }} />}
+        {h.canOpenUkSettings && <Tile icon="🇬🇧" label="UK Settings" onClick={() => { h.setShop(null); h.changeTab('uk'); setTimeout(() => h.setSettingsOpen(true), 50) }} />}
+        <Tile icon="🚪" label="Sign out" onClick={() => { if (confirm('Sign out?')) void signOut({ callbackUrl: '/login' }) }} />
+      </div>
+    </section>
+  )
+}
+
 // The Home screen (phone): the day at a glance. Everything shown comes from numbers the app already holds, except who is
 // clocked in, which is read once when Home opens. Owners, Joe and managers also see cash and flags; staff see their own sales.
 export default function HubHome({ h }: { h: HubCtx }) {
@@ -127,6 +157,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
         {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim active onSelect={() => undefined} /></div>}
       </div>
       <PersonTiles h={h} who={who} />
+      <MyShift h={h} />
       <div className="grid grid-cols-3 gap-2">
         {showFlags ? (
           <Card wide title="Sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={Number(liveTodaySalesTotal)} />}

@@ -1,5 +1,6 @@
 'use client'
 import HubHome, { HubTeamPanel } from './HubHome'
+import HubAnalytics from './HubAnalytics'
 import HubStatusStrip from './HubStatusStrip'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -51,7 +52,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
               {shop ? (<>
                 {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
-                {!(inGroup || (shop.tab === 'laws' && !mgr)) && (
+                {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'laws' && !mgr)) && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
                     {([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
@@ -67,6 +68,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'team' && <HubTeamPanel h={h} />}
+                  {shop.tab === 'analytics' && <div className="h-full"><HubAnalytics h={h} /></div>}
                   {shop.tab === 'rota' && isOwnerOrJoe && <div className="p-2"><ShopRota canManage /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
