@@ -57,7 +57,7 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   // Owner, Joe and managers have these pages as tiles on the Manage page, so they are not repeated here.
   const hasManage = !!(h.isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam))
   const onManage = new Set(['laws', 'times', 'violations', 'dressCode', 'meeting'])
-  const tabs = PERSON_TABS.filter(t => !(hasManage && onManage.has(t.key)) && (isSelf || t.others === 'all' || (t.others === 'manage' && may)))
+  const tabs = PERSON_TABS.filter(t => !(isSelf && ['waiting', 'done', 'tasks'].includes(t.key)) && !(hasManage && onManage.has(t.key)) && (isSelf || t.others === 'all' || (t.others === 'manage' && may)))
   const w = h.waitingBy?.[who.toLowerCase()]
   if (!who) return null
   return (
@@ -172,22 +172,14 @@ export default function HubHome({ h }: { h: HubCtx }) {
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
       <div className="grid grid-cols-5 gap-1.5">
-        {showFlags ? (
-          <Card wide title="Sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={Number(liveTodaySalesTotal)} />}
-            sub={`${todayTaps.length} sale${todayTaps.length === 1 ? '' : 's'} recorded · you ${mySales.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
-        ) : (
+        {!showFlags && (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
         <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
-        <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (
           <Card title="Cash counted" tone={cash !== null ? 'good' : (nobodyIn || stillIn ? 'plain' : new Date().getHours() >= 18 ? 'bad' : 'plain')} onClick={go(() => goItemsMode('log'))}
             value={cash === null ? (nobodyIn ? '–' : stillIn ? 'Later' : 'Not yet') : <MoneyText v={cash} />} sub={cash === null ? (nobodyIn ? 'Nobody clocked in today, so nothing to count' : stillIn ? 'Count it once everyone has clocked out' : 'Count it in the Sales Log before closing') : 'Entered for today'} />
         )}
-        {showFlags && (
-          <Card title="Flags" value={flagTotal} tone={flagTotal > 0 ? 'warn' : 'good'} sub={flagTotal > 0 ? 'Things to fix' : 'All clear'} onClick={go(() => pickLossView('flags'))} />
-        )}
-        <Card title="Counts to do" value={countLeft ?? '–'} tone={countLeft ? 'warn' : 'plain'} sub={liveCountProgress ? `${liveCountProgress.doneToday} of ${liveCountProgress.total} counted today` : 'Loading…'} onClick={go(() => pickLossView('counts'))} />
         {!(isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam)) && (
           <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
