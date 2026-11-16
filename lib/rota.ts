@@ -34,3 +34,12 @@ export async function isShopDay(day: string): Promise<boolean> {
   if (new Date(day + 'T00:00:00Z').getUTCDay() !== 0) return true
   return ((await rotaRolesFor(day))?.working.length ?? 0) > 0
 }
+
+// Did anyone at all clock in on this day? On a day nobody did, the shop did not work: nothing is asked of anyone (no Cash Counted) and no law is used against anyone.
+// If the check itself fails it answers yes, so a database hiccup never excuses a day.
+export async function someoneClockedIn(day: string): Promise<boolean> {
+  try {
+    const r = await sql`SELECT 1 FROM staff_times WHERE work_date = ${day} AND actual_in IS NOT NULL AND staff_name <> '__shop_open__' LIMIT 1`
+    return r.length > 0
+  } catch { return true }
+}

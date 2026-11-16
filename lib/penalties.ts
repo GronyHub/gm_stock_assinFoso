@@ -9,7 +9,7 @@ import { appliesOn, effectiveDue, addDays } from '@/lib/dailyChecksShared'
 import { dutiesForDate } from '@/lib/duties'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
-import { isShopDay } from '@/lib/rota'
+import { isShopDay, someoneClockedIn } from '@/lib/rota'
 
 // Penalty points. Every violation costs points (1 for now); points are recorded in a ledger. 20 points = a 3-day
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
@@ -62,6 +62,8 @@ type Add = { staff: string; points?: number; reason: string; source: string; ref
 export async function addPoint(a: Add) {
   await ensurePenalties()
   const staff = a.staff.toLowerCase(), day = a.day ?? dayKey(), points = a.points ?? 1, status = a.status ?? 'active'
+  // A day nobody clocked in is not charged to anyone. People's own decisions (a manual penalty, a behaviour report) and a backdated clock-in always stand.
+  if (!['manual', 'behaviour', 'backdate', 'backdate-point'].includes(a.source) && !(await someoneClockedIn(day))) return null
   const counted = status === 'active' && await isCounting(day)
   const before = await totalPoints(staff)
   const [row] = await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, ref, day, law_id, counted, status, created_by, violation, law_code)

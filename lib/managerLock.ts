@@ -31,7 +31,7 @@ export async function previousWorkingDay(today = dayKey()): Promise<string | nul
 // Cash Counted still missing for the previous working day (not excused), or null. Used to make it compulsory before the manager clocks in.
 // The oldest day in the last 7 that still has no Cash Counted (owner, 14 Nov 2026: the manager must enter any missing day), else the previous working day.
 async function dayToCount(today: string): Promise<string | null> {
-  const [m] = await sql`SELECT receipt_date::date::text AS d FROM sales_receipts WHERE customer_name = ${GMC} AND cash_counted IS NULL AND receipt_date::date < ${today}::date AND receipt_date::date >= (${today}::date - 7) ORDER BY receipt_date, id LIMIT 1`.catch(() => [])
+  const [m] = await sql`SELECT receipt_date::date::text AS d FROM sales_receipts WHERE customer_name = ${GMC} AND cash_counted IS NULL AND receipt_date::date < ${today}::date AND receipt_date::date >= (${today}::date - 7) AND EXISTS (SELECT 1 FROM staff_times st WHERE st.work_date = receipt_date::date AND st.actual_in IS NOT NULL AND st.staff_name <> '__shop_open__') ORDER BY receipt_date, id LIMIT 1`.catch(() => [])
   return m?.d ? String(m.d) : await previousWorkingDay(today)
 }
 export async function missingCashCounted(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
