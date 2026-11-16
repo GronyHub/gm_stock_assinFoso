@@ -1,5 +1,6 @@
 'use client'
 import PresentStaffBar from '../_components/PresentStaffBar'
+import { StaffMemberPersonalTab, STAFF_ROSTER } from './hubShared'
 import MySelfChip from '../_components/MySelfChip'
 import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
@@ -39,6 +40,9 @@ const PERSON_TABS: PTab[] = [
 
 // One person's own tabs (Waiting for me, Done, Laws, Times, Penalty points...) as small tiles; each opens that tab of their page.
 function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
+  // The chosen tab opens right here, under the tiles: no separate page.
+  const [tab, setTab] = useState('')
+  useEffect(() => { setTab('') }, [who])
   const isSelf = who.toLowerCase() === (h.username ?? '').toLowerCase()
   const may = !!(h.isOwnerOrJoe || h.canManage)
   const tabs = PERSON_TABS.filter(t => isSelf || t.others === 'all' || (t.others === 'manage' && may))
@@ -49,13 +53,16 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
       <h2 className="text-[13px] text-gray-500">{isSelf ? 'You' : nm(who)}</h2>
       <div className="grid grid-cols-3 gap-2">
         {tabs.map(t => (
-          <button key={t.key} type="button" onClick={() => h.openPersonal(who, t.key)} className="relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-left active:opacity-80">
+          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
             <span aria-hidden="true" className="text-lg leading-none">{t.icon}</span>
             <span className="w-full truncate text-[12px] text-gray-700">{t.label}</span>
             {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
           </button>
         ))}
       </div>
+      {tab && (
+        <StaffMemberPersonalTab key={who + tab} hideTabs staffName={who} initialTab={tab as never} username={h.username} role={h.role} canManage={h.canManage} staffRoster={STAFF_ROSTER} routablePages={h.routablePages} categoryIds={h.fixedCategoryIds} />
+      )}
     </section>
   )
 }
