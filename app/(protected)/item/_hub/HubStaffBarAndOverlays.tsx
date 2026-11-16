@@ -63,7 +63,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {shop.tab === 'todo' && (shop.src && shop.src !== '/todo'
                     ? <iframe key={'t' + shop.src} src={shop.src} title="Waiting for team" className="h-full w-full border-0" />
-                    : <div className="h-full overflow-y-auto px-2 pt-3"><WaitingForTeam canManage={!!isOwnerOrJoe} below={<HubHome h={h} />} /></div>)}
+                    : <div className="h-full overflow-y-auto px-2 pt-3"><WaitingForTeam canManage={!!isOwnerOrJoe} noPeople below={<HubHome h={h} />} /></div>)}
                   {shop.tab === 'laws' && <iframe key={'l' + (shop.src ?? '')} src={shop.src ?? '/laws'} title="Company Laws" className="h-full w-full border-0" />}
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'team' && <HubTeamPanel h={h} />}

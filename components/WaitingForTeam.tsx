@@ -27,7 +27,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10)
 
 // The Shop's first tab. One strip of small date tiles runs across the top (earlier days to the left, today, then the days ahead); the page below
 // holds only what belongs to the chosen date: today's live list, an earlier day's record, or a coming day's planned tasks (named from the rota).
-export default function WaitingForTeam({ canManage, below }: { canManage: boolean; below?: React.ReactNode }) {
+export default function WaitingForTeam({ canManage, below, noPeople }: { canManage: boolean; below?: React.ReactNode; noPeople?: boolean }) {
   const today = todayKey()
   const [density, setDensity] = useTileDensity()
   // Filter by person: on Today anyone can; on other dates only the people the signed-in supervisor may look at.
@@ -95,7 +95,7 @@ export default function WaitingForTeam({ canManage, below }: { canManage: boolea
         <DensityToggle density={density} onChange={setDensity} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[12px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
-      {chipNames.length > 0 && (
+      {!noPeople && chipNames.length > 0 && (
         <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
           {['', ...chipNames].map(n => (
             <button key={n || 'all'} type="button" onClick={() => { whoTouched.current = true; setWho(n) }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
