@@ -20,6 +20,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { canSeeUsers, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, goToViolation, globalFlags, propertiesInitialTab, myStaffName, viewingName, staffTimeSignal } = h as any
   const mgr = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const inGroup = ['dashboard', 'todo', 'home'].includes(shop?.tab ?? '') || (!mgr && shop?.tab === 'laws')
+  const rowItems = shop ? ([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]) : []
   useEffect(() => { window.dispatchEvent(new CustomEvent('waiting-view', { detail: personal?.tab === 'waiting' || shop?.tab === 'todo' })) }, [personal, shop])
   return (<><div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar + tab switcher: on desktop these portal into
@@ -52,14 +53,21 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
               {shop ? (<>
                 {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
-                {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'record' && !mgr) || (shop.tab === 'laws' && !mgr)) && (
+                {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'record' && !mgr) || (shop.tab === 'laws' && !mgr) || mgr) && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
+                    {rowItems.map(([k, label, badge]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${(shop.tab === 'manage' ? `m:${manageSideOptions()[0]?.key}` : shop.tab) === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}{badge ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{badge}</span> : null}</button>
                     ))}
                   </div>
                 </div>
+                )}
+                {/* Manage: every page is a tile, five to a row; a tile opens its page with a way back. */}
+                {mgr && !inGroup && shop.tab !== 'analytics' && shop.tab !== 'manage' && (
+                  <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-2 py-1.5">
+                    <button type="button" onClick={() => setShop({ tab: 'manage' })} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-semibold text-gray-700">‹ Manage</button>
+                    <p className="min-w-0 flex-1 truncate text-[14px] text-gray-900">{(rowItems.find(r => r[0] === shop.tab)?.[1] as string | undefined) ?? ''}</p>
+                  </div>
                 )}
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {shop.tab === 'todo' && (shop.src && shop.src !== '/todo'
@@ -74,7 +82,24 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
-                  {(shop.tab === 'manage' || shop.tab.startsWith('m:')) && (() => {
+                  {shop.tab === 'manage' && mgr && (
+                    <div className="px-3 pb-28 pt-3">
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {rowItems.map(([k, label, badge]) => {
+                          const [icon, ...rest] = String(label).split(' ')
+                          return (
+                            <button key={String(k)} type="button" onClick={() => setShop({ tab: k as ShopTab })}
+                              className="relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-1.5 py-1.5 text-left active:opacity-80">
+                              <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
+                              <span className="line-clamp-2 break-words text-[11px] leading-tight tracking-tight text-gray-700">{rest.join(' ')}</span>
+                              {badge ? <span className="absolute right-1 top-1 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{badge}</span> : null}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {((shop.tab === 'manage' && !mgr) || shop.tab.startsWith('m:')) && (() => {
                     const key = shop.tab === 'manage' ? String(manageSideOptions()[0]?.key ?? '') : shop.tab.slice(2)
                     const mv = { canManage, categoryIds: fixedCategoryIds, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation: goToViolation, missingClosingReportsCount: globalFlags?.missingClosingReports?.length ?? 0, onOpenStaff: () => openShop('times'), propertiesInitialTab }
                     return (

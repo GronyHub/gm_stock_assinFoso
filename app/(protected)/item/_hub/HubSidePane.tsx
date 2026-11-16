@@ -47,6 +47,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
             <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button (opens on Done; Waiting for team has its own button above): the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
+            {isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam) && <SidePaneButton icon="🛠" label="Manage" mode={cashDisplayMode} divider noNewTab active={!!shop && !['todo', 'home', 'dashboard', 'analytics'].includes(shop.tab)} onClick={() => openShop('manage')} />}
             <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop && shop.tab !== 'todo'} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('home')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually

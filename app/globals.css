@@ -148,3 +148,4 @@ html.framed .no-frame { display: none !important; }
 .menu-page nav button:not([aria-label="Settings"]):not([aria-label="UK Settings"]):not([aria-label="Sign out"]) { display: none; }
 .menu-page nav p { display: none; }
 @media (max-width: 639px) { .cash-strip nav button { width: auto !important; padding-left: 4px !important; padding-right: 4px !important; } }
+@media (max-width: 639px) { .cash-strip nav button[aria-label="Manage"] { display: none; } }
