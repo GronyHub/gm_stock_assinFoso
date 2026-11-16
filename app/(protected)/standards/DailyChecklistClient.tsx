@@ -136,6 +136,19 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const next = dayStart == null ? pending : pending.filter(t => due.get(t.id)! > clock)
   const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   const locked = isToday && !clockedIn
+  // "Work I did (not on today's list)" in Record something opens this sheet.
+  useEffect(() => {
+    const f = (e: Event) => {
+      const d = (e as CustomEvent).detail as { handled?: boolean } | undefined
+      if (d) d.handled = true
+      if (!isToday) { flash('Open today to log an activity.'); return }
+      if (locked) { flash('Clock in first, then log your activity.'); return }
+      setLogging(true)
+    }
+    window.addEventListener('open-log-activity', f)
+    return () => window.removeEventListener('open-log-activity', f)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isToday, locked])
   // Shown only once the chosen day has loaded (switching dates must not flash the previous day).
   const settling = (dayParam !== null && day !== dayParam) || (dayParam === null && !!today && day !== today)
   const pastDuties = !isToday ? duties.filter(d => (d.kind !== 'task' || !!tileOf(d)) && mineOrDid(d)) : []
@@ -206,7 +219,6 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           </div>
         </div>
       )}
-      {!settling && isToday && <button type="button" disabled={locked} onClick={() => setLogging(true)} className="mx-2 mb-2 w-[calc(100%-1rem)] rounded-xl bg-green-600 py-2 text-sm font-bold text-white disabled:opacity-40">+ Log an activity not on the list</button>}
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}

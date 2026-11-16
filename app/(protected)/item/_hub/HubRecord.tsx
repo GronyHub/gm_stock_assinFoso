@@ -52,6 +52,16 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
       { kind: 'form', key: 'equipment', icon: '🔊', label: 'Equipment check', need: 'manage', render: () => manage('advert', { advertSub: 'equipment' as ManageView }) },
       { kind: 'form', key: 'app_info', icon: 'ℹ️', label: 'App info', need: 'manage', render: () => manage('app_info') },
     ] },
+    { title: 'Anything else', items: [
+      { kind: 'form', key: 'observation', icon: '👀', label: 'Something else I noticed', need: 'all', render: () => <ManageLogPanel category="observation" label="Things I noticed" icon="👀" /> },
+    ] },
+    { title: 'Work I did', items: [
+      { kind: 'go', key: 'activity', icon: '🛠️', label: "Work not on today's list", need: 'all', run: () => {
+        const d = { handled: false }
+        window.dispatchEvent(new CustomEvent('open-log-activity', { detail: d }))
+        if (!d.handled) alert("Open today's Waiting list, then try again.")
+      } },
+    ] },
     { title: 'Sales, stock and money', items: [
       { kind: 'go', key: 'job', icon: '🧾', label: 'Pending job', need: 'all', run: () => leave(() => h.openEmbed('/pending-jobs?new=1')) },
       { kind: 'go', key: 'past', icon: '🕐', label: 'Past sale', need: 'cash', run: () => leave(() => { h.goItemsMode('sale'); h.setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); h.setMiOn(true) }) },
@@ -75,7 +85,7 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
         <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} title={chosen ? chosen.label : 'Record something'}
           className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${open || chosen ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
           <span aria-hidden="true" className="text-base leading-none">✍️</span>
-          <span className="line-clamp-2 break-words text-[11px] leading-tight text-gray-700">{chosen ? chosen.label : "Record something"}</span>
+          <span className="line-clamp-2 break-words text-[10.5px] leading-tight tracking-tight text-gray-700">{chosen ? chosen.label : "Record something"}</span>
         </button>
       )}
       {open && groups.map(g => {
