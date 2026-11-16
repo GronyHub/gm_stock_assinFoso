@@ -51,7 +51,21 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
   const movePress = (e: React.PointerEvent) => { if (pressTimer.current !== null && Math.hypot(e.clientX - pressFrom.current.x, e.clientY - pressFrom.current.y) > 10) cancelPress() }
   const features = useFeatures()   // Settings > Switches: the Who? box
   const { group, violation, liveSaleViolationFilter, items, liveInlineQtyByItemId, setLiveInlineQtyByItemId, liveInlinePriceByItemId, setLiveInlinePriceByItemId, liveInlineCIDByItemId, setLiveInlineCIDByItemId, liveLabelByKey, setLiveLabelByKey, justTappedItemIds, session, custNameRef, miOn, setRegisterFor, liveSaving, renderClickableItemName, liveCountStatus, liveLastCountDateByItemId, liveGmcTargetStock, liveGmcOpenOverage, liveLossByItemId, liveDuplicateItemIds, liveUnlinkedNamedIds, liveServiceViolationIdSet, liveLowConfidenceAliasIds, livePrezohoNotesIds, liveSoldBelowCostDatesByItemId, liveVcpJumpDatesByItemId, liveNetGainByItemId, liveEmptyRowCountByItemId, liveSalesCounts, liveSortedCatalogueItems, liveDueCatalogueCount, recordInlineTap, openEditGridItem } = h
-  return (<>{liveSortedCatalogueItems.map((item, idx) => {
+  // Only the tiles near the screen are drawn: the first 48, and 48 more each time the end of the list comes into view (600 tiles at once is about 10,000 page elements).
+  // A new search or filter starts again from the top.
+  const PAGE = 48
+  const [shown, setShown] = useState(PAGE)
+  const moreRef = useRef<HTMLDivElement | null>(null)
+  const total = liveSortedCatalogueItems.length
+  useEffect(() => { setShown(PAGE) }, [h.search, liveSaleViolationFilter, h.liveProductTypeFilter, h.liveGroupFilter, pics])
+  useEffect(() => {
+    const el = moreRef.current
+    if (!el || shown >= total) return
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) setShown(n => n + PAGE) }, { rootMargin: '800px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [shown, total])
+  return (<>{liveSortedCatalogueItems.slice(0, shown).map((item, idx) => {
                     const count = liveSalesCounts.get(item.id) ?? 0
                     const due = liveCountStatus.get(item.id)
                     const overdue = due?.level === 'overdue'
@@ -343,5 +357,5 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                         )}
                       </Fragment>
                     )
-                  })}</>)
+                  })}{shown < total && <div ref={moreRef} aria-hidden="true" className="col-span-2 sm:col-span-3 md:col-span-6 h-10" />}</>)
 }
