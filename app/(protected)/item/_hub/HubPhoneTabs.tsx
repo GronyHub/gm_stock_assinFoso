@@ -14,7 +14,7 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
     { key: 'waiting', icon: '⏳', label: 'Waiting', active: !moreOpen && !!shop && shop.tab === 'todo', go: () => openShop('todo') },
     { key: 'done', icon: '✔', label: 'Done', active: !moreOpen && !!shop && shop.tab === 'home', go: () => openShop('home') },
     { key: 'sale', icon: '+', label: 'New sale', active: liveActive, go: goLive },
-    ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home'].includes(shop.tab), go: () => openShop('times') }] : []),
+    ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home'].includes(shop.tab), go: () => openShop('team') }] : []),
     { key: 'log', icon: '📈', label: 'Sales Log', active: !moreOpen && !!paneActive(modeActive('log')), go: () => goItemsMode('log') },
     { key: 'more', icon: '☰', label: 'More', active: moreOpen, go: onToggleMore },
   ]

@@ -67,6 +67,21 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   )
 }
 
+// The Manage page's Team tab: everyone else's profile card; tap one to see that person's tiles and their tabs, right here.
+export function HubTeamPanel({ h }: { h: HubCtx }) {
+  const [sel, setSel] = useState('')
+  const username = h.username
+  return (
+    <div className="space-y-2 p-3 pb-28">
+      <p className="text-[13px] text-gray-500">Tap a person to see their pages.</p>
+      <div className="home-team rounded-xl bg-[#00072d] p-1">
+        <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={(name: string) => setSel(name)} onOpenShop={() => h.openShop('home')} activeStaff={sel} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
+      </div>
+      <PersonTiles h={h} who={sel} />
+    </div>
+  )
+}
+
 // The Home screen (phone): the day at a glance. Everything shown comes from numbers the app already holds, except who is
 // clocked in, which is read once when Home opens. Owners, Joe and managers also see cash and flags; staff see their own sales.
 export default function HubHome({ h }: { h: HubCtx }) {
@@ -74,9 +89,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
     liveSaleFlagTotal, salesFlagsCount, billsFlagsCount, cabFlagsCount, lossByDateFlagsCount, staffTimesFlagsCount, dressFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount,
     setShop, openShop, pickLossView, goItemsMode, openEmbed } = h
   const [team, setTeam] = useState<Row[] | null>(null)
-  // Whose tiles are showing under the team panel: tapping a card picks the person (it no longer opens a page); the tiles open that person's tabs.
-  const [sel, setSel] = useState('')
-  const who = sel || username
+  // Only my own card and tiles are on this page; the rest of the team is on the Manage page (Team tab).
+  const who = username
   useEffect(() => {
     let live = true
     fetch('/api/staff-times/worked-today', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { if (live) setTeam(Array.isArray(d?.staff) ? d.staff : []) }).catch(() => { if (live) setTeam([]) })
@@ -108,10 +122,9 @@ export default function HubHome({ h }: { h: HubCtx }) {
         <h1 className="text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
         <p className="text-sm text-gray-500">{dateText}</p>
       </div>
-      {/* The team's profiles (phones; computers have them in the top bar): tap one to open that person. */}
+      {/* My own profile card (phones; computers have it in the top bar). The rest of the team is on the Manage page. */}
       <div className="home-team rounded-xl bg-[#00072d] p-1 sm:hidden">
-        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim active={who.toLowerCase() === username.toLowerCase()} onSelect={() => setSel(username)} /></div>}
-        <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={(name: string) => setSel(name)} onOpenShop={() => openShop('home')} activeStaff={who} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
+        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim active onSelect={() => undefined} /></div>}
       </div>
       <PersonTiles h={h} who={who} />
       <div className="grid grid-cols-3 gap-2">
