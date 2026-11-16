@@ -135,3 +135,6 @@ html.framed .no-frame { display: none !important; }
 .home-team [data-team-list] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 4px 6px 0 0; }
 .home-team [data-team-card] { margin: 2px 4px 2px 0; }
 @media (max-width: 639px) { .menu-page [data-team-list] { display: none; } }
+
+/* My own profile card lives on the Waiting page (phones), not in the Menu. */
+@media (max-width: 639px) { .menu-page [data-self-wrap] { display: none; } }

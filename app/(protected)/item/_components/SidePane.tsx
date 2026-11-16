@@ -90,7 +90,7 @@ export function SidePaneToggle({ mode, onChange, label, username, sales, onHide,
     // On the phone (slim) the people list sits right under my own button, and the whole block scrolls away with the menu instead of staying pinned.
     <div className={`relative border-b border-white/30 bg-[var(--pane-accent)] ${slim ? '' : 'sticky top-0 z-10'}`}>
       {label && (
-        <div className={`px-1 pt-1 ${onHide ? 'pr-6' : ''}`}>
+        <div data-self-wrap className={`px-1 pt-1 ${onHide ? 'pr-6' : ''}`}>
           <MySelfChip name={label} username={username} sales={sales} active={selfActive} slim={slim} />
         </div>
       )}

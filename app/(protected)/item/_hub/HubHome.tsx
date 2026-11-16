@@ -1,5 +1,6 @@
 'use client'
 import PresentStaffBar from '../_components/PresentStaffBar'
+import MySelfChip from '../_components/MySelfChip'
 import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
 import MoneyText from '@/components/MoneyText'
@@ -12,11 +13,12 @@ const nm = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // One summary card: a title, one big figure, a short line under it, and an arrow: tap to go to where it is dealt with.
 function Card({ title, value, sub, tone = 'plain', wide = false, onClick }: { title: string; value: React.ReactNode; sub?: React.ReactNode; tone?: Tone; wide?: boolean; onClick: () => void }) {
+  // Small tiles: three to a row, one line each for the title and the number, the note kept to two lines.
   return (
-    <button type="button" onClick={onClick} className={`flex min-h-[7.5rem] flex-col justify-between gap-2 rounded-2xl border p-3.5 text-left active:opacity-80 ${wide ? 'col-span-2' : ''} ${TONES[tone]}`}>
-      <span className="flex items-center justify-between text-sm text-gray-600"><span>{title}</span><span aria-hidden="true" className="text-lg leading-none text-gray-400">›</span></span>
-      <span className="text-[28px] leading-none text-gray-900">{value}</span>
-      <span className="text-[13px] leading-snug text-gray-600">{sub ?? ' '}</span>
+    <button type="button" onClick={onClick} className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${wide ? 'col-span-3' : ''} ${TONES[tone]}`}>
+      <span className="truncate text-[12px] text-gray-600">{title}</span>
+      <span className="truncate text-[20px] leading-tight text-gray-900">{value}</span>
+      <span className="line-clamp-2 text-[11px] leading-snug text-gray-500">{sub ?? ' '}</span>
     </button>
   )
 }
@@ -54,16 +56,17 @@ export default function HubHome({ h }: { h: HubCtx }) {
   const go = (fn: () => void) => () => { setShop(null); fn() }
 
   return (
-    <div className="space-y-3 p-3 pb-28">
+    <div className="space-y-2 p-3 pb-28">
       <div>
         <h1 className="text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
         <p className="text-sm text-gray-500">{dateText}</p>
       </div>
       {/* The team's profiles (phones; computers have them in the top bar): tap one to open that person. */}
       <div className="home-team rounded-xl bg-[#00072d] p-1 sm:hidden">
+        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim /></div>}
         <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={h.openPersonal} onOpenShop={() => openShop('home')} activeStaff={h.personal?.name ?? null} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {showFlags ? (
           <Card wide title="Sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={Number(liveTodaySalesTotal)} />}
             sub={`${todayTaps.length} sale${todayTaps.length === 1 ? '' : 's'} recorded · you ${mySales.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
