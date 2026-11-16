@@ -329,6 +329,7 @@ export function useHubState() {
   // vendors/sales/bills/announcements by name/number and jumps straight to
   // the right one, for when you don't know which section something's in.
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
+  const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
   const [globalSearchQuery, setGlobalSearchQuery] = useState('')
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false)
   const [globalSearchResults, setGlobalSearchResults] = useState<{
@@ -1103,10 +1104,19 @@ export function useHubState() {
     } else params.delete('liveCountView')
     if (liveEmbeddedSearch) params.set('liveSearch', liveEmbeddedSearch); else params.delete('liveSearch')
     if (sidePaneHidden) params.set('sidebarHidden', '1'); else params.delete('sidebarHidden')
+    // The page open on top (Waiting, Done, a Manage page, Analytics, a person's page, an embedded page), the item sheet and the search each get their own history entry,
+    // so the phone's Back button closes the top one instead of leaving the app. The same formula is used below to read them back out of the URL.
+    const ov = shop ? `s:${shop.tab}` : personal ? `p:${personal.name}:${personal.tab}` : embedUrl ? `e:${embedUrl}` : null
+    if (ov) params.set('ov', ov); else params.delete('ov')
+    if (liveEditingGridItemId != null && liveEditingGridItemId > 0) params.set('item', String(liveEditingGridItemId)); else params.delete('item')
+    if (globalSearchOpen) params.set('gs', '1'); else params.delete('gs')
     const qs = params.toString()
     const target = qs ? `/item?${qs}` : '/item'
     const current = window.location.pathname + window.location.search
     if (target === current) return
+    // The page the app opens on at the start of a session replaces the entry instead of adding one, so Back from it leaves the app.
+    const gw = window as unknown as { __gmLanding?: boolean }
+    if (gw.__gmLanding && ov) { gw.__gmLanding = false; router.replace(target, { scroll: false }); return }
     // A side-pane button was right-clicked > "Open in new tab": open what this click led to in a
     // new tab, then put this tab back where it was.
     const nt = window.__gmNewTab
@@ -1118,7 +1128,7 @@ export function useHubState() {
     }
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveSaleView, liveCountView, liveEmbeddedSearch, sidePaneHidden])
+  }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveSaleView, liveCountView, liveEmbeddedSearch, sidePaneHidden, shop, personal, embedUrl, liveEditingGridItemId, globalSearchOpen])
 
   // A refresh should land back on the same search instead of resetting it --
   // replace (not push) since typing shouldn't create a history entry per
@@ -1177,6 +1187,17 @@ export function useHubState() {
     const urlSettingsOpen = searchParams.get('settings') === '1'
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
 
+    // Back/forward: the page on top follows the URL (see the push effect above).
+    const urlOv = searchParams.get('ov')
+    const curOv = shop ? `s:${shop.tab}` : personal ? `p:${personal.name}:${personal.tab}` : embedUrl ? `e:${embedUrl}` : null
+    if (urlOv !== curOv) {
+      if (!urlOv) { if (shop) setShop(null); if (personal) setPersonal(null); if (embedUrl) setEmbedUrl(null) }
+      else if (urlOv.startsWith('s:')) { setEmbedUrl(null); setPersonal(null); setShop({ tab: urlOv.slice(2) as ShopTab }) }
+      else if (urlOv.startsWith('p:')) { const [, nm, ...rest] = urlOv.split(':'); setShop(null); setEmbedUrl(null); setPersonal({ name: nm, tab: rest.join(':') }) }
+      else if (urlOv.startsWith('e:')) { setShop(null); setPersonal(null); setEmbedUrl(urlOv.slice(2)) }
+    }
+    if (!searchParams.get('item') && liveEditingGridItemId != null) setLiveEditingGridItemId(null)
+    if (searchParams.get('gs') !== '1' && globalSearchOpen) setGlobalSearchOpen(false)
     const urlGroup = searchParams.get('group')
     if (urlGroup !== group) setGroup(urlGroup)
     const rawUrlType = searchParams.get('type')
@@ -1687,7 +1708,6 @@ export function useHubState() {
   // now redirected to openEditGridItem below, the same full editor every
   // other item-opening path already uses, so there's one consistent
   // "Item 360" experience regardless of what was tapped to get there.
-  const [liveEditingGridItemId, setLiveEditingGridItemId] = useState<number | null>(null)
   const liveGridEditSaleTapRef = useRef<HTMLDivElement>(null)
   const liveGridEditQtyInputRef = useRef<HTMLInputElement>(null)
   const [liveGridEditLoading, setLiveGridEditLoading] = useState(false)

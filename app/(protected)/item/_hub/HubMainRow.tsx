@@ -23,6 +23,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
       if (['mode', 'view', 'open', 'me', 'tab'].some(k => p.get(k))) return
       if (sessionStorage.getItem('homeShown')) return
       sessionStorage.setItem('homeShown', '1')
+      ;(window as unknown as { __gmLanding?: boolean }).__gmLanding = true
       h.openShop('dashboard')
     } catch { /* never block the app for this */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
