@@ -185,6 +185,7 @@ export async function GET() {
       WHERE (customer_name IS NULL OR LOWER(TRIM(customer_name)) = 'walk in customer')
         AND (cash_counted IS NULL OR cash_counted = 0)
         AND EXISTS (SELECT 1 FROM staff_times st WHERE st.work_date::date = receipt_date::date AND st.actual_in IS NOT NULL AND st.staff_name <> '__shop_open__')
+        AND (receipt_date::date < CURRENT_DATE OR NOT EXISTS (SELECT 1 FROM staff_times st2 WHERE st2.work_date::date = CURRENT_DATE AND st2.actual_in IS NOT NULL AND st2.actual_out IS NULL AND st2.staff_name <> '__shop_open__'))
       ORDER BY receipt_date DESC
     `),
 

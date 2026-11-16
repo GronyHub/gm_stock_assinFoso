@@ -269,7 +269,9 @@ export async function POST(req: NextRequest) {
 
     // The manager gives today's Cash Counted when he clocks out (owner, 14 Nov 2026). He may skip it today only; from tomorrow it is compulsory.
     if (action === 'out' && String(username).toLowerCase() === 'joe' && sessionUser?.role !== 'owner') {
-      const todayCash = await missingCashToday(today).catch(() => null)
+      // Today's cash is asked for only once everyone else has clocked out; while someone is still in, the day is not over.
+      const [othersIn] = await sql`SELECT 1 FROM staff_times WHERE work_date = ${today} AND actual_in IS NOT NULL AND actual_out IS NULL AND LOWER(staff_name) <> ${String(username).toLowerCase()} AND staff_name <> '__shop_open__' LIMIT 1`.catch(() => [])
+      const todayCash = othersIn ? null : await missingCashToday(today).catch(() => null)
       if (todayCash) {
         const v = cash_counted === '' || cash_counted == null ? NaN : Number(cash_counted)
         const canSkip = today <= CASH_SKIP_LAST_DAY

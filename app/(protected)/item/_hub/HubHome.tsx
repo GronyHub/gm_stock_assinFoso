@@ -147,6 +147,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
   const clockedIn = (team ?? []).filter(r => r.actual_in && !r.actual_out)
   // Nobody has clocked in today (once the team has loaded): a day nobody worked asks for no cash count.
   const nobodyIn = team !== null && !team.some(r => r.actual_in)
+  // Someone is still clocked in: the day is not over, so no cash count is asked yet.
+  const stillIn = clockedIn.length > 0
   const waiting = Number(myDayBadge ?? 0)
   const jobs = Number(pendingJobsBadge ?? 0)
   const countLeft = liveCountProgress ? Math.max(0, liveCountProgress.total - liveCountProgress.doneToday) : null
@@ -176,8 +178,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
         <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
         <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (
-          <Card title="Cash counted" tone={cash !== null ? 'good' : (nobodyIn ? 'plain' : new Date().getHours() >= 18 ? 'bad' : 'plain')} onClick={go(() => goItemsMode('log'))}
-            value={cash === null ? (nobodyIn ? '–' : 'Not yet') : <MoneyText v={cash} />} sub={cash === null ? (nobodyIn ? 'Nobody clocked in today, so nothing to count' : 'Count it in the Sales Log before closing') : 'Entered for today'} />
+          <Card title="Cash counted" tone={cash !== null ? 'good' : (nobodyIn || stillIn ? 'plain' : new Date().getHours() >= 18 ? 'bad' : 'plain')} onClick={go(() => goItemsMode('log'))}
+            value={cash === null ? (nobodyIn ? '–' : stillIn ? 'Later' : 'Not yet') : <MoneyText v={cash} />} sub={cash === null ? (nobodyIn ? 'Nobody clocked in today, so nothing to count' : stillIn ? 'Count it once everyone has clocked out' : 'Count it in the Sales Log before closing') : 'Entered for today'} />
         )}
         {showFlags && (
           <Card title="Flags" value={flagTotal} tone={flagTotal > 0 ? 'warn' : 'good'} sub={flagTotal > 0 ? 'Things to fix' : 'All clear'} onClick={go(() => pickLossView('flags'))} />
