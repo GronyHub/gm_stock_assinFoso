@@ -23,6 +23,43 @@ function Card({ title, value, sub, tone = 'plain', wide = false, onClick }: { ti
   )
 }
 
+type PTab = { key: string; icon: string; label: string; others: 'all' | 'manage' | 'none' }
+const PERSON_TABS: PTab[] = [
+  { key: 'waiting', icon: '📋', label: 'Waiting', others: 'manage' },
+  { key: 'done', icon: '✔', label: 'Done', others: 'manage' },
+  { key: 'laws', icon: '📜', label: 'Laws', others: 'manage' },
+  { key: 'times', icon: '🕐', label: 'Times', others: 'all' },
+  { key: 'violations', icon: '⚖', label: 'Penalty points', others: 'manage' },
+  { key: 'tasks', icon: '✅', label: 'Tasks', others: 'all' },
+  { key: 'payslips', icon: '💵', label: 'Payslips', others: 'none' },
+  { key: 'profile', icon: '👤', label: 'Profile', others: 'none' },
+  { key: 'dressCode', icon: '👕', label: 'Dress code', others: 'all' },
+  { key: 'meeting', icon: '🗣️', label: 'Meeting', others: 'all' },
+]
+
+// One person's own tabs (Waiting for me, Done, Laws, Times, Penalty points...) as small tiles; each opens that tab of their page.
+function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
+  const isSelf = who.toLowerCase() === (h.username ?? '').toLowerCase()
+  const may = !!(h.isOwnerOrJoe || h.canManage)
+  const tabs = PERSON_TABS.filter(t => isSelf || t.others === 'all' || (t.others === 'manage' && may))
+  const w = h.waitingBy?.[who.toLowerCase()]
+  if (!who) return null
+  return (
+    <section aria-label={`${nm(who)}'s pages`} className="space-y-1.5">
+      <h2 className="text-[13px] text-gray-500">{isSelf ? 'You' : nm(who)}</h2>
+      <div className="grid grid-cols-3 gap-2">
+        {tabs.map(t => (
+          <button key={t.key} type="button" onClick={() => h.openPersonal(who, t.key)} className="relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-left active:opacity-80">
+            <span aria-hidden="true" className="text-lg leading-none">{t.icon}</span>
+            <span className="w-full truncate text-[12px] text-gray-700">{t.label}</span>
+            {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // The Home screen (phone): the day at a glance. Everything shown comes from numbers the app already holds, except who is
 // clocked in, which is read once when Home opens. Owners, Joe and managers also see cash and flags; staff see their own sales.
 export default function HubHome({ h }: { h: HubCtx }) {
@@ -30,6 +67,9 @@ export default function HubHome({ h }: { h: HubCtx }) {
     liveSaleFlagTotal, salesFlagsCount, billsFlagsCount, cabFlagsCount, lossByDateFlagsCount, staffTimesFlagsCount, dressFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount,
     setShop, openShop, pickLossView, goItemsMode, openEmbed } = h
   const [team, setTeam] = useState<Row[] | null>(null)
+  // Whose tiles are showing under the team panel: tapping a card picks the person (it no longer opens a page); the tiles open that person's tabs.
+  const [sel, setSel] = useState('')
+  const who = sel || username
   useEffect(() => {
     let live = true
     fetch('/api/staff-times/worked-today', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { if (live) setTeam(Array.isArray(d?.staff) ? d.staff : []) }).catch(() => { if (live) setTeam([]) })
@@ -63,9 +103,10 @@ export default function HubHome({ h }: { h: HubCtx }) {
       </div>
       {/* The team's profiles (phones; computers have them in the top bar): tap one to open that person. */}
       <div className="home-team rounded-xl bg-[#00072d] p-1 sm:hidden">
-        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim /></div>}
-        <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={h.openPersonal} onOpenShop={() => openShop('home')} activeStaff={h.personal?.name ?? null} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
+        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim active={who.toLowerCase() === username.toLowerCase()} onSelect={() => setSel(username)} /></div>}
+        <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={(name: string) => setSel(name)} onOpenShop={() => openShop('home')} activeStaff={who} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
       </div>
+      <PersonTiles h={h} who={who} />
       <div className="grid grid-cols-3 gap-2">
         {showFlags ? (
           <Card wide title="Sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={Number(liveTodaySalesTotal)} />}
