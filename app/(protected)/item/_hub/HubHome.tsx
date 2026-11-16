@@ -3,6 +3,7 @@ import PresentStaffBar from '../_components/PresentStaffBar'
 import { StaffMemberPersonalTab, STAFF_ROSTER } from './hubShared'
 import { signOut } from 'next-auth/react'
 import ClockInOutPanel, { type Mine } from '../../staff/ClockInOutPanel'
+import HubRecord from './HubRecord'
 import MySelfChip from '../_components/MySelfChip'
 import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
@@ -38,7 +39,6 @@ const PERSON_TABS: PTab[] = [
   { key: 'profile', icon: '👤', label: 'Profile', others: 'none' },
   { key: 'dressCode', icon: '👕', label: 'Dress code', others: 'all' },
   { key: 'meeting', icon: '🗣️', label: 'Meeting', others: 'all' },
-  { key: 'record', icon: '✍️', label: 'Record something', others: 'all' },
 ]
 
 // One person's own tabs (Waiting for me, Done, Laws, Times, Penalty points...) as small tiles; each opens that tab of their page.
@@ -56,7 +56,7 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
       <h2 className="text-[13px] text-gray-500">{isSelf ? 'You' : nm(who)}</h2>
       <div className="grid grid-cols-3 gap-2">
         {tabs.map(t => (
-          <button key={t.key} type="button" onClick={() => (t.key === 'record' ? h.openShop('record') : setTab(cur => (cur === t.key ? '' : t.key)))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-2.5 py-2 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
             <span aria-hidden="true" className="text-lg leading-none">{t.icon}</span>
             <span className="w-full truncate text-[12px] text-gray-700">{t.label}</span>
             {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
@@ -166,7 +166,6 @@ export default function HubHome({ h }: { h: HubCtx }) {
         ) : (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
-        <Card wide title="Record something" value="＋" tone="plain" sub="Staff behaviour, late or absent, unfortunate events, shop checks and more" onClick={() => openShop('record')} />
         <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
         <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (
@@ -180,6 +179,9 @@ export default function HubHome({ h }: { h: HubCtx }) {
         <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
       </div>
+      <section aria-label="Record" className="space-y-1.5 pt-1">
+        <HubRecord h={h} embedded />
+      </section>
       {isOwnerOrJoe && <p className="px-1 pt-1 text-[12px] text-gray-400">Tap a card to go to where it is dealt with.</p>}
     </div>
   )

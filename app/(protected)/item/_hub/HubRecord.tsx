@@ -11,7 +11,7 @@ type Item =
   | { kind: 'go'; key: string; icon: string; label: string; need: 'all' | 'cash' | 'owner'; run: (h: HubCtx) => void }
 
 // "Record something": one place to record anything that is logged in the app. A tile either opens its form right here, or takes you to the page where it is recorded.
-export default function HubRecord({ h }: { h: HubCtx }) {
+export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded?: boolean }) {
   const [pick, setPick] = useState('')
   const x = h as unknown as Record<string, any>
   const manage = (key: string, sub?: { advertSub?: ManageView; checksSub?: ManageView }) => (
@@ -64,11 +64,12 @@ export default function HubRecord({ h }: { h: HubCtx }) {
   const chosen = groups.flatMap(g => g.items).find(i => i.kind === 'form' && i.key === pick) as Extract<Item, { kind: 'form' }> | undefined
 
   return (
-    <div className="space-y-4 px-3 pb-28 pt-3">
+    <div className={embedded ? 'space-y-3' : 'space-y-4 px-3 pb-28 pt-3'}>
+      {!embedded && (
       <div>
         <h1 className="text-xl text-gray-900">Record something</h1>
         <p className="text-[13px] text-gray-500">Pick what you want to record. A form opens below, or you are taken to the page where it is recorded.</p>
-      </div>
+      </div>)}
       {groups.map(g => {
         const items = g.items.filter(i => allowed(i.need))
         if (!items.length) return null

@@ -1,7 +1,6 @@
 'use client'
 import HubHome, { HubTeamPanel } from './HubHome'
 import HubAnalytics from './HubAnalytics'
-import HubRecord from './HubRecord'
 import HubStatusStrip from './HubStatusStrip'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -70,7 +69,6 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'team' && <HubTeamPanel h={h} />}
                   {shop.tab === 'analytics' && <div className="h-full"><HubAnalytics h={h} /></div>}
-                  {shop.tab === 'record' && <HubRecord h={h} />}
                   {shop.tab === 'rota' && isOwnerOrJoe && <div className="p-2"><ShopRota canManage /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
