@@ -13,6 +13,7 @@ type Item =
 // "Record something": one place to record anything that is logged in the app. A tile either opens its form right here, or takes you to the page where it is recorded.
 export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded?: boolean }) {
   const [pick, setPick] = useState('')
+  const [open, setOpen] = useState(!embedded)
   const x = h as unknown as Record<string, any>
   const manage = (key: string, sub?: { advertSub?: ManageView; checksSub?: ManageView }) => (
     <GronyManageContent key={key} view={(sub?.advertSub ? 'advert' : sub?.checksSub ? 'grony_checks' : key) as ManageView} {...sub}
@@ -70,28 +71,39 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
         <h1 className="text-xl text-gray-900">Record something</h1>
         <p className="text-[13px] text-gray-500">Pick what you want to record. A form opens below, or you are taken to the page where it is recorded.</p>
       </div>)}
-      {groups.map(g => {
+      {embedded && (
+        <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)}
+          className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left active:opacity-80">
+          <span aria-hidden="true" className="text-xl">✍️</span>
+          <span className="min-w-0 flex-1"><span className="block text-[15px] text-gray-900">Record something</span><span className="block truncate text-[12px] text-gray-500">{chosen ? chosen.label : 'Behaviour, events, absence, shop checks and more'}</span></span>
+          <span aria-hidden="true" className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+      )}
+      {open && groups.map(g => {
         const items = g.items.filter(i => allowed(i.need))
         if (!items.length) return null
         return (
-          <section key={g.title} aria-label={g.title} className="space-y-1.5">
-            <h2 className="text-[13px] text-gray-500">{g.title}</h2>
-            <div className="grid grid-cols-5 gap-1.5">
+          <section key={g.title} aria-label={g.title} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <h2 className="border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-[12px] uppercase tracking-wide text-gray-500">{g.title}</h2>
+            <ul>
               {items.map(i => (
-                <button key={i.key} type="button" aria-pressed={i.kind === 'form' ? pick === i.key : undefined}
-                  onClick={() => (i.kind === 'form' ? setPick(p => (p === i.key ? '' : i.key)) : i.run(h))}
-                  className={`flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${i.kind === 'form' && pick === i.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-                  <span aria-hidden="true" className="text-lg leading-none">{i.icon}</span>
-                  <span className="line-clamp-2 w-full text-[12px] leading-tight text-gray-700">{i.label}</span>
-                </button>
+                <li key={i.key} className="border-b border-gray-100 last:border-b-0">
+                  <button type="button" aria-pressed={i.kind === 'form' ? pick === i.key : undefined}
+                    onClick={() => { if (i.kind === 'form') { setPick(p => (p === i.key ? '' : i.key)); if (embedded) setOpen(false) } else i.run(h) }}
+                    className={`flex min-h-[44px] w-full items-center gap-3 px-3 py-2 text-left text-[15px] active:bg-gray-50 ${i.kind === 'form' && pick === i.key ? 'bg-blue-50 text-blue-800' : 'text-gray-800'}`}>
+                    <span aria-hidden="true" className="w-6 text-center text-lg">{i.icon}</span>
+                    <span className="min-w-0 flex-1">{i.label}</span>
+                    {i.kind === 'go' && <span aria-hidden="true" className="text-gray-300">›</span>}
+                  </button>
+                </li>
               ))}
-            </div>
+            </ul>
           </section>
         )
       })}
       {chosen && (
         <div className="rounded-xl border border-gray-200 bg-white p-2">
-          <p className="mb-1 px-1 text-[14px] font-medium text-gray-900">{chosen.icon} {chosen.label}</p>
+          <div className="mb-1 flex items-center justify-between px-1"><p className="text-[14px] font-medium text-gray-900">{chosen.icon} {chosen.label}</p><button type="button" onClick={() => setPick('')} aria-label="Close" className="px-2 text-lg text-gray-400">✕</button></div>
           <TabErrorBoundary>{chosen.render(h)}</TabErrorBoundary>
         </div>
       )}
