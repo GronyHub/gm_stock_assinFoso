@@ -45,7 +45,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             {/* One place for everything that is waiting. A person's own list is this page filtered to their name, so there is no second list to contradict it. The badge is how many things wait for the signed-in person. */}
             <SidePaneButton icon="✅" label="Waiting for team" mode={cashDisplayMode} active={shop?.tab === 'todo'} badge={myDayBadge} divider noNewTab onClick={() => openShop('todo')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
-            <SidePaneButton icon="✍️" label="Record something" mode={cashDisplayMode} divider noNewTab active={shop?.tab === 'record'} onClick={() => openShop('record')} />
             <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button (opens on Done; Waiting for team has its own button above): the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
             <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop && shop.tab !== 'todo'} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('home')} />
