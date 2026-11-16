@@ -138,3 +138,8 @@ html.framed .no-frame { display: none !important; }
 
 /* My own profile card lives on the Waiting page (phones), not in the Menu. */
 @media (max-width: 639px) { .menu-page [data-self-wrap] { display: none; } }
+
+/* Menu page (phones): leave out what is already on the bottom bar, the top bar or a tile on the Waiting page. */
+.menu-page nav button[aria-label="Waiting for team"], .menu-page nav button[aria-label="Pending jobs"], .menu-page nav button[aria-label="Shop"],
+.menu-page nav button[aria-label="Live"], .menu-page nav button[aria-label="Sales Log"], .menu-page nav button[aria-label="Search"],
+.menu-page nav button[aria-label="Counts"], .menu-page nav button[aria-label="Flags"] { display: none; }
