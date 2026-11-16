@@ -145,6 +145,6 @@ html.framed .no-frame { display: none !important; }
 .menu-page nav button[aria-label="Counts"], .menu-page nav button[aria-label="Flags"] { display: none; }
 
 /* Menu page (phones): everything that is in the New sale strip is left out here. What stays is what the strip does not carry. */
-.menu-page nav button:not([aria-label="How To"]):not([aria-label="Settings"]):not([aria-label="UK Settings"]):not([aria-label="Sign out"]) { display: none; }
+.menu-page nav button:not([aria-label="Settings"]):not([aria-label="UK Settings"]):not([aria-label="Sign out"]) { display: none; }
 .menu-page nav p { display: none; }
 @media (max-width: 639px) { .cash-strip nav button { width: auto !important; padding-left: 4px !important; padding-right: 4px !important; } }

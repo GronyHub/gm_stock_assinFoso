@@ -72,17 +72,17 @@ export const TOPICS: Topic[] = [
     id: 'app-layout',
     title: 'How is the app laid out?',
     group: 'Getting Started',
-    keywords: 'layout navigation biz uk ch sidebar pane daily home',
+    keywords: 'layout navigation bottom bar waiting done new sale manage more strip phone',
     body: (
       <div className="space-y-3">
-        <p className="text-sm text-gray-700">Everything opens from the left sidebar (on a phone, tap the menu icon to bring it back). The buttons you can use have a yellow label for the owner and Joe; staff only see their own buttons.</p>
+        <p className="text-sm text-gray-700">On a phone, five buttons run along the bottom. The buttons you can use depend on your role; staff only see their own.</p>
         <ul className="space-y-1.5 text-sm text-gray-700 list-disc list-inside">
-          <li><strong>Waiting for team</strong> -- what to do now, tile by tile. Tick it when it is done.</li>
-          <li><strong>Live</strong> and <strong>Sales Log</strong> -- record and review sales.</li>
-          <li><strong>Customers</strong>, <strong>Counts</strong>, <strong>Item 360</strong>, <strong>Losses</strong>, <strong>Analytics</strong> -- the rest of your day-to-day tools.</li>
-          <li><strong>Payslips</strong> and <strong>Profile</strong> -- your own pay and your own details and photo.</li>
+          <li><strong>Waiting</strong> -- what to do now, tile by tile, with your own card and today&apos;s numbers. Tick a task when it is done.</li>
+          <li><strong>Done</strong> -- the record of what was done today, with filters for type, person, day and activity.</li>
+          <li><strong>New sale (+)</strong> -- record a sale. The strip along the top has Sales Log, Customers, Item 360, Bills, Expenses, P&amp;L, Losses and Analytics.</li>
+          <li><strong>Manage</strong> (owner, Joe and managers) -- the team, laws, times, rota, penalty points, the Manage sections, adverts and shop checks, each as its own tab.</li>
+          <li><strong>More</strong> -- Settings and Sign out.</li>
         </ul>
-        <p className="text-sm text-gray-700">The staff bar across the top shows who is clocked in. Tap <strong>Shop</strong> in the sidebar; it opens on <strong>Done</strong> (what was done today). The Shop's other tabs include <strong>Laws</strong> (the Company Laws: the rules of each area, each with a video (watch it to the end within 7 days) and one question of the day) and <strong>Times</strong> (everyone's clock times).</p>
       </div>
     ),
   },
