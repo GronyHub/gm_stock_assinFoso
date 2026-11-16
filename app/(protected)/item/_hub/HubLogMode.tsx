@@ -2,6 +2,7 @@
 import { isOwnerLevel } from '@/lib/roles'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
+import { areaForGuide } from '@/lib/lawAreas'
 import type { HubCtx } from './useHubState'
 import HubLogAnalytics from './HubLogAnalytics'
 
@@ -26,7 +27,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
               )}
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
-                <PageGuide page="log" />
+                <span className="hidden sm:contents"><PageGuide page="log" /></span>
                 {/* Phone: period, what to show, and two menus. Everything else the row used to carry is in the menus. */}
                 <div className="flex w-full flex-col gap-2 sm:hidden">
                   <div className="flex gap-2">
@@ -55,6 +56,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                         <button type="button" className="block w-full px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}>Sale for a past day</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLiveNewEntryOpen(true) }}>New log entry</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setRcptSelect(v => !v); setRcptSel(new Set()) }}>{rcptSelect ? 'Cancel receipt' : 'Receipt from sales…'}</button>
+                        {areaForGuide('log') && <a href={`/laws?tile=${areaForGuide('log')!.key}`} className="block border-t border-gray-100 px-4 py-3 hover:bg-gray-50">📜 Laws for this page</a>}
                       </div>
                     </details>
                     <details className="relative">
