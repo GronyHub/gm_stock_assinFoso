@@ -237,6 +237,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             value={liveInlineQtyByItemId[item.id] ?? '1'}
                                             onChange={e => setLiveInlineQtyByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                            onFocus={e => { const el = e.currentTarget; setTimeout(() => el.select(), 0) }}
                                             onClick={e => e.stopPropagation()}
                                             className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />
@@ -249,6 +250,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                             value={liveInlinePriceByItemId[item.id] ?? formatPrice(item.selling_price)}
                                             onChange={e => setLiveInlinePriceByItemId(prev => ({ ...prev, [item.id]: e.target.value }))}
                                             onKeyDown={e => { if (e.key === 'Enter') recordInlineTap(item) }}
+                                            onFocus={e => { const el = e.currentTarget; setTimeout(() => el.select(), 0) }}
                                             onClick={e => e.stopPropagation()}
                                             className="w-full min-w-0 text-[12px] font-semibold text-gray-900 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                                           />

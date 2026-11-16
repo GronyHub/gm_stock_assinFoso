@@ -65,9 +65,9 @@ export default function MIBasket({ onClose, onAddItem, lines, onQty, onPrice, on
           {lines.map(l => (
             <div key={l.itemId} className="flex items-center gap-1.5 rounded-lg bg-gray-50 p-1.5">
               <p className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-900">{l.name}</p>
-              <input type="number" min={1} inputMode="numeric" value={l.qty} onChange={e => onQty(l.itemId, e.target.value)} className="w-12 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Quantity" />
+              <input type="number" min={1} inputMode="numeric" value={l.qty} onFocus={e => { const el = e.currentTarget; setTimeout(() => el.select(), 0) }} onChange={e => onQty(l.itemId, e.target.value)} className="w-12 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Quantity" />
               <span className="text-[12px] text-gray-400">×₵</span>
-              <input type="number" min={0} step="any" inputMode="decimal" value={l.price} onChange={e => onPrice(l.itemId, e.target.value)} className="w-16 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Price" />
+              <input type="number" min={0} step="any" inputMode="decimal" value={l.price} onFocus={e => { const el = e.currentTarget; setTimeout(() => el.select(), 0) }} onChange={e => onPrice(l.itemId, e.target.value)} className="w-16 rounded border border-gray-300 px-1 py-1 text-xs" aria-label="Price" />
               <span className="w-14 text-right text-xs font-bold text-gray-800">₵{((Number(l.qty) || 0) * (Number(l.price) || 0)).toLocaleString('en-GB', { maximumFractionDigits: 2 })}</span>
               <button type="button" onClick={() => onRemove(l.itemId)} className="px-1 text-lg leading-none text-red-500" aria-label="Remove">&times;</button>
             </div>
