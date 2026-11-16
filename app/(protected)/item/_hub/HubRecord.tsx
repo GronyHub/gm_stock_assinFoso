@@ -65,25 +65,24 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
   const chosen = groups.flatMap(g => g.items).find(i => i.kind === 'form' && i.key === pick) as Extract<Item, { kind: 'form' }> | undefined
 
   return (
-    <div className={embedded ? 'space-y-3' : 'space-y-4 px-3 pb-28 pt-3'}>
+    <div className={embedded ? 'contents' : 'space-y-4 px-3 pb-28 pt-3'}>
       {!embedded && (
       <div>
         <h1 className="text-xl text-gray-900">Record something</h1>
         <p className="text-[13px] text-gray-500">Pick what you want to record. A form opens below, or you are taken to the page where it is recorded.</p>
       </div>)}
       {embedded && (
-        <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)}
-          className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-left active:opacity-80">
-          <span aria-hidden="true" className="text-xl">✍️</span>
-          <span className="min-w-0 flex-1"><span className="block text-[15px] text-gray-900">Record something</span><span className="block truncate text-[12px] text-gray-500">{chosen ? chosen.label : 'Behaviour, events, absence, shop checks and more'}</span></span>
-          <span aria-hidden="true" className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}>▾</span>
+        <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)} title={chosen ? chosen.label : 'Record something'}
+          className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${open || chosen ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+          <span aria-hidden="true" className="text-base leading-none">✍️</span>
+          <span className="line-clamp-2 break-words text-[11px] leading-tight text-gray-700">{chosen ? chosen.label : "Record something"}</span>
         </button>
       )}
       {open && groups.map(g => {
         const items = g.items.filter(i => allowed(i.need))
         if (!items.length) return null
         return (
-          <section key={g.title} aria-label={g.title} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <section key={g.title} aria-label={g.title} className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${embedded ? 'col-span-5' : ''}`}>
             <h2 className="border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-[12px] uppercase tracking-wide text-gray-500">{g.title}</h2>
             <ul>
               {items.map(i => (
@@ -102,7 +101,7 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
         )
       })}
       {chosen && (
-        <div className="rounded-xl border border-gray-200 bg-white p-2">
+        <div className={`rounded-xl border border-gray-200 bg-white p-2 ${embedded ? 'col-span-5' : ''}`}>
           <div className="mb-1 flex items-center justify-between px-1"><p className="text-[14px] font-medium text-gray-900">{chosen.icon} {chosen.label}</p><button type="button" onClick={() => setPick('')} aria-label="Close" className="px-2 text-lg text-gray-400">✕</button></div>
           <TabErrorBoundary>{chosen.render(h)}</TabErrorBoundary>
         </div>

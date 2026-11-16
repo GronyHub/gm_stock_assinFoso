@@ -17,12 +17,18 @@ const nm = (n: string) => n.charAt(0).toUpperCase() + n.slice(1)
 
 // One summary card: a title, one big figure, a short line under it, and an arrow: tap to go to where it is dealt with.
 function Card({ title, value, sub, tone = 'plain', wide = false, onClick }: { title: string; value: React.ReactNode; sub?: React.ReactNode; tone?: Tone; wide?: boolean; onClick: () => void }) {
-  // Five to a row: title and figure only (the note shows on the wide card, and as the tooltip on the small ones).
+  // Five to a row: title and figure only (the note is the tooltip). The wide one is a single slim line.
+  if (wide) return (
+    <button type="button" onClick={onClick} className={`col-span-5 flex min-w-0 items-baseline gap-2 rounded-xl border px-2.5 py-1.5 text-left active:opacity-80 ${TONES[tone]}`}>
+      <span className="shrink-0 text-[12px] text-gray-600">{title}</span>
+      <span className="shrink-0 text-[18px] leading-tight text-gray-900">{value}</span>
+      <span className="min-w-0 flex-1 truncate text-[12px] text-gray-500">{sub}</span>
+    </button>
+  )
   return (
-    <button type="button" onClick={onClick} title={typeof sub === 'string' ? sub : undefined} className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${wide ? 'col-span-5 px-2.5 py-2' : ''} ${TONES[tone]}`}>
+    <button type="button" onClick={onClick} title={typeof sub === 'string' ? sub : undefined} className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${TONES[tone]}`}>
       <span className="line-clamp-2 text-[12px] leading-tight text-gray-600">{title}</span>
-      <span className={`truncate leading-tight text-gray-900 ${wide ? 'text-[20px]' : 'text-[16px]'}`}>{value}</span>
-      {wide && <span className="line-clamp-2 text-[11px] leading-snug text-gray-500">{sub ?? ' '}</span>}
+      <span className="truncate text-[16px] leading-tight text-gray-900">{value}</span>
     </button>
   )
 }
@@ -53,11 +59,11 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   if (!who) return null
   return (
     <section aria-label={`${nm(who)}'s pages`} className="space-y-1.5">
-      <h2 className="text-[13px] text-gray-500">{isSelf ? 'You' : nm(who)}</h2>
+      {!isSelf && <h2 className="text-[13px] text-gray-500">{nm(who)}</h2>}
       <div className="grid grid-cols-5 gap-1.5">
         {tabs.map(t => (
-          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-1.5 py-1.5 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
-            <span aria-hidden="true" className="text-lg leading-none">{t.icon}</span>
+          <button key={t.key} type="button" onClick={() => setTab(cur => (cur === t.key ? '' : t.key))} aria-pressed={tab === t.key} className={`relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border px-1.5 py-1 text-left active:opacity-80 ${tab === t.key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+            <span aria-hidden="true" className="text-base leading-none">{t.icon}</span>
             <span className="line-clamp-2 w-full text-[12px] leading-tight text-gray-700">{t.label}</span>
             {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
           </button>
@@ -107,7 +113,6 @@ function MyShift({ h }: { h: HubCtx }) {
   </>)
   return (
     <section aria-label="My shift and account" className="space-y-1.5 sm:hidden">
-      <h2 className="text-[13px] text-gray-500">My shift</h2>
       {username && <ClockInOutPanel compact compactExtra={extra} username={username} mine={mine} opener={opener} onMineChange={setMine} />}
     </section>
   )
@@ -149,13 +154,13 @@ export default function HubHome({ h }: { h: HubCtx }) {
 
   return (
     <div className="space-y-2 p-3 pb-28">
-      <div>
-        <h1 className="text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
-        <p className="text-sm text-gray-500">{dateText}</p>
-      </div>
-      {/* My own profile card (phones; computers have it in the top bar). The rest of the team is on the Manage page. */}
-      <div className="home-team rounded-xl bg-[#00072d] p-1 sm:hidden">
-        {username && <div className="p-1"><MySelfChip name={nm(username)} username={username} sales={mySales} slim active onSelect={() => undefined} /></div>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
+          <p className="text-sm text-gray-500">{dateText}</p>
+        </div>
+        {/* My own picture (phones; computers have it in the top bar). The rest of the team is on the Manage page. */}
+        {username && <div className="sm:hidden"><MySelfChip name={nm(username)} username={username} sales={mySales} bare onSelect={() => undefined} /></div>}
       </div>
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
@@ -178,11 +183,8 @@ export default function HubHome({ h }: { h: HubCtx }) {
         <Card title="Counts to do" value={countLeft ?? '–'} tone={countLeft ? 'warn' : 'plain'} sub={liveCountProgress ? `${liveCountProgress.doneToday} of ${liveCountProgress.total} counted today` : 'Loading…'} onClick={go(() => pickLossView('counts'))} />
         <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
-      </div>
-      <section aria-label="Record" className="space-y-1.5 pt-1">
         <HubRecord h={h} embedded />
-      </section>
-      {isOwnerOrJoe && <p className="px-1 pt-1 text-[12px] text-gray-400">Tap a card to go to where it is dealt with.</p>}
+      </div>
     </div>
   )
 }
