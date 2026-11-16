@@ -165,6 +165,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
         ) : (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
+        <Card wide title="Record something" value="＋" tone="plain" sub="Staff behaviour, late or absent, unfortunate events, shop checks and more" onClick={() => openShop('record')} />
         <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
         <Card title="Pending jobs" value={jobs} tone={jobs > 0 ? 'plain' : 'good'} sub={jobs > 0 ? 'Customers’ work left with us' : 'None open'} onClick={() => openEmbed('/pending-jobs')} />
         {showFlags && (

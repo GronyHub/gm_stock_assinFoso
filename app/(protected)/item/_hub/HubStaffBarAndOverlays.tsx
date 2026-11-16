@@ -1,6 +1,7 @@
 'use client'
 import HubHome, { HubTeamPanel } from './HubHome'
 import HubAnalytics from './HubAnalytics'
+import HubRecord from './HubRecord'
 import HubStatusStrip from './HubStatusStrip'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
@@ -52,10 +53,10 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
             <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
               {shop ? (<>
                 {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
-                {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'laws' && !mgr)) && (
+                {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'record' && !mgr) || (shop.tab === 'laws' && !mgr)) && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">
                   <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
-                    {([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
+                    {([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['record', '✍️ Record'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]).map(([k, label, badge]) => (
                       <button key={k} type="button" onClick={() => setShop({ tab: k })} className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${(shop.tab === 'manage' ? `m:${manageSideOptions()[0]?.key}` : shop.tab) === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}{badge ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">{badge}</span> : null}</button>
                     ))}
                   </div>
@@ -69,6 +70,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'home' && <div className="px-2"><TodayContent /></div>}
                   {shop.tab === 'team' && <HubTeamPanel h={h} />}
                   {shop.tab === 'analytics' && <div className="h-full"><HubAnalytics h={h} /></div>}
+                  {shop.tab === 'record' && <HubRecord h={h} />}
                   {shop.tab === 'rota' && isOwnerOrJoe && <div className="p-2"><ShopRota canManage /></div>}
                   {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
