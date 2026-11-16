@@ -54,7 +54,10 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
   useEffect(() => { setTab('') }, [who])
   const isSelf = who.toLowerCase() === (h.username ?? '').toLowerCase()
   const may = !!(h.isOwnerOrJoe || h.canManage)
-  const tabs = PERSON_TABS.filter(t => isSelf || t.others === 'all' || (t.others === 'manage' && may))
+  // Owner, Joe and managers have these pages as tiles on the Manage page, so they are not repeated here.
+  const hasManage = !!(h.isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam))
+  const onManage = new Set(['laws', 'times', 'violations', 'dressCode', 'meeting'])
+  const tabs = PERSON_TABS.filter(t => !(hasManage && onManage.has(t.key)) && (isSelf || t.others === 'all' || (t.others === 'manage' && may)))
   const w = h.waitingBy?.[who.toLowerCase()]
   if (!who) return null
   return (
@@ -185,8 +188,10 @@ export default function HubHome({ h }: { h: HubCtx }) {
           <Card title="Flags" value={flagTotal} tone={flagTotal > 0 ? 'warn' : 'good'} sub={flagTotal > 0 ? 'Things to fix' : 'All clear'} onClick={go(() => pickLossView('flags'))} />
         )}
         <Card title="Counts to do" value={countLeft ?? '–'} tone={countLeft ? 'warn' : 'plain'} sub={liveCountProgress ? `${liveCountProgress.doneToday} of ${liveCountProgress.total} counted today` : 'Loading…'} onClick={go(() => pickLossView('counts'))} />
-        <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
+        {!(isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam)) && (
+          <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
+        )}
         <HubRecord h={h} embedded />
       </div>
     </div>
