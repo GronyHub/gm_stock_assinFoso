@@ -58,6 +58,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   const [canAdd, setCanAdd] = useState(false)
   const [people, setPeople] = useState<string[]>([])
   const [adding, setAdding] = useState(false)
+  const [peek, setPeek] = useState<Duty | null>(null)   // a tapped tile on another day: what it is, when, who, and how it ended (nothing can be recorded on those days)
   const [form, setForm] = useState({ title: '', date: '', who: '', notes: '' })
   const [msg, setMsg] = useState('')
   // Who may add a to-do, and who can be picked (the to-do route answers this with tomorrow's page).
@@ -105,6 +106,24 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
       </div>
       {below}
       {msg && <p className="mx-2 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
+      {peek && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setPeek(null)}>
+          <div role="dialog" aria-label="Task" className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[12px] font-bold uppercase text-gray-500">{new Date(sel + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+              <button type="button" onClick={() => setPeek(null)} aria-label="Close" className="text-xl text-gray-500">✕</button>
+            </div>
+            <p className="text-[16px] font-semibold leading-snug text-gray-900">{peek.title}</p>
+            <p className="text-[13px] text-gray-700">{peek.kind === 'task' ? `${String(Math.floor(peek.due / 60)).padStart(2, '0')}:${String(peek.due % 60).padStart(2, '0')}` : peek.time}{peek.mins ? ` · ${peek.mins} min` : ''} · {peek.role ? peek.role : 'Anyone on shift'}{peek.owner ? ` · ${nm(peek.owner)}` : ''}</p>
+            <p className="text-[12px] text-gray-500">{[peek.category, peek.typeLabel ?? LAW_TYPES.find(x => x.key === peek.lawType)?.label].filter(Boolean).join(' · ')}</p>
+            <div className={`rounded-lg px-3 py-2 text-[13px] ${peek.state === 'done' ? 'bg-green-50 text-green-900' : peek.state === 'plan' || peek.state === 'later' ? 'bg-gray-50 text-gray-700' : 'bg-amber-50 text-amber-900'}`}>
+              {peek.state === 'plan' ? 'Planned. It can be done on the day.' : peek.state === 'done' ? `Done${peek.by ? ` by ${nm(peek.by)}` : ''}${peek.at ? ` at ${peek.at}` : ''}.` : peek.state === 'no' ? `Marked not done${peek.by ? ` by ${nm(peek.by)}` : ''}. Reason: ${peek.note ?? ''}` : peek.state === 'miss' ? 'Missed: nobody did it that day.' : 'Not done yet.'}
+              {peek.state === 'done' && peek.note ? ` ${peek.note}` : ''}
+            </div>
+            <p className="text-[12px] text-gray-500">Staff record a task on the day itself: tap it on Today. How it is recorded (tick, photo, question) is set in its law.</p>
+            {canManage && peek.lawId ? <button type="button" onClick={() => { setPeek(null); go(`/laws?law=${peek.lawId}`) }} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white">Open the law to change it</button> : null}
+          </div>
+        </div>)}
       {adding && (
         <div className="mx-2 mt-2 space-y-2 rounded-xl border border-gray-300 bg-white p-3">
           <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="What has to be done?" className="w-full rounded-lg border border-gray-300 p-2 text-sm" />
@@ -134,7 +153,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                      onClick={d.lawId ? () => go(`/laws?law=${d.lawId}`) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
+                      onClick={d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
                   })}</div>
                 </div>) })}
             </div>)}
