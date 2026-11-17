@@ -1,5 +1,6 @@
 'use client'
 import ManageLogPanel from './ManageLogPanel'
+import AreaPage from './AreaPage'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -131,7 +132,7 @@ export default function GronyManageContent({
         ))}
       </div>}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
-      {selectedGronyCheckItem === 'cleanliness' && <ManageLogPanel category="cleanliness" label="Cleanliness" icon="🧹" />}
+      {selectedGronyCheckItem === 'cleanliness' && <AreaPage areaKey="clean" label="Cleanliness" icon="🧹" logCategory="cleanliness" />}
       {selectedGronyCheckItem === 'customer_display' && <ManageLogPanel category="customer_display" label="Customer Display" icon="🖼️" />}
       {selectedGronyCheckItem === 'repair_works' && <ManageLogPanel category="repair_works" label="Repair Works" icon="🔧" />}
       {selectedGronyCheckItem === 'security_chk' && <ManageLogPanel category="security_chk" label="Security chk" icon="🔒" />}
