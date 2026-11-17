@@ -10,6 +10,7 @@ import { dutiesForDate } from '@/lib/duties'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
 import { isShopDay, someoneClockedIn } from '@/lib/rota'
+import { parseViolations } from '@/lib/lawViolations'
 
 // Penalty points. Every violation costs points (1 for now); points are recorded in a ledger. 20 points = a 3-day
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
@@ -37,6 +38,8 @@ export const ensurePenalties = once(async () => {
     days INTEGER NOT NULL DEFAULT 0, hours INTEGER NOT NULL DEFAULT 0, start_date TEXT, end_date TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(), decided_by TEXT, decided_at TIMESTAMPTZ, note TEXT)`.catch(() => {})
   await sql`CREATE TABLE IF NOT EXISTS penalty_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`.catch(() => {})
+  // Parts of a point (a task worth 0.2, a violation worth 0.5) wait here and add up across every rule; each time the total reaches a whole point, that point is charged (see settle).
+  await sql`CREATE TABLE IF NOT EXISTS penalty_carry (staff TEXT NOT NULL, source TEXT NOT NULL, ref TEXT NOT NULL, points NUMERIC(8,2) NOT NULL, day TEXT NOT NULL, note TEXT, PRIMARY KEY (staff, source, ref))`.catch(() => {})
   await sql`CREATE TABLE IF NOT EXISTS penalty_claims (key TEXT PRIMARY KEY, done_at TIMESTAMPTZ NOT NULL DEFAULT now())`.catch(() => {})
   const today = dayKey()
   await sql`INSERT INTO penalty_settings (key, value) VALUES ('launch', ${today}) ON CONFLICT DO NOTHING`.catch(() => {})
@@ -57,13 +60,59 @@ export async function totalPoints(staff: string): Promise<number> {
   return Math.max(0, Number(r?.t ?? 0))
 }
 
+const r2 = (n: number) => Math.round(n * 100) / 100
+
+// The part of a point a person has built up so far (all rules together) that has not yet been charged as a whole point.
+export async function carryOf(staff: string): Promise<number> {
+  await ensurePenalties()
+  const s = staff.toLowerCase()
+  const [a] = await sql`SELECT COALESCE(SUM(points), 0)::float AS t FROM penalty_carry WHERE staff = ${s}`
+  const [b] = await sql`SELECT COALESCE(SUM(points), 0)::float AS t FROM staff_penalties WHERE staff = ${s} AND source = 'accrued' AND status IN ('active', 'pending')`
+  return Math.max(0, r2(Number(a?.t ?? 0) - Number(b?.t ?? 0)))
+}
+
+// Charges the whole points that the built-up parts have reached, and takes back any that are no longer reached (a task done late).
+export async function settle(staff: string) {
+  await ensurePenalties()
+  const s = staff.toLowerCase()
+  const [a] = await sql`SELECT COALESCE(SUM(points), 0)::float AS t FROM penalty_carry WHERE staff = ${s}`
+  const should = Math.floor(Number(a?.t ?? 0) + 0.0001)
+  const rows = await sql`SELECT id, points FROM staff_penalties WHERE staff = ${s} AND source = 'accrued' AND status IN ('active', 'pending') ORDER BY id DESC` as unknown as { id: number; points: number }[]
+  const has = rows.reduce((n, r) => n + Number(r.points), 0)
+  if (should > has) {
+    const recent = await sql`SELECT note FROM penalty_carry WHERE staff = ${s} AND note IS NOT NULL ORDER BY day DESC LIMIT 4`
+    await addPoint({ staff: s, points: should - has, reason: `Small penalties added up to ${should} point${should === 1 ? '' : 's'} (${recent.map(r => String(r.note).slice(0, 60)).join('; ')})`, source: 'accrued', ref: `accrued:${should}:${Date.now()}`, by: 'system' })
+  } else if (should < has) {
+    let cut = has - should
+    for (const r of rows) {
+      if (cut <= 0) break
+      const take = Math.min(cut, Number(r.points)); cut -= take
+      if (take >= Number(r.points)) await sql`UPDATE staff_penalties SET status = 'withdrawn', withdraw_reason = 'Withdrawn: a task was done late', note = 'Withdrawn: a task was done late' WHERE id = ${r.id}`
+      else await sql`UPDATE staff_penalties SET points = ${Number(r.points) - take}, note = 'Reduced: a task was done late' WHERE id = ${r.id}`
+    }
+  }
+}
+
 type Add = { staff: string; points?: number; reason: string; source: string; ref?: string; day?: string; lawId?: number | null; status?: 'active' | 'pending'; by?: string; violation?: string; lawCode?: string | null }
 // Records a violation. During the learning period it is a warning (does not count); a pending one waits for the owner.
-export async function addPoint(a: Add) {
+export async function addPoint(a: Add): Promise<{ id: number; staff: string; points: number; reason: string; counted: boolean; status: string } | null> {
   await ensurePenalties()
-  const staff = a.staff.toLowerCase(), day = a.day ?? dayKey(), points = a.points ?? 1, status = a.status ?? 'active'
+  let points = a.points ?? 1
+  const staff = a.staff.toLowerCase(), day = a.day ?? dayKey(), status = a.status ?? 'active'
   // A day nobody clocked in is not charged to anyone. People's own decisions (a manual penalty, a behaviour report) and a backdated clock-in always stand.
-  if (!['manual', 'behaviour', 'backdate', 'backdate-point'].includes(a.source) && !(await someoneClockedIn(day))) return null
+  if (!['manual', 'behaviour', 'backdate', 'backdate-point', 'accrued'].includes(a.source) && !(await someoneClockedIn(day))) return null
+  // A part of a point (0.2, 1.5) is kept and added to the person's build-up; only the whole points are charged now, and whole points follow as the build-up reaches them.
+  if (!Number.isInteger(points) && points > 0) {
+    if (status !== 'active') points = Math.max(1, Math.round(points))
+    else {
+      const whole = Math.floor(points), frac = r2(points - whole)
+      if (frac > 0) await sql`INSERT INTO penalty_carry (staff, source, ref, points, day, note) VALUES (${staff}, ${a.source}, ${a.ref ?? `${a.source}:${Date.now()}`}, ${frac}, ${day}, ${a.reason.slice(0, 160)}) ON CONFLICT DO NOTHING`
+      if (whole === 0) { await settle(staff); return null }
+      const row = await addPoint({ ...a, points: whole })
+      await settle(staff)
+      return row
+    }
+  }
   const counted = status === 'active' && await isCounting(day)
   const before = await totalPoints(staff)
   const [row] = await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, ref, day, law_id, counted, status, created_by, violation, law_code)
@@ -74,7 +123,7 @@ export async function addPoint(a: Add) {
   if (status === 'active') {
     if (counted) await afterChange(staff, before, before + points)
   }
-  return row
+  return row as { id: number; staff: string; points: number; reason: string; counted: boolean; status: string }
 }
 
 // The warnings at 10 and 15 points, and the sanction recommendation at 20, 30 and 50.
@@ -176,13 +225,34 @@ async function owedByOwner(day: string) {
   return byOwner
 }
 
+// What one undone task of a law is worth: the points on its first violation line (1 unless the law says otherwise; 0.2 means five undone tasks make a point).
+async function weightsFor(lawIds: number[]) {
+  const w = new Map<number, number>()
+  if (!lawIds.length) return w
+  const rows = await sql`SELECT id, violations, points FROM page_laws WHERE id = ANY(${Array.from(new Set(lawIds))})`.catch(() => []) as unknown as { id: number; violations: string | null; points: number | null }[]
+  for (const r of rows) { const v = parseViolations(r.violations)[0]; w.set(Number(r.id), v ? v.points : Number(r.points ?? 1)) }
+  return w
+}
+// A person's day: what their undone tasks add up to (at most MISSED_DAILY_CAP), how many there were and the first two names.
+async function dayTotals(day: string) {
+  const byOwner = await owedByOwner(day)
+  const w = await weightsFor(Array.from(byOwner.values()).flat().map(d => Number(d.lawId)))
+  const out = new Map<string, { total: number; n: number; first: string }>()
+  for (const [name, mine] of byOwner) {
+    const sum = mine.reduce((n, d) => n + (w.get(Number(d.lawId)) ?? 1), 0)
+    out.set(name, { total: r2(Math.min(sum, MISSED_DAILY_CAP)), n: mine.length, first: mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ') + (mine.length > 2 ? '...' : '') })
+  }
+  return out
+}
+
 export async function dayEndAssess(day = dayKey()) {
   await ensurePenalties()
-  const byOwner = await owedByOwner(day)
-  for (const [name, mine] of byOwner) {
-    const pts = Math.min(mine.length, MISSED_DAILY_CAP)
-    const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
-    await addPoint({ staff: name, points: pts, reason: `${mine.length} checklist task${mine.length === 1 ? '' : 's'} left undone today (${first}${mine.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })
+  for (const [name, t] of await dayTotals(day)) {
+    if (t.total <= 0) continue
+    const whole = Math.floor(t.total + 0.0001), frac = r2(t.total - whole)
+    if (whole > 0) await addPoint({ staff: name, points: whole, reason: `${t.n} checklist task${t.n === 1 ? '' : 's'} left undone today (${t.first})`, source: 'missed', ref: `missed:${day}`, day })
+    if (frac > 0) await sql`INSERT INTO penalty_carry (staff, source, ref, points, day, note) VALUES (${name}, 'missed', ${'missed:' + day}, ${frac}, ${day}, ${`${t.n} task${t.n === 1 ? '' : 's'} left undone on ${day}`}) ON CONFLICT (staff, source, ref) DO UPDATE SET points = ${frac}`
+    await settle(name)
   }
 }
 
@@ -190,12 +260,20 @@ export async function dayEndAssess(day = dayKey()) {
 export async function recheckMissed(day: string, note = 'Withdrawn: answered the next morning') {
   await ensurePenalties()
   const pts = await sql`SELECT id, staff, points FROM staff_penalties WHERE ref = ${'missed:' + day} AND source = 'missed' AND status IN ('active', 'pending')` as unknown as { id: number; staff: string; points: number }[]
-  if (!pts.length) return
-  const byOwner = await owedByOwner(day)
-  for (const p of pts) {
-    const left = byOwner.get(String(p.staff))?.length ?? 0
-    if (left === 0) await sql`UPDATE staff_penalties SET status = 'withdrawn', withdraw_reason = ${note}, note = ${note} WHERE id = ${p.id}`
-    else if (Math.min(left, MISSED_DAILY_CAP) < Number(p.points)) await sql`UPDATE staff_penalties SET points = ${Math.min(left, MISSED_DAILY_CAP)}, note = ${'Reduced: a task was done the next morning'} WHERE id = ${p.id}`
+  const parts = await sql`SELECT staff FROM penalty_carry WHERE ref = ${'missed:' + day} AND source = 'missed'` as unknown as { staff: string }[]
+  const people = Array.from(new Set([...pts.map(p => String(p.staff)), ...parts.map(p => String(p.staff))]))
+  if (!people.length) return
+  const totals = await dayTotals(day)
+  for (const who of people) {
+    const t = totals.get(who)?.total ?? 0
+    const whole = Math.floor(t + 0.0001), frac = r2(t - whole)
+    for (const p of pts.filter(x => String(x.staff) === who)) {
+      if (whole === 0) await sql`UPDATE staff_penalties SET status = 'withdrawn', withdraw_reason = ${note}, note = ${note} WHERE id = ${p.id}`
+      else if (whole < Number(p.points)) await sql`UPDATE staff_penalties SET points = ${whole}, note = ${'Reduced: a task was done the next morning'} WHERE id = ${p.id}`
+    }
+    if (frac > 0) await sql`UPDATE penalty_carry SET points = ${frac} WHERE staff = ${who} AND source = 'missed' AND ref = ${'missed:' + day}`
+    else await sql`DELETE FROM penalty_carry WHERE staff = ${who} AND source = 'missed' AND ref = ${'missed:' + day}`
+    await settle(who)
   }
 }
 
