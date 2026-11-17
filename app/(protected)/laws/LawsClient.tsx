@@ -370,17 +370,31 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
                   <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
-                  {embed ? list.map(l => (
-                    <div key={l.id} className={`flex items-start gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
-                      <span className="w-12 shrink-0 text-[13px] font-bold tabular-nums text-indigo-800">{l.law_time ?? (l.law_type === 'standing' ? 'Always' : '-')}</span>
-                      <div className="min-w-0 flex-1">
+                  {embed && <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span></div>}
+                  {embed ? list.map(l => {
+                    const ds = (l.days ?? '').split(',').map(x => x.trim()).filter(Boolean)
+                    const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
+                    const who = l.assignment && l.assignment !== 'all' ? (ASSIGNMENTS.find(a => a.key === l.assignment)?.label ?? l.assignment) : l.audience === 'managers' ? 'A manager' : 'Anyone on shift'
+                    return (
+                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                      <div className="min-w-0">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
-                        <p className="text-[12px] leading-snug text-gray-600">{l.law_type === 'recurring' ? (scheduleText(l) || 'Schedule not set yet') : l.law_type === 'standing' ? 'A standing rule' : 'Checked by the app'} · {l.assignment && l.assignment !== 'all' ? `by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}` : l.audience === 'managers' ? 'by a manager' : 'by anyone on shift'}</p>
                       </div>
-                      {canManage && l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="shrink-0 rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
-                      {canManage && <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit when and who" className="shrink-0 rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>}
-                    </div>)) : list.map(l => <LawCard key={l.id} l={l} />)}
+                      <div className="min-w-0 text-[12px] leading-snug">
+                        <p className="text-[14px] font-bold tabular-nums text-indigo-800">{l.law_time ?? '-'}</p>
+                        <p className="text-gray-700">{days}</p>
+                        {l.minutes ? <p className="text-gray-500">{l.minutes} min</p> : null}
+                      </div>
+                      <div className="min-w-0 text-[12px] leading-snug text-gray-700">
+                        <p className="font-semibold text-gray-900">{who}</p>
+                        <p>{l.law_type === 'recurring' ? 'Recurring task' : l.law_type === 'standing' ? 'Standing rule' : 'App rule'}{l.proof === 'photo' ? ' · photo' : ''}</p>
+                        {canManage && <div className="mt-1 flex gap-1">
+                          {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
+                          <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
+                        </div>}
+                      </div>
+                    </div>) }) : list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
               </div>))}
           </div>)
