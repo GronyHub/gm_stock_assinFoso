@@ -11,6 +11,7 @@ import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
 import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
 import { LIVE_SALE_FLAGS } from '@/lib/flagGuide'
 import { parseViolations, type Violation } from '@/lib/lawViolations'
+import { tiersText, WARN_AT, FADE_POINTS, MISSED_DAILY_CAP } from '@/lib/penaltyRules'
 import { isManagerName } from '@/lib/signers'
 import { TOPICS } from '../item/_components/trainingTopics'
 
@@ -383,6 +384,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>
               {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
             </div>}
+            {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
             {embed ? areaMedia : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {groups.filter(([, list]) => list.length).map(([title, list]) => (
               <div key={title}>
@@ -417,15 +419,18 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                           <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
                         </div>}
                       </div>
+                      {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 text-[12px] leading-snug text-red-900">
+                        <b>If broken:</b>{' '}
+                        {l.law_type === 'recurring'
+                          ? <>⚖ <b>1 point</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</>
+                          : (() => { const vs = parseViolations(l.violations); return vs.length ? vs.map((v, k) => <span key={k}>{k > 0 ? ' ' : ''}{v.dismissal ? <b>Dismissal.</b> : v.points === 0 ? <b>No penalty.</b> : <>⚖ <b>{v.points} point{v.points === 1 ? '' : 's'}</b>.</>} {v.by === 'app' ? 'The app checks it.' : 'A manager sees it in the shop or on CCTV and logs it with a note.'}</span>) : <>⚖ <b>{l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'}</b>. A manager sees it in the shop or on CCTV and logs it with a note.</> })()}
+                      </div>}
                       <details className="col-span-4 border-t border-gray-100 pt-1">
                         <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
                         <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
                           {l.text && l.text !== (l.title || firstSentence(l.text)) && <p>{l.text}</p>}
                           {lines(l.dos).length > 0 && <div><b>Do:</b><ol className="list-decimal pl-4">{lines(l.dos).map((x, k) => <li key={k}>{x}</li>)}</ol></div>}
                           {lines(l.donts).length > 0 && <div><b className="text-red-800">Do not:</b><ul className="list-disc pl-4">{lines(l.donts).map((x, k) => <li key={k}>{x}</li>)}</ul></div>}
-                          {parseViolations(l.violations).map((v, k) => (
-                            <p key={k}><span className="mr-1 inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : l.law_type === 'recurring' ? '⚖ 1' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>{l.law_type === 'recurring' ? 'To whoever it falls on, if left undone at day end (at most 3 a day).' : v.text}{' '}<span className="text-gray-500">{v.record ?? (v.by === 'app' ? 'Checked by the app.' : 'A manager logs it.')}</span></p>
-                          ))}
                           {l.not_violation && <p className="text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
                           {l.tile_id && l.kept && <p className="font-semibold">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
                           {(() => { const wy = whyFor(l.category ?? null, l.subcategory ?? null); return wy ? <WhyBox w={wy} /> : null })()}
