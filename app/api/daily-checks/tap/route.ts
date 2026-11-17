@@ -5,7 +5,7 @@ import { ensureDailyChecks, dayKey, creditWork } from '@/lib/dailyChecks'
 import { ensureManageLogs } from '@/lib/manageLogs'
 import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
 import { getClockState, actorKey } from '@/lib/clockState'
-import { addPoint, suspendedMessage } from '@/lib/penalties'
+import { addPoint, suspendedMessage, recheckMissed } from '@/lib/penalties'
 import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName } from '@/lib/signers'
 import { NextRequest } from 'next/server'
@@ -112,6 +112,8 @@ export async function POST(req: NextRequest) {
     }
     // The answer (a typed reply, the people picked, a photo's caption) goes in the Done record with the task, not only its title.
     if (row.value === 'Done') await creditWork(actor, reply ? `${String(t.title)} — ${reply.slice(0, 400)}` : String(t.title), Number(t.minutes ?? 5), Number(row.id))
+    // A task still counts until the day is over: if the day-end points were already added (19:20), doing it now takes its point back, or makes it smaller.
+    await recheckMissed(dayKey(now), 'Withdrawn: the task was done before the day ended').catch(e => console.error('missed recheck failed:', e instanceof Error ? e.message : String(e)))
     return success(row, 201)
   } catch (e) { return handleError('daily-checks tap', e) }
 }
