@@ -1457,7 +1457,7 @@ export function useHubState() {
   function cashItemTaskScope(key: string) {
     return cashTaskScopeKey(key as LossView)
   }
-  const combinedCashItems = CASH_ITEMS.map(item => {
+  const combinedCashItems = CASH_ITEMS.filter(item => item.key !== 'activityDurations' || isOwnerLevel(session?.user as any)).map(item => {
     const override = paneGroups[item.key]
     if (!override) return { ...item, standaloneOverride: false }
     if (override.standalone) return { ...item, group: paneLabel(item.key, item.label), standaloneOverride: true }
@@ -1634,7 +1634,6 @@ export function useHubState() {
     ...(canSeeUsers || canManage ? [{ label: 'Users & Roles', action: () => pickLossView('users') }] : []),
     ...(canViewPortalAs ? [{ label: 'View Portal As', action: () => pickLossView('viewPortalAs') }] : []),
     ...(canManage ? [{ label: 'Reorder Lists', action: () => pickLossView('reorderLists') }] : []),
-    ...(canManage ? [{ label: 'Activity Times', action: () => pickLossView('activityDurations') }] : []),
     ...(canSeeUK ? [{ label: 'UK', action: () => changeTab('uk') }] : []),
     ...(canSeeCH ? [
       { label: 'C&H', action: () => changeTab('ch') },

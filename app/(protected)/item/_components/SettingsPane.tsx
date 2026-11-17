@@ -88,10 +88,6 @@ export default function SettingsPane({
             <SidePaneButton icon="↕️" label="Reorder & Rename Lists" mode={mode} divider={canSeeUsers || canManageRoles || canViewPortalAs}
               active={activeView === 'reorderLists'} onClick={() => pickLossView('reorderLists')} />
           )}
-          {canManageRoles && (
-            <SidePaneButton icon="⏱️" label="Activity Times" mode={mode} divider
-              active={activeView === 'activityDurations'} onClick={() => pickLossView('activityDurations')} />
-          )}
         </div>
       )}
     </>

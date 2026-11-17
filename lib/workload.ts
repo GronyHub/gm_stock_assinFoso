@@ -4,6 +4,8 @@ import { rotaShifts } from '@/lib/allocation'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 import { addPoint } from '@/lib/penalties'
 import { parseViolations } from '@/lib/lawViolations'
+import { getActivityDurationOverrides } from '@/lib/activityDurations'
+import { effectiveDurationSeconds } from '@/lib/workedDuration'
 
 // The workload rule: the activities a person logs in a day (every logged activity carries an estimated number of minutes, whoever it was assigned to)
 // must add up to at least half of the time they were at the shop. Someone busy can have another person do and log the work: it counts for who logged it.
@@ -11,11 +13,16 @@ export const WORKLOAD_SEED = 'workload-v1'
 
 export type Workload = { name: string; shift: number; target: number; worked: number; short: number }
 
-// Minutes of logged activity per person on a day (UTC date, like the rest of the day logic).
+// Minutes of logged activity per person on a day (UTC date, like the rest of the day logic). An activity that carries its own length (a sale tap, a checklist task) uses it;
+// every other activity uses the minutes set in Activity Times, or the default (see lib/workedDuration.ts).
 export async function workedMinutes(day: string): Promise<Map<string, number>> {
-  const rows = await sql`SELECT LOWER(author) AS n, COALESCE(SUM(estimated_duration_seconds), 0)::int AS s FROM announcements
-    WHERE created_at >= ${day}::date AND created_at < ${day}::date + 1 AND estimated_duration_seconds > 0 GROUP BY 1`.catch(() => []) as unknown as { n: string; s: number }[]
-  return new Map(rows.map(r => [r.n, Math.round(Number(r.s) / 60)]))
+  const [rows, overrides] = await Promise.all([
+    sql`SELECT LOWER(author) AS n, category, estimated_duration_seconds AS s FROM announcements WHERE created_at >= ${day}::date AND created_at < ${day}::date + 1`.catch(() => []) as unknown as Promise<{ n: string; category: string | null; s: number | null }[]>,
+    getActivityDurationOverrides().catch(() => ({} as Record<string, number>)),
+  ])
+  const secs = new Map<string, number>()
+  for (const r of rows) secs.set(r.n, (secs.get(r.n) ?? 0) + effectiveDurationSeconds(r.category, r.s, overrides))
+  return new Map(Array.from(secs, ([n, s]) => [n, Math.round(s / 60)]))
 }
 
 // Each person's time at the shop (clock in to clock out; a person still in is counted to `endMin`) against what they logged.

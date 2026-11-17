@@ -13,7 +13,7 @@ export type ManageView =
   | 'repair_works' | 'quality_assurance'
   | 'properties'
   | 'unfortunate_events' | 'security_chk' | 'app_info'
-  | 'grony_checks'
+  | 'grony_checks' | 'activity_times'
   | 'grony_1' | 'grony_2' | 'grony_3' | 'grony_4' | 'grony_5'
   | 'grony_6' | 'grony_7' | 'grony_8' | 'grony_9' | 'grony_10'
 
@@ -108,6 +108,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   // exactly as before -- only its pane placement changed, not its content.
   { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨', group: 'Manage' },
   { key: 'app_info', label: 'App info', icon: 'ℹ️', group: 'Manage' },
+  { key: 'activity_times', label: 'Activity times', icon: '⏱️', group: 'Manage' },
 ]
 
 export type DynamicCategory = { id: number; label: string }

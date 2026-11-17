@@ -191,3 +191,7 @@ export const ACTIVITY_NOTES: Record<string, string> = {
   'checklist task': 'Set on each task (its minutes in the law); this number is not used.',
 }
 export const isCurrentActivity = (action: string) => APP_ACTIVITY_ACTIONS.includes(action) || action.startsWith('logged ') || action in ACTIVITY_NOTES
+
+// Where an activity's minutes are set: the Grony Cash pages (money, records, stock, customers, receipts) or Grony Manage (staff, checks, reports, penalties, jobs, adverts).
+const CASH_RE = /bill|expense|purchase order|vendor|receipt|customer|number|sale|stock|count|item|barcode|property|cash|merged|unmerged/i
+export const activityGroup = (action: string): 'cash' | 'manage' => (/payroll|payslip|clocked|time entry|clock-/i.test(action) ? 'manage' : CASH_RE.test(action) ? 'cash' : 'manage')

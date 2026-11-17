@@ -317,6 +317,8 @@ export const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: s
   // its own row (not folded under Items) since it's a distinct destination
   // now, not just a mode inside the Sale/Log/Sales/Bills switcher.
   { key: 'counts',   label: 'Counts',   icon: '🔢' },
+  // Owner-level only (filtered in useHubState): the minutes each Grony Cash activity counts for in everyone's worked time.
+  { key: 'activityDurations', label: 'Activity times', icon: '⏱️' },
 ]
 
 // flattenPaneRuns needs a group->label lookup to build each run's header

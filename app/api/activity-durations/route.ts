@@ -1,5 +1,5 @@
 import { requireAuth, badRequest, success, handleError, getActorName } from '@/lib/api'
-import { getActivityDurationOverrides, setActivityDurationOverride, listKnownActivityActions, ACTIVITY_NOTES } from '@/lib/activityDurations'
+import { getActivityDurationOverrides, setActivityDurationOverride, listKnownActivityActions, ACTIVITY_NOTES, activityGroup } from '@/lib/activityDurations'
 import { DEFAULT_ACTIVITY_DURATION_SECONDS } from '@/lib/workedDuration'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest } from 'next/server'
@@ -18,6 +18,7 @@ export async function GET() {
       action: a.action,
       count: a.count,
       current: a.current,
+      group: activityGroup(a.action),
       note: ACTIVITY_NOTES[a.action] ?? null,
       durationSeconds: overrides[a.action] ?? DEFAULT_ACTIVITY_DURATION_SECONDS,
       isDefault: overrides[a.action] == null,

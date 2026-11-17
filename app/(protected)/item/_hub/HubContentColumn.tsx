@@ -138,7 +138,7 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                 ...(h.canSeeUsers || h.canManage ? [{ icon: '🔐', label: 'Users & Roles', detail: 'Logins and what each role may open', onClick: () => h.pickLossView('users' as never) }] : []),
                 ...(h.canViewPortalAs ? [{ icon: '👁', label: 'View Portal As', detail: 'See the app as a staff member sees it', onClick: () => h.pickLossView('viewPortalAs') }] : []),
                 ...(h.canManage ? [{ icon: '↕️', label: 'Reorder & Rename Lists', detail: 'The order and names of the sidebar lists', onClick: () => h.pickLossView('reorderLists') },
-                  { icon: '⏱️', label: 'Activity Times', detail: 'How long each kind of work takes', onClick: () => h.pickLossView('activityDurations') }] : []),
+                ] : []),
                 ...(isOwnerLevel(h.session?.user as never) ? [{ icon: '🔔', label: 'Push devices', detail: 'Which phones and computers get notifications', onClick: () => h.openEmbed('/notifications') }] : []),
                 ...(h.canSeeCash && h.isOwnerOrJoe ? [{ icon: '🏷️', label: 'Barcode labels', detail: 'Print item barcode labels', onClick: () => h.openEmbed('/barcode-labels') }] : []),
               ]} />
@@ -164,7 +164,7 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
         {outerTab === 'loss' && lossView === 'activityDurations' && (
           <TabErrorBoundary>
             <div className="px-4 pt-4 max-w-sm">
-              <ActivityDurationsPanel />
+              <ActivityDurationsPanel group="cash" />
             </div>
           </TabErrorBoundary>
         )}

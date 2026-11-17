@@ -1,6 +1,7 @@
 'use client'
 import ManageLogPanel from './ManageLogPanel'
 import AreaPage from './AreaPage'
+import ActivityDurationsPanel from './ActivityDurationsPanel'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -100,6 +101,7 @@ export default function GronyManageContent({
         <ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" />
       </>)}
     </>)}
+    {view === 'activity_times' && <div className="max-w-md"><ActivityDurationsPanel group="manage" /></div>}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />

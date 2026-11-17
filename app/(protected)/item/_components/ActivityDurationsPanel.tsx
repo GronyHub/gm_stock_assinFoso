@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import SavedFlash from './SavedFlash'
 
-type ActivityRow = { action: string; count: number; current: boolean; note: string | null; durationSeconds: number; isDefault: boolean }
+type ActivityRow = { action: string; count: number; current: boolean; group: 'cash' | 'manage'; note: string | null; durationSeconds: number; isDefault: boolean }
 
 // Formats seconds as a short, editable-friendly minutes string ("1", "1.5",
 // "0.5") -- everything on the Home feed and the worked-time banner is shown
@@ -20,7 +20,7 @@ function secondsToMinutesStr(seconds: number): string {
 // lib/workedDuration.ts's own comment: every activity that doesn't compute
 // a real duration itself, e.g. a live sale tap does, otherwise falls back
 // to one shared default until it's given its own row here).
-export default function ActivityDurationsPanel() {
+export default function ActivityDurationsPanel({ group }: { group: 'cash' | 'manage' }) {
   const [actions, setActions] = useState<ActivityRow[]>([])
   const [defaultSeconds, setDefaultSeconds] = useState(60)
   const [loading, setLoading] = useState(true)
@@ -109,10 +109,10 @@ export default function ActivityDurationsPanel() {
   return (
     <div className="space-y-3">
       <div>
-        <h1 className="text-lg font-bold text-gray-900">Activity Times</h1>
+        <h1 className="text-lg font-bold text-gray-900">Activity Times: {group === 'cash' ? 'Grony Cash' : 'Grony Manage'}</h1>
         <p className="text-xs text-gray-500 mt-0.5">
           How long each kind of logged activity counts as taking, for the Home feed's Duration/Total
-          columns and everyone's worked-time figure (the workload rule: logged work should be at least half of the time at the shop). Every activity the app can log is listed, even before it has happened. A live sale tap always calculates its own real
+          columns and everyone's worked-time figure (the workload rule: logged work should be at least half of the time at the shop). Every {group === 'cash' ? 'Grony Cash' : 'Grony Manage'} activity the app can log is listed, even before it has happened. The minutes of a checklist task are set in its law, on its Manage page. A live sale tap always calculates its own real
           duration and ignores this; everything else uses whatever's set here, or {secondsToMinutesStr(defaultSeconds)}{' '}
           minute{defaultSeconds !== 60 ? 's' : ''} by default if it's never been set.
         </p>
@@ -124,13 +124,13 @@ export default function ActivityDurationsPanel() {
         <p className="text-xs text-gray-400 text-center py-6">No activity has been logged yet.</p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-          {actions.filter(a => a.current).map(renderRow)}
+          {actions.filter(a => a.group === group && a.current).map(renderRow)}
         </div>
       )}
-      {!loading && actions.some(a => !a.current) && (
+      {!loading && actions.some(a => a.group === group && !a.current) && (
         <details className="bg-white border border-gray-200 rounded-lg">
-          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-gray-600">No longer in the app ({actions.filter(a => !a.current).length}): past records only</summary>
-          <div className="divide-y divide-gray-100">{actions.filter(a => !a.current).map(renderRow)}</div>
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-gray-600">No longer in the app ({actions.filter(a => a.group === group && !a.current).length}): past records only</summary>
+          <div className="divide-y divide-gray-100">{actions.filter(a => a.group === group && !a.current).map(renderRow)}</div>
         </details>
       )}
     </div>
