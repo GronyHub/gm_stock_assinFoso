@@ -95,7 +95,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const t = q.get('tile'), c = q.get('cat')
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
-    if (q.get('embed')) setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean) })
+    if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean) }); setView('type') }
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -313,14 +313,29 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     (a.howto ?? []).map(id => TOPICS.find(t => t.id === id)).filter((t): t is (typeof TOPICS)[number] => !!t && !covered(t.id))
       .map(t => <details key={t.id} className="rounded-xl border border-gray-200 bg-white"><summary className="flex cursor-pointer items-center gap-2 p-2 text-sm font-semibold text-gray-900"><span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[12px] font-bold text-gray-500">no video</span><span><span className="mr-1 text-[12px] font-extrabold uppercase text-gray-400">How to</span>{t.title}</span></summary><div className="border-t border-gray-100 p-2">{t.body}</div></details>)
 
+  const areaMedia = area ? (<>
+          {AREA_VIDEO[area.key] && area.guide ? (
+            <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
+              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
+              <GuideVideo page={area.guide} videoRef={vref} onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
+              {area.training && hasTraining(area.training) && <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} hideVideo />}
+            </div>
+          ) : area.training && hasTraining(area.training)
+            ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} onWatched={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
+            : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
+          {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
+            <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
+          )}
+  </>) : null
+
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
       {!embed && canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
-      <div className="mb-2 grid grid-cols-3 gap-1">
+      {!embed && <div className="mb-2 grid grid-cols-3 gap-1">
         {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic' && !embed) setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
         ))}
-      </div>
+      </div>}
       {view === 'role' && laws && (() => {
         const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l))
         const groups = ASSIGNMENTS.filter(a => a.key !== 'all').map(a => [a.label, all.filter(l => (l.assignment ?? 'all') === a.key).sort((x, y) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id), true] as [string, Law[], boolean])
@@ -364,7 +379,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
         ]
         return (
           <div className="space-y-4">
-            <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>
+            {embed && canManage && area && <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>
+              {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
+            </div>}
+            {embed ? areaMedia : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {groups.filter(([, list]) => list.length).map(([title, list]) => (
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
@@ -398,6 +417,21 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                           <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
                         </div>}
                       </div>
+                      <details className="col-span-4 border-t border-gray-100 pt-1">
+                        <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
+                        <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
+                          {l.text && l.text !== (l.title || firstSentence(l.text)) && <p>{l.text}</p>}
+                          {lines(l.dos).length > 0 && <div><b>Do:</b><ol className="list-decimal pl-4">{lines(l.dos).map((x, k) => <li key={k}>{x}</li>)}</ol></div>}
+                          {lines(l.donts).length > 0 && <div><b className="text-red-800">Do not:</b><ul className="list-disc pl-4">{lines(l.donts).map((x, k) => <li key={k}>{x}</li>)}</ul></div>}
+                          {parseViolations(l.violations).map((v, k) => (
+                            <p key={k}><span className="mr-1 inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : l.law_type === 'recurring' ? '⚖ 1' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>{l.law_type === 'recurring' ? 'To whoever it falls on, if left undone at day end (at most 3 a day).' : v.text}{' '}<span className="text-gray-500">{v.record ?? (v.by === 'app' ? 'Checked by the app.' : 'A manager logs it.')}</span></p>
+                          ))}
+                          {l.not_violation && <p className="text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
+                          {l.tile_id && l.kept && <p className="font-semibold">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
+                          {(() => { const wy = whyFor(l.category ?? null, l.subcategory ?? null); return wy ? <WhyBox w={wy} /> : null })()}
+                          {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && (sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-2 py-1 text-[12px] font-bold text-white">📝 Practice quiz (optional)</button> : <p className="text-gray-500">{l.quiz_n} practice questions</p>)}
+                        </div>
+                      </details>
                     </div>) }) : list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
               </div>))}
@@ -453,18 +487,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           {!embed && <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>}
-          {AREA_VIDEO[area.key] && area.guide ? (
-            <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
-              <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
-              <GuideVideo page={area.guide} videoRef={vref} onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
-              {area.training && hasTraining(area.training) && <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} hideVideo />}
-            </div>
-          ) : area.training && hasTraining(area.training)
-            ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} onWatched={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
-            : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
-          {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
-            <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
-          )}
+          {areaMedia}
           {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : null })()}
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
