@@ -370,13 +370,13 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
                   <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
-                  {embed && <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span></div>}
+                  {embed && <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span><span>Staff taps</span></div>}
                   {embed ? list.map(l => {
                     const ds = (l.days ?? '').split(',').map(x => x.trim()).filter(Boolean)
                     const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
                     const who = l.assignment && l.assignment !== 'all' ? (ASSIGNMENTS.find(a => a.key === l.assignment)?.label ?? l.assignment) : l.audience === 'managers' ? 'A manager' : 'Anyone on shift'
                     return (
-                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
@@ -388,7 +388,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                       </div>
                       <div className="min-w-0 text-[12px] leading-snug text-gray-700">
                         <p className="font-semibold text-gray-900">{who}</p>
-                        <p>{l.law_type === 'recurring' ? 'Recurring task' : l.law_type === 'standing' ? 'Standing rule' : 'App rule'}{l.proof === 'photo' ? ' · photo' : ''}</p>
+                        <p>{l.law_type === 'recurring' ? 'Recurring task' : l.law_type === 'standing' ? 'Standing rule' : 'App rule'}</p>
+                      </div>
+                      <div className="min-w-0 text-[12px] leading-snug text-gray-700">
+                        <p className="font-semibold text-gray-900">{l.law_type !== 'recurring' ? 'No task' : l.proof === 'photo' ? 'Photo and note' : l.proof === 'question' ? 'All good / Report a problem' : l.proof === 'persons' ? 'Tick each person' : 'Done'}</p>
+                        {l.law_type === 'recurring' && l.proof !== 'question' && <p className="text-gray-500">or Not done, with a reason</p>}
                         {canManage && <div className="mt-1 flex gap-1">
                           {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
                           <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
