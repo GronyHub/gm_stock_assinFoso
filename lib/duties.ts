@@ -13,7 +13,7 @@ export type DutyState = 'done' | 'no' | 'miss' | 'late' | 'now' | 'later' | 'pla
 export type DutyKind = 'task' | 'periodic' | 'standing' | 'oneoff' | 'job'
 export type Duty = {
   kind: DutyKind; key: string; detail?: string; count?: number; typeLabel?: string; href?: string
-  id: number; title: string; time: string; due: number            // due = minutes after midnight (queued from the first clock-in)
+  id: number; title: string; time: string; mins?: number; due: number    // mins = how long it takes; due = minutes after midnight (queued from the first clock-in)
   owner: string | null; role: 'Opener' | 'Closer' | 'Joe' | null    // owner = the one person it falls on (lower case)
   category: string | null; lawType: string | null; lawId: number | null
   state: DutyState; by?: string; note?: string | null; at?: string  // who ended it, with the reason, and when
@@ -62,7 +62,7 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
     else if (!isToday) state = 'miss'
     else if (noClockIn) state = 'later'
     else { const mins = nowMin - d; state = mins >= 15 ? 'late' : mins >= 0 ? 'now' : 'later' }
-    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, due: d, owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state,
+    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, mins: t.minutes ?? undefined, due: d, owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state,
       by: ev && (state === 'done' || state === 'no') ? ev.recorded_by : undefined, note: ev?.note ?? null, at: ev && (state === 'done' || state === 'no') ? hhmm(new Date(ev.recorded_at)) : undefined })
   }
   return out.sort((x, y) => x.due - y.due || x.id - y.id)
