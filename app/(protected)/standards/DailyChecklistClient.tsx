@@ -244,7 +244,8 @@ function useRun(onSaved: (m: string) => void, onClose: () => void) {
   return { busy, err, setErr, run }
 }
 
-function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; present: string[]; onClose: () => void; onSaved: (m: string) => void }) {
+// notYet: the day has not come; the same pop-up is shown with every control switched off (value = the day, shown in the message).
+export function TileSheet({ t, ev, isToday, canEdit, present, notYet, onClose, onSaved }: { t: CheckTile; ev?: CheckEvent; isToday: boolean; canEdit: boolean; present: string[]; notYet?: string; onClose: () => void; onSaved: (m: string) => void }) {
   const [doneAt, setDoneAt] = useState(ev?.extra?.done_at ?? '')
   const [note, setNote] = useState(ev?.note ?? '')
   const [editing, setEditing] = useState(false)
@@ -283,6 +284,17 @@ function TileSheet({ t, ev, isToday, canEdit, present, onClose, onSaved }: { t: 
             {doneAt && <button type="button" onClick={() => setDoneAt('')} className="text-xs font-semibold text-gray-500">Clear</button>}
           </div>
           <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (a reason is needed for Not done)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
+        </>)}
+        {notYet && (<>
+          <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">Not time yet. This can only be recorded on {notYet}.</p>
+          {t.kind === 'tap' && (<>
+            <input disabled placeholder="Note (a reason is needed for Not done)" className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm" />
+            <div className="flex gap-2"><button type="button" disabled className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white opacity-40">Done now</button><button type="button" disabled className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white opacity-40">Not done</button></div>
+          </>)}
+          {t.kind === 'question' && <div className="flex gap-2"><button type="button" disabled className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white opacity-40">{t.ok_label ?? 'All good'}</button><button type="button" disabled className="flex-1 rounded-xl bg-red-600 py-3 text-base font-bold text-white opacity-40">{t.issue_label ?? 'Report a problem'}</button></div>}
+          {t.kind === 'entry' && (<><textarea disabled rows={3} placeholder="Write what happened" className="w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm" /><button type="button" disabled className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white opacity-40">{t.needs_photo ? 'Take the photo and save' : 'Save'}</button></>)}
+          {t.kind === 'persons' && <button type="button" disabled className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white opacity-40">Tick each person at work</button>}
+          {(t.kind === 'group' || t.kind === 'properties') && <button type="button" disabled className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white opacity-40">Answer the questions</button>}
         </>)}
         {err && <p className="text-sm text-red-600">{err}</p>}
         {t.kind === 'tap' && isToday && !ev && (

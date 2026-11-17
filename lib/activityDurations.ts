@@ -49,14 +49,145 @@ export async function setActivityDurationOverride(action: string, seconds: numbe
 // hardcoded list, so a new logActivity call anywhere in the app shows up
 // here to configure the moment it's ever actually logged, with no code
 // change needed on this side.
-export async function listKnownActivityActions(): Promise<{ action: string; count: number }[]> {
+export async function listKnownActivityActions(): Promise<{ action: string; count: number; current: boolean }[]> {
   await ensureSchema()
   const rows = await sql`
     SELECT category AS action, COUNT(*)::int AS count
     FROM announcements
     WHERE category IS NOT NULL
     GROUP BY category
-    ORDER BY count DESC, category ASC
-  `
-  return rows as unknown as { action: string; count: number }[]
+  ` as unknown as { action: string; count: number }[]
+  const seen = new Map(rows.map(r => [r.action, r.count]))
+  const out = [...rows.map(r => ({ action: r.action, count: r.count, current: isCurrentActivity(r.action) }))]
+  for (const a of APP_ACTIVITY_ACTIONS) if (!seen.has(a)) out.push({ action: a, count: 0, current: true })
+  return out.sort((x, y) => Number(y.current) - Number(x.current) || y.count - x.count || x.action.localeCompare(y.action))
 }
+
+// Every kind of activity the app can log today (a scan of its logActivity / recordActivity calls), so Settings > Activity Times lists each one to set, even before it has ever been logged.
+// An activity found in the log but not here is no longer produced by the app (shown apart, as history). 'logged <log name>' comes from the Manage logs and is always current.
+export const APP_ACTIVITY_ACTIONS: string[] = [
+  "added a penalty point",
+  "added bill",
+  "added bill expense",
+  "added customer",
+  "added customer number",
+  "added expense",
+  "added expense order",
+  "added item photo",
+  "added item photo (Wikimedia Commons)",
+  "added receipt",
+  "added sale receipt",
+  "added vendor",
+  "answered a question group",
+  "answered part of a question group",
+  "answered the closing report",
+  "answered the question of the day right",
+  "answered the question of the day wrong",
+  "approved a clock-in time",
+  "approved a clock-out time",
+  "approved a dismissal",
+  "approved a suspension",
+  "assigned task",
+  "built payslips",
+  "changed main number",
+  "changed their profile PIN",
+  "clocked a colleague in",
+  "clocked a colleague out",
+  "clocked in",
+  "clocked out",
+  "clocked someone out after no confirmation",
+  "clocked someone out automatically",
+  "completed a CCTV review",
+  "confirmed VCP jump as correct",
+  "confirmed a violation",
+  "confirmed alias match as correct",
+  "confirmed cash at bank",
+  "confirmed item as correct (cleared Needs Review)",
+  "confirmed opening counts",
+  "confirmed payroll payment",
+  "confirmed still at the shop",
+  "counted stock",
+  "created purchase order",
+  "deactivated staff account",
+  "decided not to apply a sanction",
+  "deleted bill",
+  "deleted bill expense",
+  "deleted customer",
+  "deleted expense",
+  "deleted expense order",
+  "deleted item",
+  "deleted property",
+  "deleted purchase order line",
+  "deleted sale receipt",
+  "deleted stock count",
+  "deleted time entry",
+  "edited bill",
+  "edited bill line",
+  "edited customer",
+  "edited expense",
+  "edited expense order",
+  "edited property",
+  "edited purchase order",
+  "edited stock count",
+  "edited time entry",
+  "edited vendor",
+  "entered Cash Counted",
+  "entered time",
+  "excluded staff from payroll payment",
+  "excused the manager block",
+  "finished a pending job",
+  "handed over a pending job",
+  "issued receipt",
+  "left a pending job",
+  "linked a barcode",
+  "linked unresolved sales lines to item",
+  "live sale tap",
+  "logged a violation for confirmation",
+  "made a pending job from a paid sale",
+  "marked GMC tap as property",
+  "marked a task not done",
+  "marked advert missing",
+  "marked advert recorded",
+  "marked all as different items",
+  "marked as different items",
+  "marked no-work day",
+  "merged items",
+  "migrated expense to bill",
+  "posted announcement",
+  "reactivated staff account",
+  "received purchase order items",
+  "recorded violation",
+  "refunded money on a pending job",
+  "removed customer number",
+  "renamed group",
+  "reopened a pending job",
+  "reported an absence",
+  "reported being late",
+  "reported count gain",
+  "reported count loss",
+  "reset a profile PIN",
+  "reset purchase orders to not received",
+  "restored staff to payroll payment",
+  "said others are still at the shop",
+  "said these staff are not at the shop",
+  "set a profile PIN",
+  "signed laws",
+  "skipped Cash Counted at clock-out",
+  "skipped the start-of-day block",
+  "started viewing portal as",
+  "stopped viewing portal as",
+  "submitted Advert daily checklist",
+  "submitted closing report",
+  "took a law quiz",
+  "took a payment on a pending job",
+  "took back a penalty point",
+  "unmerged items",
+  "updated purchase order",
+]
+
+// Activities with their own source of minutes, so the number typed here does not apply to them.
+export const ACTIVITY_NOTES: Record<string, string> = {
+  'live sale tap': 'Calculated from the sale itself; this number is not used.',
+  'checklist task': 'Set on each task (its minutes in the law); this number is not used.',
+}
+export const isCurrentActivity = (action: string) => APP_ACTIVITY_ACTIONS.includes(action) || action.startsWith('logged ') || action in ACTIVITY_NOTES

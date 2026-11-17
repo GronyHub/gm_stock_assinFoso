@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import SavedFlash from './SavedFlash'
 
-type ActivityRow = { action: string; count: number; durationSeconds: number; isDefault: boolean }
+type ActivityRow = { action: string; count: number; current: boolean; note: string | null; durationSeconds: number; isDefault: boolean }
 
 // Formats seconds as a short, editable-friendly minutes string ("1", "1.5",
 // "0.5") -- everything on the Home feed and the worked-time banner is shown
@@ -79,31 +79,14 @@ export default function ActivityDurationsPanel() {
     }
   }
 
-  return (
-    <div className="space-y-3">
-      <div>
-        <h1 className="text-lg font-bold text-gray-900">Activity Times</h1>
-        <p className="text-xs text-gray-500 mt-0.5">
-          How long each kind of logged activity counts as taking, for the Home feed's Duration/Total
-          columns and everyone's worked-time figure. A live sale tap always calculates its own real
-          duration and ignores this; everything else uses whatever's set here, or {secondsToMinutesStr(defaultSeconds)}{' '}
-          minute{defaultSeconds !== 60 ? 's' : ''} by default if it's never been set.
-        </p>
-      </div>
-      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-      {loading ? (
-        <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
-      ) : actions.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-6">No activity has been logged yet.</p>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-          {actions.map(a => (
+  const renderRow = (a: ActivityRow) => (
             <div key={a.action} className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-gray-800 capitalize truncate">{a.action}</p>
                 <p className="text-[12px] text-gray-400">
-                  {a.count} time{a.count !== 1 ? 's' : ''} logged{a.isDefault ? ' · using the default' : ''}
+                  {a.count === 0 ? 'not logged yet' : `${a.count} time${a.count !== 1 ? 's' : ''} logged`}{a.isDefault ? ' · using the default' : ''}
                 </p>
+                {a.note && <p className="text-[12px] text-indigo-600">{a.note}</p>}
               </div>
               <input type="number" min="0" step="0.5" value={drafts[a.action] ?? ''}
                 onChange={e => setDrafts(prev => ({ ...prev, [a.action]: e.target.value }))}
@@ -121,8 +104,34 @@ export default function ActivityDurationsPanel() {
               )}
               {justSaved === a.action && <SavedFlash show />}
             </div>
-          ))}
+          )
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h1 className="text-lg font-bold text-gray-900">Activity Times</h1>
+        <p className="text-xs text-gray-500 mt-0.5">
+          How long each kind of logged activity counts as taking, for the Home feed's Duration/Total
+          columns and everyone's worked-time figure (the workload rule: logged work should be at least half of the time at the shop). Every activity the app can log is listed, even before it has happened. A live sale tap always calculates its own real
+          duration and ignores this; everything else uses whatever's set here, or {secondsToMinutesStr(defaultSeconds)}{' '}
+          minute{defaultSeconds !== 60 ? 's' : ''} by default if it's never been set.
+        </p>
+      </div>
+      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+      {loading ? (
+        <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
+      ) : actions.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-6">No activity has been logged yet.</p>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+          {actions.filter(a => a.current).map(renderRow)}
         </div>
+      )}
+      {!loading && actions.some(a => !a.current) && (
+        <details className="bg-white border border-gray-200 rounded-lg">
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-gray-600">No longer in the app ({actions.filter(a => !a.current).length}): past records only</summary>
+          <div className="divide-y divide-gray-100">{actions.filter(a => !a.current).map(renderRow)}</div>
+        </details>
       )}
     </div>
   )

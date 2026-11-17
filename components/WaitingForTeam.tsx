@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Duty } from '@/lib/duties'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
-import DailyChecklistClient from '@/app/(protected)/standards/DailyChecklistClient'
+import DailyChecklistClient, { TileSheet } from '@/app/(protected)/standards/DailyChecklistClient'
+import type { CheckTile } from '@/lib/dailyChecksShared'
 import ClockApprovals from '@/components/ClockApprovals'
 import { fallsOn } from '@/lib/dutyFilter'
 import ClockNotices from '@/components/ClockNotices'
@@ -58,6 +59,8 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   const [canAdd, setCanAdd] = useState(false)
   const [people, setPeople] = useState<string[]>([])
   const [adding, setAdding] = useState(false)
+  const [futureTile, setFutureTile] = useState<CheckTile | null>(null)   // a tile of a coming day: the same pop-up as Today, every control off
+  const openFuture = (d: Duty) => { void fetch('/api/daily-checks/tiles', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { const t = (j?.tiles as CheckTile[] | undefined)?.find(x => x.id === d.id); if (t) setFutureTile(t); else setPeek(d) }).catch(() => setPeek(d)) }
   const [peek, setPeek] = useState<Duty | null>(null)   // a tapped tile on another day: what it is, when, who, and how it ended (nothing can be recorded on those days)
   const [form, setForm] = useState({ title: '', date: '', who: '', notes: '' })
   const [msg, setMsg] = useState('')
@@ -106,6 +109,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
       </div>
       {below}
       {msg && <p className="mx-2 mt-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{msg}</p>}
+      {futureTile && <TileSheet t={futureTile} isToday={false} canEdit={canManage} present={[]} notYet={new Date(sel + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} onClose={() => setFutureTile(null)} onSaved={() => setFutureTile(null)} />}
       {peek && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setPeek(null)}>
           <div role="dialog" aria-label="Task" className="mx-auto w-full max-w-md space-y-2 rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
@@ -153,7 +157,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                      onClick={d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
+                      onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
                   })}</div>
                 </div>) })}
             </div>)}
