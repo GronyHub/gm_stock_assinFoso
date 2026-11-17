@@ -38,7 +38,7 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
   if (clock.dayStart == null) return []
   const all = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition, law_id,
       (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
-    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$'` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null; law_id: number | null }[]
+    WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$' AND created_at::date <= ${date}::date` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null; law_id: number | null }[]
   const evRows = future ? [] : await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${date} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean } | null }[]
   const latest = new Map<number, (typeof evRows)[number]>(); for (const r of evRows) latest.set(r.tile_id, r)
   // A task that depends on a condition is listed when it is asked for today, on an earlier day only if it was actually answered, and ahead (nobody can tell yet).

@@ -17,6 +17,7 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
   const [tab, setTab] = useState<'rules' | 'went' | 'record'>('record')
   const sq = subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''
   const [days, setDays] = useState(30)
+  const [sub, setSub] = useState<'notdone' | 'done'>('notdone')
   const [data, setData] = useState<Record_ | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -63,7 +64,15 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
                 ))}
               </div>
             )}
-            {data.missed.length > 0 && (
+            <div role="tablist" className="flex gap-1.5">
+              {([['notdone', `Not done (${data.missed.length})`], ['done', `Done (${data.done.length})`]] as const).map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={sub === k} onClick={() => setSub(k)}
+                  className={`flex-1 rounded-lg px-2 py-2 text-[13px] font-semibold ${sub === k ? (k === 'done' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white') : 'bg-gray-100 text-gray-600'}`}>{t}</button>
+              ))}
+            </div>
+            {sub === 'notdone' && data.missed.length === 0 && data.points.length === 0 && <p className="py-4 text-center text-sm text-gray-500">Nothing was left undone in this time.</p>}
+            {sub === 'done' && data.done.length === 0 && <p className="py-4 text-center text-sm text-gray-500">Nothing was recorded as done in this time.</p>}
+            {sub === 'notdone' && data.missed.length > 0 && (
               <div>
                 <p className="mb-1 text-[13px] font-semibold text-gray-800">Not done{data.missedDays < data.days ? ` (last ${data.missedDays} days)` : ''}</p>
                 <ul className="space-y-1.5">
@@ -77,7 +86,7 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
                 </ul>
               </div>
             )}
-            {data.points.length > 0 && (
+            {sub === 'notdone' && data.points.length > 0 && (
               <div>
                 <p className="mb-1 text-[13px] font-semibold text-gray-800">Penalty points</p>
                 <ul className="space-y-1.5">
@@ -91,9 +100,8 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
                 </ul>
               </div>
             )}
-            {data.done.length > 0 && (
+            {sub === 'done' && data.done.length > 0 && (
               <div>
-                <p className="mb-1 text-[13px] font-semibold text-gray-800">Done</p>
                 <ul className="space-y-1">
                   {data.done.slice(0, 60).map((d, i) => (
                     <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-[13px] text-gray-800 ring-1 ring-gray-200">
