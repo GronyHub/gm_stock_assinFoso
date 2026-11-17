@@ -22,9 +22,10 @@ export function DensityToggle({ density, onChange }: { density: TileDensity; onC
   )
 }
 
-export default function TaskTile({ density, time, title, who, category, type, detail, tone, mark, badge, icon, onClick, lawHref }: {
+export default function TaskTile({ density, time, title, who, category, type, detail, tone, mark, badge, icon, onClick, lawHref, onLaw }: {
   density: TileDensity; time?: string | null; title: string; who?: string | null; category?: string | null; type?: string | null; detail?: string | null
   tone: string; mark?: 'done' | 'miss' | 'no'; badge?: number; icon?: string; onClick?: () => void
+  onLaw?: () => void // the same Law chip as lawHref, opened by a function (used inside the hub, where a link would leave the page)
   lawHref?: string // owner/manager only: a small link on the tile to the law behind it (change how often it repeats, restructure it)
 }) {
   const full = density === 'full'
@@ -39,14 +40,15 @@ export default function TaskTile({ density, time, title, who, category, type, de
       <span className={`break-words font-semibold text-gray-900 ${full ? 'text-[12px] leading-snug' : 'line-clamp-3 text-[12px] leading-[1.1]'}`}>{full ? title : shortTitle(title)}</span>
       {full && detail ? <span className="text-[12px] leading-snug text-gray-600">{detail}</span> : null}
       {full && (category || type) ? <span className="text-[12px] font-semibold leading-tight text-gray-500">{[category, type].filter(Boolean).join(' · ')}</span> : null}
-      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${lawHref ? (full ? 'pr-9' : 'pr-5') : ''} ${full ? 'truncate pt-0.5 text-[12px]' : 'truncate text-[12px]'}`}>{who}</span> : null}
+      {who ? <span className={`mt-auto w-full font-bold leading-tight text-indigo-800 ${lawHref || onLaw ? (full ? 'pr-9' : 'pr-5') : ''} ${full ? 'truncate pt-0.5 text-[12px]' : 'truncate text-[12px]'}`}>{who}</span> : null}
     </button>
   )
-  if (!lawHref) return tile
+  if (!lawHref && !onLaw) return tile
+  const chip = `absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1.5 py-1 text-[12px]' : 'px-1 py-0.5 text-[12px]'}`
   return (
     <div className="relative flex flex-col [&>button]:flex-1">{tile}
-      <a href={lawHref} title="Open the law behind this task to change it" onClick={e => e.stopPropagation()}
-        className={`absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1.5 py-1 text-[12px]' : 'px-1 py-0.5 text-[12px]'}`}>Law</a>
+      {lawHref ? <a href={lawHref} title="Open the law behind this task to change it" onClick={e => e.stopPropagation()} className={chip}>Law</a>
+        : <button type="button" title="Open the law behind this task to change it" onClick={e => { e.stopPropagation(); onLaw?.() }} className={chip}>Law</button>}
     </div>
   )
 }
