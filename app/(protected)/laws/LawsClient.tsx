@@ -29,6 +29,8 @@ const lab = 'mb-0.5 block text-[12px] font-bold uppercase text-gray-500'
 // 'violation', the same recording sentence is not printed on every row, and the Why is shown once per subcategory above its table.
 // The laws are statutory: nobody signs them, so there are no signature columns.
 const SIGNING = false
+// Inside an area page on a phone: the five columns stack, every one kept, each with its heading.
+const STACK = 'max-sm:grid-cols-1 max-sm:[&>*]:[grid-area:auto]! max-sm:[&>*]:border-0! max-sm:[&>*]:border-t! max-sm:[&>*]:p-2! max-sm:[&>*]:before:mb-0.5 max-sm:[&>*]:before:block max-sm:[&>*]:before:text-[11px] max-sm:[&>*]:before:font-extrabold max-sm:[&>*]:before:uppercase max-sm:[&>*]:before:text-gray-500 max-sm:[&>*]:before:content-[attr(data-lbl)]'
 const COLS = 'grid-cols-[0.95fr_1.25fr_1.5fr_1.3fr_0.55fr]'
 const HEAD = ['Law', 'When', 'What to do', 'If it is broken', 'Practice quiz (optional)']
 const FILLER = /^a staff member does not follow this law/i   // the auto-written violation that only repeats the law's own title
@@ -56,7 +58,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [error, setError] = useState('')
   const [cat, setCat] = useState<string | null>(null)
   // ?embed=1&subs=A|B: the page shown inside an area page (Manage) -- just that area's laws, without the tabs, search, heading and videos.
-  const [embed, setEmbed] = useState<{ subs: string[] } | null>(null)
+  const [embed, setEmbed] = useState<{ area: string; subs: string[] } | null>(null)
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
@@ -93,7 +95,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const t = q.get('tile'), c = q.get('cat')
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
-    if (q.get('embed')) setEmbed({ subs: (q.get('subs') ?? '').split('|').filter(Boolean) })
+    if (q.get('embed')) setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean) })
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -151,6 +153,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
   }, [areas, laws])
+  const inEmbed = (l: Law) => { if (!embed) return true; const a = LAW_AREAS.find(x => x.key === embed.area); return !!a && lawInArea(a, l) && (!embed.subs.length || embed.subs.includes(l.subcategory ?? '')) }
   const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l) && (!embed?.subs.length || embed.subs.includes(l.subcategory ?? '')))
   const unsignedIn = (a: LawArea) => !SIGNING ? [] : areaLaws(a).filter(l => l.status !== 'draft' && !(sig?.signed ?? {})[l.id])
   useEffect(() => {
@@ -205,9 +208,9 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const av = area ? AREA_VIDEO[area.key] : undefined
     const vlines: Violation[] = parseViolations(l.violations)
     return (
-      <div id={`law-${l.id}`} className={`min-w-[820px] overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
+      <div id={`law-${l.id}`} className={`${embed ? 'sm:min-w-[820px]' : 'min-w-[820px]'} overflow-hidden rounded-xl border ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-300 bg-white'}`}>
         {l.status === 'draft' && <p className="px-2 pt-1.5 text-[12px] font-extrabold uppercase text-amber-700">Draft: not in force yet. Read it, edit if needed, then approve.</p>}
-        <div className={`grid ${COLS}`}>
+        <div className={`grid ${COLS} ${embed ? STACK : ''}`}>
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             {l.code && <span className="mb-0.5 inline-block rounded bg-[#14213D] px-1 py-px text-[12px] font-extrabold text-white">{l.code}</span>}
             <p className="text-[12px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)}</p>
@@ -217,7 +220,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <button type="button" onClick={() => void remove(l)} title="Delete" className="rounded bg-red-50 px-1.5 py-0.5 text-[12px] font-bold text-red-700">🗑</button>
             </div>}
           </div>
-          <div className="space-y-1 border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
+          <div data-lbl="When" className="space-y-1 border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             <span className={`inline-block rounded-full px-1.5 py-0.5 text-[12px] font-bold ${typeCls[l.law_type] ?? typeCls.standing}`}>{typeName(l.law_type)}</span>
             {canManage && l.law_type === 'recurring' && groups.length > 0 && (() => {
               const inG = groups.find(g => g.items.some(i => i.law_id === l.id))
@@ -238,7 +241,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <p className="text-[12px] leading-snug text-gray-800">{l.reminder === 'login' ? 'Always. Staff are reminded after login (Got it).' : l.reminder === 'first_sale' ? 'Always. Staff are reminded after the first sale (and from 13:30) (Got it).' : 'Always. A standing law; no task or tile.'}</p>
             )}
           </div>
-          <div className="flex items-center justify-center border-l border-gray-200 p-1" style={{ gridColumn: 5, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
+          <div data-lbl="Practice quiz (optional)" className="flex items-center justify-center border-l border-gray-200 p-1 max-sm:order-last max-sm:justify-start max-sm:p-1.5" style={{ gridColumn: 5, gridRow: `1 / span ${Math.max(1, vlines.length)}` }}>
             {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-1.5 py-1 text-[12px] font-bold text-white">📝 Practice quiz (optional)</button> : (l.quiz_n ?? 0) > 0 ? <span className="text-[12px] text-gray-500">{l.quiz_n} Qs</span> : <span className="text-[12px] text-gray-300">-</span>}
           </div>
           {(SIGNING ? (sig?.staff ?? []) : []).map(n => {
@@ -263,11 +266,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             const shared = l.law_type === 'recurring'
             return (
               <Fragment key={i}>
-                <div className="border-t border-gray-200 p-1.5">
+                <div data-lbl="What to do" className="border-t border-gray-200 p-1.5">
                   {how.length > 0 ? <ol className="list-decimal space-y-0.5 pl-3 text-[12px] leading-snug text-gray-900">{how.map((x, k) => <li key={k}>{x}</li>)}</ol> : <span className="text-[12px] text-gray-300">-</span>}
                   {ch && <button type="button" onClick={() => seek(ch.t)} className="mt-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[12px] font-bold text-white">▶ {fmtTime(ch.t)}</button>}
                 </div>
-                <div className="space-y-1 border-t border-gray-200 p-1.5">
+                <div data-lbl="If it is broken" className="space-y-1 border-t border-gray-200 p-1.5">
                   <span className="inline-block rounded-full bg-red-600 px-1.5 py-0.5 text-[12px] font-extrabold text-white">{v.dismissal ? 'DISMISSAL' : shared ? '⚖ 1' : v.points === 0 ? 'no penalty' : `⚖ ${v.points}`}</span>
                   {shared && <span className="ml-1 text-[12px] leading-tight text-gray-500">to whoever it falls on, if left undone at day end (at most 3 a day)</span>}
                   {!FILLER.test(v.text) && <p className="text-[12px] leading-snug text-gray-900">{v.text}</p>}
@@ -312,18 +315,18 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
       {!embed && canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
-      {!embed && <div className="mb-2 grid grid-cols-3 gap-1">
+      <div className="mb-2 grid grid-cols-3 gap-1">
         {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
-          <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
+          <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic' && !embed) setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
         ))}
-      </div>}
+      </div>
       {view === 'role' && laws && (() => {
-        const all = laws.filter(l => l.status !== 'draft' || canManage)
+        const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l))
         const groups = ASSIGNMENTS.filter(a => a.key !== 'all').map(a => [a.label, all.filter(l => (l.assignment ?? 'all') === a.key).sort((x, y) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id), true] as [string, Law[], boolean])
           .concat([['Everyone clocked in', all.filter(l => (l.assignment ?? 'all') === 'all'), false]])
         const table = (list: Law[]) => (
           <div className="space-y-2 overflow-x-auto">
-            <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+            <div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
             {list.map(l => <LawCard key={l.id} l={l} />)}
           </div>)
         return (
@@ -343,7 +346,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           </div>)
       })()}
       {view === 'type' && laws && (() => {
-        const all = laws.filter(l => l.status !== 'draft' || canManage)
+        const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l))
         const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')
         const groups: [string, Law[]][] = [
           ['Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
@@ -359,7 +362,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
                   {list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
               </div>))}
@@ -437,7 +440,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             return (
               <div className="space-y-2">
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
+                  <div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>
                   {sorted.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
                 {mgrSorted.length > 0 && <ManagerSection area={area} laws={mgrSorted} Card={LawCard} />}
@@ -458,7 +461,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
               {(() => { const wy = whyFor(catLaws.find(x => (x.subcategory ?? 'General') === sub)?.category ?? null, sub === 'General' ? null : sub); return wy ? <p className="mb-1.5 rounded-lg bg-gray-50 px-2 py-1 text-[12px] leading-snug text-gray-700"><b>Why:</b> {wy.exists} <b className="text-red-800">If not done:</b> <span className="text-red-800">{wy.loss}</span></p> : null })()}
-              <div className="space-y-2"><div className={`grid min-w-[820px] rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {!AREA_VIDEO[area.key] && catLaws.some(l => l.audience === 'managers') && <ManagerSection area={area} laws={catLaws.filter(l => l.audience === 'managers')} Card={LawCard} />}
