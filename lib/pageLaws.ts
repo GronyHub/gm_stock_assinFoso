@@ -186,7 +186,8 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     assignment: cleanAssignment(b.assignment),
     // monthly laws: the day of the month it is done on (1 to 31; a short month uses its last day)
     month_day: recurring && String(b.frequency ?? '') === 'monthly' && Number.isInteger(Number(b.month_day)) && Number(b.month_day) >= 1 && Number(b.month_day) <= 31 ? Number(b.month_day) : null,
-    points: Number.isFinite(Math.round(Number(b.points))) && Math.round(Number(b.points)) >= 0 && Math.round(Number(b.points)) <= 20 ? Math.round(Number(b.points)) : 1,
+    // The law's own points follow its first violation line (the only points box in the editor); the old fallback only applies to a law without a violation line.
+    points: (() => { const v0 = parseViolations(b.violations)[0]; if (v0) return Math.round(v0.points); const n = Math.round(Number(b.points)); return Number.isFinite(n) && n >= 0 && n <= 20 ? n : 1 })(),
   }
 }
 

@@ -422,7 +422,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                       {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 text-[12px] leading-snug text-red-900">
                         <b>If broken:</b>{' '}
                         {l.law_type === 'recurring'
-                          ? <>⚖ <b>1 point</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</>
+                          ? (() => { const w = parseViolations(l.violations)[0]?.points ?? l.points ?? 1; return w === 0 ? <b>No penalty.</b> : <>⚖ <b>{w} point{w === 1 ? '' : 's'}</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</> })()
                           : (() => { const vs = parseViolations(l.violations); return vs.length ? vs.map((v, k) => <span key={k}>{k > 0 ? ' ' : ''}{v.dismissal ? <b>Dismissal.</b> : v.points === 0 ? <b>No penalty.</b> : <>⚖ <b>{v.points} point{v.points === 1 ? '' : 's'}</b>.</>} {v.by === 'app' ? 'The app checks it.' : 'A manager sees it in the shop or on CCTV and logs it with a note.'}</span>) : <>⚖ <b>{l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'}</b>. A manager sees it in the shop or on CCTV and logs it with a note.</> })()}
                       </div>}
                       <details className="col-span-4 border-t border-gray-100 pt-1">
@@ -589,7 +589,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <div className="flex flex-wrap gap-1.5">{DAY_CODES.map(w => <button key={w} type="button" onClick={() => set('days', d.days.includes(w) ? d.days.filter(x => x !== w) : [...d.days, w])} className={`rounded-full px-3 py-1.5 text-xs font-bold ${d.days.includes(w) ? 'bg-[#14213D] text-white' : 'bg-white text-gray-700'}`}>{DAY_NAMES[w].slice(0, 3)}</button>)}</div></div>
             <div className="grid grid-cols-3 gap-2">
               <div><label className={lab}>How often</label><select value={d.frequency} onChange={e => set('frequency', e.target.value)} className={inp}><option value="">Choose…</option>{LAW_FREQUENCIES.map(f => <option key={f}>{f}</option>)}</select></div>
-              <div><label className={lab}>Time</label><input type="time" value={d.law_time} onChange={e => set('law_time', e.target.value)} className={inp} /></div>
+              <div><label className={lab}>Time</label><div className="flex gap-1.5"><select value={d.law_time ? d.law_time.slice(0, 2) : ''} onChange={e => set('law_time', e.target.value ? `${e.target.value}:${d.law_time ? d.law_time.slice(3, 5) : '00'}` : '')} className={inp} aria-label="Hour"><option value="">--</option>{Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}</select><select value={d.law_time ? d.law_time.slice(3, 5) : ''} onChange={e => set('law_time', `${d.law_time ? d.law_time.slice(0, 2) : '08'}:${e.target.value}`)} className={inp} aria-label="Minute">{Array.from(new Set([...Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')), ...(d.law_time ? [d.law_time.slice(3, 5)] : [])])).sort().map(m => <option key={m} value={m}>{m}</option>)}</select></div></div>
               <div><label className={lab}>Minutes</label><input type="number" min={1} max={240} value={d.minutes} onChange={e => set('minutes', e.target.value)} className={inp} /></div>
             </div>
             {d.frequency === 'monthly' && <div><label className={lab}>Day of the month (1 to 31)</label><input type="number" min={1} max={31} value={d.month_day} onChange={e => set('month_day', e.target.value)} placeholder="for example 15" className={inp} /><p className="mt-0.5 text-[12px] text-gray-500">Shown on that date in Waiting for team. A short month uses its last day. Empty = sometime in the month.</p></div>}
@@ -620,7 +620,6 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
           <button type="button" onClick={() => set('violations', [...d.violations, { text: '', points: '1', by: 'manager' }])} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-700">+ Add a violation</button>
           <div><label className={lab}>Not a violation (optional)</label><input value={d.not_violation} onChange={e => set('not_violation', e.target.value)} className={inp} /></div>
         </div>
-        <div><label className={lab}>Penalty points if this law is broken</label><input type="number" min={0} max={20} value={d.points} onChange={e => set('points', e.target.value)} className={inp + ' w-24'} /></div>
         <div><label className={lab}>Do (one per line, optional)</label><textarea value={d.dos} onChange={e => set('dos', e.target.value)} rows={3} className={inp} /></div>
         <div><label className={lab}>Don&apos;t (one per line, optional)</label><textarea value={d.donts} onChange={e => set('donts', e.target.value)} rows={3} className={inp} /></div>
         {err && <p className="text-sm text-red-600">{err}</p>}

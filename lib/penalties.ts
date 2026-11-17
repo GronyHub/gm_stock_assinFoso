@@ -10,6 +10,7 @@ import { dutiesForDate } from '@/lib/duties'
 import { owes } from '@/lib/assignment'
 import { recordActivity } from '@/lib/logger'
 import { isShopDay, someoneClockedIn } from '@/lib/rota'
+import { parseViolations } from '@/lib/lawViolations'
 
 // Penalty points. Every violation costs points (1 for now); points are recorded in a ledger. 20 points = a 3-day
 // suspension (10 hours deducted), 30 = a week (20 hours), 50 = dismissal. Crossing a level only RECOMMENDS the sanction;
@@ -176,11 +177,23 @@ async function owedByOwner(day: string) {
   return byOwner
 }
 
+// What one undone task of a law costs: the points on its first violation line (1 unless the law says otherwise).
+async function weightsFor(lawIds: number[]) {
+  const w = new Map<number, number>()
+  if (!lawIds.length) return w
+  const rows = await sql`SELECT id, violations, points FROM page_laws WHERE id = ANY(${Array.from(new Set(lawIds))})`.catch(() => []) as unknown as { id: number; violations: string | null; points: number | null }[]
+  for (const r of rows) { const v = parseViolations(r.violations)[0]; w.set(Number(r.id), Math.max(0, Math.round(v ? v.points : Number(r.points ?? 1)))) }
+  return w
+}
+const worth = (mine: Awaited<ReturnType<typeof dutiesForDate>>, w: Map<number, number>) => Math.min(mine.reduce((n, d) => n + (w.get(Number(d.lawId)) ?? 1), 0), MISSED_DAILY_CAP)
+
 export async function dayEndAssess(day = dayKey()) {
   await ensurePenalties()
   const byOwner = await owedByOwner(day)
+  const w = await weightsFor(Array.from(byOwner.values()).flat().map(d => Number(d.lawId)))
   for (const [name, mine] of byOwner) {
-    const pts = Math.min(mine.length, MISSED_DAILY_CAP)
+    const pts = worth(mine, w)
+    if (pts <= 0) continue
     const first = mine.slice(0, 2).map(m => m.title.slice(0, 50)).join('; ')
     await addPoint({ staff: name, points: pts, reason: `${mine.length} checklist task${mine.length === 1 ? '' : 's'} left undone today (${first}${mine.length > 2 ? '...' : ''})`, source: 'missed', ref: `missed:${day}`, day })
   }
@@ -192,10 +205,11 @@ export async function recheckMissed(day: string, note = 'Withdrawn: answered the
   const pts = await sql`SELECT id, staff, points FROM staff_penalties WHERE ref = ${'missed:' + day} AND source = 'missed' AND status IN ('active', 'pending')` as unknown as { id: number; staff: string; points: number }[]
   if (!pts.length) return
   const byOwner = await owedByOwner(day)
+  const w = await weightsFor(Array.from(byOwner.values()).flat().map(d => Number(d.lawId)))
   for (const p of pts) {
-    const left = byOwner.get(String(p.staff))?.length ?? 0
+    const left = worth(byOwner.get(String(p.staff)) ?? [], w)
     if (left === 0) await sql`UPDATE staff_penalties SET status = 'withdrawn', withdraw_reason = ${note}, note = ${note} WHERE id = ${p.id}`
-    else if (Math.min(left, MISSED_DAILY_CAP) < Number(p.points)) await sql`UPDATE staff_penalties SET points = ${Math.min(left, MISSED_DAILY_CAP)}, note = ${'Reduced: a task was done the next morning'} WHERE id = ${p.id}`
+    else if (left < Number(p.points)) await sql`UPDATE staff_penalties SET points = ${left}, note = ${'Reduced: a task was done the next morning'} WHERE id = ${p.id}`
   }
 }
 
