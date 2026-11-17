@@ -241,6 +241,6 @@ export async function penaltiesTick(now = new Date()) {
       }
     }
   }
-  if (hm === '19:20') { await ensurePenalties(); if (await claim(`dayend:${day}`)) { await dayEndAssess(day); await (await import('@/lib/attendancePenalties')).assessAttendance(day).catch(() => {}) } }
+  if (hm === '19:20') { await ensurePenalties(); if (await claim(`dayend:${day}`)) { await dayEndAssess(day); await (await import('@/lib/attendancePenalties')).assessAttendance(day).catch(() => {}); await (await import('@/lib/workload')).assessWorkload(day).catch(e => console.error('workload assess failed:', e instanceof Error ? e.message : String(e))) } }
   if (hm === '19:30') { await ensurePenalties(); if (await claim(`fade:${day}`)) await fadeTick(day) }
 }

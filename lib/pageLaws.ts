@@ -106,6 +106,7 @@ async function ensureCompanyLawsImpl() {
   await approveOnce('adverts-v1', 'The owner approved the whole Adverts set')
   await seedSanctionsLaw()
   await seedAttendanceLaw()
+  await seedWorkloadLaw()
   await seedCashLaws()
   await seedFlagLaws()
   await approveOnce('flags-v1', 'The owner asked for the flag laws and checks')
@@ -415,6 +416,17 @@ async function assignmentFromAudienceOnce() {
     await sql`UPDATE page_laws SET assignment = 'managers' WHERE audience = 'managers' AND assignment = 'all'`
     await sql`UPDATE daily_check_tiles SET assignment = 'managers' WHERE law_id IN (SELECT id FROM page_laws WHERE assignment = 'managers')`.catch(() => {})
   } catch (e) { console.error('assignment migration failed:', e instanceof Error ? e.message : String(e)) }
+}
+
+// The workload law starts as a draft: the owner reads it on Staff management and approves it. Until then nobody is charged (the Waiting page only shows the numbers).
+async function seedWorkloadLaw() {
+  try {
+    if (await seedDone('workload-v1')) return
+    const violations = [{ text: 'The work you logged in the day adds up to less than half of the time you were at the shop', points: 1, by: 'app', record: 'Added automatically at day end from the clock and the activity log', how: 'Log what you do as you do it (sales, counts, checklist tasks, other work). Work you do for a busy colleague counts for you when you log it.' }]
+    await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, dos, status, seed, points, violations, title)
+      VALUES ('Staff management', ${'Workload: every day, the work you log (sales, counts, checklist tasks and any other work) adds up to at least half of the time you spend at the shop. Work done for a colleague who was busy counts for the person who logs it. A day with less costs 1 penalty point.'},
+              false, 'law', 'Staff management', 'Workload', 'app', ${'Log your work as you do it\nHelp a busy colleague and log it'}, 'draft', 'workload-v1', 1, ${JSON.stringify(violations)}, 'Log at least half of your time at the shop as work')`
+  } catch (e) { console.error('workload law seed failed:', e instanceof Error ? e.message : String(e)) }
 }
 
 async function seedAttendanceLaw() {
