@@ -330,7 +330,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   </>) : null
 
   return (
-    <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
+    <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>
       {!embed && canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
       {!embed && <div className="mb-2 grid grid-cols-3 gap-1">
         {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
@@ -385,19 +385,19 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
             </div>}
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
-            {embed ? areaMedia : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
+            {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {groups.filter(([, list]) => list.length).map(([title, list]) => (
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
                   <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
-                  {embed && <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span><span>Staff taps</span></div>}
+                  {embed && <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span><span>Staff taps</span><span className="hidden sm:block">If broken</span></div>}
                   {embed ? list.map(l => {
                     const ds = (l.days ?? '').split(',').map(x => x.trim()).filter(Boolean)
                     const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
                     const who = l.assignment && l.assignment !== 'all' ? (ASSIGNMENTS.find(a => a.key === l.assignment)?.label ?? l.assignment) : l.audience === 'managers' ? 'A manager' : 'Anyone on shift'
                     return (
-                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
@@ -419,13 +419,13 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                           <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
                         </div>}
                       </div>
-                      {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 text-[12px] leading-snug text-red-900">
-                        <b>If broken:</b>{' '}
+                      {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 sm:col-span-1 text-[12px] leading-snug text-red-900">
+                        <b className="sm:hidden">If broken:</b>{' '}
                         {l.law_type === 'recurring'
                           ? (() => { const w = parseViolations(l.violations)[0]?.points ?? l.points ?? 1; return w === 0 ? <b>No penalty.</b> : <>⚖ <b>{w} point{w === 1 ? '' : 's'}</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</> })()
                           : (() => { const vs = parseViolations(l.violations); return vs.length ? vs.map((v, k) => <span key={k}>{k > 0 ? ' ' : ''}{v.dismissal ? <b>Dismissal.</b> : v.points === 0 ? <b>No penalty.</b> : <>⚖ <b>{v.points} point{v.points === 1 ? '' : 's'}</b>.</>} {v.by === 'app' ? 'The app checks it.' : 'A manager sees it in the shop or on CCTV and logs it with a note.'}</span>) : <>⚖ <b>{l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'}</b>. A manager sees it in the shop or on CCTV and logs it with a note.</> })()}
                       </div>}
-                      <details className="col-span-4 border-t border-gray-100 pt-1">
+                      <details className="col-span-4 border-t border-gray-100 pt-1 sm:col-span-5">
                         <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
                         <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
                           {l.text && l.text !== (l.title || firstSentence(l.text)) && <p>{l.text}</p>}

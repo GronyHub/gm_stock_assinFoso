@@ -31,19 +31,19 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
 
   return (
     <div>
-      <div role="tablist" className="mb-2 flex gap-1.5">
+      <div role="tablist" className="mb-2 flex gap-1.5 sm:max-w-xl">
         {([['rules', '📜 Rules'], ['went', '📊 How it went'], ['record', '✍️ Record']] as const).map(([k, t]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={`flex-1 rounded-lg px-2 py-2 text-[13px] font-semibold ${tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{t}</button>
         ))}
       </div>
 
-      {tab === 'rules' && <iframe src={`/laws?tile=${areaKey}&embed=1${sq}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200" />}
+      {tab === 'rules' && <iframe src={`/laws?tile=${areaKey}&embed=1${sq}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200 sm:h-[78vh]" />}
 
       {tab === 'record' && <ManageLogPanel category={logCategory} label={label} icon={icon} />}
 
       {tab === 'went' && (
-        <div className="space-y-3">
+        <div className="max-w-4xl space-y-3">
           <div className="flex items-center gap-1.5">
             {[7, 30, 90].map(d => <button key={d} type="button" onClick={() => setDays(d)} className={`rounded-full px-3 py-1 text-[13px] font-semibold ${days === d ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>{d} days</button>)}
           </div>
