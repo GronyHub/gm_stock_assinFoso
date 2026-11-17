@@ -4,16 +4,33 @@ import sql from '@/lib/db'
 // Drafted Company Laws for the remaining categories, promoted from the old Standards and the existing laws. They are
 // added as drafts (seen only by the owner and manager); approving them creates their checklist tiles. Each set is added
 // once. `updates` set the time/days/minutes on laws that already exist, so they can get a tile too.
-type D = { cat: string; sub: string; type: 'recurring' | 'standing' | 'app'; text: string; freq?: string; days?: string; time?: string; mins?: number; proof?: 'tick' | 'photo' | 'question' | 'persons'; dos?: string; donts?: string }
+type D = { cat: string; sub: string; type: 'recurring' | 'standing' | 'app'; text: string; freq?: string; days?: string; time?: string; mins?: number; proof?: 'tick' | 'photo' | 'question' | 'persons'; dos?: string; donts?: string; who?: string }
 type U = { id: number; type?: string; freq?: string; days?: string; time?: string; mins?: number }
 const R = (cat: string, sub: string, freq: string, time: string, mins: number, text: string, o: Partial<D> = {}): D => ({ cat, sub, type: 'recurring', freq, time, mins, text, ...o })
 const S = (cat: string, sub: string, text: string, o: Partial<D> = {}): D => ({ cat, sub, type: 'standing', text, ...o })
 const A = (cat: string, sub: string, text: string, o: Partial<D> = {}): D => ({ cat, sub, type: 'app', text, ...o })
 
-const CS = 'Customer service', CW = 'Customers & WhatsApp', SD = 'Shop display & arrangement', EQ = 'Equipment, power & repairs'
+const CL = 'Cleanliness & safety', CS = 'Customer service', CW = 'Customers & WhatsApp', SD = 'Shop display & arrangement', EQ = 'Equipment, power & repairs'
 const ST = 'Stock & records', SM = 'Staff management', SP = 'Security & privacy', FI = 'Finance'
 
 export const MORE_SETS: { seed: string; updates: U[]; drafts: D[] }[] = [
+  // Cleanliness: each step is its own law (the old bundles Opening clean, Afternoon cleanliness check and Closing clean-up are removed when the last of these is approved, see lawTiles.retireForSeed).
+  { seed: 'clean-steps-v1', updates: [], drafts: [
+    R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Mop the whole floor of the shop.', { who: 'opener' }),
+    R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Dust the printers with the rag and brush.', { who: 'opener' }),
+    R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Dust the tables with the rag and brush.', { who: 'opener' }),
+    R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Dust the showcases with the rag and brush.', { who: 'opener' }),
+    R(CL, 'Daily cleaning', 'daily', '08:55', 2, 'Take one clear photo of the clean floor and counter.', { who: 'opener', proof: 'photo' }),
+    R(CL, 'Daily cleaning', 'daily', '15:00', 2, 'Check the floor is clean and tidy.'),
+    R(CL, 'Daily cleaning', 'daily', '15:00', 2, 'Check the counter is clean and tidy.'),
+    R(CL, 'Daily cleaning', 'daily', '15:00', 2, 'Check the tables are clean and tidy.'),
+    R(CL, 'Daily cleaning', 'daily', '15:00', 2, 'Check the toilets are clean and tidy.'),
+    R(CL, 'Daily cleaning', 'daily', '15:05', 2, 'Take a photo of the shop and write anything that was dirty.', { proof: 'photo' }),
+    R(CL, 'Closing clean-up', 'daily', '18:30', 3, 'Empty the bins. The BIN takes rubbish and unusable paper only.', { who: 'closer', dos: 'Tear official and customer documents into pieces before they go in the BIN' }),
+    R(CL, 'Closing clean-up', 'daily', '18:30', 3, 'Empty the WASTE PAPERS slot. It takes spoilt or unused test prints only.', { who: 'closer' }),
+    R(CL, 'Closing clean-up', 'daily', '18:30', 3, 'Clear the papers off the desks and printers.', { who: 'closer' }),
+    R(CL, 'Closing clean-up', 'daily', '18:30', 3, 'Switch off the laminator, unplug it and let it cool.', { who: 'closer', donts: 'Do not leave the laminator on or near paper and the bin' }),
+  ] },
   { seed: 'service-v1', updates: [{ id: 46, type: 'recurring', freq: 'daily', time: '08:45', mins: 3 }], drafts: [
     R(CS, 'Complaints', 'daily', '17:15', 5, 'Check the complaint log on the left of the glass showcase: every complaint and every case of staff incompetence today is written with its date and details, and the manager has been told.'),
     S(CS, 'Receiving customers', 'Every customer is taken seriously: greeted, listened to, the order written down and a time given. This matters most for anyone who has walked in to request work.'),
@@ -101,8 +118,8 @@ export async function seedMoreLaws() {
           law_time = COALESCE(law_time, ${u.time ?? null}), minutes = COALESCE(minutes, ${u.mins ?? null}) WHERE id = ${u.id}`
       }
       for (const d of set.drafts) {
-        await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed, proof)
-          VALUES (${d.cat}, ${d.text}, false, 'law', ${d.cat}, ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', ${set.seed}, ${d.proof ?? 'tick'})`
+        await sql`INSERT INTO page_laws (scope_key, text, display_in_carousel, carousel_type, category, subcategory, law_type, days, law_time, frequency, minutes, dos, donts, status, seed, proof, assignment)
+          VALUES (${d.cat}, ${d.text}, false, 'law', ${d.cat}, ${d.sub}, ${d.type}, ${d.days ?? null}, ${d.time ?? null}, ${d.freq ?? null}, ${d.mins ?? null}, ${d.dos ?? null}, ${d.donts ?? null}, 'draft', ${set.seed}, ${d.proof ?? 'tick'}, ${d.who ?? 'all'})`
       }
     } catch (e) { console.error('law drafts seed failed:', set.seed, e instanceof Error ? e.message : String(e)) }
   }

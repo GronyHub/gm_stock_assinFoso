@@ -102,6 +102,15 @@ export async function approveSeed(seed: string) {
 
 async function retireForSeed(seed: string) {
   if (seed === 'cs-merge-v1') await retireCsUmbrella()
+  // Cleanliness: once every single-step draft is approved, the old bundled laws (Opening clean, Afternoon cleanliness check, Closing clean-up) and their tiles are removed.
+  if (seed === 'clean-steps-v1') {
+    const [r] = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE seed = 'clean-steps-v1' AND status = 'draft'`
+    if (!Number(r?.n ?? 1)) {
+      const old = [76, 77, 79]
+      await sql`UPDATE daily_check_tiles SET active = false WHERE law_id = ANY(${old})`
+      await sql`DELETE FROM page_laws WHERE id = ANY(${old}) AND seed = 'clean-v1'`
+    }
+  }
   const r = RETIRE_BY_SEED[seed]
   if (!r) return
   for (const lg of r.logs ?? []) await sql`UPDATE daily_check_tiles SET active = false WHERE created_by = 'manage-tiles-v1' AND log_category = ${lg} AND law_id IS NULL AND active`
