@@ -214,6 +214,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           <div className="border-r border-gray-200 p-1.5" style={{ gridRow: `span ${Math.max(1, vlines.length)}` }}>
             {l.code && <span className="mb-0.5 inline-block rounded bg-[#14213D] px-1 py-px text-[12px] font-extrabold text-white">{l.code}</span>}
             <p className="text-[12px] font-extrabold leading-snug text-[#14213D]">{l.title || firstSentence(l.text)}</p>
+            {embed && l.text && l.text !== (l.title || firstSentence(l.text)) && <p className="mt-0.5 text-[12px] leading-snug text-gray-800">{l.text}</p>}
             {canManage && <div className="mt-1 flex gap-1">
               {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-1.5 py-0.5 text-[12px] font-bold text-white">✓</button>}
               <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit" className="rounded bg-blue-50 px-1.5 py-0.5 text-[12px] font-bold text-blue-700">✎</button>
@@ -362,8 +363,16 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
                 <div className="space-y-2 overflow-x-auto">
-                  <div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
-                  {list.map(l => <LawCard key={l.id} l={l} />)}
+                  <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
+                  {embed ? list.map(l => (
+                    <div key={l.id} className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-2">
+                      <span className="w-12 shrink-0 text-[13px] font-bold tabular-nums text-indigo-800">{l.law_time ?? (l.law_type === 'standing' ? 'Always' : '-')}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
+                        <p className="text-[12px] leading-snug text-gray-600">{l.law_type === 'recurring' ? (scheduleText(l) || 'Schedule not set yet') : l.law_type === 'standing' ? 'A standing rule' : 'Checked by the app'} · {l.assignment && l.assignment !== 'all' ? `by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}` : l.audience === 'managers' ? 'by a manager' : 'by anyone on shift'}</p>
+                      </div>
+                      {canManage && <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit when and who" className="shrink-0 rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>}
+                    </div>)) : list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
               </div>))}
           </div>)
@@ -418,7 +427,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           {!embed && <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>}
-          {embed ? null : AREA_VIDEO[area.key] && area.guide ? (
+          {AREA_VIDEO[area.key] && area.guide ? (
             <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
               <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
               <GuideVideo page={area.guide} videoRef={vref} onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
@@ -427,7 +436,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           ) : area.training && hasTraining(area.training)
             ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} onWatched={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
             : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
-          {!embed && !AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
+          {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
           {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : null })()}
