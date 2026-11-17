@@ -422,8 +422,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                       {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 text-[12px] leading-snug text-red-900">
                         <b>If broken:</b>{' '}
                         {l.law_type === 'recurring'
-                          ? (() => { const w = parseViolations(l.violations)[0]?.points ?? l.points ?? 1; return w === 0 ? <b>No penalty.</b> : w >= 1 ? <>⚖ <b>{w} point{w === 1 ? '' : 's'}</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</> : <>⚖ <b>{w} of a point</b> to whoever it falls on, if it is left undone at day end ({Math.round(1 / w * 10) / 10} undone make 1 point). Small amounts from every rule add up and carry over to the next day; a whole point is charged each time they reach 1.</> })()
-
+                          ? <>⚖ <b>1 point</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</>
                           : (() => { const vs = parseViolations(l.violations); return vs.length ? vs.map((v, k) => <span key={k}>{k > 0 ? ' ' : ''}{v.dismissal ? <b>Dismissal.</b> : v.points === 0 ? <b>No penalty.</b> : <>⚖ <b>{v.points} point{v.points === 1 ? '' : 's'}</b>.</>} {v.by === 'app' ? 'The app checks it.' : 'A manager sees it in the shop or on CCTV and logs it with a note.'}</span>) : <>⚖ <b>{l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'}</b>. A manager sees it in the shop or on CCTV and logs it with a note.</> })()}
                       </div>}
                       <details className="col-span-4 border-t border-gray-100 pt-1">
@@ -609,7 +608,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
                 <label className={lab}>Violation {i + 1}: what breaks the law</label>
                 <input value={v.text} onChange={e => setV({ text: e.target.value })} placeholder="For example: a sale is not recorded the same day" className={inp} />
                 <div className="flex flex-wrap items-end gap-1">
-                  <div><label className={lab}>Points</label><input type="number" min={0} max={20} step="0.05" value={v.points} onChange={e => setV({ points: e.target.value })} className={inp + ' w-20'} title="Points" /></div>
+                  <div><label className={lab}>Points</label><input type="number" min={0} max={20} value={v.points} onChange={e => setV({ points: e.target.value })} className={inp + ' w-16'} title="Points" /></div>
                   <div className="min-w-[8rem] flex-1"><label className={lab}>Recorded by</label><select value={v.by} onChange={e => setV({ by: e.target.value })} className={inp}><option value="manager">Manager logs it</option><option value="app">The app checks it</option></select></div>
                   <label className="flex shrink-0 items-center gap-1 pb-2 text-[12px] font-bold text-red-700"><input type="checkbox" checked={!!v.dismissal} onChange={e => setV({ dismissal: e.target.checked })} />Dismissal</label>
                   <button type="button" onClick={() => set('violations', d.violations.filter((_, j) => j !== i))} className="mb-0.5 rounded-lg bg-white px-2 py-2 text-xs font-bold text-red-700" title="Remove this violation">✕</button>

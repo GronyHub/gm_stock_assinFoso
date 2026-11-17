@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { actorKey } from '@/lib/clockState'
 import { requireAuth, badRequest, success, handleError } from '@/lib/api'
 import sql from '@/lib/db'
-import { ensurePenalties, carryOf } from '@/lib/penalties'
+import { ensurePenalties } from '@/lib/penalties'
 import { ensureDailyChecks } from '@/lib/dailyChecks'
 import { LAW_AREAS } from '@/lib/lawAreas'
 import { isOwnerLevel } from '@/lib/roles'
@@ -60,12 +60,11 @@ export async function GET(req: NextRequest) {
     }
     missed.sort((a, b) => b.day.localeCompare(a.day))
 
-    const people: Record<string, { points: number; done: number; missed: number; carry: number }> = {}
-    for (const p of points) { const k = String(p.staff).toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0, carry: 0 }).points += Number(p.points) }
-    for (const d of done) { const k = String(d.recorded_by).toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0, carry: 0 }).done += 1 }
-    for (const m of missed) { const k = (m.owner ?? 'nobody').toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0, carry: 0 }).missed += 1 }
+    const people: Record<string, { points: number; done: number; missed: number }> = {}
+    for (const p of points) { const k = String(p.staff).toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0 }).points += Number(p.points) }
+    for (const d of done) { const k = String(d.recorded_by).toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0 }).done += 1 }
+    for (const m of missed) { const k = (m.owner ?? 'nobody').toLowerCase(); (people[k] ??= { points: 0, done: 0, missed: 0 }).missed += 1 }
 
-    for (const k of Object.keys(people)) if (k !== 'nobody') people[k].carry = await carryOf(k)
     return success({ days, all, area: { key: area.key, label: area.label }, people, points, done, missed, missedDays: dayList.length })
   } catch (e) { return handleError('area-record', e) }
 }

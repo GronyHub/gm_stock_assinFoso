@@ -6,7 +6,7 @@ import { fmtDate } from '@/lib/fmtDate'
 type Point = { id: number; staff: string; points: number; reason: string; day: string; status: string; law_code: string | null; law_title: string | null }
 type Done = { tile_id: number; title: string; day: string; recorded_by: string; value: string }
 type Missed = { day: string; title: string; owner: string | null; reason: string | null; state: string }
-type Record_ = { days: number; all: boolean; people: Record<string, { points: number; done: number; missed: number; carry: number }>; points: Point[]; done: Done[]; missed: Missed[]; missedDays: number }
+type Record_ = { days: number; all: boolean; people: Record<string, { points: number; done: number; missed: number }>; points: Point[]; done: Done[]; missed: Missed[]; missedDays: number }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -58,7 +58,7 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
                     <span className="text-gray-900">{cap(n)}</span>
                     <span className="text-right tabular-nums text-green-700">{v.done}</span>
                     <span className={`text-right tabular-nums ${v.missed ? 'font-semibold text-amber-700' : 'text-gray-400'}`}>{v.missed}</span>
-                    <span className={`text-right tabular-nums ${v.points ? 'font-semibold text-red-700' : 'text-gray-400'}`}>{v.points}{v.carry > 0 && <span className="block text-[11px] font-normal text-amber-700">+{v.carry} building</span>}</span>
+                    <span className={`text-right tabular-nums ${v.points ? 'font-semibold text-red-700' : 'text-gray-400'}`}>{v.points}</span>
                   </div>
                 ))}
               </div>
