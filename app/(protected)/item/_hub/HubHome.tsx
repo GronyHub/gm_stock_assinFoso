@@ -3,7 +3,7 @@ import PresentStaffBar from '../_components/PresentStaffBar'
 import { StaffMemberPersonalTab, STAFF_ROSTER } from './hubShared'
 import { signOut } from 'next-auth/react'
 import ClockInOutPanel, { type Mine } from '../../staff/ClockInOutPanel'
-import HubRecord from './HubRecord'
+import HubProfileWindow from './HubProfileWindow'
 import MySelfChip from '../_components/MySelfChip'
 import { formatPrice } from './hubShared'
 import { useEffect, useState } from 'react'
@@ -71,6 +71,16 @@ function PersonTiles({ h, who }: { h: HubCtx; who: string }) {
             {t.key === 'waiting' && (w?.total ?? 0) > 0 && <span className={`absolute right-1.5 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[11px] font-semibold leading-[18px] text-white ${w!.now ? 'bg-red-600' : 'bg-amber-500'}`}>{w!.total}</span>}
           </button>
         ))}
+        {!isSelf && h.isOwnerOrJoe && (
+          <button type="button" onClick={async () => {
+            if (!confirm(`Reset ${nm(who)}'s PIN? They will choose a new one next time they open their account.`)) return
+            const r = await fetch('/api/profile-pin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset', username: who }) }).catch(() => null)
+            alert(r && r.ok ? `${nm(who)}'s PIN is reset.` : 'Could not reset the PIN.')
+          }} className="flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-1.5 py-1 text-left active:opacity-80">
+            <span aria-hidden="true" className="text-base leading-none">🔑</span>
+            <span className="line-clamp-2 w-full text-[12px] leading-tight text-gray-700">Reset PIN</span>
+          </button>
+        )}
       </div>
       {tab && (
         <StaffMemberPersonalTab key={who + tab} hideTabs staffName={who} initialTab={tab as never} username={h.username} role={h.role} canManage={h.canManage} staffRoster={STAFF_ROSTER} routablePages={h.routablePages} categoryIds={h.fixedCategoryIds} />
@@ -110,8 +120,6 @@ function MyShift({ h }: { h: HubCtx }) {
     </button>
   )
   const extra = (<>
-    {h.canOpenSettings && <Tile icon="⚙️" label="Settings" onClick={() => { h.setShop(null); h.pickLossView('settings') }} />}
-    {h.canOpenUkSettings && <Tile icon="🇬🇧" label="UK" onClick={() => { h.setShop(null); h.changeTab('uk'); setTimeout(() => h.setSettingsOpen(true), 50) }} />}
     <Tile icon="🚪" label="Sign out" onClick={() => { if (confirm('Sign out?')) void signOut({ callbackUrl: '/login' }) }} />
   </>)
   return (
@@ -131,7 +139,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
   // Only my own card and tiles are on this page; the rest of the team is on the Manage page (Team tab).
   const who = username
   // My payslips and my profile open in a window over this page when my picture is tapped.
-  const [acct, setAcct] = useState<'' | 'payslips' | 'profile'>('')
+  const [acct, setAcct] = useState(false)
   useEffect(() => {
     let live = true
     fetch('/api/staff-times/worked-today', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { if (live) setTeam(Array.isArray(d?.staff) ? d.staff : []) }).catch(() => { if (live) setTeam([]) })
@@ -169,42 +177,19 @@ export default function HubHome({ h }: { h: HubCtx }) {
           <p className="text-sm text-gray-500">{dateText}</p>
         </div>
         {/* My own picture (phones; computers have it in the top bar). The rest of the team is on the Manage page. */}
-        {username && <div className="sm:hidden"><MySelfChip name={nm(username)} username={username} sales={mySales} bare onSelect={() => setAcct('payslips')} /></div>}
+        {username && <div className="sm:hidden"><MySelfChip name={nm(username)} username={username} sales={mySales} bare onSelect={() => setAcct(true)} /></div>}
       </div>
-      {acct && username && (
-        <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setAcct('')}>
-          <div role="dialog" aria-label="My account" className="mx-auto flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white" onClick={e => e.stopPropagation()}>
-            <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-3 py-2">
-              <div role="tablist" className="flex flex-1 gap-1.5">
-                {([['payslips', '💵 Payslips'], ['profile', '👤 Profile']] as const).map(([k, label]) => (
-                  <button key={k} type="button" role="tab" aria-selected={acct === k} onClick={() => setAcct(k)}
-                    className={`rounded-lg px-3 py-1.5 text-[14px] font-semibold ${acct === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{label}</button>
-                ))}
-              </div>
-              <button type="button" onClick={() => setAcct('')} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500">✕</button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto pb-6">
-              <StaffMemberPersonalTab key={acct} hideTabs staffName={username} initialTab={acct as never} username={h.username} role={h.role} canManage={h.canManage} staffRoster={STAFF_ROSTER} routablePages={h.routablePages} categoryIds={h.fixedCategoryIds} />
-            </div>
-          </div>
-        </div>
-      )}
+      {acct && username && <HubProfileWindow h={h} onClose={() => setAcct(false)} />}
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
       <div className="grid grid-cols-5 gap-1.5">
         {!showFlags && (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
-        <Card title="Daily summary" value="Open" tone="plain" sub="Today's sales and flags in one page" onClick={go(() => h.setLossView('dailySummary'))} />
-        {showFlags && (
-          <Card title="Cash counted" tone={cash !== null ? 'good' : (nobodyIn || stillIn ? 'plain' : new Date().getHours() >= 18 ? 'bad' : 'plain')} onClick={go(() => goItemsMode('log'))}
-            value={cash === null ? (nobodyIn ? '–' : stillIn ? 'Later' : 'Not yet') : <MoneyText v={cash} />} sub={cash === null ? (nobodyIn ? 'Nobody clocked in today, so nothing to count' : stillIn ? 'Count it once everyone has clocked out' : 'Count it in the Sales Log before closing') : 'Entered for today'} />
-        )}
         {!(isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam)) && (
           <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
         )}
-        <HubRecord h={h} embedded />
       </div>
     </div>
   )
