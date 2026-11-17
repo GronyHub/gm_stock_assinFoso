@@ -55,6 +55,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   }
   const [error, setError] = useState('')
   const [cat, setCat] = useState<string | null>(null)
+  // ?embed=1&subs=A|B: the page shown inside an area page (Manage) -- just that area's laws, without the tabs, search, heading and videos.
+  const [embed, setEmbed] = useState<{ subs: string[] } | null>(null)
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
@@ -91,6 +93,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const t = q.get('tile'), c = q.get('cat')
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
+    if (q.get('embed')) setEmbed({ subs: (q.get('subs') ?? '').split('|').filter(Boolean) })
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -148,7 +151,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
   }, [areas, laws])
-  const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l))
+  const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l) && (!embed?.subs.length || embed.subs.includes(l.subcategory ?? '')))
   const unsignedIn = (a: LawArea) => !SIGNING ? [] : areaLaws(a).filter(l => l.status !== 'draft' && !(sig?.signed ?? {})[l.id])
   useEffect(() => {
     if (!signOnly || !sig || !laws || cat) return
@@ -299,7 +302,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   }
   const catInfo = area
   const catLaws = area ? areaLaws(area) : []
-  const blankFor = (a: LawArea): Draft => ({ ...blank(a.match[0]?.cat ?? ''), subcategory: a.addSub ?? a.match[0]?.subs?.[0] ?? '' })
+  const blankFor = (a: LawArea): Draft => ({ ...blank(a.match[0]?.cat ?? ''), subcategory: embed?.subs[0] ?? a.addSub ?? a.match[0]?.subs?.[0] ?? '' })
   const subs = Array.from(new Set(catLaws.map(l => l.subcategory ?? 'General')))
 
   const howtoRows = (a: LawArea, covered: (id: string) => boolean) =>
@@ -308,12 +311,12 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
 
   return (
     <div className="mx-auto max-w-3xl px-3 pb-24 pt-3">
-      {canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
-      <div className="mb-2 grid grid-cols-3 gap-1">
+      {!embed && canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
+      {!embed && <div className="mb-2 grid grid-cols-3 gap-1">
         {([['topic', '📚 By topic'], ['type', '🕐 By type and when'], ['role', '👤 By role']] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => { setView(k); setQ(''); if (k !== 'topic') setCat(null) }} className={`rounded-xl px-1 py-2 text-xs font-bold ${view === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
         ))}
-      </div>
+      </div>}
       {view === 'role' && laws && (() => {
         const all = laws.filter(l => l.status !== 'draft' || canManage)
         const groups = ASSIGNMENTS.filter(a => a.key !== 'all').map(a => [a.label, all.filter(l => (l.assignment ?? 'all') === a.key).sort((x, y) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id), true] as [string, Law[], boolean])
@@ -362,7 +365,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               </div>))}
           </div>)
       })()}
-      {view === 'topic' && <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />}
+      {view === 'topic' && !embed && <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!laws && !error && <p className="text-sm text-gray-400">Loading…</p>}
 
@@ -407,12 +410,12 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       {laws && view === 'topic' && !searching && cat && area && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All laws</button>
+            {!embed && <button type="button" onClick={() => setCat(null)} className="text-sm font-semibold text-blue-700">&larr; All laws</button>}
             {canManage && catLaws.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = catLaws.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws in ${area.label}? Their tiles go into Waiting for team and the old tiles they replace are stopped.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="ml-auto rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({catLaws.filter(l => l.status === 'draft').length})</button>}
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
-          <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>
-          {AREA_VIDEO[area.key] && area.guide ? (
+          {!embed && <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>}
+          {embed ? null : AREA_VIDEO[area.key] && area.guide ? (
             <div className="space-y-2 rounded-2xl border border-indigo-200 bg-indigo-50 p-2">
               <p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 {area.label}: watch, and tap any line below to jump to it</p>
               <GuideVideo page={area.guide} videoRef={vref} onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
@@ -421,7 +424,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
           ) : area.training && hasTraining(area.training)
             ? <CategoryTraining cat={area.training} result={quizMine[area.training]} onDone={() => void reloadQuiz()} onWatched={() => void fetch('/api/law-video', { method: 'POST', headers: json, body: JSON.stringify({ area: area.key, label: area.label + ' video' }) }).catch(() => {})} />
             : area.guide ? <div className="space-y-1 rounded-2xl border border-indigo-200 bg-indigo-50 p-2"><p className="px-1 text-xs font-extrabold uppercase tracking-wide text-indigo-900">🎬 Watch and learn: {area.label}</p><GuideVideo page={area.guide} /></div> : null}
-          {!AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
+          {!embed && !AREA_VIDEO[area.key] && area.training && hasTraining(area.training) && area.guide && (
             <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-2"><summary className="cursor-pointer text-sm font-bold text-gray-900">▶ How to use this page (video)</summary><div className="mt-2"><GuideVideo page={area.guide} /></div></details>
           )}
           {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : null })()}
