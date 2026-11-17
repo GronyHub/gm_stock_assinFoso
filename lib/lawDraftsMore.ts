@@ -15,6 +15,13 @@ const ST = 'Stock & records', SM = 'Staff management', SP = 'Security & privacy'
 
 export const MORE_SETS: { seed: string; updates: U[]; drafts: D[] }[] = [
   // Cleanliness: each step is its own law (the old bundles Opening clean, Afternoon cleanliness check and Closing clean-up are removed when the last of these is approved, see lawTiles.retireForSeed).
+  { seed: 'clean-weekly-v1', updates: [], drafts: [
+    R(CL, 'Weekly cleaning', 'weekly', '16:00', 5, 'Wash the printer covers.', { days: 'sat' }),
+    R(CL, 'Weekly cleaning', 'weekly', '16:00', 5, 'Wipe the printers.', { days: 'sat' }),
+    R(CL, 'Weekly cleaning', 'weekly', '16:00', 4, 'Wipe the laptops.', { days: 'sat' }),
+    R(CL, 'Weekly cleaning', 'weekly', '16:00', 3, 'Wipe the scanner.', { days: 'sat' }),
+    R(CL, 'Weekly cleaning', 'weekly', '16:00', 3, 'Wipe the showcases.', { days: 'sat' }),
+  ] },
   { seed: 'clean-steps-v1', updates: [], drafts: [
     R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Mop the whole floor of the shop.', { who: 'opener' }),
     R(CL, 'Daily cleaning', 'daily', '08:45', 3, 'Dust the printers with the rag and brush.', { who: 'opener' }),
