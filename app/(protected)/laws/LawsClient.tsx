@@ -349,10 +349,16 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
       {view === 'type' && laws && (() => {
         const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l))
         const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')
+        // In an area page each weekday is its own heading ("Every Wednesday"), not just "Weekly".
+        const byTime = (x: Law, y: Law) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id
+        const weeklyGroups = (list: Law[]): [string, Law[]][] => [
+          ...DAY_CODES.filter(d => list.some(l => dayKey(l) === d)).map(d => [`Every ${DAY_NAMES[d]}, by time`, list.filter(l => dayKey(l) === d).sort(byTime)] as [string, Law[]]),
+          ...(list.some(l => !DAY_CODES.includes(dayKey(l) as never)) ? [['Weekly: day not set yet', list.filter(l => !DAY_CODES.includes(dayKey(l) as never)).sort(byTime)] as [string, Law[]]] : []),
+        ]
         const groups: [string, Law[]][] = [
-          ['Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
-          ['Weekly: by day, then time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly').sort((a, b) => DAY_CODES.indexOf(dayKey(a) as never) - DAY_CODES.indexOf(dayKey(b) as never) || (a.law_time ?? '99').localeCompare(b.law_time ?? '99'))],
-          ['Monthly and yearly', all.filter(l => l.law_type === 'recurring' && l.frequency !== 'daily' && l.frequency !== 'weekly').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
+          [embed ? 'Every day, by time' : 'Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
+          ...(embed ? weeklyGroups(all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly')) : [['Weekly: by day, then time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly').sort((a, b) => DAY_CODES.indexOf(dayKey(a) as never) - DAY_CODES.indexOf(dayKey(b) as never) || (a.law_time ?? '99').localeCompare(b.law_time ?? '99'))] as [string, Law[]]]),
+          [embed ? 'Every month or year, by time' : 'Monthly and yearly', all.filter(l => l.law_type === 'recurring' && l.frequency !== 'daily' && l.frequency !== 'weekly').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
           ['Standing rules: always', all.filter(l => l.law_type === 'standing')],
           ['App rules: the app checks these itself', all.filter(l => l.law_type === 'app')],
         ]
@@ -365,12 +371,14 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                 <div className="space-y-2 overflow-x-auto">
                   <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
                   {embed ? list.map(l => (
-                    <div key={l.id} className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-2">
+                    <div key={l.id} className={`flex items-start gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <span className="w-12 shrink-0 text-[13px] font-bold tabular-nums text-indigo-800">{l.law_time ?? (l.law_type === 'standing' ? 'Always' : '-')}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
+                        {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
                         <p className="text-[12px] leading-snug text-gray-600">{l.law_type === 'recurring' ? (scheduleText(l) || 'Schedule not set yet') : l.law_type === 'standing' ? 'A standing rule' : 'Checked by the app'} · {l.assignment && l.assignment !== 'all' ? `by ${ASSIGNMENTS.find(a => a.key === l.assignment)?.label.toLowerCase() ?? l.assignment}` : l.audience === 'managers' ? 'by a manager' : 'by anyone on shift'}</p>
                       </div>
+                      {canManage && l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="shrink-0 rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
                       {canManage && <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit when and who" className="shrink-0 rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>}
                     </div>)) : list.map(l => <LawCard key={l.id} l={l} />)}
                 </div>
