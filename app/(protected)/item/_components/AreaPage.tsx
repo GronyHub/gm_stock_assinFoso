@@ -146,7 +146,7 @@ function AreaRecord({ label, icon, areaCategories, subs, onLaw }: { label: strin
       {toast && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{toast}</p>}
       {!data.clockedIn && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">Clock in first. Tasks can be recorded only while you are clocked in at the shop.</p>}
       {duties.length === 0 ? <p className="py-6 text-center text-sm text-gray-500">No {label} tasks today.</p> : (
-        <div className="grid max-w-4xl grid-cols-2 gap-1.5 sm:grid-cols-3">
+        <div className="grid max-w-4xl grid-cols-3 gap-1 sm:grid-cols-4">
           {duties.map(d => (
             <TaskTile key={d.key} density="full" time={`${hm(d.due)}${d.mins ? ` · ${d.mins} min` : ''}`} title={d.title} who={d.by ? d.by.charAt(0).toUpperCase() + d.by.slice(1) : d.role ?? (d.owner ? d.owner.charAt(0).toUpperCase() + d.owner.slice(1) : 'Anyone on shift')}
               mark={d.state === 'done' ? 'done' : d.state === 'no' ? 'no' : d.state === 'miss' || d.state === 'late' ? 'miss' : undefined}
