@@ -134,7 +134,7 @@ export default function GronyManageContent({
         ))}
       </div>}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
-      {selectedGronyCheckItem === 'cleanliness' && <AreaPage areaKey="clean" label="Cleanliness" icon="🧹" categories={['Cleanliness & safety']} subs={['Daily cleaning', 'Weekly cleaning', 'Closing clean-up', 'Computers', 'Front panel']} />}
+      {selectedGronyCheckItem === 'cleanliness' && <AreaPage canManage={canManage} areaKey="clean" label="Cleanliness" icon="🧹" categories={['Cleanliness & safety']} subs={['Daily cleaning', 'Weekly cleaning', 'Closing clean-up', 'Computers', 'Front panel']} />}
       {selectedGronyCheckItem === 'customer_display' && <ManageLogPanel category="customer_display" label="Customer Display" icon="🖼️" />}
       {selectedGronyCheckItem === 'repair_works' && <ManageLogPanel category="repair_works" label="Repair Works" icon="🔧" />}
       {selectedGronyCheckItem === 'security_chk' && <ManageLogPanel category="security_chk" label="Security chk" icon="🔒" />}

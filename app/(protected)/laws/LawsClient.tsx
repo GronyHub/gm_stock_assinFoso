@@ -96,6 +96,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const t = q.get('tile'), c = q.get('cat')
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
+    if (q.get('embed') && Number(q.get('focus'))) setFocusLaw(Number(q.get('focus')))
     if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean) }); setView('type') }
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
@@ -397,7 +398,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
                     const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
                     const who = l.assignment && l.assignment !== 'all' ? (ASSIGNMENTS.find(a => a.key === l.assignment)?.label ?? l.assignment) : l.audience === 'managers' ? 'A manager' : 'Anyone on shift'
                     return (
-                    <div key={l.id} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+                    <div key={l.id} id={`law-${l.id}`} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}

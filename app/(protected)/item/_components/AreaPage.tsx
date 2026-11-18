@@ -16,11 +16,12 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // One area of the shop on one page, with three sections: the laws that govern it (Rules), how they were kept (How it went:
 // duties recorded and penalty points) and a place for staff to write something about it (Record). The same area key
 // as the Laws page tile, so the Laws page and this page always show the same laws.
-export default function AreaPage({ areaKey, label, icon, categories, subs }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[] }) {
+export default function AreaPage({ areaKey, label, icon, categories, subs, canManage }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[]; canManage?: boolean }) {
   const [tab, setTab] = useState<'rules' | 'went' | 'record'>('record')
   const sq = subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''
   const [days, setDays] = useState(30)
   const [sub, setSub] = useState<'notdone' | 'done'>('notdone')
+  const [focus, setFocus] = useState(0)   // a law to show on Rules (from the Law chip on a Record tile)
   const [data, setData] = useState<Record_ | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -41,9 +42,9 @@ export default function AreaPage({ areaKey, label, icon, categories, subs }: { a
         ))}
       </div>
 
-      {tab === 'rules' && <iframe src={`/laws?tile=${areaKey}&embed=1${sq}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200 sm:h-[78vh]" />}
+      {tab === 'rules' && <iframe key={focus} src={`/laws?tile=${areaKey}&embed=1${sq}${focus ? `&focus=${focus}` : ''}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200 sm:h-[78vh]" />}
 
-      {tab === 'record' && <AreaRecord label={label} icon={icon} areaCategories={categories} subs={subs} />}
+      {tab === 'record' && <AreaRecord label={label} icon={icon} areaCategories={categories} subs={subs} onLaw={canManage ? (id: number) => { setFocus(id); setTab('rules') } : undefined} />}
 
       {tab === 'went' && (
         <div className="max-w-4xl space-y-3">
@@ -132,7 +133,7 @@ export default function AreaPage({ areaKey, label, icon, categories, subs }: { a
 
 // Record: today's tasks of this area. Tapping one opens the same pop-up as Today (tick, photo, question), so staff record by doing the task; nothing is typed into a separate log here.
 // What was recorded is listed under How it went > Done.
-function AreaRecord({ label, icon, areaCategories, subs }: { label: string; icon: string; areaCategories: string[]; subs?: string[] }) {
+function AreaRecord({ label, icon, areaCategories, subs, onLaw }: { label: string; icon: string; areaCategories: string[]; subs?: string[]; onLaw?: (lawId: number) => void }) {
   const [data, setData] = useState<{ tiles: CheckTile[]; duties: Duty[]; events: CheckEvent[]; day: string; present: string[]; clockedIn: boolean } | null>(null)
   const [failed, setFailed] = useState(false)
   const [sheet, setSheet] = useState<CheckTile | null>(null)
@@ -156,7 +157,7 @@ function AreaRecord({ label, icon, areaCategories, subs }: { label: string; icon
             <TaskTile key={d.key} density="full" time={`${hm(d.due)}${d.mins ? ` · ${d.mins} min` : ''}`} title={d.title} who={d.by ? d.by.charAt(0).toUpperCase() + d.by.slice(1) : d.role ?? (d.owner ? d.owner.charAt(0).toUpperCase() + d.owner.slice(1) : 'Anyone on shift')}
               mark={d.state === 'done' ? 'done' : d.state === 'no' ? 'no' : d.state === 'miss' || d.state === 'late' ? 'miss' : undefined}
               tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : d.state === 'miss' || d.state === 'late' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}
-              onClick={() => setSheet(mine.get(d.id)!)} />
+              onClick={() => setSheet(mine.get(d.id)!)} onLaw={onLaw && d.lawId ? () => onLaw(Number(d.lawId)) : undefined} />
           ))}
         </div>
       )}
