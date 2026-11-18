@@ -15,7 +15,7 @@ export default function WorkloadStrip({ date }: { date: string }) {
   }, [date])
   if (!people || people.length === 0) return null
   return (
-    <details className="rounded-xl border border-gray-200 bg-white" open>
+    <details className="mx-2 mt-2 rounded-xl border border-gray-200 bg-white" open>
       <summary className="cursor-pointer px-3 py-2 text-[13px] font-semibold text-gray-900">Workload: logged work should fill at least half of each person&apos;s time</summary>
       <div className="space-y-2 px-3 pb-3">
         {people.map(p => {

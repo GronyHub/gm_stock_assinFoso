@@ -140,7 +140,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
         </div>
       )}
       {/* The answers that belong to the signed-in person (a missing clock time, a supervisor's question, a decision) sit here, on this page, when their own name (or Everyone) is in focus. */}
-      <div className="mt-2 px-2"><WorkloadStrip date={sel} /></div>
+      <WorkloadStrip date={sel} />
       {sel === today && (!person || person === self) && <div id="wft-cards" className="mt-2 space-y-2 rounded-xl px-2 empty:hidden"><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className={tileGrid(density)}><ClockApprovals density={density} /></div>}</div>}
       <div className="mt-2">
         {sel <= today

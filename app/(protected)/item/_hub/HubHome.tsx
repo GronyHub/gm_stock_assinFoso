@@ -94,7 +94,7 @@ export function HubTeamPanel({ h }: { h: HubCtx }) {
   const [sel, setSel] = useState('')
   const username = h.username
   return (
-    <div className="space-y-2 p-3 pb-28">
+    <div className="space-y-2 px-3 pb-1 pt-2">
       <p className="text-[13px] text-gray-500">Tap a person to see their pages.</p>
       <div className="home-team rounded-xl bg-[#00072d] p-1">
         <PresentStaffBar vertical roster={h.activeStaff} selfName={username} onOpenStaff={(name: string) => setSel(name)} onOpenShop={() => h.openShop('home')} activeStaff={sel} shopActive={!!h.shop} waitingBy={h.waitingBy} salesBy={h.salesByStaff} salesTotal={h.liveTapsStatus === 'ok' ? `₵${formatPrice(h.liveTodaySalesTotal)}` : '₵…'} />
@@ -170,7 +170,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
   const go = (fn: () => void) => () => { setShop(null); fn() }
 
   return (
-    <div className="space-y-2 p-3 pb-28">
+    <div className="space-y-2 px-3 pb-1 pt-2">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="truncate text-xl text-gray-900">{username ? `${hello}, ${nm(username)}` : hello}</h1>
