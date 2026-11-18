@@ -1,6 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
-import ManageLogPanel from './ManageLogPanel'
+import TaskTile from '@/components/TaskTile'
+import { TileSheet } from '@/app/(protected)/standards/DailyChecklistClient'
+import { inPeriod, type CheckTile, type CheckEvent } from '@/lib/dailyChecksShared'
+import type { Duty } from '@/lib/duties'
 import { fmtDate } from '@/lib/fmtDate'
 
 type Point = { id: number; staff: string; points: number; reason: string; day: string; status: string; law_code: string | null; law_title: string | null }
@@ -13,7 +16,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // One area of the shop on one page, with three sections: the laws that govern it (Rules), how they were kept (How it went:
 // duties recorded and penalty points) and a place for staff to write something about it (Record). The same area key
 // as the Laws page tile, so the Laws page and this page always show the same laws.
-export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { areaKey: string; label: string; icon: string; logCategory: string; subs?: string[] }) {
+export default function AreaPage({ areaKey, label, icon, categories, subs }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[] }) {
   const [tab, setTab] = useState<'rules' | 'went' | 'record'>('record')
   const sq = subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''
   const [days, setDays] = useState(30)
@@ -40,7 +43,7 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
 
       {tab === 'rules' && <iframe src={`/laws?tile=${areaKey}&embed=1${sq}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200 sm:h-[78vh]" />}
 
-      {tab === 'record' && <ManageLogPanel category={logCategory} label={label} icon={icon} />}
+      {tab === 'record' && <AreaRecord label={label} icon={icon} areaCategories={categories} subs={subs} />}
 
       {tab === 'went' && (
         <div className="max-w-4xl space-y-3">
@@ -114,6 +117,41 @@ export default function AreaPage({ areaKey, label, icon, logCategory, subs }: { 
           </>)}
         </div>
       )}
+    </div>
+  )
+}
+
+// Record: today's tasks of this area. Tapping one opens the same pop-up as Today (tick, photo, question), so staff record by doing the task; nothing is typed into a separate log here.
+// What was recorded is listed under How it went > Done.
+function AreaRecord({ label, icon, areaCategories, subs }: { label: string; icon: string; areaCategories: string[]; subs?: string[] }) {
+  const [data, setData] = useState<{ tiles: CheckTile[]; duties: Duty[]; events: CheckEvent[]; day: string; present: string[]; clockedIn: boolean } | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [sheet, setSheet] = useState<CheckTile | null>(null)
+  const [toast, setToast] = useState('')
+  const load = () => { fetch('/api/daily-checks', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject())).then(j => setData({ tiles: j.tiles ?? [], duties: j.duties ?? [], events: j.events ?? [], day: j.day ?? j.today, present: j.present ?? [], clockedIn: j.clockedIn !== false })).catch(() => setFailed(true)) }
+  useEffect(load, [])
+  if (failed) return <p className="py-6 text-center text-sm text-red-600">Could not load. Try again.</p>
+  if (!data) return <p className="py-6 text-center text-sm text-gray-400">Loading…</p>
+  const mine = new Map(data.tiles.filter(t => t.category && areaCategories.includes(t.category) && (!subs?.length || subs.includes(t.subcategory ?? ''))).map(t => [t.id, t]))
+  const duties = data.duties.filter(d => d.kind === 'task' && mine.has(d.id)).sort((a, b) => a.due - b.due)
+  const latest = (t: CheckTile) => data.events.filter(e => e.tile_id === t.id && inPeriod(t.frequency, e.day, data.day)).at(-1)
+  const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+  return (
+    <div className="space-y-2">
+      <p className="text-[12px] text-gray-500">{icon} Today's {label} tasks. Tap one to record it, the same as on Today. Everything recorded is listed under How it went.</p>
+      {toast && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{toast}</p>}
+      {!data.clockedIn && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">Clock in first. Tasks can be recorded only while you are clocked in at the shop.</p>}
+      {duties.length === 0 ? <p className="py-6 text-center text-sm text-gray-500">No {label} tasks today.</p> : (
+        <div className="grid max-w-4xl grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {duties.map(d => (
+            <TaskTile key={d.key} density="full" time={`${hm(d.due)}${d.mins ? ` · ${d.mins} min` : ''}`} title={d.title} who={d.by ? d.by.charAt(0).toUpperCase() + d.by.slice(1) : d.role ?? (d.owner ? d.owner.charAt(0).toUpperCase() + d.owner.slice(1) : 'Anyone on shift')}
+              mark={d.state === 'done' ? 'done' : d.state === 'no' ? 'no' : d.state === 'miss' || d.state === 'late' ? 'miss' : undefined}
+              tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : d.state === 'miss' || d.state === 'late' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}
+              onClick={() => setSheet(mine.get(d.id)!)} />
+          ))}
+        </div>
+      )}
+      {sheet && <TileSheet t={sheet} ev={latest(sheet)} isToday canEdit={false} present={data.present} onClose={() => setSheet(null)} onSaved={m => { setToast(m); setTimeout(() => setToast(''), 3000); load() }} />}
     </div>
   )
 }
