@@ -2,6 +2,7 @@
 import ManageLogPanel from './ManageLogPanel'
 import AreaPage from './AreaPage'
 import ActivityDurationsPanel from './ActivityDurationsPanel'
+import { AREA_CONFIG } from '@/lib/areaPages'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
 import DynamicCategoryPage from './DynamicCategoryPage'
@@ -55,6 +56,29 @@ export default function GronyManageContent({
   const [selectedAdvertItem, setSelectedAdvertItem] = useState<ManageView>(advertSub ?? ADVERT_ITEMS[0].key)
 
   const logCategory = LOG_CATEGORIES.find(c => c.key === view)
+
+  // A tile that is one area (see lib/areaPages.ts): one page with Rules, Record, Done and Not done. Where the tile had its own page (a status panel, a content page, a log whose flags the app watches),
+  // that page stays as a fifth tab.
+  const activeKey = view === 'grony_checks' ? selectedGronyCheckItem : view === 'advert' ? selectedAdvertItem : view
+  const cfg = AREA_CONFIG[activeKey]
+  if (cfg) {
+    const pages: Record<string, { label?: string; node: React.ReactNode }> = {
+      audio: { node: <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" /> },
+      audio_status: { node: <AdvertStatusPanel /> },
+      jingle: { node: <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" /> },
+      equipment: { node: <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" /> },
+      photoshop: { node: <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" /> },
+      whatsapp: { node: <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" /> },
+      cuttings: { node: <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" /> },
+      item_photos: { node: <ItemPhotoFinder /> },
+      video: { node: <><AdvertVideos /><ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" /></> },
+      opener: { label: 'Opener checks', node: <OpenerView violations={openerViolations} assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings} onGoToViolation={onGoToViolation} /> },
+      closer: { label: 'Closer checks', node: <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} /> },
+      unfortunate_events: { label: 'Events', node: <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} /> },
+    }
+    const pg = pages[activeKey]
+    return <AreaPage key={activeKey} canManage={canManage} areaKey={cfg.areaKey} label={cfg.label} icon={cfg.icon} categories={cfg.categories} subs={cfg.subs} assign={cfg.assign} page={pg?.node} pageLabel={pg?.label} />
+  }
 
   return (<>
     {view === 'opener' && (
@@ -134,7 +158,6 @@ export default function GronyManageContent({
         ))}
       </div>}
       {selectedGronyCheckItem === 'arrangement' && <ManageLogPanel category="arrangement" label="Arrangement" icon="🪑" />}
-      {selectedGronyCheckItem === 'cleanliness' && <AreaPage canManage={canManage} areaKey="clean" label="Cleanliness" icon="🧹" categories={['Cleanliness & safety']} subs={['Daily cleaning', 'Weekly cleaning', 'Closing clean-up', 'Computers', 'Front panel']} />}
       {selectedGronyCheckItem === 'customer_display' && <ManageLogPanel category="customer_display" label="Customer Display" icon="🖼️" />}
       {selectedGronyCheckItem === 'repair_works' && <ManageLogPanel category="repair_works" label="Repair Works" icon="🔧" />}
       {selectedGronyCheckItem === 'security_chk' && <ManageLogPanel category="security_chk" label="Security chk" icon="🔒" />}

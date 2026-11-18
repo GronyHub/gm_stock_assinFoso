@@ -59,7 +59,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [error, setError] = useState('')
   const [cat, setCat] = useState<string | null>(null)
   // ?embed=1&subs=A|B: the page shown inside an area page (Manage) -- just that area's laws, without the tabs, search, heading and videos.
-  const [embed, setEmbed] = useState<{ area: string; subs: string[] } | null>(null)
+  const [embed, setEmbed] = useState<{ area: string; subs: string[]; assign: string } | null>(null)
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
@@ -97,7 +97,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
     if (q.get('embed') && Number(q.get('focus'))) setFocusLaw(Number(q.get('focus')))
-    if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean) }); setView('type') }
+    if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean), assign: q.get('assign') ?? '' }); setView('type') }
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -155,8 +155,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
   }, [areas, laws])
-  const inEmbed = (l: Law) => { if (!embed) return true; const a = LAW_AREAS.find(x => x.key === embed.area); return !!a && lawInArea(a, l) && (!embed.subs.length || embed.subs.includes(l.subcategory ?? '')) }
-  const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l) && (!embed?.subs.length || embed.subs.includes(l.subcategory ?? '')))
+  const inEmbed = (l: Law) => { if (!embed) return true; const a = LAW_AREAS.find(x => x.key === embed.area); return !!a && lawInArea(a, l) && (!embed.subs.length || embed.subs.includes(l.subcategory ?? '')) && (!embed.assign || (l.assignment ?? 'all') === embed.assign) }
+  const areaLaws = (a: LawArea) => (laws ?? []).filter(l => a.key === UNCATEGORISED ? !l.category : lawInArea(a, l) && (!embed?.subs.length || embed.subs.includes(l.subcategory ?? '')) && (!embed?.assign || (l.assignment ?? 'all') === embed.assign))
   const unsignedIn = (a: LawArea) => !SIGNING ? [] : areaLaws(a).filter(l => l.status !== 'draft' && !(sig?.signed ?? {})[l.id])
   useEffect(() => {
     if (!signOnly || !sig || !laws || cat) return
@@ -387,6 +387,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
             </div>}
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
             {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
+            {embed && all.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No laws here yet.{canManage ? ' Use + Add law to write the first one.' : ''}</p>}
             {groups.filter(([, list]) => list.length).map(([title, list]) => (
               <div key={title}>
                 <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>

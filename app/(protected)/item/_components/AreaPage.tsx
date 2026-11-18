@@ -16,9 +16,9 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // One area of the shop on one page, with three sections: the laws that govern it (Rules), how they were kept (How it went:
 // duties recorded and penalty points) and a place for staff to write something about it (Record). The same area key
 // as the Laws page tile, so the Laws page and this page always show the same laws.
-export default function AreaPage({ areaKey, label, icon, categories, subs, canManage }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[]; canManage?: boolean }) {
-  const [tab, setTab] = useState<'rules' | 'record' | 'done' | 'notdone'>('record')
-  const sq = subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''
+export default function AreaPage({ areaKey, label, icon, categories, subs, assign, canManage, page, pageLabel }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[]; assign?: string; canManage?: boolean; page?: React.ReactNode; pageLabel?: string }) {
+  const [tab, setTab] = useState<'rules' | 'record' | 'done' | 'notdone' | 'page'>('record')
+  const sq = `${subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''}${assign ? `&assign=${assign}` : ''}`
   const [days, setDays] = useState(30)
   const sub: 'notdone' | 'done' = tab === 'done' ? 'done' : 'notdone'   // Done and Not done are tabs of their own; they share the period buttons and the staff table
   const [focus, setFocus] = useState(0)   // a law to show on Rules (from the Law chip on a Record tile)
@@ -36,7 +36,7 @@ export default function AreaPage({ areaKey, label, icon, categories, subs, canMa
   return (
     <div>
       <div role="tablist" className="mb-2 flex gap-1.5 sm:max-w-xl">
-        {([['rules', '📜 Rules'], ['record', '✍️ Record'], ['done', '✅ Done'], ['notdone', '⚠️ Not done']] as const).map(([k, t]) => (
+        {([['rules', '📜 Rules'], ['record', '✍️ Record'], ['done', '✅ Done'], ['notdone', '⚠️ Not done'], ...(page ? [['page', `${icon} ${pageLabel ?? label}`] as const] : [])] as const).map(([k, t]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
             className={`flex-1 rounded-lg px-1 py-2 text-[12px] font-semibold sm:text-[13px] ${tab === k ? (k === 'done' ? 'bg-green-600 text-white' : k === 'notdone' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-100 text-gray-600'}`}>{t}</button>
         ))}
@@ -44,6 +44,7 @@ export default function AreaPage({ areaKey, label, icon, categories, subs, canMa
 
       {tab === 'rules' && <iframe key={focus} src={`/laws?tile=${areaKey}&embed=1${sq}${focus ? `&focus=${focus}` : ''}`} title={`${label} laws`} className="h-[72vh] w-full rounded-lg border border-gray-200 sm:h-[78vh]" />}
 
+      {tab === 'page' && page}
       {tab === 'record' && <AreaRecord label={label} icon={icon} areaCategories={categories} subs={subs} onLaw={canManage ? (id: number) => { setFocus(id); setTab('rules') } : undefined} />}
 
       {(tab === 'done' || tab === 'notdone') && (

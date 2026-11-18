@@ -13,7 +13,7 @@ export type ManageView =
   | 'repair_works' | 'quality_assurance'
   | 'properties'
   | 'unfortunate_events' | 'security_chk' | 'app_info'
-  | 'grony_checks' | 'activity_times'
+  | 'grony_checks' | 'activity_times' | 'customer_service'
   | 'grony_1' | 'grony_2' | 'grony_3' | 'grony_4' | 'grony_5'
   | 'grony_6' | 'grony_7' | 'grony_8' | 'grony_9' | 'grony_10'
 
@@ -100,7 +100,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   { key: 'closer', label: 'Closer', icon: '🌙', group: 'Manage' },
   { key: 'grony_checks', label: 'Shop checks', icon: '⚖️', group: 'Manage' },
   { key: 'advert', label: 'Advert', icon: '📢', group: 'Manage' },
-  ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key)).map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] ?? 'Manage' })),
+  ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key) && c.key !== 'future').map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] ?? 'Manage' })),
   // 'properties' used to be a row here too -- moved to the Cash pane, right
   // under Expenses (see item/page.tsx), split into its own "Properties at
   // Shop"/"Properties not at Shop" rows. Still a real ManageView (see the
@@ -108,6 +108,7 @@ export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string;
   // exactly as before -- only its pane placement changed, not its content.
   { key: 'unfortunate_events', label: 'Unfortunate Events', icon: '🚨', group: 'Manage' },
   { key: 'app_info', label: 'App info', icon: 'ℹ️', group: 'Manage' },
+  { key: 'customer_service', label: 'Customer service', icon: '🤝', group: 'Manage' },
   { key: 'activity_times', label: 'Activity times', icon: '⏱️', group: 'Manage' },
 ]
 
