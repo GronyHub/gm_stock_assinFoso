@@ -17,16 +17,16 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 // duties recorded and penalty points) and a place for staff to write something about it (Record). The same area key
 // as the Laws page tile, so the Laws page and this page always show the same laws.
 export default function AreaPage({ areaKey, label, icon, categories, subs, canManage }: { areaKey: string; label: string; icon: string; categories: string[]; subs?: string[]; canManage?: boolean }) {
-  const [tab, setTab] = useState<'rules' | 'went' | 'record'>('record')
+  const [tab, setTab] = useState<'rules' | 'record' | 'done' | 'notdone'>('record')
   const sq = subs?.length ? `&subs=${encodeURIComponent(subs.join('|'))}` : ''
   const [days, setDays] = useState(30)
-  const [sub, setSub] = useState<'notdone' | 'done'>('notdone')
+  const sub: 'notdone' | 'done' = tab === 'done' ? 'done' : 'notdone'   // Done and Not done are tabs of their own; they share the period buttons and the staff table
   const [focus, setFocus] = useState(0)   // a law to show on Rules (from the Law chip on a Record tile)
   const [data, setData] = useState<Record_ | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (tab !== 'went') return
+    if (tab !== 'done' && tab !== 'notdone') return
     setData(null); setFailed(false)
     fetch(`/api/area-record?area=${areaKey}&days=${days}${sq}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject())).then(setData).catch(() => setFailed(true))
   }, [tab, days, areaKey, sq])
@@ -36,9 +36,9 @@ export default function AreaPage({ areaKey, label, icon, categories, subs, canMa
   return (
     <div>
       <div role="tablist" className="mb-2 flex gap-1.5 sm:max-w-xl">
-        {([['rules', '📜 Rules'], ['went', '📊 How it went'], ['record', '✍️ Record']] as const).map(([k, t]) => (
+        {([['rules', '📜 Rules'], ['record', '✍️ Record'], ['done', '✅ Done'], ['notdone', '⚠️ Not done']] as const).map(([k, t]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-            className={`flex-1 rounded-lg px-2 py-2 text-[13px] font-semibold ${tab === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{t}</button>
+            className={`flex-1 rounded-lg px-1 py-2 text-[12px] font-semibold sm:text-[13px] ${tab === k ? (k === 'done' ? 'bg-green-600 text-white' : k === 'notdone' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white') : 'bg-gray-100 text-gray-600'}`}>{t}</button>
         ))}
       </div>
 
@@ -46,7 +46,7 @@ export default function AreaPage({ areaKey, label, icon, categories, subs, canMa
 
       {tab === 'record' && <AreaRecord label={label} icon={icon} areaCategories={categories} subs={subs} onLaw={canManage ? (id: number) => { setFocus(id); setTab('rules') } : undefined} />}
 
-      {tab === 'went' && (
+      {(tab === 'done' || tab === 'notdone') && (
         <div className="max-w-4xl space-y-3">
           <div className="flex items-center gap-1.5">
             {[7, 30, 90].map(d => <button key={d} type="button" onClick={() => setDays(d)} className={`rounded-full px-3 py-1 text-[13px] font-semibold ${days === d ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>{d} days</button>)}
@@ -68,12 +68,6 @@ export default function AreaPage({ areaKey, label, icon, categories, subs, canMa
                 ))}
               </div>
             )}
-            <div role="tablist" className="flex gap-1.5">
-              {([['notdone', `Not done (${data.missed.length})`], ['done', `Done (${data.done.length})`]] as const).map(([k, t]) => (
-                <button key={k} type="button" role="tab" aria-selected={sub === k} onClick={() => setSub(k)}
-                  className={`flex-1 rounded-lg px-2 py-2 text-[13px] font-semibold ${sub === k ? (k === 'done' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white') : 'bg-gray-100 text-gray-600'}`}>{t}</button>
-              ))}
-            </div>
             {sub === 'notdone' && data.missed.length === 0 && data.points.length === 0 && <p className="py-4 text-center text-sm text-gray-500">Nothing was left undone in this time.</p>}
             {sub === 'done' && data.done.length === 0 && <p className="py-4 text-center text-sm text-gray-500">Nothing was recorded as done in this time.</p>}
             {sub === 'notdone' && data.missed.length > 0 && (
@@ -148,7 +142,7 @@ function AreaRecord({ label, icon, areaCategories, subs, onLaw }: { label: strin
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   return (
     <div className="space-y-2">
-      <p className="text-[12px] text-gray-500">{icon} Today's {label} tasks. Tap one to record it, the same as on Today. Everything recorded is listed under How it went.</p>
+      <p className="text-[12px] text-gray-500">{icon} Today's {label} tasks. Tap one to record it, the same as on Today. Everything recorded is listed under Done and Not done.</p>
       {toast && <p className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white">{toast}</p>}
       {!data.clockedIn && <p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900">Clock in first. Tasks can be recorded only while you are clocked in at the shop.</p>}
       {duties.length === 0 ? <p className="py-6 text-center text-sm text-gray-500">No {label} tasks today.</p> : (
