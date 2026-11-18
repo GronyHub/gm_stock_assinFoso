@@ -43,12 +43,12 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
             )}
               <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Work</p>
             {/* One place for everything that is waiting. A person's own list is this page filtered to their name, so there is no second list to contradict it. The badge is how many things wait for the signed-in person. */}
-            <SidePaneButton icon="✅" label="Waiting for team" mode={cashDisplayMode} active={shop?.tab === 'todo'} badge={myDayBadge} divider noNewTab onClick={() => openShop('todo')} />
+            <SidePaneButton icon="✅" label="Waiting" mode={cashDisplayMode} active={shop?.tab === 'todo'} badge={myDayBadge} divider noNewTab onClick={() => openShop('todo')} />
             {/* Pending jobs: what customers have left with us. For every logged-in staff member. */}
             <SidePaneButton icon="🧾" label="Pending jobs" mode={cashDisplayMode} divider noNewTab active={embedActive('/pending-jobs')} badge={pendingJobsBadge} href="/pending-jobs" onClick={() => openEmbed('/pending-jobs')} />
             {/* One Shop button (opens on Done; Waiting for team has its own button above): the Daily Checklist, Company Laws, Home and (owner and manager) the Manage sections are its tabs. */}
             {isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam) && <SidePaneButton icon="🛠" label="Manage" mode={cashDisplayMode} divider noNewTab active={!!shop && !['todo', 'home', 'dashboard', 'analytics'].includes(shop.tab)} onClick={() => openShop('manage')} />}
-            <SidePaneButton icon="🏬" label="Shop" mode={cashDisplayMode} active={!!shop && shop.tab !== 'todo'} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('home')} />
+            <SidePaneButton icon="✔️" label="Done" mode={cashDisplayMode} active={!!shop && shop.tab !== 'todo'} divider shared={isOwnerOrJoe} noNewTab onClick={() => openShop('home')} />
 
             {/* Cash/Manage/Staff's own rows only make sense while actually
                 on that tab -- UK and C&H are separate areas with no
@@ -178,8 +178,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                   active={paneActive(itemsPageMode === 'sale' && liveSaleViolationFilter === 'leastPurchased')}
                   onClick={() => goSaleFilter('leastPurchased', { kind: 'least_purchased' })} />
               </>)}
-              <SidePaneButton icon="📖" label="How To" mode={cashDisplayMode} divider shared={isOwnerOrJoe} active={embedActive('/how-to')}
-                href="/how-to" onClick={() => openEmbed('/how-to')} />
             </div>
             )}
 

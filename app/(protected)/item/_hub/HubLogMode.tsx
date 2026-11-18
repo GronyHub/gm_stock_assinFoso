@@ -27,9 +27,8 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
               )}
               {renderModeToggleRow()}
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex items-center justify-end px-1.5 py-1 border-b border-gray-100 gap-2">
-                <span className="hidden sm:contents"><PageGuide page="log" /></span>
                 {/* Phone: period, what to show, and two menus. Everything else the row used to carry is in the menus. */}
-                <div className="flex w-full flex-col gap-2 sm:hidden">
+                <div className="flex w-full flex-col gap-2 sm:max-w-md sm:ml-auto">
                   <div className="flex gap-2">
                     <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })} aria-label="Period"
                       className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white p-2 text-[14px] font-medium text-gray-800">
@@ -68,66 +67,6 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                     </details>
                   </div>
                   {logFlag && logFlag !== 'history' && <button type="button" onClick={() => setLogFlag('')} className="self-start rounded-lg bg-red-600 px-3 py-1.5 text-[13px] font-bold text-white">Flag filter on ✕</button>}
-                </div>
-                <div className="hidden min-w-0 max-w-full flex-wrap justify-end items-center gap-1.5 sm:flex">
-                  {/* Sales Rec / Summary's filters, now the Log's: Period, W / G, Bars only, Flags (+ History). */}
-                  <select value={logPeriod.y ?? ''} onChange={e => setLogPeriod({ y: e.target.value ? Number(e.target.value) : null, m: null })}
-                    title="Period: pick a year (and month) to see older sales and records, back to 2023"
-                    className="shrink-0 rounded border border-gray-300 bg-white px-1 py-0.5 text-[12px] font-semibold text-gray-800">
-                    <option value="">Last 90 days</option>
-                    {logYears.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                  {logPeriod.y && (
-                    <select value={logPeriod.m ?? ''} onChange={e => setLogPeriod(p => ({ ...p, m: e.target.value ? Number(e.target.value) : null }))}
-                      className="shrink-0 rounded border border-gray-300 bg-white px-1 py-0.5 text-[12px] font-semibold text-gray-800">
-                      <option value="">Whole year</option>
-                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map((mn, i) => <option key={mn} value={i + 1}>{mn}</option>)}
-                    </select>
-                  )}
-                  <button type="button" onClick={() => setLogShowW(v => !v)} title="Walk-in (WIC) sales"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowW ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>WIC</button>
-                  <button type="button" onClick={() => setLogShowG(v => !v)} title="GMC (internal use)"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logShowG ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 line-through'}`}>GMC</button>
-                  <button type="button" onClick={() => setLogBarsOnly(v => !v)} title="Show only each day's row (totals, cash counted, WNW, photos)"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logBarsOnly ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>Bars only</button>
-                  {/* The Log's flags are on the Flags page (left sidebar); only the change history stays here. A flag opened from the Flags page still filters the Log. */}
-                  <button type="button" onClick={() => setLogFlag(logFlag === 'history' ? '' : 'history')} title="Changes made to the Log"
-                    className={`shrink-0 rounded px-1.5 py-1 text-[12px] font-bold ${logFlag === 'history' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-700'}`}>History</button>
-                  {logFlag && logFlag !== 'history' && <button type="button" onClick={() => setLogFlag('')} className="shrink-0 rounded bg-red-600 px-1.5 py-1 text-[12px] font-bold text-white">Flag filter on ✕</button>}
-                  <button
-                    type="button"
-                    onClick={() => { setRcptSelect(v => !v); setRcptSel(new Set()) }}
-                    title="Tick recorded sales and create a receipt for them"
-                    className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[12px] transition ${rcptSelect ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}
-                  >
-                    {rcptSelect ? 'Cancel receipt' : 'Receipt…'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}
-                    title="Record a sale for a past day, with its customer and receipt (MI basket)"
-                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[12px] bg-green-100 text-green-700 hover:bg-green-200 transition"
-                  >
-                    + Past sale
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiveNewEntryOpen(true)}
-                    title="Add a new log entry"
-                    className="shrink-0 font-bold rounded-lg px-2 py-1 text-[12px] bg-blue-100 text-blue-600 hover:bg-blue-200 transition"
-                  >
-                    + New
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiveLogShowAnalytics(a => !a)}
-                    title="Analytics"
-                    className={`shrink-0 font-bold rounded-lg px-2 py-1 text-[12px] transition ${
-                      liveLogShowAnalytics ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    📊
-                  </button>
                 </div>
               </PageToolbar>
               {<HubLogAnalytics h={h} />}
