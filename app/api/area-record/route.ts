@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       ORDER BY p.day DESC, p.id DESC LIMIT 300`).filter(r => all || String(r.staff).toLowerCase() === me)
 
     const done = (await sql`
-      SELECT t.id AS tile_id, t.title, t.law_id, e.day, e.recorded_by, e.value
+      SELECT t.id AS tile_id, t.title, t.law_id, e.day, e.recorded_by, e.value, e.note, e.extra->>'photo_url' AS photo, e.recorded_at
       FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
       WHERE t.category = ANY(${cats}) AND (${subs.length === 0} OR t.subcategory = ANY(${subs})) AND e.day >= ${since} AND e.value <> 'Not done'
       ORDER BY e.day DESC, e.id DESC LIMIT 400`).filter(r => all || String(r.recorded_by).toLowerCase() === me)

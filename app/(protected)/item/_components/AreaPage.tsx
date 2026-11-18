@@ -7,7 +7,7 @@ import type { Duty } from '@/lib/duties'
 import { fmtDate } from '@/lib/fmtDate'
 
 type Point = { id: number; staff: string; points: number; reason: string; day: string; status: string; law_code: string | null; law_title: string | null }
-type Done = { tile_id: number; title: string; day: string; recorded_by: string; value: string }
+type Done = { tile_id: number; title: string; day: string; recorded_by: string; value: string; note: string | null; photo: string | null; recorded_at: string | null }
 type Missed = { day: string; title: string; owner: string | null; reason: string | null; state: string }
 type Record_ = { days: number; all: boolean; people: Record<string, { points: number; done: number; missed: number }>; points: Point[]; done: Done[]; missed: Missed[]; missedDays: number }
 
@@ -107,8 +107,17 @@ export default function AreaPage({ areaKey, label, icon, categories, subs }: { a
               <div>
                 <ul className="space-y-1">
                   {data.done.slice(0, 60).map((d, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 text-[13px] text-gray-800 ring-1 ring-gray-200">
-                      <span className="min-w-0 truncate">{d.title}</span><span className="shrink-0 text-gray-500">{cap(d.recorded_by)} · {fmtDate(d.day)}</span>
+                    <li key={i} className="rounded-lg bg-white ring-1 ring-gray-200">
+                      <details>
+                        <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-[13px] text-gray-800 [&::-webkit-details-marker]:hidden">
+                          <span className="min-w-0 truncate">{d.photo ? '📷 ' : d.note ? '📝 ' : ''}{d.title}</span><span className="shrink-0 text-gray-500">{cap(d.recorded_by)} · {fmtDate(d.day)}</span>
+                        </summary>
+                        <div className="space-y-1.5 border-t border-gray-100 px-3 py-2 text-[13px] text-gray-800">
+                          <p className="text-[12px] text-gray-500">Done by {cap(d.recorded_by)} on {fmtDate(d.day)}{d.recorded_at ? ` at ${new Date(d.recorded_at).toISOString().slice(11, 16)}` : ''}.</p>
+                          {d.note ? <p>{d.note}</p> : !d.photo ? <p className="text-gray-500">No note or photo with this one.</p> : null}
+                          {d.photo && <a href={d.photo} target="_blank" rel="noreferrer"><img src={d.photo} alt={`Photo: ${d.title}`} loading="lazy" className="max-h-60 w-auto rounded-lg border border-gray-200" /></a>}
+                        </div>
+                      </details>
                     </li>
                   ))}
                 </ul>
