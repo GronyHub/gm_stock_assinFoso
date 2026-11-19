@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import sql from '@/lib/db'
 import { isOwnerLevel } from '@/lib/roles'
 import { NextRequest, NextResponse } from 'next/server'
+import { unpaidExtraMinutes } from '@/lib/extraTime'
 
 function parseTimeMins(t: string | null): number | null {
   if (!t) return null
@@ -44,8 +45,12 @@ export async function GET(req: NextRequest) {
     mins[name] = (mins[name] ?? 0) + (outM >= inM ? outM - inM : (outM + 1440) - inM)
   }
 
+  // Time before the rostered start and after the rostered end is paid only once the manager has approved it.
+  const unpaid = await unpaidExtraMinutes(startDate, endDate).catch(() => ({} as Record<string, number>))
   const hours: Record<string, number> = {}
-  for (const [name, total] of Object.entries(mins)) hours[name] = Math.round((total / 60) * 10000) / 10000
+  for (const [name, total] of Object.entries(mins)) hours[name] = Math.round((Math.max(0, total - (unpaid[name] ?? 0)) / 60) * 10000) / 10000
+  const unpaidHours: Record<string, number> = {}
+  for (const [name, m] of Object.entries(unpaid)) unpaidHours[name] = Math.round((m / 60) * 100) / 100
 
-  return NextResponse.json({ hours, endDate })
+  return NextResponse.json({ hours, unpaidHours, endDate })
 }

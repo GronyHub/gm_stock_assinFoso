@@ -87,6 +87,8 @@ export const APP_ACTIVITY_ACTIONS: string[] = [
   "approved a clock-out time",
   "approved a dismissal",
   "approved a suspension",
+  "approved extra time",
+  "did not approve extra time",
   "assigned task",
   "built payslips",
   "changed main number",

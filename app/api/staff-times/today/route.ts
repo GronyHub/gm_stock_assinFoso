@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { once } from '@/lib/once'
 import { recordBackdate, BACKDATE_MINUTES } from '@/lib/clockViolations'
 import { notifyManagement } from '@/lib/checklistAlerts'
+import { checkExtraTime } from '@/lib/extraTime'
 import { missingCashCounted, missingCashToday, saveCashCounted, CASH_SKIP_LAST_DAY } from '@/lib/managerLock'
 
 // The Opener (earliest clock-in of the day) must confirm today's daily
@@ -404,6 +405,9 @@ export async function POST(req: NextRequest) {
         extra.push('no GPS: check the CCTV, then approve or reject it (Waiting for team, or Shop > Times > the clock icon)')
       }
     }
+    // Earlier than the rostered start, or later than the rostered end: told to the person now, and put to the manager to approve before it is paid.
+    const sched = String(username).toLowerCase() === 'grony' ? null : await checkExtraTime(String(username), today, action, time).catch(() => null)
+    if (sched) extra.push(`${sched.kind === 'early' ? 'clocked in' : 'stayed'} ${sched.minutes} min ${sched.kind === 'early' ? 'before the rostered start' : 'after the rostered finish'}: needs your approval to be paid (Waiting for team)`)
     const detail = extra.filter(Boolean).join('; ')
     void notifyManagement(me, `${meName} clocked ${action}`, `${meName} clocked ${action} ${time}${detail ? ' — ' + detail : ''}.`)
 
@@ -411,6 +415,7 @@ export async function POST(req: NextRequest) {
       ...updated,
       backdated,
       pending_approval: pendingApproval,
+      schedule_notice: sched,
       is_opener: isOpener,
       is_closer: action === 'out' && isCloser,
       closing_report_saved: closerReportJustSaved,

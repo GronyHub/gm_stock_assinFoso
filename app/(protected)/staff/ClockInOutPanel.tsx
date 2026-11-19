@@ -154,6 +154,7 @@ export default function ClockInOutPanel({
       setCashAsk(null); setCashVal('')
       const parts: string[] = []
       if (updated.pending_approval) parts.push('You clocked in without GPS. Your manager will check the CCTV and approve your time. You will be told the decision.')
+      if (updated.schedule_notice?.text) parts.push(updated.schedule_notice.text)
       if (updated.backdated) parts.push(`The time you wrote is ${updated.backdated.minutes} minutes earlier than now. That is recorded as a violation (${updated.backdated.count % 5 === 0 ? 5 : updated.backdated.count % 5} of 5; every 5 cost 1 penalty point).${updated.backdated.pointAwarded ? ' This was the 5th: 1 penalty point.' : ''}`)
       setNotice(parts.length ? parts.join(' ') : null)
       if (updated.is_opener) setRoleBanner('🌅 You are the Opener for today! Confirm the opening counts below to finish clocking in.')
