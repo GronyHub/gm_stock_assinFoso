@@ -48,7 +48,7 @@ export default function HubRecord({ h, embedded = false }: { h: HubCtx; embedded
       { kind: 'form', key: 'security_chk', icon: '🔒', label: 'Security check', need: 'manage', render: () => manage('grony_checks', { checksSub: 'security_chk' as ManageView }) },
       { kind: 'form', key: 'quality_assurance', icon: '✅', label: 'Quality assurance', need: 'manage', render: () => manage('quality_assurance') },
       { kind: 'form', key: 'future', icon: '🔭', label: 'Future', need: 'manage', render: () => manage('future') },
-      { kind: 'form', key: 'jingle', icon: '🎵', label: 'Jingle log', need: 'manage', render: () => manage('advert', { advertSub: 'jingle' as ManageView }) },
+      { kind: 'form', key: 'jingle', icon: '🎵', label: 'Jingle log', need: 'manage', render: () => manage('advert', { advertSub: 'audio' as ManageView }) },
       { kind: 'form', key: 'equipment', icon: '🔊', label: 'Equipment check', need: 'manage', render: () => manage('advert', { advertSub: 'equipment' as ManageView }) },
       { kind: 'form', key: 'app_info', icon: 'ℹ️', label: 'App info', need: 'manage', render: () => manage('app_info') },
     ] },

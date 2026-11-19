@@ -2,6 +2,7 @@
 import ManageLogPanel from './ManageLogPanel'
 import AreaPage from './AreaPage'
 import ActivityDurationsPanel from './ActivityDurationsPanel'
+import AudioFiles from './AudioFiles'
 import { AREA_CONFIG } from '@/lib/areaPages'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
@@ -63,12 +64,11 @@ export default function GronyManageContent({
   const cfg = AREA_CONFIG[activeKey]
   if (cfg) {
     const pages: Record<string, { label?: string; node: React.ReactNode }> = {
-      audio: { node: <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" /> },
+      audio: { label: 'Files', node: <AudioFiles /> },
       audio_status: { node: <AdvertStatusPanel /> },
-      jingle: { node: <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" /> },
       equipment: { node: <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" /> },
       photoshop: { node: <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" /> },
-      whatsapp: { node: <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" /> },
+      whatsapp: { label: 'Advert', node: <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" /> },
       cuttings: { node: <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" /> },
       item_photos: { node: <ItemPhotoFinder /> },
       video: { node: <><AdvertVideos /><ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" /></> },
@@ -114,7 +114,6 @@ export default function GronyManageContent({
       </div>}
       {selectedAdvertItem === 'audio' && <ContentPage contentKey="advert_audio_roadside" title="Advert 1 — Audio (for Roadside)" submenu="Audio" />}
       {selectedAdvertItem === 'audio_status' && <AdvertStatusPanel />}
-      {selectedAdvertItem === 'jingle' && <ManageLogPanel category="audio_jingle" label="Jingle Log" icon="🎵" />}
       {selectedAdvertItem === 'equipment' && <ManageLogPanel category="audio_equipment_check" label="Equipment Check" icon="🔊" />}
       {selectedAdvertItem === 'photoshop' && <ContentPage contentKey="advert_photo_photoshop" title="Advert 2 — Photo (Photoshop Files)" submenu="Photoshop" />}
       {selectedAdvertItem === 'whatsapp' && <ContentPage contentKey="advert_photo_whatsapp" title="Advert 3 — Photo (WhatsApp Advert)" submenu="WhatsApp" />}

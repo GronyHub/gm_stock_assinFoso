@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 // etc.) just to render the list of buttons.
 export type ManageView =
   | 'opener' | 'closer'
-  | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'cuttings' | 'video' | 'item_photos' | 'advert_log'
+  | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'facebook' | 'tiktok' | 'youtube' | 'cuttings' | 'video' | 'item_photos' | 'advert_log'
   | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
@@ -60,12 +60,14 @@ export const GRONY_CHECKS_ITEMS: { key: ManageView; label: string; icon: string 
 // Nested sub-items shown only when viewing 'advert' -- these include
 // all the audio and photo/video advert pages
 export const ADVERT_ITEMS: { key: ManageView; label: string; icon: string }[] = [
-  { key: 'audio',           label: 'Audio',             icon: '🎙️' },
+  { key: 'audio',           label: 'Audio Adverts',     icon: '🎙️' },
   { key: 'audio_status',    label: 'Advert Status',     icon: '📋' },
-  { key: 'jingle',          label: 'Jingle Log',        icon: '🎵' },
   { key: 'equipment',       label: 'Equipment Check',   icon: '🔊' },
   { key: 'photoshop',       label: 'Photoshop',         icon: '🖌️' },
+  { key: 'facebook',        label: 'Facebook',          icon: '📘' },
+  { key: 'tiktok',          label: 'TikTok',            icon: '🎵' },
   { key: 'whatsapp',        label: 'WhatsApp',          icon: '💬' },
+  { key: 'youtube',         label: 'YouTube',           icon: '▶️' },
   { key: 'cuttings',        label: 'Cuttings',          icon: '✂️' },
   { key: 'video',           label: 'Video',             icon: '🎬' },
   { key: 'item_photos',     label: 'Item Photos',       icon: '📷' },
@@ -81,7 +83,7 @@ export const GRONY_CHECKS_KEYS = new Set<ManageView>([
 
 // Which advert items are nested under 'advert' view instead of shown separately
 export const ADVERT_KEYS = new Set<ManageView>([
-  'audio', 'audio_status', 'jingle', 'equipment', 'photoshop', 'whatsapp', 'cuttings', 'video', 'item_photos',
+  'audio', 'audio_status', 'equipment', 'photoshop', 'facebook', 'tiktok', 'whatsapp', 'youtube', 'cuttings', 'video', 'item_photos',
 ])
 
 // Group assignments for remaining LOG_CATEGORIES items (the ones not nested

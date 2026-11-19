@@ -1223,7 +1223,7 @@ export function useHubState() {
     // now route straight to their exact row instead of just landing
     // somewhere in Manage's section generally.
     if (key === 'no_advert') { pickLossView('audio_status'); return }
-    if (key === 'jingle_overdue') { pickLossView('jingle'); return }
+    if (key === 'jingle_overdue') { pickLossView('audio'); return }
     if (key === 'equipment_check_overdue') { pickLossView('equipment'); return }
     // No Staff Times is about a missing day, not one person, so it just
     // lands on Team Times -- shared and unfiltered, it already shows every
