@@ -1,6 +1,7 @@
 'use client'
 import { Fragment, useState, useEffect, useMemo, memo, useRef } from 'react'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
+import { useProgressive } from '@/lib/useProgressive'
 import { useSession } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import { usePolling } from '@/lib/usePolling'
@@ -532,9 +533,10 @@ function BillsTab({
     if (jumpToBillId == null || loading) return
     const target = flatRows.find(r => r.billId === jumpToBillId)
     if (target) {
+      setShownGroups(100000)   // the bill may be further down than what is drawn so far
       const key = `${target.billDate}|${target.vendorName ?? ''}`
       if (barsOnly) setExpandedIds(prev => new Set(prev).add(key))
-      setTimeout(() => document.getElementById(`billrow-${jumpToBillId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+      setTimeout(() => document.getElementById(`billrow-${jumpToBillId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
     }
     onJumpDone?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -676,6 +678,8 @@ function BillsTab({
   // shop that same day gets the smaller gray bar. A group can technically
   // span more than one actual bill record (same vendor, same day, entered
   // twice) -- rare enough that the bar's ✏️ just edits the first one.
+  // The groups are drawn 25 at a time as you scroll (there are hundreds of bills and thousands of lines); a filter or search starts again from the top.
+  const { shown: shownGroups, setShown: setShownGroups, sentinel: groupSentinel } = useProgressive(filtered, 25)
   const groupedList = useMemo(() => {
     const map = new Map<string, { billDate: string; vendorName: string | null; rows: FlatRow[] }>()
     for (const r of filtered) {
@@ -1027,7 +1031,7 @@ function BillsTab({
         }
         setShowHistory(false)
         if (target) {
-          setTimeout(() => document.getElementById(`billrow-${target!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+          setTimeout(() => document.getElementById(`billrow-${target!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
         }
       }} />
     </div>
@@ -1065,7 +1069,7 @@ function BillsTab({
             </tr>
           </thead>
           <tbody>
-            {groupedList.map(g => {
+            {groupedList.slice(0, shownGroups).map(g => {
               const isEditing = editingBillId === g.editBillId
 
               if (isEditing) {
@@ -1259,6 +1263,7 @@ function BillsTab({
                 </Fragment>
               )
             })}
+            {shownGroups < groupedList.length && <tr ref={groupSentinel}><td colSpan={1 + colPrefs.shownColumns.length} className="py-3 text-center text-[12px] text-gray-400">Loading more…</td></tr>}
           </tbody>
         </table>
         {filtered.length === 0 && bills.length === 0 && billsLoadError ? (

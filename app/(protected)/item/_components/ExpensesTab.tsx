@@ -2,6 +2,7 @@
 import { useFitWidth } from '@/lib/useFitWidth'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
+import { useProgressive } from '@/lib/useProgressive'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import AccountsManager from './AccountsManager'
@@ -336,6 +337,8 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
   onSetShowAccountsPanel, onSetNewAccountName, onSetEditingAccountId, onSetEditingAccountName, onSetAccountError,
   onFetchAccountsData, onCreateAccount, onRenameAccount, onDeleteAccount }: TableProps) {
   const propertyColKeys: ColKey[] = ['property_status', 'property_type', 'availability', 'working', 'location', 'reason']
+  const total = groupedRows ? groupedRows.reduce((n, g) => n + g.rows.length, 0) : rows.length
+  const { shown, sentinel } = useProgressive(groupedRows ?? rows)
   const visibleKeys = colPrefs.colOrder.filter(k => colPrefs.visibleCols.has(k)
     && !(k === 'vendor' && hideVendor)
     && !(k === 'property_type' && hidePropertyType)
@@ -773,7 +776,7 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-300">
-        {groupedRows ? groupedRows.flatMap(g => [
+        {groupedRows ? (() => { let left = shown; return groupedRows.flatMap(g => { if (left <= 0) return []; const part = g.rows.slice(0, left); left -= part.length; return [
           <tr key={`group-${g.label}`} className="bg-blue-600">
             <td colSpan={3 + visibleKeys.length} className="px-3 py-0.5">
               <div className="flex items-center justify-between">
@@ -784,8 +787,9 @@ function ExpenseTable({ rows = [], groupedRows, highlightId, editId, confirmDele
               </div>
             </td>
           </tr>,
-          ...g.rows.map((e, i) => renderRow(e, i)),
-        ]) : rows.map((e, i) => renderRow(e, i))}
+          ...part.map((e, i) => renderRow(e, i)),
+        ] }) })() : rows.slice(0, shown).map((e, i) => renderRow(e, i))}
+        {shown < total && <tr ref={sentinel}><td colSpan={3 + visibleKeys.length} className="py-3 text-center text-[12px] text-gray-400">Loading more…</td></tr>}
       </tbody>
     </table>
     </div>
