@@ -72,8 +72,6 @@ export default function GronyManageContent({
       cuttings: { node: <ContentPage contentKey="advert_photo_cuttings" title="Advert 4 — Photo (Cuttings)" submenu="Cuttings" /> },
       item_photos: { node: <ItemPhotoFinder /> },
       video: { node: <><AdvertVideos /><ContentPage contentKey="advert_video" title="Advert 5 — Video Advert" submenu="Video" /></> },
-      opener: { label: 'Opener checks', node: <OpenerView violations={openerViolations} assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings} onGoToViolation={onGoToViolation} /> },
-      closer: { label: 'Closer checks', node: <CloserView missingClosingReportsCount={missingClosingReportsCount} onOpenStaff={onOpenStaff} /> },
       unfortunate_events: { label: 'Events', node: <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} /> },
     }
     const pg = pages[activeKey]

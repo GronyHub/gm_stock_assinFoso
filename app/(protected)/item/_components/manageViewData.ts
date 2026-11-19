@@ -98,8 +98,6 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
 // here either -- they're the merged pane's shared footer now (see
 // PaneHomeDaily in page.tsx).
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
-  { key: 'opener', label: 'Opener', icon: '🌅', group: 'Manage' },
-  { key: 'closer', label: 'Closer', icon: '🌙', group: 'Manage' },
   { key: 'grony_checks', label: 'Shop checks', icon: '⚖️', group: 'Manage' },
   { key: 'advert', label: 'Advert', icon: '📢', group: 'Manage' },
   ...LOG_CATEGORIES.filter(c => !GRONY_CHECKS_KEYS.has(c.key) && c.key !== 'future').map(c => ({ key: c.key, label: c.label, icon: c.icon, group: LOG_CATEGORY_GROUPS[c.key] ?? 'Manage' })),
