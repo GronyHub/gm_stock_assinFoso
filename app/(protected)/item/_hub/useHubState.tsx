@@ -914,6 +914,8 @@ export function useHubState() {
   function pickLossView(view: LossView) {
     // The team's times live in one place: the Shop's Times tab.
     if (view === 'teamTimes') { openShop('times'); return }
+    // Going to a Cash page leaves any open Waiting / Done / Manage / Analytics page: when the Cash page was already the current one nothing else would close it, and the tap seemed dead.
+    setShop(null)
     setOuterTab('loss')
     setLossView(view)
     setViolation(null)

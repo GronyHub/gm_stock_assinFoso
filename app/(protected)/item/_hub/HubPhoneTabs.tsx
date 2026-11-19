@@ -7,7 +7,7 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
   const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap, isOwnerOrJoe, canSeeManage, canSeeTeam, canSeeCash } = h
   const manage = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const liveActive = !moreOpen && !!paneActive(modeActive('sale'))
-  const goLive = () => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }
+  const goLive = () => { h.setShop(null); if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }
   // Five places: Home (the day at a glance), Waiting, the central + (a new sale on Live), Sales Log, More. The + is the most common action, so it is raised.
   // Customers is under More > Records.
   const tabs = [
