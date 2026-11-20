@@ -15,6 +15,18 @@ import HubContentColumn from './HubContentColumn'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
 import { ADVERT_ITEMS, GRONY_CHECKS_ITEMS, type ManageView } from '../_components/manageViewData'
 
+// Manage's tiles, under headings. A tile goes in the first heading that matches it; any tile that matches none lands under
+// "Other", so every tile shows.
+const MANAGE_SECTIONS: { heading: string; test: (k: string, label: string) => boolean }[] = [
+  { heading: 'Staff', test: k => ['team', 'times', 'rota', 'penalties', 'm:staff_rules', 'm:opener', 'm:closer'].includes(k) },
+  { heading: 'Team', test: (_k, label) => /\bTeam\b/.test(label) },
+  { heading: 'Shop checks', test: k => ['m:cleanliness', 'm:arrangement', 'm:customer_display', 'm:repair_works', 'm:security_chk', 'm:unfortunate_events', 'm:quality_assurance', 'm:customer_service', 'm:grony_checks', 'm:properties', 'm:future'].includes(k) },
+  { heading: 'Adverts', test: k => ['m:advert', 'm:audio', 'm:audio_status', 'm:equipment', 'm:photoshop', 'm:facebook', 'm:tiktok', 'm:whatsapp', 'm:youtube', 'm:video', 'm:item_photos', 'm:advert_log'].includes(k) },
+  { heading: 'Money and laws', test: k => ['m:cuttings', 'm:question_groups', 'm:drafts', 'm:law_search', 'm:activity_times'].includes(k) },
+  { heading: 'Information', test: k => ['tasks', 'guide', 'm:app_info'].includes(k) },
+  { heading: 'Other', test: () => true },
+]
+
 export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { initialTab, outerTab, lossView, search, setLiveManageSection, manageSideOptions, fixedCategoryIds, activeStaff, items, waitingBy, embedRef, embedUrl, personal, setPersonal, barH, barRef, shop, setShop, openShop, openPersonal, navSlotEl, isDesktop, role, username, isOwnerOrJoe, canManage, canSeeManage, canSeeTeam, routablePages, liveTapsStatus, liveTodaySalesTotal, salesByStaff, pickItemsMode, renderSectionFlags, goItemsMode, renderTabSwitcher } = h
   const { canSeeUsers, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, goToViolation, globalFlags, propertiesInitialTab, myStaffName, viewingName, staffTimeSignal } = h as any
@@ -82,23 +94,32 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
-                  {shop.tab === 'manage' && mgr && (
-                    <div className="px-3 pb-28 pt-3">
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {rowItems.map(([k, label, badge]) => {
-                          const [icon, ...rest] = String(label).split(' ')
-                          return (
-                            <button key={String(k)} type="button" onClick={() => setShop({ tab: k as ShopTab })}
-                              className="relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-1.5 py-1.5 text-left active:opacity-80">
-                              <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
-                              <span className="line-clamp-2 break-words text-[11px] leading-tight tracking-tight text-gray-700">{rest.join(' ')}</span>
-                              {badge ? <span className="absolute right-1 top-1 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{badge}</span> : null}
-                            </button>
-                          )
-                        })}
+                  {shop.tab === 'manage' && mgr && (() => {
+                    const taken = new Set<string>()
+                    const groups = MANAGE_SECTIONS.map(s => ({ heading: s.heading, items: rowItems.filter(([k, label]) => { const key = String(k); if (taken.has(key) || !s.test(key, String(label))) return false; taken.add(key); return true }) })).filter(g => g.items.length > 0)
+                    return (
+                      <div className="space-y-3 px-3 pb-28 pt-3">
+                        {groups.map(g => (
+                          <section key={g.heading}>
+                            <p className="mb-1 text-[12px] font-extrabold uppercase tracking-wide text-gray-500">{g.heading}</p>
+                            <div className="grid grid-cols-5 gap-1.5">
+                              {g.items.map(([k, label, badge]) => {
+                                const [icon, ...rest] = String(label).split(' ')
+                                return (
+                                  <button key={String(k)} type="button" onClick={() => setShop({ tab: k as ShopTab })}
+                                    className="relative flex min-w-0 flex-col items-start gap-0.5 rounded-xl border border-gray-200 bg-white px-1.5 py-1.5 text-left active:opacity-80">
+                                    <span aria-hidden="true" className="text-lg leading-none">{icon}</span>
+                                    <span className="line-clamp-2 break-words text-[11px] leading-tight tracking-tight text-gray-700">{rest.join(' ')}</span>
+                                    {badge ? <span className="absolute right-1 top-1 min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[11px] font-semibold leading-[18px] text-white">{badge}</span> : null}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </section>
+                        ))}
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
                   {((shop.tab === 'manage' && !mgr) || shop.tab.startsWith('m:')) && (() => {
                     const key = shop.tab === 'manage' ? String(manageSideOptions()[0]?.key ?? '') : shop.tab.slice(2)
                     const mv = { canManage, categoryIds: fixedCategoryIds, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, onGoToViolation: goToViolation, missingClosingReportsCount: globalFlags?.missingClosingReports?.length ?? 0, onOpenStaff: () => openShop('times'), propertiesInitialTab }
