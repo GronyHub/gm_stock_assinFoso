@@ -13,6 +13,7 @@ import WorkloadStrip from '@/components/WorkloadStrip'
 import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
 import { LAW_TYPES } from '@/lib/lawCategories'
 import { ACTIVE_STAFF } from '@/lib/staffList'
+import { lawPageHref } from '@/lib/lawAreas'
 
 const BANDS: { key: string; label: string; test: (d: Duty) => boolean }[] = [
   { key: 'opener', label: 'Opener', test: d => d.role === 'Opener' },
@@ -125,7 +126,8 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
               {peek.state === 'done' && peek.note ? ` ${peek.note}` : ''}
             </div>
             <p className="text-[12px] text-gray-500">Staff record a task on the day itself: tap it on Today. How it is recorded (tick, photo, question) is set in its law.</p>
-            {canManage && peek.lawId ? <button type="button" onClick={() => { setPeek(null); go(`/laws?law=${peek.lawId}`) }} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white">Open the law to change it</button> : null}
+            {canManage && peek.lawId ? <button type="button" onClick={() => { setPeek(null); go(lawPageHref(peek.lawId, peek.category)!) }} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white">Open the law to change it</button> : null}
+            {canManage && !peek.lawId && lawPageHref(null, peek.category) ? <><p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-900"><b>No law is set for this task yet.</b> Open its topic to write the law behind it.</p><button type="button" onClick={() => { setPeek(null); go(lawPageHref(null, peek.category)!) }} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white">Open the topic to add the law</button></> : null}
           </div>
         </div>)}
       {adding && (
@@ -157,7 +159,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                      onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && d.lawId ? () => go(`/laws?law=${d.lawId}`) : undefined} />
+                      onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && lawPageHref(d.lawId, d.category) ? () => go(lawPageHref(d.lawId, d.category)!) : undefined} />
                   })}</div>
                 </div>) })}
             </div>)}

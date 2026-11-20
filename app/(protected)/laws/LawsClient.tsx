@@ -60,6 +60,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [cat, setCat] = useState<string | null>(null)
   // ?embed=1&subs=A|B: the page shown inside an area page (Manage) -- just that area's laws, without the tabs, search, heading and videos.
   const [embed, setEmbed] = useState<{ area: string; subs: string[]; assign: string } | null>(null)
+  // ?nolaw=1 (embed only): the task that opened this page has no law yet, so say so and point to + Add law.
+  const [noLaw, setNoLaw] = useState(false)
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
@@ -97,7 +99,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (q.get('view') === 'today') { const r = new URLSearchParams(q); r.delete('view'); window.location.replace('/todo' + (r.toString() ? '?' + r.toString() : '')); return }
     if (q.get('view') === 'type') setView('type'); else if (q.get('view') === 'role') setView('role')
     if (q.get('embed') && Number(q.get('focus'))) setFocusLaw(Number(q.get('focus')))
-    if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean), assign: q.get('assign') ?? '' }); setView('type') }
+    if (q.get('embed')) { setEmbed({ area: t ?? '', subs: (q.get('subs') ?? '').split('|').filter(Boolean), assign: q.get('assign') ?? '' }); setView('type'); setNoLaw(q.get('nolaw') === '1') }
     if (t) setCat(t); else if (c) { const a = areaForCategory(c); setCat(a ? a.key : c) }
     if (q.get('sign')) setSignOnly(true)
   }, [])
@@ -130,6 +132,8 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     const l = laws.find(x => x.id === id); if (!l) return
     const a = l.category ? areaForCategory(l.category) : null
     setView('topic'); setCat(a ? a.key : (l.category || UNCATEGORISED))
+    // Embedded from a task's Law chip (/laws?law=ID&embed=1): show the law's own topic, not the whole list.
+    if (a) setEmbed(e => e && !e.area ? { ...e, area: a.key } : e)
     setFocusLaw(id)
     if (q.get('quiz') && (l.quiz_n ?? 0) > 0) setQuizFor(l)
   }, [laws])
@@ -385,6 +389,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
               <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>
               {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
             </div>}
+            {embed && noLaw && <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[13px] leading-snug text-amber-900"><b>This task has no law yet.</b> Use + Add law below to write the law behind it. It then shows here and on its task in Waiting for me.</p>}
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
             {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {embed && all.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No laws here yet.{canManage ? ' Use + Add law to write the first one.' : ''}</p>}

@@ -47,3 +47,11 @@ export const lawInArea = (a: LawArea, l: { category: string | null; subcategory:
 export const areaForCategory = (cat: string) => LAW_AREAS.find(a => a.match.some(m => m.cat === cat))
 export const areaForGuide = (guide: string) => LAW_AREAS.find(a => a.guide === guide)
 export const MOVED_TOPIC_IDS = new Set(LAW_AREAS.flatMap(a => a.howto ?? []))
+
+// Where a task's Law chip goes: the topic's own page (embedded, with the law shown), never the general Laws list.
+// A law that is set opens on its own line; a task with no law yet opens its topic with a note saying so, so the law can be added there.
+export const lawPageHref = (lawId: number | null | undefined, category: string | null | undefined): string | undefined => {
+  if (lawId) return `/laws?law=${lawId}&embed=1`
+  const a = category ? areaForCategory(category) : undefined
+  return a ? `/laws?tile=${a.key}&embed=1&nolaw=1` : undefined
+}
