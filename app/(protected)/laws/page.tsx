@@ -18,5 +18,7 @@ export default async function CompanyLawsPage({ searchParams }: { searchParams: 
     }
     redirect('/item?mode=manage')
   }
-  return <LawsClient canManage={isOwnerLevel(session.user as any)} />
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? ''
+  const initial = { embedded: true, tile: one(sp.tile) || null, subs: one(sp.subs).split('|').filter(Boolean), assign: one(sp.assign), nolaw: one(sp.nolaw) === '1' }
+  return <LawsClient canManage={isOwnerLevel(session.user as any)} initial={initial} />
 }

@@ -44,7 +44,9 @@ const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.catego
 const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', assignment: 'all', month_day: '', points: '1', violations: [], not_violation: '', title: '', audience: 'staff', reminder: 'none' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
-export default function LawsClient({ canManage }: { canManage: boolean }) {
+// initial: an embedded link (topic or law) is read on the server, so the topic is already set on the first paint -- the general list never flashes.
+export type LawsInitial = { embedded: boolean; tile: string | null; subs: string[]; assign: string; nolaw: boolean }
+export default function LawsClient({ canManage, initial }: { canManage: boolean; initial?: LawsInitial }) {
   const [laws, setLaws] = useState<Law[] | null>(null)
   // Question groups (owner and manager): a recurring law can be put into one from its own card.
   const [groups, setGroups] = useState<{ id: number; name: string; items: { law_id: number | null }[] }[]>([])
@@ -57,11 +59,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     flash(groupId ? 'Added to the group. Its own tile is replaced by the question.' : 'Taken out of the group. Its own tile is back.'); loadGroups(); void load()
   }
   const [error, setError] = useState('')
-  const [cat, setCat] = useState<string | null>(null)
+  const [cat, setCat] = useState<string | null>(initial?.embedded && initial.tile ? initial.tile : null)
   // ?embed=1&subs=A|B: the page shown inside an area page (Manage) -- just that area's laws, without the tabs, search, heading and videos.
-  const [embed, setEmbed] = useState<{ area: string; subs: string[]; assign: string } | null>(null)
+  const [embed, setEmbed] = useState<{ area: string; subs: string[]; assign: string } | null>(initial?.embedded ? { area: initial.tile ?? '', subs: initial.subs, assign: initial.assign } : null)
   // ?nolaw=1 (embed only): the task that opened this page has no law yet, so say so and point to + Add law.
-  const [noLaw, setNoLaw] = useState(false)
+  const [noLaw, setNoLaw] = useState(initial?.nolaw ?? false)
   const [q, setQ] = useState('')
   const [draft, setDraft] = useState<Draft | null>(null)
   const [msg, setMsg] = useState('')
@@ -78,7 +80,7 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
   const [sig, setSig] = useState<{ signed: Record<number, string>; unsigned: number; me?: string; signer?: boolean; manager?: boolean; staff?: string[]; by?: Record<string, number[]>; marks?: Record<string, Record<number, string>> } | null>(null)
   const [signOnly, setSignOnly] = useState(false)
   // Two lenses on the same laws: by topic, and by type and when. (Today, the laws due today, is the Shop's To do tab.)
-  const [view, setView] = useState<'topic' | 'type' | 'role'>('topic')
+  const [view, setView] = useState<'topic' | 'type' | 'role'>(initial?.embedded ? 'type' : 'topic')
   const vref = useRef<HTMLVideoElement | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
