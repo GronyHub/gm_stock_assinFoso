@@ -48,7 +48,7 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
     return (
       <div key={i.id} className="space-y-1.5 rounded-xl border border-gray-200 p-2.5">
         <p className="text-sm font-semibold text-gray-900">{n}. {i.text}{!i.required && <span className="ml-1 text-[12px] font-bold text-gray-400">optional</span>}
-          {canEdit && i.law_id && <a href={`/laws?law=${i.law_id}`} className="ml-2 rounded bg-blue-600 px-1 py-0.5 text-[12px] font-extrabold text-white">Law</a>}</p>
+          {canEdit && i.law_id && <a href={`/laws?law=${i.law_id}&embed=1`} className="ml-2 rounded bg-blue-600 px-1 py-0.5 text-[12px] font-extrabold text-white">Law</a>}</p>
         {i.kind === 'tick' && <button type="button" disabled={!editable} onClick={() => set(i.id, { answer: v?.answer === 'yes' ? '' : 'yes' })} className={btn(v?.answer === 'yes', 'border-green-600 bg-green-600 text-white')}>{v?.answer === 'yes' ? '✓ Done' : 'Tap when done'}</button>}
         {i.kind === 'yesno' && (<>
           <div className="flex gap-2">

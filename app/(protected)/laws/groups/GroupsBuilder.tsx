@@ -50,7 +50,6 @@ export default function GroupsBuilder() {
   return (
     <div className="mx-auto max-w-3xl space-y-3 p-3">
       <div className="flex items-center gap-2">
-        <a href="/laws" className="text-xs font-bold text-blue-700 underline">← Company Laws</a>
         <h1 className="text-base font-extrabold text-gray-900">Question groups</h1>
         {!f && <button type="button" onClick={() => { setF({ ...EMPTY }); setMsg('') }} className="ml-auto rounded-lg bg-[#14213D] px-3 py-1.5 text-xs font-bold text-white">New group</button>}
       </div>
@@ -95,7 +94,7 @@ export default function GroupsBuilder() {
                   <select value={i.kind} onChange={e => setItem(n, { kind: e.target.value as ItemKind })} className="rounded border border-gray-300 bg-white p-1">{(Object.keys(KIND_LABEL) as ItemKind[]).map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}</select>
                   {i.kind === 'yesno' && <select value={i.detail_on ?? ''} onChange={e => setItem(n, { detail_on: (e.target.value || null) as 'yes' | 'no' | null })} className="rounded border border-gray-300 bg-white p-1"><option value="">No detail asked</option><option value="yes">Ask what happened on Yes</option><option value="no">Ask what happened on No</option></select>}
                   <label className="flex items-center gap-1 font-semibold"><input type="checkbox" checked={i.required} onChange={e => setItem(n, { required: e.target.checked })} />Required</label>
-                  {i.law_id && <a href={`/laws?law=${i.law_id}`} className="rounded bg-blue-600 px-1.5 py-0.5 font-extrabold text-white">Law</a>}
+                  {i.law_id && <a href={`/laws?law=${i.law_id}&embed=1`} className="rounded bg-blue-600 px-1.5 py-0.5 font-extrabold text-white">Law</a>}
                   <span className="ml-auto flex gap-1">
                     <button type="button" onClick={() => move(n, -1)} className="rounded bg-gray-200 px-2 py-0.5 font-bold">↑</button>
                     <button type="button" onClick={() => move(n, 1)} className="rounded bg-gray-200 px-2 py-0.5 font-bold">↓</button>
