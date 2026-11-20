@@ -3,6 +3,7 @@ import ManageLogPanel from './ManageLogPanel'
 import AreaPage from './AreaPage'
 import ActivityDurationsPanel from './ActivityDurationsPanel'
 import AudioFiles from './AudioFiles'
+import RemainingLaws from './RemainingLaws'
 import { AREA_CONFIG } from '@/lib/areaPages'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
@@ -128,6 +129,7 @@ export default function GronyManageContent({
     {/* Left here to review before anything is moved or removed: the question groups builder, and the how-tos that are on no law page. */}
     {view === 'question_groups' && <iframe src="/laws/groups" title="Question groups" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
     {view === 'dev_howtos' && <iframe src="/how-to" title="Developer how-tos" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
+    {view === 'remaining_laws' && <RemainingLaws />}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />
