@@ -1143,6 +1143,15 @@ export function useHubState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
+  // Set only by the browser's Back/Forward. The open overlay is restored from the address only then: a refresh or an in-app
+  // close never brings an old overlay back.
+  const navBack = useRef(false)
+  useEffect(() => {
+    const onPop = () => { navBack.current = true }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
   // Pulls tab/sub-view state back OUT of the URL whenever it changes
   // without our own doing -- i.e. the user pressed back/forward. Harmless
   // no-op the rest of the time, since the state this derives already
@@ -1190,9 +1199,11 @@ export function useHubState() {
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
 
     // Back/forward: the page on top follows the URL (see the push effect above).
+    const applyOv = navBack.current
+    navBack.current = false
     const urlOv = searchParams.get('ov')
     const curOv = shop ? `s:${shop.tab}` : personal ? `p:${personal.name}:${personal.tab}` : embedUrl ? `e:${embedUrl}` : null
-    if (urlOv !== curOv) {
+    if (applyOv && urlOv !== curOv) {
       if (!urlOv) { if (shop) setShop(null); if (personal) setPersonal(null); if (embedUrl) setEmbedUrl(null) }
       else if (urlOv.startsWith('s:')) { setEmbedUrl(null); setPersonal(null); setShop({ tab: urlOv.slice(2) as ShopTab }) }
       else if (urlOv.startsWith('p:')) { const [, nm, ...rest] = urlOv.split(':'); setShop(null); setEmbedUrl(null); setPersonal({ name: nm, tab: rest.join(':') }) }
