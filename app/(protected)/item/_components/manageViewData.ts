@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 export type ManageView =
   | 'opener' | 'closer'
   | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'facebook' | 'tiktok' | 'youtube' | 'cuttings' | 'video' | 'item_photos' | 'advert_log'
-  | 'arrangement' | 'cleanliness' | 'future' | 'customer_display' | 'staff_rules' | 'question_groups' | 'dev_howtos' | 'drafts' | 'law_search'
+  | 'arrangement' | 'cleanliness' | 'future' | 'customer_display' | 'staff_rules' | 'question_groups' | 'drafts' | 'law_search'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
   | 'unfortunate_events' | 'security_chk' | 'app_info'
@@ -100,7 +100,6 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
   { key: 'staff_rules', label: 'Staff rules', icon: '👥', group: 'Manage' },
   { key: 'question_groups', label: 'Question groups', icon: '🧩', group: 'Manage' },
-  { key: 'dev_howtos', label: 'Developer how-tos', icon: '🛠️', group: 'Manage' },
   { key: 'drafts', label: 'Drafts to approve', icon: '📜', group: 'Manage' },
   { key: 'law_search', label: 'Search laws', icon: '🔎', group: 'Manage' },
   { key: 'opener', label: 'Opener', icon: '🌅', group: 'Manage' },

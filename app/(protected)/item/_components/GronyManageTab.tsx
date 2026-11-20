@@ -127,9 +127,8 @@ export default function GronyManageContent({
       </>)}
     </>)}
     {view === 'activity_times' && <div className="max-w-md"><ActivityDurationsPanel group="manage" /></div>}
-    {/* Left here to review before anything is moved or removed: the question groups builder, and the how-tos that are on no law page. */}
+    {/* The question groups builder, shown on Manage. */}
     {view === 'question_groups' && <iframe src="/laws/groups" title="Question groups" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
-    {view === 'dev_howtos' && <iframe src="/how-to" title="Developer how-tos" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
     {view === 'drafts' && <DraftLaws />}
     {view === 'law_search' && <LawSearch />}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
