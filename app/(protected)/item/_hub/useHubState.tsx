@@ -969,7 +969,7 @@ export function useHubState() {
   // Where "open ..." can take you by voice (see lib/voiceCommands.ts). The same actions as the sidebar buttons.
   const voiceDests: Dest[] = [
     { label: 'Shop', names: ['shop', 'the shop', 'total'], run: () => openShop('home') },
-    { label: 'Company Laws', names: ['company laws', 'laws'], run: () => openEmbed('/laws') },
+    { label: 'Company Laws', names: ['company laws', 'laws'], run: () => setLiveMode('manage') },
     { label: 'Waiting for team', names: ['waiting for team', 'team', 'daily checklist', 'checklist'], run: () => openShop('todo') },
     { label: 'How To', names: ['how to', 'help'], run: () => openEmbed('/how-to') },
     { label: 'Owner Guide', names: ['owner guide'], run: () => openEmbed('/owner-guide') },

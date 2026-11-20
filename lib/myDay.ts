@@ -107,7 +107,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
     cctv: { href: '/cctv-review' }, approve: { hub: 'waiting', inline: true },
     mytasks: { hub: 'tasks', own: 'Tasks assigned to you' }, queries: { inline: true, own: 'Questions waiting for your answer' }, ack: { hub: 'violations', own: 'Penalty points logged against you' },
     'clock-prev': { inline: true, own: 'You did not clock out' }, 'clock-auto': { inline: true, own: 'Check your clock times' }, sanctions: { href: '/penalties', inline: true },
-    violations: { href: '/penalties', inline: true }, drafts: { href: '/laws' }, 'pending-jobs': { href: '/pending-jobs' },
+    violations: { href: '/penalties', inline: true }, drafts: { href: '/laws-drafts' }, 'pending-jobs': { href: '/pending-jobs' },
   }
   for (const d of mine.filter(x => x.kind === 'standing')) {
     const k = d.key.split(':')[1], m = STAND[k] ?? {}

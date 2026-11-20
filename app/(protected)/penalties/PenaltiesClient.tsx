@@ -43,8 +43,7 @@ export default function PenaltiesClient({ isOwner }: { isOwner: boolean }) {
       {!inShop && <div className="mb-2 flex items-center gap-2">
         <a href="/item" className="text-sm text-gray-500">&larr; Back to app</a>
         <h1 className="mr-auto ml-2 text-xl font-bold text-[#14213D]">Penalty points</h1>
-        <a href="/laws" className="text-xs font-semibold text-blue-700 underline">Company Laws</a>
-      </div>}
+              </div>}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {!d && !err && <p className="text-sm text-gray-400">Loading…</p>}
       {d && (<>
