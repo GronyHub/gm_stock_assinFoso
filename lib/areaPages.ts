@@ -5,7 +5,8 @@ const NONE = ['(none)']
 const SD = 'Shop display & arrangement', EQ = 'Equipment, power & repairs', SP = 'Security & privacy', CS = 'Customer service', AD = 'Adverts & marketing', ST = 'Staff management'
 
 export const AREA_CONFIG: Record<string, AreaCfg> = {
-  cleanliness: { areaKey: 'clean', label: 'Cleanliness', icon: '🧹', categories: ['Cleanliness & safety'], subs: ['Daily cleaning', 'Weekly cleaning', 'Closing clean-up', 'Computers', 'Front panel'] },
+  cleanliness: { areaKey: 'clean', label: 'Cleanliness', icon: '🧹', categories: ['Cleanliness & safety'], subs: ['Daily cleaning', 'Weekly cleaning', 'Closing clean-up', 'Computers', 'Front panel', 'Cables and power', 'Fire safety', 'Work stations'] },
+  staff_rules: { areaKey: 'staff', label: 'Staff rules', icon: '👥', categories: [ST], subs: ['Assessments', 'Attendance', 'Behaviour', 'Company laws', 'Conduct', 'Dress code', 'Meetings', 'Rota', 'Sanctions', 'To do', 'Training', 'Workload'] },
   arrangement: { areaKey: 'display', label: 'Arrangement', icon: '🪑', categories: [SD], subs: ['Arrangement', 'Arranging goods', 'Storage'] },
   customer_display: { areaKey: 'display', label: 'Customer Display', icon: '🖼️', categories: [SD], subs: ['Customer display'] },
   repair_works: { areaKey: 'equipment', label: 'Repair Works', icon: '🔧', categories: [EQ], subs: ['Repairs'] },
@@ -21,7 +22,7 @@ export const AREA_CONFIG: Record<string, AreaCfg> = {
   tiktok: { areaKey: 'adverts', label: 'TikTok', icon: '🎵', categories: [AD], subs: ['TikTok'] },
   whatsapp: { areaKey: 'adverts', label: 'WhatsApp', icon: '💬', categories: [AD], subs: ['WhatsApp adverts', 'WhatsApp'] },
   youtube: { areaKey: 'adverts', label: 'YouTube', icon: '▶️', categories: [AD], subs: ['YouTube'] },
-  cuttings: { areaKey: 'finance', label: 'Cuttings', icon: '✂️', categories: ['Finance'], subs: ['Cuttings'] },
+  cuttings: { areaKey: 'finance', label: 'Cuttings', icon: '✂️', categories: ['Finance'], subs: ['Cuttings', 'Mobile Money'] },
   video: { areaKey: 'adverts', label: 'Video', icon: '🎬', categories: [AD], subs: ['Video adverts', 'Ideas'] },
   item_photos: { areaKey: 'adverts', label: 'Item Photos', icon: '📷', categories: [AD], subs: NONE },
   opener: { areaKey: 'staff', label: 'Opener', icon: '🌅', categories: [ST], subs: ['Opening and closing'], assign: 'opener' },

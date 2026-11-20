@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react'
 export type ManageView =
   | 'opener' | 'closer'
   | 'advert' | 'audio' | 'audio_status' | 'jingle' | 'equipment' | 'photoshop' | 'whatsapp' | 'facebook' | 'tiktok' | 'youtube' | 'cuttings' | 'video' | 'item_photos' | 'advert_log'
-  | 'arrangement' | 'cleanliness' | 'future' | 'customer_display'
+  | 'arrangement' | 'cleanliness' | 'future' | 'customer_display' | 'staff_rules'
   | 'repair_works' | 'quality_assurance'
   | 'properties'
   | 'unfortunate_events' | 'security_chk' | 'app_info'
@@ -98,6 +98,7 @@ const LOG_CATEGORY_GROUPS: Partial<Record<ManageView, string>> = {}
 // here either -- they're the merged pane's shared footer now (see
 // PaneHomeDaily in page.tsx).
 export const MANAGE_LIST_ITEMS: { key: ManageView; label: string; icon?: string; group?: string }[] = [
+  { key: 'staff_rules', label: 'Staff rules', icon: '👥', group: 'Manage' },
   { key: 'opener', label: 'Opener', icon: '🌅', group: 'Manage' },
   { key: 'closer', label: 'Closer', icon: '🌙', group: 'Manage' },
   { key: 'grony_checks', label: 'Shop checks', icon: '⚖️', group: 'Manage' },

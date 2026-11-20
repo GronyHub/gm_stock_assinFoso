@@ -13,6 +13,9 @@ import { TabErrorBoundary, ExpenseOrdersPanel, Item360Page, ItemsTab, CABTab, To
 import type { HubCtx } from './useHubState'
 import HubScrollArea from './HubScrollArea'
 
+// The Laws button shown above each Losses & Analytics view (opens this page's embedded laws, see PageGuide).
+const lossLawsBar = <PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="losses" /></PageToolbar>
+
 export default function HubContentColumn({ h }: { h: HubCtx }) {
   const { outerTab, lossView, itemsExtraView, search, violation, addForm, setAddForm, cabConfirmSignal, staffTimeSignal, vendorSignal, propertiesInitialTab, jumpToCountId, setJumpToCountId, liveGroupFilter, liveEmbeddedSearch, plSubView, jumpToLiveSaleTab, jumpToCustomersTab, customerSearchText, vendorSearchText, fixedCategoryIds, uk, ch, showAnalytics, items, loadItems, globalFlags, violationCounts, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, setCustomersFlagsCount, vendorsFlagsCount, setVendorsFlagsCount, personal, pickLossView, goToViolation, groups, role, username, showFlags, canManage, rolePermissions, paneOrder, setPaneOrder, paneLabels, setPaneLabels, paneGroups, setPaneGroups, paneHidden, setPaneHidden, combinedCashItems, canSeeTeam, canSeeUsers, canViewPortalAs, myStaffName, viewingName, routablePages, liveCountRecords, liveCountsItems, liveViewingCountRecords, liveSaleFlagList, pickLiveFlag, pickPL, goItemsMode, goCountMode, goLossSubView, renderLossesByDateTable, renderLossesByItemsTable, renderCostGteSpTable, renderSoldBelowCostTable } = h
   return (<><div className="relative flex-1 min-h-0 overflow-y-auto">
@@ -37,11 +40,11 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                   <button type="button" onClick={() => pickPL()} className={`rounded-lg px-3 py-1 text-xs font-bold ${'bg-blue-600 text-white'}`}>P&amp;L</button>
                   <button type="button" onClick={() => pickLossView('cab')} className={`rounded-lg px-3 py-1 text-xs font-bold ${'bg-gray-100 text-gray-700'}`}>Cash at bank{cabFlagsCount ? ` (${cabFlagsCount})` : ''}</button>
                 </div><PageToolbar grow={false} inlineClassName="flex justify-end px-2 py-1"><PageGuide page="pl" /></PageToolbar><ProfitLossTab /></> :
-                plSubView === 'loss_by_date' ? renderLossesByDateTable() :
-                plSubView === 'loss_by_items' ? renderLossesByItemsTable() :
-                plSubView === 'net_loss' ? renderLossesByItemsTable(true) :
-                plSubView === 'cost_gte_sp' ? renderCostGteSpTable() :
-                renderSoldBelowCostTable()}
+                plSubView === 'loss_by_date' ? <>{lossLawsBar}{renderLossesByDateTable()}</> :
+                plSubView === 'loss_by_items' ? <>{lossLawsBar}{renderLossesByItemsTable()}</> :
+                plSubView === 'net_loss' ? <>{lossLawsBar}{renderLossesByItemsTable(true)}</> :
+                plSubView === 'cost_gte_sp' ? <>{lossLawsBar}{renderCostGteSpTable()}</> :
+                <>{lossLawsBar}{renderSoldBelowCostTable()}</>}
             </div>
           </TabErrorBoundary>
         )}
