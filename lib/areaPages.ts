@@ -24,4 +24,6 @@ export const AREA_CONFIG: Record<string, AreaCfg> = {
   cuttings: { areaKey: 'finance', label: 'Cuttings', icon: '✂️', categories: ['Finance'], subs: ['Cuttings'] },
   video: { areaKey: 'adverts', label: 'Video', icon: '🎬', categories: [AD], subs: ['Video adverts', 'Ideas'] },
   item_photos: { areaKey: 'adverts', label: 'Item Photos', icon: '📷', categories: [AD], subs: NONE },
+  opener: { areaKey: 'staff', label: 'Opener', icon: '🌅', categories: [ST], subs: ['Opening and closing'], assign: 'opener' },
+  closer: { areaKey: 'staff', label: 'Closer', icon: '🌙', categories: [ST], subs: ['Opening and closing'], assign: 'closer' },
 }

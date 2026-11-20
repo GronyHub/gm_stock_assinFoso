@@ -14,16 +14,13 @@ import HubFilterBar from './HubFilterBar'
 import HubContentColumn from './HubContentColumn'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
 import { ADVERT_ITEMS, GRONY_CHECKS_ITEMS, type ManageView } from '../_components/manageViewData'
-import AreaPage from '../_components/AreaPage'
-import OpenerView from '../_components/OpenerView'
-import CloserView from '../_components/CloserView'
 
 export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
   const { initialTab, outerTab, lossView, search, setLiveManageSection, manageSideOptions, fixedCategoryIds, activeStaff, items, waitingBy, embedRef, embedUrl, personal, setPersonal, barH, barRef, shop, setShop, openShop, openPersonal, navSlotEl, isDesktop, role, username, isOwnerOrJoe, canManage, canSeeManage, canSeeTeam, routablePages, liveTapsStatus, liveTodaySalesTotal, salesByStaff, pickItemsMode, renderSectionFlags, goItemsMode, renderTabSwitcher } = h
   const { canSeeUsers, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, goToViolation, globalFlags, propertiesInitialTab, myStaffName, viewingName, staffTimeSignal } = h as any
   const mgr = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const inGroup = ['dashboard', 'todo', 'home'].includes(shop?.tab ?? '') || (!mgr && shop?.tab === 'laws')
-  const rowItems = shop ? ([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times', ((h as any).openerBadgeCount ?? 0) + ((h as any).globalFlags?.missingClosingReports?.length ?? 0)], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]) : []
+  const rowItems = shop ? ([...(inGroup ? [['todo', '⏳ Waiting'], ['home', '✔ Done'], ...(mgr ? [] : [['laws', '📜 Laws']])] : []), ...(inGroup ? [] : [...(mgr ? [['team', '👥 Team'], ['laws', '📜 Laws']] : []), ['times', '🕐 Times'], ...(isOwnerOrJoe ? [['rota', '🗓 Rota']] : [])]), ...(!inGroup && mgr ? [['penalties', '⚖ Penalty Points'], ...manageSideOptions().map(o => [`m:${o.key}`, o.label, o.badge] as const), ...(canSeeManage ? [...ADVERT_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`]), ...GRONY_CHECKS_ITEMS.map(a => [`m:${a.key}`, `${a.icon} ${a.label}`])] : []), ['tasks', '📣 Tasks & notices'], ['guide', '🧭 Owner Guide']] : [])] as unknown as [ShopTab, string, number?][]) : []
   useEffect(() => { window.dispatchEvent(new CustomEvent('waiting-view', { detail: personal?.tab === 'waiting' || shop?.tab === 'todo' })) }, [personal, shop])
   return (<><div className="relative flex-1 min-w-0 min-h-0 flex flex-col">
           {/* Staff time bar + tab switcher: on desktop these portal into
@@ -81,21 +78,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   {shop.tab === 'team' && <HubTeamPanel h={h} />}
                   {shop.tab === 'analytics' && <div className="h-full"><HubAnalytics h={h} /></div>}
                   {shop.tab === 'rota' && isOwnerOrJoe && <div className="p-2"><ShopRota canManage /></div>}
-                  {shop.tab === 'times' && <div className="p-2">
-                    {/* Times: the laws on attendance, clocking and opening/closing, today's opening and closing tasks, and the clock times. The Opener and the Closer are roles (first in, last out), so what used to be their tiles lives here. */}
-                    <AreaPage areaKey="staff" label="Times" icon="🕐" categories={['Staff management']} subs={['Attendance', 'Time and clocking', 'Opening and closing']} canManage={!!isOwnerOrJoe}
-                      page={<div className="space-y-3">
-                        <ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} />
-                        {isOwnerOrJoe && <><details className="rounded-xl border border-gray-200 bg-white" open={((h as any).openerBadgeCount ?? 0) > 0}>
-                          <summary className="cursor-pointer px-3 py-2 text-[13px] font-semibold text-gray-900">🌅 Opener{((h as any).openerBadgeCount ?? 0) > 0 ? ` (${(h as any).openerBadgeCount} to look at)` : ''}</summary>
-                          <div className="p-2"><OpenerView violations={openerViolations} assignments={assignments} deadlines={deadlines} assignedBy={assignedBy} assignedOn={assignedOn} vSettings={vSettings} onGoToViolation={goToViolation} /></div>
-                        </details>
-                        <details className="rounded-xl border border-gray-200 bg-white" open={(globalFlags?.missingClosingReports?.length ?? 0) > 0}>
-                          <summary className="cursor-pointer px-3 py-2 text-[13px] font-semibold text-gray-900">🌙 Closer{(globalFlags?.missingClosingReports?.length ?? 0) > 0 ? ` (${globalFlags.missingClosingReports.length} closing reports missing)` : ''}</summary>
-                          <div className="p-2"><CloserView missingClosingReportsCount={globalFlags?.missingClosingReports?.length ?? 0} onOpenStaff={() => openShop('times')} /></div>
-                        </details></>}
-                      </div>} />
-                  </div>}
+                  {shop.tab === 'times' && <div className="p-2"><ShopTeamTimes username={username} role={role} canManage={isOwnerOrJoe} /></div>}
                   {shop.tab === 'penalties' && <iframe key="v" src="/penalties" title="Penalty Points" className="h-full w-full border-0" />}
                   {shop.tab === 'tasks' && <iframe key="t" src="/handbook-announcements" title="Tasks and notices" className="h-full w-full border-0" />}
                   {shop.tab === 'guide' && <iframe key="g" src="/owner-guide" title="Owner Guide" className="h-full w-full border-0" />}
