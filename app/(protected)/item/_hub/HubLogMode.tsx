@@ -55,7 +55,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                         <button type="button" className="block w-full px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}>Sale for a past day</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLiveNewEntryOpen(true) }}>New log entry</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setRcptSelect(v => !v); setRcptSel(new Set()) }}>{rcptSelect ? 'Cancel receipt' : 'Receipt from sales…'}</button>
-                        {areaForGuide('log') && <a href={`/laws?tile=${areaForGuide('log')!.key}`} className="block border-t border-gray-100 px-4 py-3 hover:bg-gray-50">📜 Laws for this page</a>}
+                        {areaForGuide('log') && <a href={`/laws?tile=${areaForGuide('log')!.key}&embed=1`} className="block border-t border-gray-100 px-4 py-3 hover:bg-gray-50">📜 Laws for this page</a>}
                       </div>
                     </details>
                     <details className="relative">
