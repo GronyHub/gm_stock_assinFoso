@@ -99,7 +99,7 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   for (const d of mine.filter(x => x.kind === 'periodic' || x.kind === 'oneoff' || x.kind === 'job')) {
     const done = d.state === 'done'
     add({ key: `pd-${d.key}`, icon: d.kind === 'periodic' ? '🔁' : d.kind === 'job' ? '🧾' : '📌', title: d.title, time: d.time || undefined, ...meta(d), detail: d.note ?? (done ? `Done${d.by ? ` by ${cap1(d.by)}` : ''}.` : 'Due today.'),
-      count: done ? 0 : 1, state: done ? 'done' : undefined, urgency: done ? 'later' : 'soon', href: d.lawId ? `/laws?law=${d.lawId}` : d.kind === 'job' ? '/pending-jobs' : undefined, hub: d.kind === 'oneoff' ? 'tasks' : undefined })
+      count: done ? 0 : 1, state: done ? 'done' : undefined, urgency: done ? 'later' : 'soon', href: d.lawId ? `/laws?law=${d.lawId}&embed=1` : d.kind === 'job' ? '/pending-jobs' : undefined, hub: d.kind === 'oneoff' ? 'tasks' : undefined })
   }
 
   // Standing duties and the personal items that wait until dealt with. Cards that answer the item right here (clock notices, approvals, questions, CCTV, sanctions) hide their tile.

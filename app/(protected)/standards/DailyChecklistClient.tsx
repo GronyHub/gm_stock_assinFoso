@@ -311,7 +311,7 @@ export function TileSheet({ t, ev, isToday, canEdit, present, notYet, onClose, o
           <button type="button" disabled={busy} onClick={() => void patch({ value: ev!.value === 'Not done' ? 'Done' : 'Not done' }, 'Changed')} className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-white disabled:opacity-40">Change to {ev!.value === 'Not done' ? 'Done' : 'Not done'}</button>
           <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>
         </>)}
-        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
+        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}&embed=1`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>
@@ -391,7 +391,7 @@ function PropsSheet({ t, ev, isToday, canEdit, onClose, onSaved }: { t: CheckTil
             className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">{unset > 0 ? `${unset} still to set` : 'Finished'}</button>
         )}
         {ev && isToday && <button type="button" disabled={busy} onClick={() => { if (confirm('Remove this record and put the tile back to waiting?')) void run(() => fetch(`/api/daily-checks/events/${ev.id}`, { method: 'DELETE' }), 'Reverted') }} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}
-        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
+        {canEdit && t.law_id && <a href={`/laws?law=${t.law_id}&embed=1`} className="block py-1 text-sm font-semibold text-blue-700">Edit this task in its law</a>}
         <button type="button" onClick={onClose} className="w-full py-2 text-sm font-semibold text-gray-500">Close</button>
       </div>
     </div>

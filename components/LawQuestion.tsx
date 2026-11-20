@@ -39,7 +39,7 @@ export default function LawQuestion() {
         {!r.correct && r.video && !play && <button type="button" onClick={() => setPlay(true)} className="mr-3 rounded-lg bg-indigo-600 px-2.5 py-1 text-[12px] font-bold text-white">▶ Watch the {r.video.label} video</button>}
         {play && r.video && <video src={r.video.src} autoPlay controls playsInline className="max-h-[45vh] w-full rounded-lg bg-black"
           onEnded={() => void fetch('/api/law-video', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area: r.video!.key, label: r.video!.label + ' video' }) }).catch(() => {})} />}
-        <a href={`/laws?law=${q.lawId}`} className="text-[12px] font-bold text-blue-700 underline">Open the law</a>
+        <a href={`/laws?law=${q.lawId}&embed=1`} className="text-[12px] font-bold text-blue-700 underline">Open the law</a>
       </div>)}
       {r && <button type="button" onClick={() => setQ(null)} className="w-full rounded-xl bg-[#14213D] py-2 text-sm font-bold text-white">OK</button>}
     </div>
