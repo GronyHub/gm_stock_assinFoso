@@ -71,7 +71,9 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch('/api/page-laws', { cache: 'no-store' }); const d = await r.json()
+      // A topic page (embedded from a tile) asks only for its own categories; a law link or the full list asks for all.
+      const areaCats = initial?.embedded && initial.tile ? Array.from(new Set(LAW_AREAS.find(a => a.key === initial.tile)?.match.map(m => m.cat) ?? [])) : []
+      const r = await fetch(`/api/page-laws${areaCats.length ? `?cats=${encodeURIComponent(areaCats.join('|'))}` : ''}`, { cache: 'no-store' }); const d = await r.json()
       if (!r.ok || !Array.isArray(d)) throw new Error(d.error ?? 'Could not load')
       setLaws(d); setError('')
     } catch (e) { setError((e as Error).message) }
@@ -94,7 +96,8 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
     v.scrollIntoView({ behavior: 'smooth', block: 'center' }); v.currentTime = t; void v.play().catch(() => {})
   }
   const loadSig = useCallback(() => fetch('/api/law-signatures', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSig(d)).catch(() => {}), [])
-  useEffect(() => { void loadSig() }, [loadSig])
+  // Signing is switched off (SIGNING), so the signatures are not fetched.
+  useEffect(() => { if (SIGNING) void loadSig() }, [loadSig])
   useEffect(() => {
     const q = new URLSearchParams(window.location.search)
     const t = q.get('tile'), c = q.get('cat')

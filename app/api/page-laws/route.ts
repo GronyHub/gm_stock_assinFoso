@@ -55,8 +55,9 @@ export async function GET(req: NextRequest) {
       const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, reminder, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points, assignment, month_day FROM page_laws WHERE scope_key = ${scopeKey} ORDER BY id`
       return success(await withKept(visibleLaws(rows as { status?: string; audience?: string; tile_id?: number | null }[], owner, isManagerName(actorKey(me?.user as any))) as { tile_id?: number | null }[]))
     } else {
-      // Fetch all laws across all scopes
-      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, reminder, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points, assignment, month_day FROM page_laws WHERE COALESCE(status, 'live') <> 'retired' ORDER BY scope_key, id`
+      // Fetch all laws across all scopes -- or only the categories asked for (?cats=A|B), which is how a topic page loads just its own laws.
+      const catsWanted = (req.nextUrl.searchParams.get('cats') ?? '').split('|').filter(Boolean)
+      const rows = await sql`SELECT id, text, scope_key, created_at, display_in_carousel, carousel_message, carousel_order, carousel_type, category, subcategory, code, title, audience, reminder, violations, not_violation, COALESCE(jsonb_array_length(NULLIF(quiz, '')::jsonb), 0) AS quiz_n, law_type, days, law_time, frequency, minutes, dos, donts, status, tile_id, proof, points, assignment, month_day FROM page_laws WHERE COALESCE(status, 'live') <> 'retired' AND (${catsWanted.length === 0} OR category = ANY(${catsWanted})) ORDER BY scope_key, id`
       return success(await withKept(visibleLaws(rows as { status?: string; audience?: string; tile_id?: number | null }[], owner, isManagerName(actorKey(me?.user as any))) as { tile_id?: number | null }[]))
     }
   } catch (e) {
