@@ -75,13 +75,6 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
                   </div>
                 </div>
                 )}
-                {/* Manage: every page is a tile, five to a row; a tile opens its page with a way back. */}
-                {mgr && !inGroup && shop.tab !== 'analytics' && shop.tab !== 'manage' && (
-                  <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 px-2 py-1.5">
-                    <button type="button" onClick={() => setShop({ tab: 'manage' })} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-semibold text-gray-700">‹ Manage</button>
-                    <p className="min-w-0 flex-1 truncate text-[14px] text-gray-900">{(rowItems.find(r => r[0] === shop.tab)?.[1] as string | undefined) ?? ''}</p>
-                  </div>
-                )}
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   {shop.tab === 'todo' && (shop.src && shop.src !== '/todo'
                     ? <iframe key={'t' + shop.src} src={shop.src} title="Waiting for team" className="h-full w-full border-0" />
