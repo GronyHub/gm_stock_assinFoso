@@ -61,8 +61,9 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
             navSlotEl
           )}
 
+          {/* Stage 1 of removing the overlay: an open page takes the place of the Live screen, in the normal layout (not on top of it). */}
           {(embedUrl || personal || shop) && (
-            <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col bg-white" style={{ top: isDesktop ? 0 : barH }}>
+            <div className="flex min-h-0 flex-1 flex-col bg-white">
               {shop ? (<>
                 {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
                 {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'record' && !mgr) || (shop.tab === 'laws' && !mgr) || mgr) && (
@@ -159,9 +160,11 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               back to Sale/Log/etc. from either is one tap. Every other
               lossView (Vendors, Expenses, Opener, etc.) still has nothing
               to do with this switcher and doesn't show it. */}
+          {!(embedUrl || personal || shop) && <>
           <HubStatusStrip h={h} />
           {<HubFilterBar h={h} />}
           {/* ── Content ── */}
           <HubContentColumn h={h} />
+          </>}
         </div></>)
 }
