@@ -131,9 +131,11 @@ export default function LawsClient({ canManage }: { canManage: boolean }) {
     if (!id) return
     const l = laws.find(x => x.id === id); if (!l) return
     const a = l.category ? areaForCategory(l.category) : null
-    setView('topic'); setCat(a ? a.key : (l.category || UNCATEGORISED))
-    // Embedded from a task's Law chip (/laws?law=ID&embed=1): show the law's own topic, not the whole list.
-    if (a) setEmbed(e => e && !e.area ? { ...e, area: a.key } : e)
+    // Embedded from a task's Law chip (/laws?law=ID&embed=1): stay on the topic's rules table (view 'type') and show its law, not the full cards.
+    const embedded = !!q.get('embed')
+    if (!embedded) setView('topic')
+    setCat(a ? a.key : (l.category || UNCATEGORISED))
+    if (embedded && a) setEmbed(e => e && !e.area ? { ...e, area: a.key } : e)
     setFocusLaw(id)
     if (q.get('quiz') && (l.quiz_n ?? 0) > 0) setQuizFor(l)
   }, [laws])
