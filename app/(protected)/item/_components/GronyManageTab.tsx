@@ -4,6 +4,7 @@ import AreaPage from './AreaPage'
 import ActivityDurationsPanel from './ActivityDurationsPanel'
 import AudioFiles from './AudioFiles'
 import DraftLaws from '@/components/DraftLaws'
+import LawSearch from '@/components/LawSearch'
 import { AREA_CONFIG } from '@/lib/areaPages'
 import ContentPage from './ContentPage'
 import AdvertStatusPanel from './AdvertStatusPanel'
@@ -130,6 +131,7 @@ export default function GronyManageContent({
     {view === 'question_groups' && <iframe src="/laws/groups" title="Question groups" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
     {view === 'dev_howtos' && <iframe src="/how-to" title="Developer how-tos" className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white" />}
     {view === 'drafts' && <DraftLaws />}
+    {view === 'law_search' && <LawSearch />}
     {view === 'properties' && <PropertiesPage initialTab={propertiesInitialTab} />}
     {view === 'unfortunate_events' && (
       <DynamicCategoryPage categoryId={categoryIds[FIXED_CATEGORY_LABELS.unfortunate_events]} categoryLabel="Unfortunate Events" canManage={canManage} />
