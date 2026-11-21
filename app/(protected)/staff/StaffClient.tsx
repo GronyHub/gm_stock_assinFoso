@@ -314,7 +314,12 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
     // Each request answers on its own: one failing must not leave the recorded times empty (the grid used to show "No records yet" in that case).
     const p1 = fetch('/api/staff-times/today').then(r => r.ok ? r.json() : { today: [], mine: null, recent: [] }).catch(() => ({ today: [], mine: null, recent: [] }))
     const p2 = fetch('/api/staff-times/all').then(async r => {
-      if (!r.ok) { setHistoryError(`Could not load the recorded times (error ${r.status}).`); return [] }
+      if (!r.ok) {
+        // The owner and Joe also see the server's own message, so a fault can be found.
+        const j = await r.json().catch(() => null) as { error?: string } | null
+        setHistoryError(`Could not load the recorded times (error ${r.status}${ownerLevel && j?.error ? `: ${j.error}` : ''}).`)
+        return []
+      }
       setHistoryError('')
       return r.json()
     }).catch(() => { setHistoryError('Could not load the recorded times (no answer from the server).'); return [] })
