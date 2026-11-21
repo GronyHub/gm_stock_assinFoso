@@ -153,4 +153,6 @@ html.framed .no-frame { display: none !important; }
 @media (max-width: 639px) {
   .cash-strip nav button[aria-label="Pending jobs"], .cash-strip nav button[aria-label="Activity times"], .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"],
   .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Purchase Orders"], .cash-strip nav button[aria-label="P&L"] { display: none; }
+  /* More (or Less, once open) is always the last tab in the row. */
+  .cash-strip nav button[aria-label="More"], .cash-strip nav button[aria-label="Less"] { order: 100; }
 }
