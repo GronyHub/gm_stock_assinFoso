@@ -157,7 +157,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const [row] = await sql`
       UPDATE custom_tasks
-      SET done = ${done}, ${done ? sql`completed_at = now(), completed_by = ${actor}` : sql`completed_at = NULL, completed_by = NULL`}
+      SET done = ${done}, completed_at = CASE WHEN ${done}::boolean THEN now() ELSE NULL END, completed_by = CASE WHEN ${done}::boolean THEN ${actor}::text ELSE NULL END
       WHERE id = ${id}
       RETURNING id, title, notes, due_date, submenu, view, law_id, flag_key, task_type, recurrence_type, recurrence_days, assigned_to, done, created_by, created_at, completed_at, completed_by
     `

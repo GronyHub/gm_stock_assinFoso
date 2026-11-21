@@ -32,14 +32,23 @@ export async function GET(req: NextRequest) {
   await ensureSchema()
 
   try {
-    const rows = await sql`
-      SELECT id, staff_name, work_date::text, actual_in, actual_out, entered_by, status, in_source, out_source, updated_at
-      FROM staff_times
-      ${since ? sql`WHERE updated_at > ${since}::timestamp` : sql``}
-      ORDER BY work_date DESC, staff_name
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
+    // Two plain queries: a query nested inside another is sent to the database as a stray $1 (it broke this route, so the Times page showed no records).
+    const rows = since
+      ? await sql`
+        SELECT id, staff_name, work_date::text, actual_in, actual_out, entered_by, status, in_source, out_source, updated_at
+        FROM staff_times
+        WHERE updated_at > ${since}::timestamp
+        ORDER BY work_date DESC, staff_name
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
+      : await sql`
+        SELECT id, staff_name, work_date::text, actual_in, actual_out, entered_by, status, in_source, out_source, updated_at
+        FROM staff_times
+        ORDER BY work_date DESC, staff_name
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `
     if (rows.length === limit) {
       console.warn(`staff-times/all: hit the ${limit}-row cap -- results may be truncated, raise the cap`)
     }
