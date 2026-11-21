@@ -65,6 +65,10 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
           {(embedUrl || personal || shop) && (
             <div className="flex min-h-0 flex-1 flex-col bg-white">
               {shop ? (<>
+                {/* The page's name, at the top of the page (Manage tiles, Waiting for team and the rest). Waiting, Done and the Manage grid have their own heads. */}
+                {shop.tab !== 'todo' && shop.tab !== 'home' && shop.tab !== 'manage' && (rowItems.find(r => r[0] === shop.tab)?.[1] as string | undefined) && (
+                  <p className="shrink-0 border-b border-gray-200 px-3 py-2 text-[15px] font-bold text-gray-900">{rowItems.find(r => r[0] === shop.tab)?.[1] as string}</p>
+                )}
                 {/* Waiting and Done are full pages of their own (bottom bar), so they carry no tab row; the row is for the Manage pages. */}
                 {!(inGroup || shop.tab === 'analytics' || (shop.tab === 'record' && !mgr) || (shop.tab === 'laws' && !mgr) || mgr) && (
                 <div className="flex shrink-0 items-center gap-1 border-b border-gray-200 px-2 py-1.5">

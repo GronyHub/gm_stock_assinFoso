@@ -1128,6 +1128,11 @@ export function useHubState() {
       router.replace(nt.prev, { scroll: false })
       return
     }
+    // A page change (Waiting, a Manage tile, Cash...) adds one history step, so the phone's Back steps page by page.
+    // Anything else (a search, a filter, a sort) replaces the current step instead of adding one.
+    const ovChanged = ov !== lastOv.current
+    lastOv.current = ov
+    if (!ovChanged) { router.replace(target, { scroll: false }); return }
     router.push(target, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outerTab, lossView, settingsOpen, itemsExtraView, group, productType, violation, showAnalytics, addForm, liveMode, liveProductTypeFilter, liveGroupFilter, liveGmcTypeFilter, liveSalesViolationFilter, liveBillsViolationFilter, liveSaleFilter, liveSaleView, liveCountView, liveEmbeddedSearch, sidePaneHidden, shop, personal, embedUrl, liveEditingGridItemId, globalSearchOpen])
@@ -1146,6 +1151,8 @@ export function useHubState() {
   // Set only by the browser's Back/Forward. The open overlay is restored from the address only then: a refresh or an in-app
   // close never brings an old overlay back.
   const navBack = useRef(false)
+  // The page on top as of the last history step we wrote (see the push at the end of the URL effect above).
+  const lastOv = useRef<string | null>(null)
   useEffect(() => {
     const onPop = () => { navBack.current = true }
     window.addEventListener('popstate', onPop)
@@ -1203,6 +1210,7 @@ export function useHubState() {
     navBack.current = false
     const urlOv = searchParams.get('ov')
     const curOv = shop ? `s:${shop.tab}` : personal ? `p:${personal.name}:${personal.tab}` : embedUrl ? `e:${embedUrl}` : null
+    if (applyOv) lastOv.current = urlOv
     if (applyOv && urlOv !== curOv) {
       if (!urlOv) { if (shop) setShop(null); if (personal) setPersonal(null); if (embedUrl) setEmbedUrl(null) }
       else if (urlOv.startsWith('s:')) { setEmbedUrl(null); setPersonal(null); setShop({ tab: urlOv.slice(2) as ShopTab }) }
