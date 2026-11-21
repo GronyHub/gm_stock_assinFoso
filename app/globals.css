@@ -149,11 +149,8 @@ html.framed .no-frame { display: none !important; }
 .menu-page nav p { display: none; }
 @media (max-width: 639px) { .cash-strip nav button { width: auto !important; padding-left: 4px !important; padding-right: 4px !important; } }
 @media (max-width: 639px) { .cash-strip nav button[aria-label="Manage"] { display: none; } }
-/* Less-used Cash tabs: hidden in the top row, and shown in a second row when More is tapped. */
+/* Cash tabs kept off the phone's top row. They are listed under More (a dropdown); Pending jobs is also the Job button on the Live page. */
 @media (max-width: 639px) {
-  .cash-strip nav button[aria-label="Activity times"], .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"],
-  .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label="Vendors"] { display: none; }
-  .cash-strip[data-more="open"] nav { flex-wrap: wrap; overflow-x: hidden; }
-  .cash-strip[data-more="open"] nav button[aria-label="Activity times"], .cash-strip[data-more="open"] nav button[aria-label="Counts"], .cash-strip[data-more="open"] nav button[aria-label="Customers"],
-  .cash-strip[data-more="open"] nav button[aria-label="Flags"], .cash-strip[data-more="open"] nav button[aria-label="Vendors"] { display: flex; }
+  .cash-strip nav button[aria-label="Pending jobs"], .cash-strip nav button[aria-label="Activity times"], .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"],
+  .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Purchase Orders"], .cash-strip nav button[aria-label="P&L"] { display: none; }
 }

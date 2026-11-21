@@ -29,6 +29,12 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
   const [pics, setPics] = useState(false)
   useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [])
   const setView = (on: boolean) => { setPics(on); try { localStorage.setItem('livePictures', on ? '1' : '0') } catch { /* ignore */ } }
+  // On a phone the View choice lives in the Cash top row's More menu, which sends it here.
+  useEffect(() => {
+    const onView = (e: Event) => setView(!!(e as CustomEvent).detail)
+    window.addEventListener('live-pictures', onView)
+    return () => window.removeEventListener('live-pictures', onView)
+  }, [])
   // Long-press (half a second, finger not moving) starts a selection; once something is selected, a tap on a tile selects or unselects it.
   const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab } = h
   const selecting = liveSelectedIds.length > 0
@@ -86,7 +92,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     const selected = liveSelectedIds.includes(item.id)
                     return (
                       <Fragment key={item.id}>
-                        {idx === 0 && (
+                        {idx === 0 && h.isDesktop && (
                           <div className="col-span-2 sm:col-span-3 md:col-span-6 flex items-center justify-end gap-1 border-b border-gray-200 bg-gray-50 px-2 py-0.5">
                             <span className="mr-auto text-[11px] text-gray-500">Hold an item to select several</span>
                             <span className="mr-1 text-[12px] font-semibold text-gray-500">View</span>

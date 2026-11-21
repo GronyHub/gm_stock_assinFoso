@@ -1,6 +1,7 @@
 'use client'
 import { SIDEBAR_RULES, type SidebarPerms, type SidebarRule } from '@/lib/sidebarAccess'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useState } from 'react'
+import StripMoreMenu from './StripMoreMenu'
 import { signOut } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import PaneDaily from '../_components/PaneDaily'
@@ -19,9 +20,8 @@ import { formatPrice } from './hubShared'
 export default function HubSidePane({ h }: { h: HubCtx }) {
   const { outerTab, lossView, setLossView, search, settingsOpen, setSettingsOpen, liveMode, itemsPageMode, liveManageSection, plSubView, lossesOpen, setLossesOpen, analyticsOpen, setAnalyticsOpen, liveSaleViolationFilter, sidePaneHidden, jumpToCustomersTab, setGlobalSearchOpen, uk, ukAllSubmenus, ukGeneralSubmenus, ch, items, globalFlags, violationCounts, salesFlagsCount, itemsFlagsCount, billsFlagsCount, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, countsFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount, taskCountFor, changeTab, myDayBadge, pendingJobsBadge, setEmbedUrl, personal, setPersonal, shop, setShop, openEmbed, openShop, openPersonal, pickLossView, pickCHView, pickViewing, cashDisplayMode, changeCashDisplayMode, session, username, isOwnerOrJoe, showFlags, fl, canManage, paneOrder, paneLabel, paneHidden, cashItemActive, cashItemClick, cashItemTaskScope, combinedCashItems, perm, canSeeCash, isCaretakerOnly, canSeePL, canSeeUsers, canViewPortalAs, canSeeUK, canSeeCaretake, canSeeCH, canSeeCHTab, canOpenSettings, canOpenUkSettings, myStaffName, viewingName, paneActive, embedActive, paneAccent, liveNetLossCount, liveAcpGteSpCount, salesByStaff, liveSaleFlagTotal, pickSaleFilter, pickPL, goItemsMode, goSaleFilter, modeActive, goLossSubView } = h
   const { isDesktop, activeStaff, waitingBy, liveTapsStatus, liveTodaySalesTotal } = h
-  // Phone top row: the less-used Cash tabs open in a second row when More is tapped (see the .cash-strip rules in globals.css).
+  // Phone top row: the less-used Cash tabs are listed in a dropdown under More (see StripMoreMenu and the .cash-strip rules in globals.css).
   const [stripMore, setStripMore] = useState(false)
-  useEffect(() => { document.querySelector('.cash-strip')?.setAttribute('data-more', stripMore ? 'open' : '') }, [stripMore])
   // In the phone's New sale strip they are always there: the strip is not shown on the Bills pages, so there would be no way to open them.
   const purchasingOpen = !!(h as { stripAll?: boolean }).stripAll || paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
   const perms: SidebarPerms = { isOwnerOrJoe, canSeeCash, canSeePL, showFlags, canSeeCH, canSeeCaretake, careLog: perm('care_log'), canOpenSettings, isCaretakerOnly, canSeeUK, canSeeCHTab }
@@ -103,6 +103,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 </Fragment>
               ))}
               {!isDesktop && (h as { stripAll?: boolean }).stripAll && <SidePaneButton icon="⋯" label={stripMore ? 'Less' : 'More'} mode={cashDisplayMode} active={stripMore} noNewTab onClick={() => setStripMore(o => !o)} />}
+              {!isDesktop && (h as { stripAll?: boolean }).stripAll && stripMore && <StripMoreMenu onClose={() => setStripMore(false)} onCab={() => pickLossView('cab')} showView={lossView === 'items'} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
             </div>
