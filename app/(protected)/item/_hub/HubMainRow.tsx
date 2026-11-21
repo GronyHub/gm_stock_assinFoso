@@ -30,7 +30,8 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
   }, [])
   // On a phone, the Live page (the + tab) shows the same buttons as the Menu along its top, as a strip that scrolls sideways (icon above name).
   // The top row stays for the whole Cash page (every Cash tab), and goes when a Shop page or a person's page is open on top.
-  const strip = !moreOpen && h.outerTab === 'loss' && !h.shop && !h.personal && !h.embedUrl
+  // Phone: the top row stays for the whole Cash page. Desktop keeps its own rule (the sale screen only).
+  const strip = !moreOpen && (h.isDesktop ? !!h.paneActive(h.modeActive('sale')) : h.outerTab === 'loss' && !h.shop && !h.personal && !h.embedUrl)
   return (<><div className={`relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0 ${strip ? 'max-sm:flex-col' : ''}`}>
         <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle') && !b.hasAttribute('data-menu-close')) setMoreOpen(false) }}
           className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : strip ? 'cash-strip flex shrink-0 sm:flex' : 'hidden sm:flex'}>

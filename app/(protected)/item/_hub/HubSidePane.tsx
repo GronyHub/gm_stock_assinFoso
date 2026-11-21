@@ -102,7 +102,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {(h as { stripAll?: boolean }).stripAll && <SidePaneButton icon="⋯" label={stripMore ? 'Less' : 'More'} mode={cashDisplayMode} active={stripMore} noNewTab onClick={() => setStripMore(o => !o)} />}
+              {!isDesktop && (h as { stripAll?: boolean }).stripAll && <SidePaneButton icon="⋯" label={stripMore ? 'Less' : 'More'} mode={cashDisplayMode} active={stripMore} noNewTab onClick={() => setStripMore(o => !o)} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
             </div>
