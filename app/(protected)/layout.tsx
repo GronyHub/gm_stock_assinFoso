@@ -15,6 +15,7 @@ import PhotoReminder from '@/components/PhotoReminder'
 import WaitingBar from '@/components/WaitingBar'
 import LawReminder from '@/components/LawReminder'
 import ClockOutPrompt from '@/components/ClockOutPrompt'
+import FinanceCheck from '@/components/FinanceCheck'
 import FrameFlag, { NoFrame } from '@/components/FrameFlag'
 import AutoMic from '@/components/AutoMic'
 
@@ -65,6 +66,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <PhotoReminder />
         <WaitingBar />
         <LawReminder />
+        <FinanceCheck />
         <ClockOutPrompt />
       </NoFrame>
     </div>

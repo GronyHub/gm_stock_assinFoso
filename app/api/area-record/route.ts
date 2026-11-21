@@ -7,6 +7,7 @@ import { ensureDailyChecks } from '@/lib/dailyChecks'
 import { LAW_AREAS } from '@/lib/lawAreas'
 import { isOwnerLevel } from '@/lib/roles'
 import { dutiesForDate } from '@/lib/duties'
+import { ensureFinanceChecks } from '@/lib/financeChecks'
 import { addDays, dayKey, CHECKLIST_START } from '@/lib/dailyChecksShared'
 
 // GET ?area=clean&days=30 -- how the laws of one area went: the penalty points they produced and which of the area's
@@ -57,6 +58,18 @@ export async function GET(req: NextRequest) {
         if (!all && who !== me) continue
         missed.push({ day: d, title: t.title, owner: t.owner, reason: t.state === 'no' ? t.note ?? null : null, state: t.state })
       }
+    }
+    // Expenses and Bills: the manager's login checks (have you recorded everything?) are part of the record. A yes, or going to record the rest, is Done; a skip is Not done.
+    if (area.key === 'expenses' || area.key === 'bills') {
+      await ensureFinanceChecks()
+      const what = area.key, cap = area.key === 'expenses' ? 'Expenses' : 'Bills'
+      const checks = await sql`SELECT who, answer, action, day, created_at FROM finance_checks WHERE kind = ${area.key} AND day >= ${since} ORDER BY id DESC LIMIT 200` as unknown as { who: string; answer: string; action: string | null; day: string; created_at: string }[]
+      for (const c of checks.filter(c => all || c.who.toLowerCase() === me)) {
+        if (c.answer === 'yes') done.push({ tile_id: 0, title: `Confirmed all ${what} are recorded`, law_id: null, day: c.day, recorded_by: c.who, value: 'Yes', note: null, photo: null, recorded_at: c.created_at })
+        else if (c.action === 'record_now') done.push({ tile_id: 0, title: `Some ${what} were not recorded: opened ${cap} to record them`, law_id: null, day: c.day, recorded_by: c.who, value: 'Yes', note: null, photo: null, recorded_at: c.created_at })
+        else missed.push({ day: c.day, title: `${cap} check skipped`, owner: c.who, reason: c.answer === 'no' ? `Said some ${what} are not recorded yet, and skipped` : null, state: 'miss' })
+      }
+      done.sort((a, b) => String(b.day).localeCompare(String(a.day)))
     }
     missed.sort((a, b) => b.day.localeCompare(a.day))
 
