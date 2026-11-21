@@ -266,6 +266,7 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   const [recent, setRecent] = useState<RecentRow[]>([])
   const [allRecords, setAllRecords] = useState<RecentRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [historyError, setHistoryError] = useState('')   // set when the recorded times could not be loaded, so the grid says so instead of "No records yet"
   // Mirrors ClockInOutPanel's own pickingTime (see onPickingTimeChange below)
   // just so the background poll further down can still pause while it's
   // true, same as it already pauses while editing a row in the shared grid.
@@ -309,8 +310,13 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
     // only checks for a logged-in session) -- it's the same shared history
     // everyone's Times tab now shows, so it's always fetched, not just for
     // admins. Admin-ness only gates which cells are clickable, further down.
-    const p1 = fetch('/api/staff-times/today').then(r => r.ok ? r.json() : { today: [], mine: null, recent: [] })
-    const p2 = fetch('/api/staff-times/all').then(r => r.ok ? r.json() : [])
+    // Each request answers on its own: one failing must not leave the recorded times empty (the grid used to show "No records yet" in that case).
+    const p1 = fetch('/api/staff-times/today').then(r => r.ok ? r.json() : { today: [], mine: null, recent: [] }).catch(() => ({ today: [], mine: null, recent: [] }))
+    const p2 = fetch('/api/staff-times/all').then(async r => {
+      if (!r.ok) { setHistoryError(`Could not load the recorded times (error ${r.status}).`); return [] }
+      setHistoryError('')
+      return r.json()
+    }).catch(() => { setHistoryError('Could not load the recorded times (no answer from the server).'); return [] })
     Promise.all([p1, p2]).then(([d, all]) => {
       setMine(d.mine ?? null)
       setRecent(Array.isArray(d.recent) ? d.recent : [])
@@ -469,7 +475,9 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
               <tr className="bg-gray-100"><td colSpan={staffList.length + 1} className="px-1.5 py-0.5 text-[12px] font-bold uppercase tracking-wide text-gray-600">Recorded times</td></tr>
             )}
             {historyGrouped.length === 0 && !(withFuture && viewMode === 'future') && (
-              <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">No records yet.</td></tr>
+              <tr><td colSpan={staffList.length + 1} className="py-8 text-center text-gray-400">
+                {historyError ? (<><span className="block text-red-600">{historyError}</span><button type="button" onClick={() => load()} className="mt-2 rounded-lg bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white">Try again</button></>) : 'No records yet.'}
+              </td></tr>
             )}
             {historyGrouped.map(([date, map], i) => {
               const monthKey = date.slice(0, 7)
