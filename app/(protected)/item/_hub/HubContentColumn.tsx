@@ -2,7 +2,6 @@
 import FlagQuotaLine from '../_components/FlagQuotaLine'
 import { MyAssignmentsSummary } from '../_components/MyAssignmentsSummary'
 import PageToolbar from '@/lib/pageToolbar'
-import CashAreaTabs, { cashAreaFor } from '../_components/CashAreaTabs'
 import PageGuide from '@/components/PageGuide'
 import { MANAGE_LIST_ITEMS, type ManageView } from '../_components/manageViewData'
 import { STAFF_TEAM_ITEMS, type StaffView } from '../_components/staffViewData'
@@ -19,9 +18,7 @@ const lossLawsBar = <PageToolbar grow={false} inlineClassName="flex justify-end 
 
 export default function HubContentColumn({ h }: { h: HubCtx }) {
   const { outerTab, lossView, itemsExtraView, search, violation, addForm, setAddForm, cabConfirmSignal, staffTimeSignal, vendorSignal, propertiesInitialTab, jumpToCountId, setJumpToCountId, liveGroupFilter, liveEmbeddedSearch, plSubView, jumpToLiveSaleTab, jumpToCustomersTab, customerSearchText, vendorSearchText, fixedCategoryIds, uk, ch, showAnalytics, items, loadItems, globalFlags, violationCounts, openerViolations, assignments, deadlines, assignedBy, assignedOn, vSettings, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, setCustomersFlagsCount, vendorsFlagsCount, setVendorsFlagsCount, personal, pickLossView, goToViolation, groups, role, username, showFlags, canManage, rolePermissions, paneOrder, setPaneOrder, paneLabels, setPaneLabels, paneGroups, setPaneGroups, paneHidden, setPaneHidden, combinedCashItems, canSeeTeam, canSeeUsers, canViewPortalAs, myStaffName, viewingName, routablePages, liveCountRecords, liveCountsItems, liveViewingCountRecords, liveSaleFlagList, pickLiveFlag, pickPL, goItemsMode, goCountMode, goLossSubView, renderLossesByDateTable, renderLossesByItemsTable, renderCostGteSpTable, renderSoldBelowCostTable } = h
-  // Each Cash page is a law area with its own Rules, Done and Not done tabs (see CashAreaTabs).
-  const cashArea = outerTab === 'loss' ? cashAreaFor(lossView, (h as { liveMode?: string }).liveMode, plSubView) : null
-  return (<CashAreaTabs areaKey={cashArea?.key ?? null} label={cashArea?.label ?? ''}><div className="relative flex-1 min-h-0 overflow-y-auto">
+  return (<><div className="relative flex-1 min-h-0 overflow-y-auto">
         {<HubScrollArea h={h} />}
         {addForm === 'item'    && outerTab === 'loss' && lossView === 'items'    && <div className="px-4"><NewItemForm    onSuccess={() => { setAddForm(null); loadItems() }} /></div>}
         {outerTab === 'loss' && lossView === 'pl' && (
@@ -271,5 +268,5 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
             </div>
           </TabErrorBoundary>
         )}
-          </div></CashAreaTabs>)
+          </div></>)
 }

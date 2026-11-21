@@ -1,12 +1,14 @@
 'use client'
 import { isOwnerLevel } from '@/lib/roles'
 import PageToolbar from '@/lib/pageToolbar'
-import PageGuide from '@/components/PageGuide'
+import PageGuide, { LawsSheet } from '@/components/PageGuide'
+import { useState } from 'react'
 import { areaForGuide } from '@/lib/lawAreas'
 import type { HubCtx } from './useHubState'
 import HubLogAnalytics from './HubLogAnalytics'
 
 export default function HubLogMode({ h }: { h: HubCtx }) {
+  const [lawsOpen, setLawsOpen] = useState(false)   // the Sales Log's Laws sheet (Rules, Done, Not done)
   const { liveExpanded, setLiveExpanded, liveMode, items, salesFlagsCount, session, rcptSelect, setRcptSelect, setRcptSel, setMiOn, setMiDate, liveReconcilingTaps, setLiveNewEntryOpen, liveRootClassName, liveLogShowAnalytics, setLiveLogShowAnalytics, logPeriod, setLogPeriod, logShowW, setLogShowW, logShowG, setLogShowG, logBarsOnly, setLogBarsOnly, logFlag, setLogFlag, logFlagsData, logYears, reconcileUndoneTaps, renderModeToggleRow } = h
   return (<>{liveMode === 'log' && (
             <div className={liveRootClassName}>
@@ -55,7 +57,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                         <button type="button" className="block w-full px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}>Sale for a past day</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLiveNewEntryOpen(true) }}>New log entry</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setRcptSelect(v => !v); setRcptSel(new Set()) }}>{rcptSelect ? 'Cancel receipt' : 'Receipt from sales…'}</button>
-                        {areaForGuide('log') && <a href={`/laws?tile=${areaForGuide('log')!.key}&embed=1`} className="block border-t border-gray-100 px-4 py-3 hover:bg-gray-50">📜 Laws for this page</a>}
+                        {areaForGuide('log') && <><button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLawsOpen(true) }}>📜 Laws for this page</button>{lawsOpen && <LawsSheet areaKey={areaForGuide('log')!.key} label={areaForGuide('log')!.label} onClose={() => setLawsOpen(false)} />}</>}
                       </div>
                     </details>
                     <details className="relative">
