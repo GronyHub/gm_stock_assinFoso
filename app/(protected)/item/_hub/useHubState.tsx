@@ -1153,6 +1153,7 @@ export function useHubState() {
   const navBack = useRef(false)
   // The page on top as of the last history step we wrote (see the push at the end of the URL effect above).
   const lastOv = useRef<string | null>(null)
+  const firstUrl = useRef(true)
   useEffect(() => {
     const onPop = () => { navBack.current = true }
     window.addEventListener('popstate', onPop)
@@ -1206,8 +1207,10 @@ export function useHubState() {
     if (urlSettingsOpen !== settingsOpen) setSettingsOpen(urlSettingsOpen)
 
     // Back/forward: the page on top follows the URL (see the push effect above).
-    const applyOv = navBack.current
+    // The page is read from the address on first load (a refresh keeps the same page) and on Back/Forward.
+    const applyOv = navBack.current || firstUrl.current
     navBack.current = false
+    firstUrl.current = false
     const urlOv = searchParams.get('ov')
     const curOv = shop ? `s:${shop.tab}` : personal ? `p:${personal.name}:${personal.tab}` : embedUrl ? `e:${embedUrl}` : null
     if (applyOv) lastOv.current = urlOv
