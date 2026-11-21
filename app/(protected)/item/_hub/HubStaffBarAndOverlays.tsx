@@ -158,7 +158,7 @@ export default function HubStaffBarAndOverlays({ h }: { h: HubCtx }) {
               lossView (Vendors, Expenses, Opener, etc.) still has nothing
               to do with this switcher and doesn't show it. */}
           {!(embedUrl || personal || shop) && <>
-          <HubStatusStrip h={h} />
+          {!isDesktop && <HubStatusStrip h={h} />}
           {<HubFilterBar h={h} />}
           {/* ── Content ── */}
           <HubContentColumn h={h} />
