@@ -238,7 +238,8 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
   const ownerLevel = role === 'owner' || role === 'admin' || ADMIN_STAFF.includes(username)
   const [display, setDisplay] = useState<{ hidden: string[]; hideEmpty: boolean }>({ hidden: [], hideEmpty: false })
   const [ownerSeeAll, setOwnerSeeAll] = useState(false)
-  const [viewMode, setViewMode] = useState<'all' | 'future' | 'past'>('all')
+  // The team's Times page (readOnly) holds recorded times only: the coming days are on the Rota page.
+  const [viewMode, setViewMode] = useState<'all' | 'future' | 'past'>(readOnly ? 'past' : 'all')
   const [optsOpen, setOptsOpen] = useState(false)
   const [absOpen, setAbsOpen] = useState(false)
   const [absForm, setAbsForm] = useState({ type: 'absent' as 'absent' | 'late', from: '', to: '', expected: '', reason: '' })
@@ -596,8 +597,8 @@ export function TimesTab({ username, role, openAddSignal, viewingStaff, readOnly
         <div>
           {/* The tabs never shrink or wrap their words; when the icons do not fit beside them (a phone), the icons drop to the next line instead of covering the tabs. */}
           <div className="flex flex-wrap items-center gap-1">
-            <div className="flex shrink-0 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setViewMode(k)} className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>
+            {!readOnly && <div className="flex shrink-0 gap-1">{([['all', 'All'], ['future', 'Coming up'], ['past', 'Recorded']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setViewMode(k)} className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-bold ${viewMode === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>))}</div>}
             <div className="ml-auto flex shrink-0 items-center gap-1">
             {extraToolbar}
             <button onClick={() => { setAbsOpen(v => !v); setOptsOpen(false) }} title="Report an absence" aria-label="Report an absence"

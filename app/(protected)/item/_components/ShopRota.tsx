@@ -25,7 +25,8 @@ export default function ShopRota({ canManage }: { canManage: boolean }) {
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState(0)
-  const set = (n: string, d: string, f: 'in' | 'out', v: string) => setWeek(w => { const c = w[n][d] ?? { in: '09:00', out: '17:00' }; return { ...w, [n]: { ...w[n], [d]: v === '' && f === 'in' ? null : { ...c, [f]: v } } } })
+  const [settingsOpen, setSettingsOpen] = useState(false)   // the schedule is the page; the planner for it sits behind the settings icon
+  const set =(n: string, d: string, f: 'in' | 'out', v: string) => setWeek(w => { const c = w[n][d] ?? { in: '09:00', out: '17:00' }; return { ...w, [n]: { ...w[n], [d]: v === '' && f === 'in' ? null : { ...c, [f]: v } } } })
   async function apply() {
     if (!confirm(`Fill the rota from ${from} to ${to} for Bino, Joe and James? Their existing entries on those dates are replaced.`)) return
     setBusy(true)
@@ -35,6 +36,12 @@ export default function ShopRota({ canManage }: { canManage: boolean }) {
   return (
     <div className="space-y-3">
       {canManage && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setSettingsOpen(o => !o)} title="Set the schedule" aria-label="Set the schedule" aria-pressed={settingsOpen}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border text-base ${settingsOpen ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'}`}>⚙️</button>
+        </div>
+      )}
+      {canManage && settingsOpen && (
         <details className="rounded-xl border border-gray-300 bg-white p-2" open>
           <summary className="cursor-pointer text-sm font-bold text-gray-900">Standard week: fill the rota from it</summary>
           <p className="mt-1 text-[12px] text-gray-600">Enter each person&apos;s hours once; empty start = off. The earliest start of a day becomes its Opener and the latest finish its Closer.</p>
