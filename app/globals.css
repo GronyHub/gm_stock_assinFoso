@@ -151,11 +151,9 @@ html.framed .no-frame { display: none !important; }
 @media (max-width: 639px) { .cash-strip nav button[aria-label="Manage"] { display: none; } }
 /* Less-used Cash tabs: hidden in the top row, and shown in a second row when More is tapped. */
 @media (max-width: 639px) {
-  .cash-strip nav button[aria-label="Item 360"], .cash-strip nav button[aria-label="Bills"], .cash-strip nav button[aria-label="Purchase Orders"], .cash-strip nav button[aria-label="Vendors"],
-  .cash-strip nav button[aria-label="Expenses"], .cash-strip nav button[aria-label="P&L"], .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label^="Losses"],
-  .cash-strip nav button[aria-label="Loss by Date"], .cash-strip nav button[aria-label="Loss by Items"], .cash-strip nav button[aria-label="Net Loss"], .cash-strip nav button[aria-label="Cost ≥ Selling Price"] { display: none; }
+  .cash-strip nav button[aria-label="Activity times"], .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"],
+  .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label="Vendors"] { display: none; }
   .cash-strip[data-more="open"] nav { flex-wrap: wrap; overflow-x: hidden; }
-  .cash-strip[data-more="open"] nav button[aria-label="Item 360"], .cash-strip[data-more="open"] nav button[aria-label="Bills"], .cash-strip[data-more="open"] nav button[aria-label="Purchase Orders"], .cash-strip[data-more="open"] nav button[aria-label="Vendors"],
-  .cash-strip[data-more="open"] nav button[aria-label="Expenses"], .cash-strip[data-more="open"] nav button[aria-label="P&L"], .cash-strip[data-more="open"] nav button[aria-label="Flags"], .cash-strip[data-more="open"] nav button[aria-label^="Losses"],
-  .cash-strip[data-more="open"] nav button[aria-label="Loss by Date"], .cash-strip[data-more="open"] nav button[aria-label="Loss by Items"], .cash-strip[data-more="open"] nav button[aria-label="Net Loss"], .cash-strip[data-more="open"] nav button[aria-label="Cost ≥ Selling Price"] { display: flex; }
+  .cash-strip[data-more="open"] nav button[aria-label="Activity times"], .cash-strip[data-more="open"] nav button[aria-label="Counts"], .cash-strip[data-more="open"] nav button[aria-label="Customers"],
+  .cash-strip[data-more="open"] nav button[aria-label="Flags"], .cash-strip[data-more="open"] nav button[aria-label="Vendors"] { display: flex; }
 }
