@@ -3,6 +3,7 @@ import { useFitWidth } from '@/lib/useFitWidth'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { Fragment, useState, useEffect, useMemo, useRef } from 'react'
 import { useProgressive } from '@/lib/useProgressive'
+import ExpenseCards from './ExpenseCards'
 import { usePolling } from '@/lib/usePolling'
 import HistoryPanel from './HistoryPanel'
 import AccountsManager from './AccountsManager'
@@ -870,6 +871,15 @@ export default function ExpensesTab({
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // A phone shows the expenses as cards (see ExpenseCards); a larger screen keeps the table.
+  const [phone, setPhone] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const on = () => setPhone(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
   const [highlightId, setHighlightId] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
@@ -1350,7 +1360,10 @@ export default function ExpensesTab({
       )}
 
       {!showHistory && <div className="flex-1 overflow-y-auto min-h-0 pt-2 pr-2 pb-2 flex flex-col">
-        {groupBy !== 'none' ? (
+        {phone ? (
+          <ExpenseCards rows={filtered} groups={groupBy !== 'none' ? grouped.map(([label, rows]) => ({ label, rows })) : undefined} highlightId={highlightId}
+            onOpen={id => { const e = expenses.find(x => x.id === id); if (e) openEdit(e) }} />
+        ) : groupBy !== 'none' ? (
           grouped.length === 0
             ? <p className="text-xs text-gray-400 text-center py-10">No expenses</p>
             // One shared table (one header row) for the whole grouped
@@ -1370,6 +1383,19 @@ export default function ExpensesTab({
           </>
         )}
       </div>}
+      {/* Phone: tapping a card opens that expense's own edit form (the table's, for one row) full screen. */}
+      {phone && editId != null && (() => {
+        const e = expenses.find(x => x.id === editId)
+        return e ? (
+          <div className="fixed inset-0 z-[70] flex flex-col bg-white">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-3 py-2">
+              <p className="min-w-0 truncate text-[15px] font-bold text-[#14213D]">Edit expense</p>
+              <button type="button" onClick={tableProps.onCloseEdit} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-700">Close</button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto p-2"><ExpenseTable rows={[e]} {...tableProps} /></div>
+          </div>
+        ) : null
+      })()}
     </div>
   )
 }

@@ -601,23 +601,33 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                   splits/Analytics/Accounts/Laws & Tasks/Help -- still lives
                   in that same Filter dropdown. No Bars Only here -- Expenses
                   has no day-bar/item-line grouping like Sales/Bills. */}
-              <div className="px-1.5 py-0.5 bg-white flex items-center flex-wrap gap-x-1.5 gap-y-0.5 border-b border-gray-200">
-                {liveExpensesMainRadios.map((v, i) => (
-                  <Fragment key={v.key}>
-                    {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
-                    {renderLiveExpensesRadio(v)}
-                  </Fragment>
-                ))}
-              </div>
-              <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap">
+              {isDesktop ? (
+                <div className="px-1.5 py-0.5 bg-white flex items-center flex-wrap gap-x-1.5 gap-y-0.5 border-b border-gray-200">
+                  {liveExpensesMainRadios.map((v, i) => (
+                    <Fragment key={v.key}>
+                      {i > 0 && <span className="text-gray-300 text-[12px]">·</span>}
+                      {renderLiveExpensesRadio(v)}
+                    </Fragment>
+                  ))}
+                </div>
+              ) : (
+                // Phone: the nine views are one dropdown, not a wall of radio buttons.
+                <div className="border-b border-gray-200 bg-white px-2 py-1.5">
+                  <select aria-label="View" value={h.liveExpensesRadioValue} onChange={e => selectLiveExpensesRadio(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-[14px] font-semibold text-gray-800">
+                    {liveExpensesMainRadios.map(v => <option key={v.key} value={v.key}>{v.label}{v.count !== null ? ` (${v.count})` : ''}</option>)}
+                  </select>
+                </div>
+              )}
+              <PageToolbar inline={liveExpanded} grow={false} inlineClassName={isDesktop ? 'px-1.5 py-0.5 bg-white border-b border-gray-200 flex items-center justify-end gap-1.5 flex-wrap' : 'flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-2 py-1.5'}>
                 <PageGuide page="expenses" />
                 <select value={liveExpensesAccountFilter ?? ''} onChange={e => setLiveExpensesAccountFilter(e.target.value || null)}
-                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  className={isDesktop ? 'text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0' : 'min-w-[7rem] flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[13px] text-gray-800'}>
                   <option value="">All Accounts</option>
                   {liveExpensesAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
                 <select value={liveExpensesPropertyTypeFilter ?? ''} onChange={e => setLiveExpensesPropertyTypeFilter(e.target.value || null)}
-                  className="text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0">
+                  className={isDesktop ? 'text-[12px] text-gray-700 bg-white border border-gray-200 rounded px-1 py-0.5 outline-none max-w-[80px] shrink-0' : 'min-w-[7rem] flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[13px] text-gray-800'}>
                   <option value="">All Types</option>
                   {EXPENSES_PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -626,10 +636,10 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                   value={liveEmbeddedSearch}
                   onChange={e => setLiveEmbeddedSearch(e.target.value)}
                   placeholder="Search…"
-                  className="text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20 shrink-0"
+                  className={isDesktop ? 'text-xs px-1.5 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 w-20 shrink-0' : 'min-w-[9rem] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-400'}
                 />
                 <button onClick={() => selectLiveExpensesRadio('new_expense')}
-                  className="text-xs font-semibold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 shrink-0">
+                  className={isDesktop ? 'text-xs font-semibold bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 shrink-0' : 'shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-bold text-white'}>
                   + New
                 </button>
                 {renderExpensesFiltersBar()}
