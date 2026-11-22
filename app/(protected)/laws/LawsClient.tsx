@@ -88,6 +88,19 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
   useEffect(() => { fetch('/api/penalties/log-targets').then(r => r.ok ? r.json() : null).then(d => d?.targets && setTargets(d.targets)).catch(() => {}) }, [])
   const [openCh, setOpenCh] = useState<number | null>(null)
+  // The record of the area's laws over the last 30 days (done, not done, violations), shown on each law and summed at the top (embedded topic pages only).
+  type Rec = { done: { law_id: number | null; title: string; day: string; recorded_by: string }[]; missed: { law_id?: number | null; day: string; title: string; owner: string | null; reason: string | null }[]; points: { law_id: number | null; day: string; staff: string; points: number; reason: string }[] }
+  const [rec, setRec] = useState<Rec | null>(null)
+  const [recTick, setRecTick] = useState(0)
+  const [sf, setSf] = useState<'all' | 'done' | 'missed' | 'viol'>('all')
+  const subsKey = embed?.subs.join('|') ?? ''
+  useEffect(() => {
+    if (!embed?.area || embed.area === UNCATEGORISED) return
+    fetch(`/api/area-record?area=${encodeURIComponent(embed.area)}&days=30${subsKey ? `&subs=${encodeURIComponent(subsKey)}` : ''}`, { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null)).then(d => { if (d) setRec({ done: d.done ?? [], missed: d.missed ?? [], points: d.points ?? [] }) }).catch(() => {})
+  }, [embed?.area, subsKey, recTick])
+  const stat = (id: number) => ({ d: rec?.done.filter(x => x.law_id === id) ?? [], m: rec?.missed.filter(x => x.law_id === id) ?? [], p: rec?.points.filter(x => x.law_id === id) ?? [] })
+  const sfMatch = (l: Law) => { if (sf === 'all' || !rec) return true; const s = stat(l.id); return sf === 'done' ? s.d.length > 0 : sf === 'missed' ? s.m.length > 0 : s.p.length > 0 }
   const [whyOpen, setWhyOpen] = useState<Set<number>>(new Set())
   const [quizFor, setQuizFor] = useState<Law | null>(null)
   const TimeChip = ({ t, label }: { t: number | null; label?: string }) => t === null ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[12px] font-bold text-gray-500">not in the video yet</span> : <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); seek(t) }} className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-[12px] font-bold text-white">▶ {fmtTime(t)}{label ? ` ${label}` : ''}</button>
@@ -375,7 +388,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
           </div>)
       })()}
       {view === 'type' && laws && (() => {
-        const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l))
+        const all = laws.filter(l => (l.status !== 'draft' || canManage) && inEmbed(l) && sfMatch(l))
         const dayKey = (l: Law) => (l.days ? l.days.split(',')[0] : '')
         // In an area page each weekday is its own heading ("Every Wednesday"), not just "Weekly".
         const byTime = (x: Law, y: Law) => (x.law_time ?? '99').localeCompare(y.law_time ?? '99') || x.id - y.id
@@ -397,6 +410,14 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
               {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
             </div>}
             {embed && noLaw && <p className="rounded-lg bg-amber-50 px-2 py-1.5 text-[13px] leading-snug text-amber-900"><b>This task has no law yet.</b> Use + Add law below to write the law behind it. It then shows here and on its task in Waiting for me.</p>}
+            {embed && area && area.key !== UNCATEGORISED && (
+              <div className="flex flex-wrap items-center gap-1.5 text-[12px] font-bold">
+                {([['all', 'All laws'], ['done', `✅ Done ${rec?.done.length ?? '…'}`], ['missed', `⚠ Not done ${rec?.missed.length ?? '…'}`], ['viol', `⚖ Violations ${rec?.points.length ?? '…'}`]] as const).map(([k, t]) => (
+                  <button key={k} type="button" onClick={() => setSf(k)} className={`rounded-full px-3 py-1.5 ${sf === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{t}</button>
+                ))}
+                <span className="text-[11px] font-semibold text-gray-500">last 30 days{rec ? '' : ' · loading'}</span>
+              </div>
+            )}
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
             {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {embed && all.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No laws here yet.{canManage ? ' Use + Add law to write the first one.' : ''}</p>}
@@ -439,6 +460,21 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                           ? (() => { const w = parseViolations(l.violations)[0]?.points ?? l.points ?? 1; return w === 0 ? <b>No penalty.</b> : <>⚖ <b>{w} point{w === 1 ? '' : 's'}</b> to whoever it falls on, if it is left undone at day end (at most {MISSED_DAILY_CAP} points a day). The checklist records it automatically.</> })()
                           : (() => { const vs = parseViolations(l.violations); return vs.length ? vs.map((v, k) => <span key={k}>{k > 0 ? ' ' : ''}{v.dismissal ? <b>Dismissal.</b> : v.points === 0 ? <b>No penalty.</b> : <>⚖ <b>{v.points} point{v.points === 1 ? '' : 's'}</b>.</>} {v.by === 'app' ? 'The app checks it.' : 'A manager sees it in the shop or on CCTV and logs it with a note.'}</span>) : <>⚖ <b>{l.points ?? 1} point{(l.points ?? 1) === 1 ? '' : 's'}</b>. A manager sees it in the shop or on CCTV and logs it with a note.</> })()}
                       </div>}
+                      {rec && (() => {
+                        const s = stat(l.id), last = s.d[0], vs = parseViolations(l.violations)
+                        const canLog = targets.length > 0 && l.status !== 'draft' && l.law_type !== 'recurring'
+                        return (
+                          <div className="col-span-4 flex flex-wrap items-center gap-1.5 text-[12px] sm:col-span-5">
+                            {last && <span className="rounded-full bg-green-50 px-2 py-0.5 font-semibold text-green-800">✅ Last done {last.day} · <span className="capitalize">{last.recorded_by}</span></span>}
+                            {s.m.length > 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">⚠ Not done {s.m.length}×</span>}
+                            {s.p.length > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-800">⚖ {s.p.length} violation{s.p.length === 1 ? '' : 's'} recorded</span>}
+                            {!last && s.m.length === 0 && s.p.length === 0 && <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-500">{l.law_type === 'recurring' ? 'Nothing recorded in 30 days' : 'No violations recorded in 30 days'}</span>}
+                            {canLog && vs.map((v, i) => v.by === 'manager' && v.points > 0 ? (
+                              <button key={i} type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-2 py-1 text-[12px] font-bold text-white">⚖ Record violation{vs.filter(x => x.by === 'manager' && x.points > 0).length > 1 ? `: ${v.text.slice(0, 28)}` : ''}</button>
+                            ) : null)}
+                          </div>
+                        )
+                      })()}
                       <details className="col-span-4 border-t border-gray-100 pt-1 sm:col-span-5">
                         <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
                         <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
@@ -447,6 +483,11 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                           {lines(l.donts).length > 0 && <div><b className="text-red-800">Do not:</b><ul className="list-disc pl-4">{lines(l.donts).map((x, k) => <li key={k}>{x}</li>)}</ul></div>}
                           {l.not_violation && <p className="text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
                           {l.tile_id && l.kept && <p className="font-semibold">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
+                          {rec && (() => {
+                            const s = stat(l.id)
+                            const rows = [...s.d.map(x => ({ day: x.day, t: `✅ ${x.day} · ${x.recorded_by}` })), ...s.m.map(x => ({ day: x.day, t: `⚠ ${x.day} · ${x.owner ?? 'nobody'}${x.reason ? ` · ${x.reason}` : ' · not done'}` })), ...s.p.map(x => ({ day: x.day, t: `⚖ ${x.day} · ${x.staff} · ${x.points} pt · ${x.reason}` }))].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 15)
+                            return rows.length ? <div><b>Record, last 30 days:</b><ul className="pl-1">{rows.map((r, k) => <li key={k}>{r.t}</li>)}</ul></div> : null
+                          })()}
                           {(() => { const wy = whyFor(l.category ?? null, l.subcategory ?? null); return wy ? <WhyBox w={wy} /> : null })()}
                           {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && (sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-2 py-1 text-[12px] font-bold text-white">📝 Practice quiz (optional)</button> : <p className="text-gray-500">{l.quiz_n} practice questions</p>)}
                         </div>
@@ -455,6 +496,15 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                 </div>
               </div>))}
           </div>)
+      })()}
+      {view === 'type' && embed && rec && (() => {
+        const o = [...rec.done.filter(x => !x.law_id).map(x => ({ day: x.day, t: `✅ ${x.day} · ${x.recorded_by} · ${x.title}` })), ...rec.missed.filter(x => !x.law_id).map(x => ({ day: x.day, t: `⚠ ${x.day} · ${x.owner ?? 'nobody'} · ${x.title}${x.reason ? ` · ${x.reason}` : ''}` })), ...rec.points.filter(x => !x.law_id).map(x => ({ day: x.day, t: `⚖ ${x.day} · ${x.staff} · ${x.points} pt · ${x.reason}` }))].sort((a, b) => b.day.localeCompare(a.day))
+        return o.length && sf === 'all' ? (
+          <details className="mt-3 rounded-xl border border-gray-200 bg-white p-2">
+            <summary className="cursor-pointer text-[13px] font-bold text-gray-700">Other records, not tied to one law ({o.length})</summary>
+            <ul className="space-y-1 pt-2 text-[12px] text-gray-800">{o.slice(0, 60).map((r, k) => <li key={k}>{r.t}</li>)}</ul>
+          </details>
+        ) : null
       })()}
       {view === 'topic' && !embed && <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search all laws, for example personal number" className="mb-3 w-full rounded-xl border border-gray-300 p-2.5 text-sm" />}
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -559,7 +609,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
       )}
 
       {quizFor && <LawQuiz law={quizFor} onClose={() => setQuizFor(null)} onDone={() => { void loadSig() }} />}
-      {logFor && <LogViolation target={logFor} targets={targets} onClose={() => setLogFor(null)} onDone={m => { flash(m); setLogFor(null) }} />}
+      {logFor && <LogViolation target={logFor} targets={targets} onClose={() => setLogFor(null)} onDone={m => { flash(m); setLogFor(null); setRecTick(t => t + 1) }} />}
       {draft && <Editor d={draft} subs={Array.from(new Set((laws ?? []).map(l => l.subcategory).filter(Boolean) as string[]))} onClose={() => setDraft(null)} onSaved={m => { flash(m); setDraft(null); void load() }} />}
       {msg && <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-2 text-sm text-white">{msg}</div>}
     </div>

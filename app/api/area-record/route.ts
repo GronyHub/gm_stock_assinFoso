@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     const today = dayKey()
     const dayList: string[] = []
     for (let i = 0; i < Math.min(days, 30); i++) { const d = addDays(today, -i); if (d >= CHECKLIST_START) dayList.push(d) }
-    const missed: { day: string; title: string; owner: string | null; reason: string | null; state: string }[] = []
+    const missed: { day: string; title: string; owner: string | null; reason: string | null; state: string; law_id?: number | null }[] = []
     for (let i = 0; i < dayList.length; i += 6) {
       const chunk = await Promise.all(dayList.slice(i, i + 6).map(async d => ({ d, du: await dutiesForDate(d).catch(() => []) })))
       for (const { d, du } of chunk) for (const t of du) {
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         if (t.state !== 'miss' && t.state !== 'no' && !(d === today && t.state === 'late')) continue
         const who = (t.owner ?? '').toLowerCase()
         if (!all && who !== me) continue
-        missed.push({ day: d, title: t.title, owner: t.owner, reason: t.state === 'no' ? t.note ?? null : null, state: t.state })
+        missed.push({ day: d, title: t.title, owner: t.owner, reason: t.state === 'no' ? t.note ?? null : null, state: t.state, law_id: t.lawId ?? null })
       }
     }
     // Expenses and Bills: the manager's login checks (have you recorded everything?) are part of the record. A yes, or going to record the rest, is Done; a skip is Not done.
