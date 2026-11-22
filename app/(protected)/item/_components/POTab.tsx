@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePolling } from '@/lib/usePolling'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import ItemDetailModal from './ItemDetailModal'
+import { useIsPhone } from '@/lib/useIsPhone'
 
 type POLine = {
   id: number
@@ -158,6 +159,27 @@ function CheckCell({ line, onSet }: { line: POLine; onSet: (status: 'same' | 'di
   )
 }
 
+// The purchase orders on a phone: one card per order (date and number, vendor, status, receiving progress). Tapping a card opens its details.
+function POCards({ pos, selectedId, onOpen }: { pos: PO[]; selectedId: number | null; onOpen: (p: PO) => void }) {
+  return (
+    <div className="space-y-2 p-2 pb-24">
+      {pos.map(p => (
+        <button key={p.id} type="button" onClick={() => onOpen(p)}
+          className={`block w-full rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm active:bg-gray-50 ${selectedId === p.id ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{fmtShort(p.order_date)} · {p.po_number}</p>
+              <p className="mt-0.5 text-[15px] font-semibold leading-snug text-gray-900">{p.vendor_name ?? 'Unknown vendor'}</p>
+            </div>
+            <StatusBadge status={p.status} />
+          </div>
+          {p.status !== 'draft' && p.status !== 'cancelled' && <div className="mt-1.5"><ProgressBadge lines={p.lines} /></div>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function POTab({ search }: Props) {
   const [pos, setPos] = useState<PO[]>([])
   const [loading, setLoading] = useState(true)
@@ -190,6 +212,7 @@ export default function POTab({ search }: Props) {
   const [notBilledOnly, setNotBilledOnly] = useState(false)
   const [draftOnly, setDraftOnly] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('poTable', PO_COLUMNS)
+  const phone = useIsPhone()   // a phone gets cards and a full-screen detail sheet; a larger screen keeps the table
 
   // Retries and only replaces the list with a real array (see BillsTab).
   const [listLoadError, setListLoadError] = useState(false)
@@ -432,88 +455,9 @@ export default function POTab({ search }: Props) {
 
   if (loading) return <div className="py-20 text-center text-gray-400 text-xs">Loading…</div>
 
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
-        <span className="text-[12px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
-        <div className="flex items-center gap-1.5">
-          {draftCount > 0 && (
-            <label title="Still in draft -- never sent to the vendor at all"
-              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
-              <input type="checkbox" checked={draftOnly} onChange={e => setDraftOnly(e.target.checked)}
-                className="cursor-pointer w-2.5 h-2.5" />
-              Draft ({draftCount})
-            </label>
-          )}
-          {notBilledCount > 0 && (
-            <label title="Sent to the vendor but never received against -- no bill exists for it yet"
-              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
-              <input type="checkbox" checked={notBilledOnly} onChange={e => setNotBilledOnly(e.target.checked)}
-                className="cursor-pointer w-2.5 h-2.5" />
-              Not Billed ({notBilledCount})
-            </label>
-          )}
-          <button type="button" title="Compares every purchase order with the bills. Any order marked received whose bill is missing goes back to not received."
-            onClick={async () => {
-              try {
-                const r = await fetch('/api/purchase-orders/reconcile', { method: 'POST' })
-                const d = await r.json()
-                if (!r.ok) throw new Error()
-                const fixed = (d.fixed ?? []) as { po_number: string }[]
-                alert(fixed.length ? `Put back to "not received" (no bill found): ${fixed.map(f => f.po_number).join(', ')}` : 'Every received purchase order has its bill. Nothing to fix.')
-                void loadList()
-              } catch { alert('Could not check. Try again.') }
-            }}
-            className="text-[12px] font-bold text-blue-700 whitespace-nowrap">Check vs Bills</button>
-          <ColumnsPickerButton prefs={colPrefs} />
-          <Link href="/purchase-orders/new"
-            className="text-[12px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
-            + New PO
-          </Link>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto min-h-0">
-        <table className="border-collapse text-[12px]" style={{
-          tableLayout: 'fixed',
-          width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
-        }}>
-          <colgroup>
-            <col style={{ width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) }} />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90) }} />)}
-          </colgroup>
-          <thead className="sticky top-0 bg-gray-100 z-10">
-            <tr>
-              <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
-                className="text-gray-500">PO</ResizableTh>
-              {colPrefs.shownColumns.map((c, i) => (
-                <ResizableTh key={c.key} align="left" noDivider={i === colPrefs.shownColumns.length - 1}
-                  className="text-gray-500"
-                  onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
-                  {c.label}
-                </ResizableTh>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(p => (
-              <Fragment key={p.id}>
-                <tr onClick={() => toggleRow(p)}
-                  className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-0.5 py-0 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
-                  {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
-                    <td key={c.key} className="px-0.5 py-0 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
-                  ) : c.key === 'status' ? (
-                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap"><StatusBadge status={p.status} /></td>
-                  ) : (
-                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap">
-                      {p.status !== 'draft' && p.status !== 'cancelled' ? <ProgressBadge lines={p.lines} /> : null}
-                    </td>
-                  ))}
-                </tr>
-                {selectedId === p.id && (
-                  <tr className="bg-white">
-                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 border-b border-gray-200">
-                      {detailLoading || !detail ? (
+  // The open purchase order's details and actions: shown under its row in the table, and full screen on a phone.
+  const renderDetail = () => (
+detailLoading || !detail ? (
                         <p className="text-[12px] text-gray-400 text-center py-6">Loading…</p>
                       ) : (
             <div>
@@ -847,7 +791,92 @@ export default function POTab({ search }: Props) {
                 </>
               )}
             </div>
-                      )}
+                      )
+  )
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 bg-gray-50 shrink-0">
+        <span className="text-[12px] font-semibold text-gray-400">{filtered.length} purchase order{filtered.length !== 1 ? 's' : ''}</span>
+        <div className="flex items-center gap-1.5">
+          {draftCount > 0 && (
+            <label title="Still in draft -- never sent to the vendor at all"
+              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              <input type="checkbox" checked={draftOnly} onChange={e => setDraftOnly(e.target.checked)}
+                className="cursor-pointer w-2.5 h-2.5" />
+              Draft ({draftCount})
+            </label>
+          )}
+          {notBilledCount > 0 && (
+            <label title="Sent to the vendor but never received against -- no bill exists for it yet"
+              className="flex items-center gap-1 text-[12px] font-bold text-red-600 cursor-pointer select-none whitespace-nowrap">
+              <input type="checkbox" checked={notBilledOnly} onChange={e => setNotBilledOnly(e.target.checked)}
+                className="cursor-pointer w-2.5 h-2.5" />
+              Not Billed ({notBilledCount})
+            </label>
+          )}
+          <button type="button" title="Compares every purchase order with the bills. Any order marked received whose bill is missing goes back to not received."
+            onClick={async () => {
+              try {
+                const r = await fetch('/api/purchase-orders/reconcile', { method: 'POST' })
+                const d = await r.json()
+                if (!r.ok) throw new Error()
+                const fixed = (d.fixed ?? []) as { po_number: string }[]
+                alert(fixed.length ? `Put back to "not received" (no bill found): ${fixed.map(f => f.po_number).join(', ')}` : 'Every received purchase order has its bill. Nothing to fix.')
+                void loadList()
+              } catch { alert('Could not check. Try again.') }
+            }}
+            className="text-[12px] font-bold text-blue-700 whitespace-nowrap">Check vs Bills</button>
+          {!phone && <ColumnsPickerButton prefs={colPrefs} />}
+          <Link href="/purchase-orders/new"
+            className="text-[12px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">
+            + New PO
+          </Link>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto min-h-0">
+        {phone ? <POCards pos={filtered} selectedId={selectedId} onOpen={toggleRow} /> : (
+        <table className="border-collapse text-[12px]" style={{
+          tableLayout: 'fixed',
+          width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) + colPrefs.shownColumns.reduce((s, c) => s + colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90), 0),
+        }}>
+          <colgroup>
+            <col style={{ width: colPrefs.getWidth('date', PO_COL_DEFAULTS.date) }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: colPrefs.getWidth(c.key, PO_COL_DEFAULTS[c.key] ?? 90) }} />)}
+          </colgroup>
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('date', d, PO_COL_DEFAULTS.date)} onReset={() => colPrefs.resetWidth('date')}
+                className="text-gray-500">PO</ResizableTh>
+              {colPrefs.shownColumns.map((c, i) => (
+                <ResizableTh key={c.key} align="left" noDivider={i === colPrefs.shownColumns.length - 1}
+                  className="text-gray-500"
+                  onResize={d => colPrefs.resizeWidth(c.key, d, PO_COL_DEFAULTS[c.key] ?? 90)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  {c.label}
+                </ResizableTh>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(p => (
+              <Fragment key={p.id}>
+                <tr onClick={() => toggleRow(p)}
+                  className={`cursor-pointer border-b border-gray-100 transition ${selectedId === p.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
+                  <td className="px-0.5 py-0 text-gray-700 truncate">{fmtShort(p.order_date)}</td>
+                  {colPrefs.shownColumns.map(c => c.key === 'vendor' ? (
+                    <td key={c.key} className="px-0.5 py-0 text-gray-700 truncate">{p.vendor_name ?? '—'}</td>
+                  ) : c.key === 'status' ? (
+                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap"><StatusBadge status={p.status} /></td>
+                  ) : (
+                    <td key={c.key} className="px-0.5 py-0 overflow-hidden whitespace-nowrap">
+                      {p.status !== 'draft' && p.status !== 'cancelled' ? <ProgressBadge lines={p.lines} /> : null}
+                    </td>
+                  ))}
+                </tr>
+                {selectedId === p.id && (
+                  <tr className="bg-white">
+                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-0 border-b border-gray-200">
+                      {renderDetail()}
                     </td>
                   </tr>
                 )}
@@ -855,6 +884,7 @@ export default function POTab({ search }: Props) {
             ))}
           </tbody>
         </table>
+        )}
         {filtered.length === 0 && pos.length === 0 && listLoadError ? (
           <div className="text-center py-10 space-y-2">
             <p className="text-sm text-red-600">Couldn&apos;t load purchase orders.</p>
@@ -863,6 +893,15 @@ export default function POTab({ search }: Props) {
           </div>
         ) : filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No purchase orders</p>}
       </div>
+      {phone && selectedId != null && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-white">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-3 py-2">
+            <p className="min-w-0 truncate text-[15px] font-bold text-[#14213D]">{detail?.po_number ?? 'Purchase order'}</p>
+            <button type="button" onClick={() => { const po = pos.find(x => x.id === selectedId); if (po) toggleRow(po) }} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-700">Close</button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">{renderDetail()}</div>
+        </div>
+      )}
       {viewingItemId != null && (
         <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
       )}
