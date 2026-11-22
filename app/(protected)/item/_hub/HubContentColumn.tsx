@@ -62,7 +62,8 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
             <div className="px-4 pt-2 space-y-2">
               <CountsTab items={liveCountsItems} groupFilter={liveGroupFilter} search={liveEmbeddedSearch} violation={null}
                 onFixRecords={(view) => { if (view === 'sales') jumpToLiveSaleTab('sales'); else if (view === 'bills') jumpToLiveSaleTab('bills') }}
-                jumpToCountId={jumpToCountId} onJumpDone={() => setJumpToCountId(null)} />
+                jumpToCountId={jumpToCountId} onJumpDone={() => setJumpToCountId(null)}
+                onClearFilters={() => { h.setLiveGroupFilter(null); h.setLiveEmbeddedSearch('') }} />
             </div>
           </TabErrorBoundary>
         )}

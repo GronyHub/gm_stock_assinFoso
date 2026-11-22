@@ -271,13 +271,16 @@ type Props = {
   // exact count's row in the list view below and highlights it.
   jumpToCountId?: number | null
   onJumpDone?: () => void
+  // Clears the group and search filter carried over from the Live page.
+  onClearFilters?: () => void
 }
 
-function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation, jumpToCountId, onJumpDone }: Props) {
+function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoToViolation, jumpToCountId, onJumpDone, onClearFilters }: Props) {
   const { data: session } = useSession()
   const canDelete = isOwnerLevel(session?.user as any)
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -317,7 +320,8 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const colPrefs = useColumnPrefs<ColKey>('countsTable', COUNTS_COLUMNS)
 
   function loadRecords() {
-    fetch('/api/stock/counts').then(r => r.json()).then(d => { setRecords(Array.isArray(d) ? d : []); setLoading(false) }).catch(() => { setRecords([]); setLoading(false) })
+    setLoadError(false)
+    fetch('/api/stock/counts').then(r => r.json()).then(d => { if (Array.isArray(d)) setRecords(d); else setLoadError(true); setLoading(false) }).catch(() => { setLoadError(true); setLoading(false) })
   }
   function loadDaily() {
     Promise.all([
@@ -643,7 +647,11 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No records</p>}
+        {filtered.length === 0 && (loadError
+          ? <div className="py-10 text-center text-[13px]"><p className="font-semibold text-red-600">The count records could not be loaded.</p><button type="button" onClick={() => { setLoading(true); loadRecords() }} className="mt-2 rounded-lg bg-blue-600 px-4 py-2 font-bold text-white">Try again</button></div>
+          : records.length > 0
+            ? <div className="py-10 text-center text-[13px] text-gray-600"><p>No counts match the filter ({[groupFilter && groupFilter !== 'All' ? `group: ${groupFilter}` : '', search ? `search: "${search}"` : ''].filter(Boolean).join(' · ') || 'current view'}).</p>{onClearFilters && <button type="button" onClick={onClearFilters} className="mt-2 rounded-lg bg-blue-600 px-4 py-2 font-bold text-white">Show all counts</button>}</div>
+            : <p className="text-[12px] text-gray-400 text-center py-10">No records</p>)}
         </div>
         </div>
       </div>}
