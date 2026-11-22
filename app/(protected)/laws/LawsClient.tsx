@@ -452,6 +452,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                         {canManage && <div className="mt-1 flex gap-1">
                           {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
                           <button type="button" onClick={() => setDraft(toDraft(l))} title="Edit days, time and who" className="rounded bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✎</button>
+                          <button type="button" onClick={() => void remove(l)} title="Delete this law" aria-label="Delete this law" className="rounded bg-red-50 px-2 py-1 text-[12px] font-bold text-red-700">🗑</button>
                         </div>}
                       </div>
                       {l.law_type !== 'app' && <div className="col-span-4 rounded-md bg-red-50 px-2 py-1 sm:col-span-1 text-[12px] leading-snug text-red-900">
