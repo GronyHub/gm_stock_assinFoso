@@ -149,10 +149,9 @@ html.framed .no-frame { display: none !important; }
 .menu-page nav p { display: none; }
 @media (max-width: 639px) { .cash-strip nav button { width: auto !important; padding-left: 4px !important; padding-right: 4px !important; } }
 @media (max-width: 639px) { .cash-strip nav button[aria-label="Manage"] { display: none; } }
-/* Cash tabs kept off the phone's top row. They are listed under More (a dropdown); Pending jobs is also the Job button on the Live page. */
+/* The phone's top row carries every Cash tab and scrolls sideways. Pending jobs is left off: it is also the Job button on the Live page. */
 @media (max-width: 639px) {
-  .cash-strip nav button[aria-label="Pending jobs"], .cash-strip nav button[aria-label="Activity times"], .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"],
-  .cash-strip nav button[aria-label="Flags"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Purchase Orders"], .cash-strip nav button[aria-label="P&L"] { display: none; }
-  /* More (or Less, once open) is always the last tab in the row. */
-  .cash-strip nav button[aria-label="More"], .cash-strip nav button[aria-label="Less"] { order: 100; }
+  .cash-strip nav button[aria-label="Pending jobs"] { display: none; }
+  /* Search is always the last tab in the row. */
+  .cash-strip nav button[aria-label="Search"] { order: 100; }
 }

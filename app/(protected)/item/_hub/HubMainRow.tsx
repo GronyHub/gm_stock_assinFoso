@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import StripArrows from './StripArrows'
 import PresentStaffBar from '../_components/PresentStaffBar'
 import { SidePaneToggle } from '../_components/SidePane'
 import SettingsPane from '../_components/SettingsPane'
@@ -34,7 +35,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
   const strip = !moreOpen && (h.isDesktop ? !!h.paneActive(h.modeActive('sale')) : h.outerTab === 'loss' && !h.shop && !h.personal && !h.embedUrl)
   return (<><div className={`relative flex-1 min-h-0 flex overflow-hidden pb-14 sm:pb-0 ${strip ? 'max-sm:flex-col' : ''}`}>
         <div onClickCapture={e => { const b = (e.target as HTMLElement).closest('button'); if (b && !b.hasAttribute('data-more-toggle') && !b.hasAttribute('data-menu-close')) setMoreOpen(false) }}
-          className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : strip ? 'cash-strip flex shrink-0 sm:flex' : 'hidden sm:flex'}>
+          className={moreOpen ? 'menu-page fixed inset-x-0 bottom-[56px] top-0 z-50 flex flex-col bg-[#00072d] [&>nav]:min-h-0 [&>nav]:w-full! [&>nav]:flex-1 [&_nav_button]:text-[16px]' : strip ? 'cash-strip relative flex shrink-0 sm:flex' : 'hidden sm:flex'}>
           {moreOpen && (
             <div className="flex shrink-0 items-center justify-between border-b border-white/20 px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:hidden">
               <h1 className="text-lg text-white">Menu</h1>
@@ -42,6 +43,7 @@ export default function HubMainRow({ h }: { h: HubCtx }) {
                 className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-white hover:bg-white/10">✕</button>
             </div>
           )}
+          {strip && <StripArrows />}
           <HubSidePane h={strip ? ({ ...h, cashDisplayMode: 'both', stripAll: true } as typeof h) : h} />
         </div>
         {/* Restore button while the pane is hidden -- floats over the

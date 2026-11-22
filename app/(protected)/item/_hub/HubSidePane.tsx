@@ -1,7 +1,6 @@
 'use client'
 import { SIDEBAR_RULES, type SidebarPerms, type SidebarRule } from '@/lib/sidebarAccess'
-import { Fragment, useState } from 'react'
-import StripMoreMenu from './StripMoreMenu'
+import { Fragment, useEffect, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import PaneDaily from '../_components/PaneDaily'
@@ -20,8 +19,10 @@ import { formatPrice } from './hubShared'
 export default function HubSidePane({ h }: { h: HubCtx }) {
   const { outerTab, lossView, setLossView, search, settingsOpen, setSettingsOpen, liveMode, itemsPageMode, liveManageSection, plSubView, lossesOpen, setLossesOpen, analyticsOpen, setAnalyticsOpen, liveSaleViolationFilter, sidePaneHidden, jumpToCustomersTab, setGlobalSearchOpen, uk, ukAllSubmenus, ukGeneralSubmenus, ch, items, globalFlags, violationCounts, salesFlagsCount, itemsFlagsCount, billsFlagsCount, cabFlagsCount, staffTimesFlagsCount, dressFlagsCount, countsFlagsCount, lossByDateFlagsCount, expensesFlagsCount, customersFlagsCount, vendorsFlagsCount, taskCountFor, changeTab, myDayBadge, pendingJobsBadge, setEmbedUrl, personal, setPersonal, shop, setShop, openEmbed, openShop, openPersonal, pickLossView, pickCHView, pickViewing, cashDisplayMode, changeCashDisplayMode, session, username, isOwnerOrJoe, showFlags, fl, canManage, paneOrder, paneLabel, paneHidden, cashItemActive, cashItemClick, cashItemTaskScope, combinedCashItems, perm, canSeeCash, isCaretakerOnly, canSeePL, canSeeUsers, canViewPortalAs, canSeeUK, canSeeCaretake, canSeeCH, canSeeCHTab, canOpenSettings, canOpenUkSettings, myStaffName, viewingName, paneActive, embedActive, paneAccent, liveNetLossCount, liveAcpGteSpCount, salesByStaff, liveSaleFlagTotal, pickSaleFilter, pickPL, goItemsMode, goSaleFilter, modeActive, goLossSubView } = h
   const { isDesktop, activeStaff, waitingBy, liveTapsStatus, liveTodaySalesTotal } = h
-  // Phone top row: the less-used Cash tabs are listed in a dropdown under More (see StripMoreMenu and the .cash-strip rules in globals.css).
-  const [stripMore, setStripMore] = useState(false)
+  // Phone top row (stripAll): every Cash page is its own tab in one row that scrolls sideways, none nested inside another (see the .cash-strip rules in globals.css).
+  const flat = !isDesktop && !!(h as { stripAll?: boolean }).stripAll
+  const [pics, setPics] = useState(false)
+  useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [lossView])
   // In the phone's New sale strip they are always there: the strip is not shown on the Bills pages, so there would be no way to open them.
   const purchasingOpen = !!(h as { stripAll?: boolean }).stripAll || paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
   const perms: SidebarPerms = { isOwnerOrJoe, canSeeCash, canSeePL, showFlags, canSeeCH, canSeeCaretake, careLog: perm('care_log'), canOpenSettings, isCaretakerOnly, canSeeUK, canSeeCHTab }
@@ -102,8 +103,8 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {!isDesktop && (h as { stripAll?: boolean }).stripAll && <SidePaneButton icon="⋯" label={stripMore ? 'Less' : 'More'} mode={cashDisplayMode} active={stripMore} noNewTab onClick={() => setStripMore(o => !o)} />}
-              {!isDesktop && (h as { stripAll?: boolean }).stripAll && stripMore && <StripMoreMenu onClose={() => setStripMore(false)} onCab={() => pickLossView('cab')} showView={lossView === 'items'} />}
+              {flat && lossView === 'items' && <SidePaneButton icon={pics ? '🖼️' : '▦'} label={pics ? 'Pictures' : 'Compact'} mode={cashDisplayMode} noNewTab active={false}
+                onClick={() => { const on = !pics; setPics(on); window.dispatchEvent(new CustomEvent('live-pictures', { detail: on })) }} />}
               <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
             </div>
@@ -140,7 +141,11 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               </>)}
               {show('pl') && (
                 <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
-                  active={paneActive((lossView === 'pl' && plSubView === 'pl') || lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickPL()} />
+                  active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
+              )}
+              {show('pl') && (
+                <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
+                  active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
               )}
             </div>
             )}
@@ -149,13 +154,13 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Reports</p>
               {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
                 active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
-              <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+              {!flat && <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={fl(lossByDateFlagsCount)}
-                noNewTab onClick={() => setLossesOpen(o => !o)} />
-              {lossesOpen && (<>
-                <SidePaneButton icon="•" label="Loss by Date" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                noNewTab onClick={() => setLossesOpen(o => !o)} />}
+              {(lossesOpen || flat) && (<>
+                <SidePaneButton icon={flat ? '📉' : '•'} label="Loss by Date" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_date')} onClick={() => goLossSubView('loss_by_date')} />
-                <SidePaneButton icon="•" label="Loss by Items" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
+                <SidePaneButton icon={flat ? '📊' : '•'} label="Loss by Items" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                   active={paneActive(lossView === 'pl' && plSubView === 'loss_by_items')} onClick={() => goLossSubView('loss_by_items')} />
                 {liveNetLossCount > 0 && (
                   <SidePaneButton icon="•" label="Net Loss" badge={fl(liveNetLossCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
