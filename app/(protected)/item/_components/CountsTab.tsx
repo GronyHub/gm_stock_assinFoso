@@ -1,5 +1,7 @@
 'use client'
 import WithMic from '@/components/WithMic'
+import CountCards from './CountCards'
+import { useIsPhone } from '@/lib/useIsPhone'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
@@ -47,6 +49,7 @@ type CountRecord = {
   counted_by: string | null
   source: string | null
   cf_group: string | null
+  expected?: number | null; loss_qty?: number | null; loss_amt?: number | null; kind?: 'loss' | 'gain' | null
 }
 
 type DailyItem = {
@@ -281,6 +284,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
   const [records, setRecords] = useState<CountRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const phone = useIsPhone()
   const [showHistory, setShowHistory] = useState(false)
   const [viewingItemId, setViewingItemId] = useState<number | null>(null)
   const [highlightId, setHighlightId] = useState<number | null>(null)
@@ -537,14 +541,14 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         <AnalyticsToggle showing={showAnalytics} onToggle={() => setShowAnalytics(a => !a)} />
         {!showAnalytics && <>
         <button onClick={() => setShowManual(v => !v)}
-          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded max-sm:px-3.5 max-sm:py-2 max-sm:text-[13px] max-sm:rounded-xl max-sm:font-bold bg-blue-600 text-white hover:bg-blue-500 transition">
           {showManual ? '× Close' : '+ Manual Count'}
         </button>
         <button onClick={() => setShowHistory(true)}
-          className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
+          className="text-[12px] font-semibold px-1.5 py-0.5 rounded max-sm:px-3.5 max-sm:py-2 max-sm:text-[13px] max-sm:rounded-xl bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition">
           History
         </button>
-        <ColumnsPickerButton prefs={colPrefs} />
+        <span className="max-sm:hidden"><ColumnsPickerButton prefs={colPrefs} /></span>
         </>}
       </PageToolbar>
       {showAnalytics && (
@@ -556,7 +560,13 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         <ManualCountForm items={items} initialItem={scanned} onClose={() => { setShowManual(false); setScanned(null) }} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
-      {!showAnalytics && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
+      {!showAnalytics && phone && filtered.length > 0 && (
+        <div className="flex-1 overflow-y-auto min-h-0 px-2 pt-2">
+          <CountCards rows={filtered} fmtDate={fmtShort} highlightId={highlightId} editingId={editingId} editQty={editQty} editNotes={editNotes} saving={saving} canDelete={!!canDelete}
+            setEditQty={setEditQty} setEditNotes={setEditNotes} onEdit={r => startEdit(r as CountRecord)} onCancel={() => setEditingId(null)} onSave={() => saveEdit()} onDelete={r => deleteCount(r as CountRecord)} onOpenItem={setViewingItemId} />
+        </div>
+      )}
+      {!showAnalytics && !(phone && filtered.length > 0) && <div className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
         <table className="border-collapse text-[12px]" style={{
