@@ -30,6 +30,8 @@ const lab = 'mb-0.5 block text-[12px] font-bold uppercase text-gray-500'
 // 'violation', the same recording sentence is not printed on every row, and the Why is shown once per subcategory above its table.
 // The laws are statutory: nobody signs them, so there are no signature columns.
 const SIGNING = false
+const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 // Inside an area page on a phone: the five columns stack, every one kept, each with its heading.
 const STACK = 'max-sm:grid-cols-1 max-sm:[&>*]:[grid-area:auto]! max-sm:[&>*]:border-0! max-sm:[&>*]:border-t! max-sm:[&>*]:p-2! max-sm:[&>*]:before:mb-0.5 max-sm:[&>*]:before:block max-sm:[&>*]:before:text-[11px] max-sm:[&>*]:before:font-extrabold max-sm:[&>*]:before:uppercase max-sm:[&>*]:before:text-gray-500 max-sm:[&>*]:before:content-[attr(data-lbl)]'
 const COLS = 'grid-cols-[0.95fr_1.25fr_1.5fr_1.3fr_0.55fr]'
@@ -476,6 +478,26 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                           </div>
                         )
                       })()}
+                      {rec && (() => {
+                        const st = stat(l.id)
+                        const short = (t: string) => t.replace(/\s*\(the law:[^)]*\)/i, '').replace(/ on \d{4}-\d{2}-\d{2}/, '').trim()
+                        const rows = [...st.d.map(x => ({ day: x.day, t: `✅ ${fmtDay(x.day)} · ${cap(x.recorded_by)}` })), ...st.m.map(x => ({ day: x.day, t: `⚠ ${fmtDay(x.day)} · ${cap(x.owner ?? 'nobody')} · ${x.reason ?? 'not done'}` })), ...st.p.map(x => ({ day: x.day, t: `⚖ ${fmtDay(x.day)} · ${cap(x.staff)} · ${x.points} pt · ${short(x.reason)}` }))].sort((x, y) => y.day.localeCompare(x.day))
+                        if (!rows.length) return null
+                        const months = Array.from(new Set(rows.map(r => r.day.slice(0, 7))))
+                        return (
+                          <details className="col-span-4 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1 sm:col-span-5">
+                            <summary className="cursor-pointer text-[13px] font-bold text-gray-800">Record ({rows.length}) <span className="font-normal text-gray-500">· last 30 days</span></summary>
+                            <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
+                              {months.map(m => (
+                                <div key={m}>
+                                  {months.length > 1 && <p className="text-[11px] font-extrabold uppercase text-gray-500">{new Date(`${m}-01T12:00:00`).toLocaleString('en-GB', { month: 'long', year: 'numeric' })}</p>}
+                                  <ul className="space-y-0.5">{rows.filter(r => r.day.startsWith(m)).slice(0, 40).map((r, k) => <li key={k}>{r.t}</li>)}</ul>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )
+                      })()}
                       <details className="col-span-4 border-t border-gray-100 pt-1 sm:col-span-5">
                         <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
                         <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
@@ -484,11 +506,6 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                           {lines(l.donts).length > 0 && <div><b className="text-red-800">Do not:</b><ul className="list-disc pl-4">{lines(l.donts).map((x, k) => <li key={k}>{x}</li>)}</ul></div>}
                           {l.not_violation && <p className="text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
                           {l.tile_id && l.kept && <p className="font-semibold">{l.kept.of > 0 ? `Kept ${l.kept.done} of the last ${l.kept.of} working days${l.kept.missed_last ? ' (missed yesterday)' : ''}.` : l.kept.last ? `Last done on ${l.kept.last}.` : 'Not done in the last two weeks.'}</p>}
-                          {rec && (() => {
-                            const s = stat(l.id)
-                            const rows = [...s.d.map(x => ({ day: x.day, t: `✅ ${x.day} · ${x.recorded_by}` })), ...s.m.map(x => ({ day: x.day, t: `⚠ ${x.day} · ${x.owner ?? 'nobody'}${x.reason ? ` · ${x.reason}` : ' · not done'}` })), ...s.p.map(x => ({ day: x.day, t: `⚖ ${x.day} · ${x.staff} · ${x.points} pt · ${x.reason}` }))].sort((a, b) => b.day.localeCompare(a.day)).slice(0, 15)
-                            return rows.length ? <div><b>Record, last 30 days:</b><ul className="pl-1">{rows.map((r, k) => <li key={k}>{r.t}</li>)}</ul></div> : null
-                          })()}
                           {(() => { const wy = whyFor(l.category ?? null, l.subcategory ?? null); return wy ? <WhyBox w={wy} /> : null })()}
                           {l.status !== 'draft' && (l.quiz_n ?? 0) > 0 && (sig?.signer ? <button type="button" onClick={() => setQuizFor(l)} className="rounded-md bg-indigo-600 px-2 py-1 text-[12px] font-bold text-white">📝 Practice quiz (optional)</button> : <p className="text-gray-500">{l.quiz_n} practice questions</p>)}
                         </div>
