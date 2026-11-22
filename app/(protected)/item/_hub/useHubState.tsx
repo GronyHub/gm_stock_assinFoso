@@ -5962,6 +5962,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
             {compact ? '✕ Item' : 'Clear Item'}
           </button>
         )}
+        {!inCountTab && (<>
         <button
           type="button"
           onClick={() => setLiveSaleType(t => t === 'WIC' ? 'GMC' : 'WIC')}
@@ -6001,6 +6002,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         >
           📊
         </button>
+        </>)}
       </>
     )
   }
