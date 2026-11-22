@@ -155,3 +155,17 @@ html.framed .no-frame { display: none !important; }
   /* Search is always the last tab in the row. */
   .cash-strip nav button[aria-label="Search"] { order: 100; }
 }
+
+/* Phone: the Edit expense sheet shows only the form, full size (the table's own zoom-out and columns are dropped). */
+.expense-sheet table, .expense-sheet tbody, .expense-sheet tr, .expense-sheet td { display: block; width: 100% !important; zoom: 1 !important; }
+.expense-sheet thead, .expense-sheet colgroup, .expense-sheet tr:not(.bg-blue-50\/40) { display: none !important; }
+.expense-sheet td { padding: 0 !important; }
+.expense-sheet .grid { grid-template-columns: 1fr !important; gap: 12px !important; max-width: none !important; }
+.expense-sheet .col-span-2 { grid-column: auto !important; }
+.expense-sheet p { font-size: 13px !important; margin-bottom: 4px !important; }
+.expense-sheet input:not([type="radio"]):not([type="checkbox"]), .expense-sheet select, .expense-sheet textarea { font-size: 16px !important; padding: 10px 12px !important; border-radius: 10px !important; min-height: 44px; }
+.expense-sheet input[type="radio"], .expense-sheet input[type="checkbox"] { width: 20px !important; height: 20px !important; }
+.expense-sheet label, .expense-sheet label span { font-size: 15px !important; }
+.expense-sheet label { gap: 8px !important; padding: 4px 0; }
+.expense-sheet button { font-size: 15px !important; padding: 10px 16px !important; border-radius: 10px !important; min-height: 44px; }
+.expense-sheet td > div > div { margin-top: 12px; }

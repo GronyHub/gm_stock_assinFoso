@@ -984,7 +984,6 @@ export function useHubState() {
     { label: 'Counts', names: ['counts', 'counting'], run: () => goCountMode() },
     { label: 'Times', names: ['times', 'staff times'], run: () => openShop('times') },
     { label: 'Flags', names: ['flags'], run: () => pickLossView('flags') },
-    { label: 'Item 360', names: ['item 360', 'item three sixty'], run: () => pickLossView('item360') },
     { label: 'Bills', names: ['bills'], run: () => goItemsMode('bills') },
     { label: 'Expenses', names: ['expenses'], run: () => goItemsMode('expenses') },
     { label: 'Purchase Orders', names: ['purchase orders', 'orders'], run: () => pickLossView('purchaseOrders') },

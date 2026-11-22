@@ -40,7 +40,6 @@ export const ExpenseOrdersPanel = dynamic(() => import('../_components/ExpenseOr
 
 export const UKSettingsPanel = dynamic(() => import('../_components/UKSettingsPanel'), { ssr: false })
 
-export const Item360Page = dynamic(() => import('../_components/Item360Page'), { ssr: false, loading: () => loading('Loading…') })
 
 export const ItemDetailPanel = dynamic(() => import('../_components/ItemDetailPanel'), { ssr: false })
 

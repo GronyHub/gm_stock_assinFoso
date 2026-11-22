@@ -9,7 +9,7 @@ import { type CHView } from '../_components/chViewData'
 import SettingsHome from '../_components/SettingsHome'
 import { STAFF_ADMIN_TEAM_ITEMS } from '../_components/staffViewData'
 import { isOwnerLevel } from '@/lib/roles'
-import { TabErrorBoundary, ExpenseOrdersPanel, Item360Page, ItemsTab, CABTab, TodayContent, NewItemForm, ItemsAnalyticsSection, ViolationsAnalyticsSection, LossTab, ProfitLossTab, DailySummaryTab, GronyManageContent, VendorsPage, CustomersPage, PurchaseOrdersPage, AliasWidePage, ServiceMatchesPage, GmcPacksPage, ViewPortalAsButton, StaffContent, StaffMemberPersonalTab, UKTab, CHTab, ReorderListsPanel, ActivityDurationsPanel, SalesTab, CountsTab, STAFF_ROSTER, MANAGE_VIEW_KEYS, isStaffView, type LossView, type Tap } from './hubShared'
+import { TabErrorBoundary, ExpenseOrdersPanel, ItemsTab, CABTab, TodayContent, NewItemForm, ItemsAnalyticsSection, ViolationsAnalyticsSection, LossTab, ProfitLossTab, DailySummaryTab, GronyManageContent, VendorsPage, CustomersPage, PurchaseOrdersPage, AliasWidePage, ServiceMatchesPage, GmcPacksPage, ViewPortalAsButton, StaffContent, StaffMemberPersonalTab, UKTab, CHTab, ReorderListsPanel, ActivityDurationsPanel, SalesTab, CountsTab, STAFF_ROSTER, MANAGE_VIEW_KEYS, isStaffView, type LossView, type Tap } from './hubShared'
 import type { HubCtx } from './useHubState'
 import HubScrollArea from './HubScrollArea'
 
@@ -102,11 +102,6 @@ export default function HubContentColumn({ h }: { h: HubCtx }) {
                 })}</div>
               })()}
             </div>
-          </TabErrorBoundary>
-        )}
-        {outerTab === 'loss' && lossView === 'item360' && (
-          <TabErrorBoundary>
-            <Item360Page />
           </TabErrorBoundary>
         )}
         {outerTab === 'loss' && lossView === 'home' && (

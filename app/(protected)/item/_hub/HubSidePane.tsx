@@ -105,8 +105,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               ))}
               {flat && lossView === 'items' && <SidePaneButton icon={pics ? '🖼️' : '▦'} label={pics ? 'Pictures' : 'Compact'} mode={cashDisplayMode} noNewTab active={false}
                 onClick={() => { const on = !pics; setPics(on); window.dispatchEvent(new CustomEvent('live-pictures', { detail: on })) }} />}
-              <SidePaneButton icon="🔎" label="Item 360" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(lossView === 'item360')} onClick={() => pickLossView('item360')} />
             </div>
             )}
 

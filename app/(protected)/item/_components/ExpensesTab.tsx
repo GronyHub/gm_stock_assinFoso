@@ -1392,7 +1392,7 @@ export default function ExpensesTab({
               <p className="min-w-0 truncate text-[15px] font-bold text-[#14213D]">Edit expense</p>
               <button type="button" onClick={tableProps.onCloseEdit} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-700">Close</button>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto p-2"><ExpenseTable rows={[e]} {...tableProps} /></div>
+            <div className="expense-sheet min-h-0 flex-1 overflow-auto p-3"><ExpenseTable rows={[e]} {...tableProps} /></div>
           </div>
         ) : null
       })()}
