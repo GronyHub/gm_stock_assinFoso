@@ -465,6 +465,7 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                 </button>
               )}
               {renderModeToggleRow()}
+              {isDesktop ? (<>
               <PageToolbar inline={liveExpanded} grow={false} inlineClassName="px-1.5 py-1 border-b border-gray-200 bg-gray-50 flex items-center justify-end gap-1 flex-wrap">
                 <PageGuide page="bills" />
                 <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
@@ -532,6 +533,48 @@ export default function HubScrollArea({ h }: { h: HubCtx }) {
                 </label>
                 {/* Purchase Orders and Vendors have their own sidebar rows. */}
               </div>
+              </>) : (
+              <>
+                <PageToolbar inline={liveExpanded} grow={false} inlineClassName="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-2 py-1.5">
+                  <PageGuide page="bills" />
+                  <select value={liveBillsVendorFilter ?? ''} onChange={e => setLiveBillsVendorFilter(e.target.value || null)}
+                    className="min-w-[7rem] flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[13px] text-gray-800">
+                    <option value="">All Vendors</option>
+                    {liveBillsAvailableVendors.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select value={liveBillsMonthFilter ?? ''} onChange={e => setLiveBillsMonthFilter(e.target.value ? Number(e.target.value) : null)}
+                    className="min-w-[6rem] flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[13px] text-gray-800">
+                    <option value="">All Months</option>
+                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
+                      <option key={m} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                  <select value={liveBillsYearFilter ?? ''} onChange={e => setLiveBillsYearFilter(e.target.value ? Number(e.target.value) : null)}
+                    className="min-w-[5rem] flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[13px] text-gray-800">
+                    <option value="">All Years</option>
+                    {liveBillsAvailableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  {(liveBillsVendorFilter !== null || liveBillsMonthFilter !== null || liveBillsYearFilter !== null) && (
+                    <button onClick={() => { setLiveBillsVendorFilter(null); setLiveBillsMonthFilter(null); setLiveBillsYearFilter(null) }}
+                      className="shrink-0 text-[13px] font-semibold text-blue-600">Clear</button>
+                  )}
+                  <input type="text" value={liveEmbeddedSearch} onChange={e => setLiveEmbeddedSearch(e.target.value)} placeholder="Search…"
+                    className="min-w-[8rem] flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                  <button type="button" onClick={() => selectLiveBillsRadio('new_bill')}
+                    className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-[13px] font-bold text-white">+ New Bill</button>
+                  <button type="button" onClick={() => setLiveBillsShowAnalytics(a => !a)} aria-pressed={liveBillsShowAnalytics}
+                    className={`shrink-0 rounded-lg px-3 py-1.5 text-[13px] font-bold ${liveBillsShowAnalytics ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>Analytics</button>
+                </PageToolbar>
+                <div className="border-b border-gray-200 bg-white px-2 py-1.5">
+                  <select aria-label="View" value={liveBillsRadioValue === 'new_bill' ? 'all' : liveBillsRadioValue} onChange={e => selectLiveBillsRadio(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-[14px] font-semibold text-gray-800">
+                    <option value="all">All bills</option>
+                    <option value="bars_only">Bars only (hide the item lines)</option>
+                    <option value="history">History</option>
+                  </select>
+                </div>
+              </>
+              )}
               {/* Bills violations moved to Critical bar at top --
                   No Vendor/No Item List/Total Mismatch/No Attachment/No Expense/VCP Jump
                   now appear in the Critical bar's Bills section to surface
