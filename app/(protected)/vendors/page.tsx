@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import LocationField from '@/components/LocationField'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
+import { useIsPhone } from '@/lib/useIsPhone'
+import VendorCards from './VendorCards'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from '../item/_components/columnPrefs'
 
 type Vendor = {
@@ -208,6 +210,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
+  const phone = useIsPhone()   // a phone gets cards and a full-screen details panel; a larger screen keeps the table
   const [selected, setSelected] = useState<Vendor | null>(null)
   const [editingVendor, setEditingVendor] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -298,7 +301,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
 
       {/* Selected vendor detail */}
       {selected && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className={phone ? 'fixed inset-0 z-[70] overflow-y-auto bg-white p-4 pb-24 space-y-3' : 'bg-white border border-gray-200 rounded-xl p-4 space-y-3'}>
           <div className="flex items-start justify-between">
             <div>
               <p className="font-bold text-gray-900">{selected.display_name}</p>
@@ -364,7 +367,11 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
         </div>
       )}
 
-      {/* Vendor table */}
+      {/* Vendor table (a phone shows cards instead) */}
+      {phone ? (
+        <VendorCards vendors={filtered} selectedId={selected?.id ?? null}
+          onOpen={vd => { const full = vendors.find(x => x.id === vd.id); if (full) { setSelected(full); setEditingVendor(false) } }} />
+      ) : (
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No vendors found.</p>
@@ -413,6 +420,7 @@ export default function VendorsPage({ openAddSignal, initialSearch, onFlagCountC
           </table>
         )}
       </div>
+      )}
     </div>
   )
 }

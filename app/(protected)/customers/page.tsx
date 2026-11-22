@@ -5,6 +5,8 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useFitWidth } from '@/lib/useFitWidth'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide from '@/components/PageGuide'
+import { useIsPhone } from '@/lib/useIsPhone'
+import CustomerCards from './CustomerCards'
 import LocationField from '@/components/LocationField'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, ColResizeHandle, type ColumnDef } from '../item/_components/columnPrefs'
 
@@ -259,6 +261,7 @@ export default function CustomersPage({
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(initialSearch ?? '')
+  const phone = useIsPhone()   // a phone gets cards and a full-screen details panel; a larger screen keeps the table
   const [selected, setSelected] = useState<Customer | null>(null)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [activeFlag, setActiveFlag] = useState<FlagKey | null>(null)
@@ -395,7 +398,7 @@ export default function CustomersPage({
 
       {/* Selected customer detail */}
       {selected && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className={phone ? 'fixed inset-0 z-[70] overflow-y-auto bg-white p-4 pb-24 space-y-3' : 'bg-white border border-gray-200 rounded-xl p-4 space-y-3'}>
           <div className="flex items-start justify-between">
             <div>
               <p className="font-bold text-gray-900">{selected.display_name}</p>
@@ -476,7 +479,11 @@ export default function CustomersPage({
         </div>
       )}
 
-      {/* Customer table */}
+      {/* Customer table (a phone shows cards instead) */}
+      {phone ? (
+        <CustomerCards customers={filtered} selectedId={selected?.id ?? null} showIncomplete={!!activeFlag}
+          onOpen={cu => { const full = customers.find(x => x.id === cu.id); if (full) { setSelected(full); setEditingCustomer(true) } }} />
+      ) : (
       <div ref={wrapRef} className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-gray-400 text-sm">No customers found.</p>
@@ -544,6 +551,7 @@ export default function CustomersPage({
           </table>
         )}
       </div>
+      )}
     </div>
   )
 }
