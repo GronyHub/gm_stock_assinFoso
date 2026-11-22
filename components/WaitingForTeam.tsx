@@ -10,7 +10,7 @@ import ClockNotices from '@/components/ClockNotices'
 import PenaltyDecisions from '@/components/PenaltyDecisions'
 import DateStrip from '@/components/DateStrip'
 import WorkloadStrip from '@/components/WorkloadStrip'
-import TaskTile, { DensityToggle, tileGrid, useTileDensity } from '@/components/TaskTile'
+import TaskTile, { tileGrid, type TileDensity } from '@/components/TaskTile'
 import { LAW_TYPES } from '@/lib/lawCategories'
 import { ACTIVE_STAFF } from '@/lib/staffList'
 import { lawPageHref } from '@/lib/lawAreas'
@@ -32,7 +32,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10)
 // holds only what belongs to the chosen date: today's live list, an earlier day's record, or a coming day's planned tasks (named from the rota).
 export default function WaitingForTeam({ canManage, below, noPeople }: { canManage: boolean; below?: React.ReactNode; noPeople?: boolean }) {
   const today = todayKey()
-  const [density, setDensity] = useTileDensity()
+  const density: TileDensity = 'full'   // every tile shows its whole text: no Small setting
   // Filter by person: on Today anyone can; on other dates only the people the signed-in supervisor may look at.
   const [who, setWho] = useState('')
   const [viewable, setViewable] = useState<string[]>([])
@@ -98,7 +98,6 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
       <div className="sticky top-0 z-20 bg-white pb-1">   {/* the date strip and the staff chips stay on screen while the tiles scroll under them */}
       <div className="flex items-start gap-1 px-2">
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
-        <DensityToggle density={density} onChange={setDensity} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[12px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
       {!noPeople && chipNames.length > 0 && (
@@ -159,7 +158,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
                     return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor((d.shown ?? d.due) / 60)).padStart(2, '0')}:${String((d.shown ?? d.due) % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                      onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && lawPageHref(d.lawId, d.category) ? () => go(lawPageHref(d.lawId, d.category)!) : undefined} />
+                      onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={lawPageHref(d.lawId, d.category) ? () => go(lawPageHref(d.lawId, d.category)!) : undefined} />
                   })}</div>
                 </div>) })}
             </div>)}

@@ -186,7 +186,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={canEdit ? lawPageHref(d.lawId, d.category) : undefined} />))}
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />))}
           </div>
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
@@ -215,7 +215,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
-                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={canEdit ? lawPageHref(d.lawId, d.category) : undefined} />
+                onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />
             ))}
           </div>
         </div>
@@ -250,6 +250,8 @@ export function TileSheet({ t, ev, isToday, canEdit, present, notYet, onClose, o
   const [doneAt, setDoneAt] = useState(ev?.extra?.done_at ?? '')
   const [note, setNote] = useState(ev?.note ?? '')
   const [editing, setEditing] = useState(false)
+  const [askNo, setAskNo] = useState(false)       // Not done was pressed: now the reason is asked
+  const [moreTime, setMoreTime] = useState(false)  // the 'time it was done' choices stay out of the way until asked for
   const { busy, err, setErr, run } = useRun(onSaved, onClose)
   const record = (value: 'Done' | 'Not done') => run(() => fetch('/api/daily-checks/tap', { method: 'POST', headers: json, body: JSON.stringify({ tile_id: t.id, value, done_at: doneAt || undefined, note: note || undefined }) }), `${value}: ${t.title}`)
   const patch = (extra: Record<string, unknown>, msg: string) => run(() => fetch(`/api/daily-checks/events/${ev!.id}`, { method: 'PATCH', headers: json, body: JSON.stringify({ done_at: doneAt || null, note: note || null, ...extra }) }), msg)
@@ -268,23 +270,21 @@ export function TileSheet({ t, ev, isToday, canEdit, present, notYet, onClose, o
             <p className="text-xs text-gray-500">{ev ? `${ev.value === 'Not done' ? 'Not done' : 'Done'} at ${evTime(ev)} on ${ev.day} by ${ev.recorded_by}` : t.time && t.frequency === 'daily' ? `Planned for ${t.time}` : 'Not recorded yet'}</p>
           </div>
         </div>
-        {t.how && <p className="rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><b>How:</b> {t.how}</p>}
-        {linkFor(t) && <a href={linkFor(t)!.href} className="block w-full rounded-xl bg-blue-600 py-3 text-center text-base font-bold text-white">{linkFor(t)!.label}</a>}
+        {t.how && <p className="whitespace-pre-line rounded-xl bg-gray-50 p-3 text-sm leading-snug text-gray-800">{t.how}</p>}
+        {linkFor(t) && <a href={linkFor(t)!.href} className="block text-sm font-semibold text-blue-700 underline">{linkFor(t)!.label} →</a>}
         {t.frequency === 'daily' && t.kind !== 'properties' && t.time && <p className="text-[12px] font-semibold text-red-700">If this is still undone at the end of the day, whoever it falls on gets a penalty point (at most 3 a day). Marking it Not done with a real reason excuses the point.</p>}
-        {t.law_id && t.category && <a href={lawPageHref(t.law_id, t.category)} className="block text-[12px] font-semibold text-blue-700 underline">The law behind this ·{t.category}{t.subcategory ? ` › ${t.subcategory}` : ''}</a>}
-        {t.minutes != null && <p className="text-[12px] font-semibold text-indigo-700">Counts as {t.minutes} minute{t.minutes === 1 ? '' : 's'} of work time for whoever does it.</p>}
         {ev?.note && !editableEv && <p className="text-xs text-gray-600">Note: {ev.note}</p>}
         {t.kind === 'group' && <GroupForm tileId={t.id} day={ev?.day ?? new Date().toISOString().slice(0, 10)} editable={isToday} canEdit={canEdit} onSaved={onSaved} onClose={onClose} />}
         {t.kind !== 'tap' && t.kind !== 'group' && !ev && isToday && <AnswerForm t={t} present={present} onSaved={onSaved} onClose={onClose} />}
         {ev && t.kind !== 'tap' && t.kind !== 'group' && <AnswerSummary ev={ev} />}
         {t.kind === 'tap' && isToday && (!ev || editableEv) && (<>
-          <p className="text-xs font-bold uppercase text-gray-500">Time it was done {ev ? '' : '(blank = now)'}</p>
-          <div className="flex flex-wrap items-center gap-2">
+          {(ev || moreTime) && <p className="text-xs font-bold uppercase text-gray-500">Time it was done {ev ? '' : '(blank = now)'}</p>}
+          {(ev || moreTime) && <div className="flex flex-wrap items-center gap-2">
             {[5, 10, 15, 30, 60].map(m => <button key={m} type="button" onClick={() => ago(m)} className="rounded-full bg-indigo-100 px-3 py-2 text-sm font-semibold text-indigo-800">{m} min ago</button>)}
             <input type="time" value={doneAt} onChange={e => setDoneAt(e.target.value)} className="rounded-xl border border-gray-300 p-2 text-sm" />
             {doneAt && <button type="button" onClick={() => setDoneAt('')} className="text-xs font-semibold text-gray-500">Clear</button>}
-          </div>
-          <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder="Note (a reason is needed for Not done)" className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>
+          </div>}
+          {(ev || askNo) && <WithMic onText={t => setNote(x => (x ? x + ' ' : '') + t)}><input value={note} onChange={e => setNote(e.target.value)} placeholder={ev ? 'Note' : 'Why was it not done?'} autoFocus={askNo} className="w-full rounded-xl border border-gray-300 p-3 text-sm" /></WithMic>}
         </>)}
         {notYet && (<>
           <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">Not time yet. This can only be recorded on {notYet}.</p>
@@ -298,11 +298,14 @@ export function TileSheet({ t, ev, isToday, canEdit, present, notYet, onClose, o
           {(t.kind === 'group' || t.kind === 'properties') && <button type="button" disabled className="w-full rounded-xl bg-blue-600 py-3 text-base font-bold text-white opacity-40">Answer the questions</button>}
         </>)}
         {err && <p className="text-sm text-red-600">{err}</p>}
-        {t.kind === 'tap' && isToday && !ev && (
+        {t.kind === 'tap' && isToday && !ev && (<>
+          <p className="pt-1 text-center text-base font-bold text-gray-900">Has this been done?</p>
           <div className="flex gap-2">
-            <button type="button" disabled={busy} onClick={() => void record('Done')} className="flex-1 rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Done now</button>
-            <button type="button" disabled={busy} onClick={() => { if (note.trim().length < 4) { setErr('Write why it could not be done, then press Not done.'); return } void record('Not done') }} className="flex-1 rounded-xl bg-gray-600 py-3 text-base font-bold text-white disabled:opacity-40">Not done</button>
+            <button type="button" disabled={busy || askNo} onClick={() => void record('Done')} className="flex-1 rounded-xl bg-green-600 py-4 text-base font-bold text-white disabled:opacity-40">Yes, it is done</button>
+            <button type="button" disabled={busy} onClick={() => { if (!askNo) { setAskNo(true); return } if (note.trim().length < 4) { setErr('Write why it could not be done, then press Not done again.'); return } void record('Not done') }} className="flex-1 rounded-xl bg-gray-600 py-4 text-base font-bold text-white disabled:opacity-40">{askNo ? 'Save: not done' : 'Not done'}</button>
           </div>
+          {!askNo && !moreTime && <button type="button" onClick={() => setMoreTime(true)} className="w-full text-center text-xs font-semibold text-gray-500 underline">It was done earlier: set the time</button>}
+        </>
         )}
         {canEdit && ev?.value === 'Not done' && !ev.extra?.overruled && isToday && <button type="button" disabled={busy} onClick={() => void patch({ overrule: true }, 'Reason rejected: it will cost a point if still undone')} className="w-full rounded-xl bg-red-600 py-3 text-base font-bold text-white disabled:opacity-40">Reject this reason (counts as missed)</button>}
         {t.kind !== 'tap' && editableEv && <button type="button" disabled={busy} onClick={revert} className="w-full rounded-xl bg-red-50 py-3 text-base font-bold text-red-700 disabled:opacity-40">Remove record (back to waiting)</button>}

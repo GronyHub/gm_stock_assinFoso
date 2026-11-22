@@ -47,8 +47,8 @@ export default function TaskTile({ density, time, title, who, category, type, de
   const chip = `absolute bottom-0 right-0 rounded-tl-md rounded-br-md bg-blue-600 font-extrabold leading-none text-white ${full ? 'px-1 py-0.5 text-[11px]' : 'px-1 py-0.5 text-[11px]'}`
   return (
     <div className="relative flex flex-col [&>button]:flex-1">{tile}
-      {lawHref ? <a href={lawHref} title="Open the law behind this task to change it" onClick={e => e.stopPropagation()} className={chip}>Law</a>
-        : <button type="button" title="Open the law behind this task to change it" onClick={e => { e.stopPropagation(); onLaw?.() }} className={chip}>Law</button>}
+      {lawHref ? <a href={lawHref} title="Open the law behind this task" onClick={e => e.stopPropagation()} className={chip}>Law</a>
+        : <button type="button" title="Open the law behind this task" onClick={e => { e.stopPropagation(); onLaw?.() }} className={chip}>Law</button>}
     </div>
   )
 }

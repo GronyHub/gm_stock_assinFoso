@@ -437,6 +437,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                     <div key={l.id} id={`law-${l.id}`} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
+                        {l.text && l.text !== (l.title || firstSentence(l.text)) && <p className="mt-1 text-[12px] leading-snug text-gray-700">{l.text}</p>}
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
                       </div>
                       <div className="min-w-0 text-[12px] leading-snug">
@@ -504,7 +505,6 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                       <details className="col-span-4 border-t border-gray-100 pt-1 sm:col-span-5">
                         <summary className="cursor-pointer text-[12px] font-semibold text-blue-700">Details: steps, penalty, why</summary>
                         <div className="space-y-1.5 pt-1.5 text-[12px] leading-snug text-gray-800">
-                          {l.text && l.text !== (l.title || firstSentence(l.text)) && <p>{l.text}</p>}
                           {lines(l.dos).length > 0 && <div><b>Do:</b><ol className="list-decimal pl-4">{lines(l.dos).map((x, k) => <li key={k}>{x}</li>)}</ol></div>}
                           {lines(l.donts).length > 0 && <div><b className="text-red-800">Do not:</b><ul className="list-disc pl-4">{lines(l.donts).map((x, k) => <li key={k}>{x}</li>)}</ul></div>}
                           {l.not_violation && <p className="text-green-800"><b>Not a violation:</b> {l.not_violation}</p>}
