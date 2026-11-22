@@ -73,8 +73,8 @@ export default function PageGuide({ page }: { page: string }) {
   const [open, setOpen] = useState(false)
   if (!area) return null
   return (<>
-    <button type="button" onClick={() => setOpen(true)} title={`The laws, sanctions and how-to for ${area.label}`}
-      className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-[12px] font-bold text-indigo-700 hover:bg-indigo-100">📜 Laws</button>
+    <button type="button" onClick={() => setOpen(true)} title={`The laws, sanctions and how-to for ${area.label}`} aria-label="Laws"
+      className="shrink-0 rounded-lg bg-indigo-50 px-2 py-1 text-[12px] font-bold text-indigo-700 hover:bg-indigo-100">📜<span className="max-sm:hidden"> Laws</span></button>
     {open && <LawsSheet areaKey={area.key} label={area.label} onClose={() => setOpen(false)} />}
   </>)
 }
