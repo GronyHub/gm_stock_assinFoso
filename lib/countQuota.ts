@@ -18,5 +18,7 @@ export async function assessCounts(day: string) {
   if (!(await managerWorked(day, MANAGER))) return   // no point for a day the manager did not work
   const n = await countsToday(day)
   if (n >= COUNTS_PER_DAY) return
-  await addPoint({ staff: MANAGER, points: 1, reason: `Only ${n} of ${COUNTS_PER_DAY} items counted on ${day} (the law: at least ${COUNTS_PER_DAY} counts a day)`, source: 'counts', ref: `counts:${day}`, day, by: 'system' })
+  // Tied to its law, so the point shows on the law's own card in Counts.
+  const [law] = await sql`SELECT id FROM page_laws WHERE category = 'Stock & records' AND subcategory = 'Counts' AND law_type = 'standing' AND text ILIKE '%at least 10 items%' ORDER BY id LIMIT 1`.catch(() => [])
+  await addPoint({ staff: MANAGER, points: 1, lawId: law?.id ? Number(law.id) : undefined, reason: `Only ${n} of ${COUNTS_PER_DAY} items counted on ${day} (the law: at least ${COUNTS_PER_DAY} counts a day)`, source: 'counts', ref: `counts:${day}`, day, by: 'system' })
 }

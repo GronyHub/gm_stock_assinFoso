@@ -70,7 +70,8 @@ export async function assess(day: string) {
   const p = await progress(day)
   await sql`UPDATE flag_quota SET fixed = ${p.fixed}, assessed_at = now() WHERE day = ${day}`
   if (p.fixed < p.needed) {
-    await addPoint({ staff: FLAG_MANAGER, points: 1, reason: `Only ${p.fixed} of ${p.needed} flags fixed on ${day} (the law: at least ${FLAGS_PER_DAY} a day, starting with the negative stock)`, source: 'flags', ref: `flags:${day}`, day, by: 'system' })
+    const [law] = await sql`SELECT id FROM page_laws WHERE category = 'Stock & records' AND subcategory = 'Flags' AND law_type = 'standing' AND text ILIKE '%at least 5 flags%' ORDER BY id LIMIT 1`.catch(() => [])
+    await addPoint({ staff: FLAG_MANAGER, points: 1, lawId: law?.id ? Number(law.id) : undefined, reason: `Only ${p.fixed} of ${p.needed} flags fixed on ${day} (the law: at least ${FLAGS_PER_DAY} a day, starting with the negative stock)`, source: 'flags', ref: `flags:${day}`, day, by: 'system' })
     // No push: the point is shown on Penalty Points (pushes are only for something a person did).
   }
 }
