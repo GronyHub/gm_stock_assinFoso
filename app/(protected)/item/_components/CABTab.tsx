@@ -4,6 +4,7 @@ import { fmtDate } from '@/lib/fmtDate'
 import AssignWidget from './AssignWidget'
 import BaseStatCard from '@/components/StatCard'
 import { addDays } from '@/lib/dailyChecksShared'
+import { useIsPhone } from '@/lib/useIsPhone'
 
 type Row = {
   entry_date: string
@@ -56,6 +57,88 @@ const StatCard = ({ tone, ...p }: { label: string; value: string; sub?: string; 
 // that move -- they read from cash_at_bank_view, which already aggregates
 // grony_personal_ledger by date regardless of which screen an entry was
 // typed in from.
+// The two CAB tables on a phone: one card per week or per day, the balance big on the right and the movements underneath.
+const dash = (v: any) => (v == null || Number(v) === 0 ? '—' : fmtn(v))
+
+function WeeklyCards({ weeks }: { weeks: WeekSummary[] }) {
+  return (
+    <div className="space-y-2">
+      {weeks.map(w => (
+        <div key={w.weekStart} className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-bold text-gray-800">{fmtDate(w.weekStart)} – {fmtDate(w.weekEnd)}</p>
+              <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${w.confirmed ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>{w.confirmed ? '✓ Confirmed' : 'Not confirmed'}</span>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Week-end balance</p>
+              <p className="text-[16px] font-extrabold tabular-nums text-gray-900">{fmtn(w.runningEnd)}</p>
+            </div>
+          </div>
+          <div className="mt-1.5 grid grid-cols-3 gap-2 text-[12px] text-gray-500">
+            <span>Net <b className={w.net >= 0 ? 'text-gray-800' : 'text-red-500'}>{fmtn(w.net)}</b></span>
+            <span>Confirmed <b className="text-blue-600">{w.confirmed ? fmtn(w.cabTotal) : '—'}</b></span>
+            <span>Diff <b className={w.deficit != null && Number(w.deficit) < 0 ? 'text-red-500' : 'text-green-600'}>{w.deficit != null ? fmtn(w.deficit) : '—'}</b></span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DailyCards({ rows, verifyMap, confirmedOnly, hideBankMomoPhysical }: {
+  rows: Row[]; verifyMap: Map<string, { ok: boolean; expected: number; diff: number }>; confirmedOnly: boolean; hideBankMomoPhysical: boolean
+}) {
+  return (
+    <div className="space-y-2">
+      {rows.map(r => {
+        const dateKey = String(r.entry_date).slice(0, 10)
+        const verify = verifyMap.get(dateKey)
+        const hasConfirm = r.cab_total != null
+        const net = Number(r.daily_net)
+        return (
+          <div key={r.entry_date} className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-gray-800">{fmtDate(dateKey)}</p>
+                {hasConfirm && (
+                  <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px]">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 font-bold text-blue-600">Confirmed {fmtn(r.cab_total)}</span>
+                    {verify && (verify.ok
+                      ? <span className="font-bold text-green-600">✓</span>
+                      : <span className="font-bold text-red-500">✗ {verify.diff > 0 ? '+' : ''}{fmtn(verify.diff)}</span>)}
+                  </p>
+                )}
+              </div>
+              {!confirmedOnly && (
+                <div className="shrink-0 text-right">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Running</p>
+                  <p className="text-[16px] font-extrabold tabular-nums text-gray-900">{fmtn(r.running_cash_at_bank)}</p>
+                </div>
+              )}
+            </div>
+            {hasConfirm && !hideBankMomoPhysical && (
+              <p className="mt-1 text-[12px] text-gray-500">Bank <b>{dash(r.cab_bank)}</b> · MoMo <b>{dash(r.cab_momo)}</b> · Physical <b>{dash(r.cab_physical)}</b></p>
+            )}
+            {!confirmedOnly && (
+              <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] text-gray-500">
+                <span>Cash counted <b className="text-gray-800">{dash(r.cash_counted)}</b></span>
+                <span>Net <b className={net >= 0 ? 'text-gray-800' : 'text-red-500'}>{fmtn(r.daily_net)}</b></span>
+                <span>Bills <b className="text-red-500">{dash(r.bills)}</b></span>
+                <span>Expenses <b className="text-red-500">{dash(r.expenses)}</b></span>
+                <span>GP in <b className="text-green-600">{dash(r.grony_personal_cash_in)}</b></span>
+                <span>GP out <b className="text-orange-500">{dash(r.grony_personal_expenses)}</b></span>
+                <span>Debtors <b className="text-green-600">{dash(r.debtors_cash_in)}</b></span>
+                {r.deficit != null && <span>Diff <b className={Number(r.deficit) < 0 ? 'text-red-500' : 'text-green-600'}>{fmtn(r.deficit)}</b></span>}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: number } = {}) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +148,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useState(false)
   const [confirmedColsOnly, setConfirmedColsOnly] = useState(false)
   const [hideBankMomoPhysical, setHideBankMomoPhysical] = useState(false)
+  const phone = useIsPhone()   // a phone gets cards instead of the two wide tables
   const [showConfirmForm, setShowConfirmForm] = useState(false)
   const [confirmDate, setConfirmDate] = useState('')
   const [confirmBank, setConfirmBank] = useState('')
@@ -286,6 +370,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
       {showWeekly ? (
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[12px] text-gray-400 mb-1.5">Last {weeks.length} week{weeks.length !== 1 ? 's' : ''} (Mon–Sun), most recent first.</p>
+          {phone ? <WeeklyCards weeks={visibleWeeks} /> : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full border-collapse text-[12px]">
               <thead>
@@ -318,6 +403,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
               </tbody>
             </table>
           </div>
+          )}
           {visibleWeeks.length === 0 && (
             <p className="text-xs text-gray-400 text-center py-10">
               {onlyUnconfirmed ? 'Every week in range is confirmed.' : 'No data'}
@@ -327,6 +413,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
       ) : (
         <div className="flex-1 overflow-auto min-h-0 p-2">
           <p className="text-[12px] text-gray-400 mb-1.5">Last 90 days, most recent first.</p>
+          {phone ? <DailyCards rows={displayRows} verifyMap={verifyMap} confirmedOnly={confirmedColsOnly} hideBankMomoPhysical={hideBankMomoPhysical} /> : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 z-10">
@@ -440,6 +527,7 @@ export default function CABTab({ openConfirmSignal }: { openConfirmSignal?: numb
             </tbody>
           </table>
           </div>
+          )}
           {displayRows.length === 0 && (
             <p className="text-xs text-gray-400 text-center py-10">
               {confirmedColsOnly ? 'No confirmed days in range.' : 'No data'}

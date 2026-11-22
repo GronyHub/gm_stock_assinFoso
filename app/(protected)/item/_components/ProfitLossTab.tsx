@@ -5,6 +5,8 @@ import {
 } from 'recharts'
 import { useColumnPrefs, ColumnsPickerButton, ResizableTh, type ColumnDef } from './columnPrefs'
 import BaseStatCard from '@/components/StatCard'
+import { useIsPhone } from '@/lib/useIsPhone'
+import { useProgressive } from '@/lib/useProgressive'
 
 const SHORT_MON = ['Ja','Fe','Mr','Ap','My','Ju','Jl','Au','Se','Oc','No','De']
 const DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
@@ -59,11 +61,41 @@ const PL_COLUMNS: PLColumn[] = [
 const PL_COL_BY_KEY = new Map(PL_COLUMNS.map(c => [c.key, c]))
 const PL_COL_DEFAULTS: Record<string, number> = { date: 100, cc: 90, bills: 90, expenses: 90, cashOut: 110, dailyLoss: 90, pl: 90 }
 
+// The daily Profit & Loss on a phone: one card per day, the profit or loss big on the right and the day's figures under it.
+function DailyCards({ daily }: { daily: Daily[] }) {
+  const { shown, sentinel } = useProgressive(daily, 40)
+  if (daily.length === 0) return <p className="py-10 text-center text-xs text-gray-400">No data</p>
+  return (
+    <div className="space-y-2">
+      {daily.slice(0, shown).map(d => {
+        const up = d.profit >= 0
+        return (
+          <div key={d.date} className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-[13px] font-bold text-gray-800">{dayLabel(d.date)}</p>
+              <p className={`text-[16px] font-extrabold tabular-nums ${up ? 'text-green-600' : 'text-red-500'}`}>{up ? '' : '−'}{fc(Math.abs(d.profit))}</p>
+            </div>
+            <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[12px] text-gray-600">
+              <span>Cash counted <b className="text-blue-600">{fc(d.cashCounted)}</b></span>
+              <span>Cash out <b className="text-orange-600">{fc(d.cashOut)}</b></span>
+              <span>Bills {d.bills > 0 ? fc(d.bills) : '—'}</span>
+              <span>Expenses {d.expenses > 0 ? fc(d.expenses) : '—'}</span>
+              {d.dailyLoss > 0 && <span className="col-span-2 text-red-500">Daily loss {fc(d.dailyLoss)}</span>}
+            </div>
+          </div>
+        )
+      })}
+      {shown < daily.length && <div ref={sentinel} className="py-3 text-center text-[12px] text-gray-400">Loading more…</div>}
+    </div>
+  )
+}
+
 export default function ProfitLossTab() {
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
   const colPrefs = useColumnPrefs<ColKey>('profitLossTable', PL_COLUMNS)
+  const phone = useIsPhone()   // a phone gets one card per day; a larger screen keeps the table
 
   useEffect(() => {
     fetch('/api/analysis/profit-loss').then(r => {
@@ -92,9 +124,10 @@ export default function ProfitLossTab() {
       <div>
         <div className="flex items-center justify-between mb-1">
           <p className="text-sm font-semibold text-gray-700">Daily Profit &amp; Loss</p>
-          <ColumnsPickerButton prefs={colPrefs} />
+          {!phone && <ColumnsPickerButton prefs={colPrefs} />}
         </div>
         <p className="text-[12px] text-gray-400 mb-2">CC − (Cash Out + Daily Loss), one row per day. Cash Out = Bills + Expenses.</p>
+        {phone ? <DailyCards daily={daily} /> : (
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="table-fixed border-collapse text-[12px]" style={{
             width: colPrefs.getWidth('date', PL_COL_DEFAULTS.date)
@@ -128,6 +161,7 @@ export default function ProfitLossTab() {
           </table>
           {daily.length === 0 && <p className="text-xs text-gray-400 text-center py-10">No data</p>}
         </div>
+        )}
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-3">
