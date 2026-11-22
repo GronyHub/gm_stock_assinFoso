@@ -10,6 +10,7 @@ export type CountCardRow = {
 
 const cedi = (v: number | string | null | undefined) => `₵${Number(v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
 const num = (v: number | string | null | undefined) => Number(v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })
+const abs = (v: number | string | null | undefined) => Math.abs(Number(v ?? 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 export default function CountCards({ rows, fmtDate, highlightId, editingId, editQty, editNotes, saving, canDelete, setEditQty, setEditNotes, onEdit, onCancel, onSave, onDelete, onOpenItem }: {
   rows: CountCardRow[]; fmtDate: (d: string) => string; highlightId: number | null; editingId: number | null; editQty: string; editNotes: string; saving: boolean; canDelete: boolean
@@ -39,8 +40,8 @@ export default function CountCards({ rows, fmtDate, highlightId, editingId, edit
               {r.counted_by && <span className="rounded-full bg-gray-100 px-2 py-0.5 capitalize text-gray-700">{r.counted_by}</span>}
               {r.source && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-500">{r.source}</span>}
               {r.kind && r.expected != null && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">Expected {num(r.expected)}</span>}
-              {r.kind === 'loss' && <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">Loss {num(r.loss_qty)} · {cedi(r.loss_amt)}</span>}
-              {r.kind === 'gain' && <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">Gain {num(r.loss_qty)} · {cedi(r.loss_amt)}</span>}
+              {r.kind === 'loss' && <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">Loss {abs(r.loss_qty)} · {cedi(Math.abs(Number(r.loss_amt ?? 0)))}</span>}
+              {r.kind === 'gain' && <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">Gain {abs(r.loss_qty)} · {cedi(Math.abs(Number(r.loss_amt ?? 0)))}</span>}
             </div>
             {r.notes && <p className="mt-1 text-[12px] italic text-gray-600">{r.notes}</p>}
             {editing ? (
