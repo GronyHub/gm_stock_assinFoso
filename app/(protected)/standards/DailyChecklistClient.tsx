@@ -184,7 +184,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           </div>
           <div className={tileGrid(density)}>
             {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
-              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
+              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={canEdit ? lawPageHref(d.lawId, d.category) : undefined} />))}
           </div>
@@ -212,7 +212,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {person && dayList.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-xs font-semibold text-gray-600">Nothing falls on {nm(person)} today yet. Tasks are shared out by the rota once they are at work.</p>}
           <div className={tileGrid(density)}>
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
-              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
+              <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
                 tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={canEdit ? lawPageHref(d.lawId, d.category) : undefined} />

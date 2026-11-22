@@ -119,7 +119,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
               <button type="button" onClick={() => setPeek(null)} aria-label="Close" className="text-xl text-gray-500">✕</button>
             </div>
             <p className="text-[16px] font-semibold leading-snug text-gray-900">{peek.title}</p>
-            <p className="text-[13px] text-gray-700">{peek.kind === 'task' ? `${String(Math.floor(peek.due / 60)).padStart(2, '0')}:${String(peek.due % 60).padStart(2, '0')}` : peek.time}{peek.mins ? ` · ${peek.mins} min` : ''} · {peek.role ? peek.role : 'Anyone on shift'}{peek.owner ? ` · ${nm(peek.owner)}` : ''}</p>
+            <p className="text-[13px] text-gray-700">{peek.kind === 'task' ? `${String(Math.floor((peek.shown ?? peek.due) / 60)).padStart(2, '0')}:${String((peek.shown ?? peek.due) % 60).padStart(2, '0')}` : peek.time}{peek.mins ? ` · ${peek.mins} min` : ''} · {peek.role ? peek.role : 'Anyone on shift'}{peek.owner ? ` · ${nm(peek.owner)}` : ''}</p>
             <p className="text-[12px] text-gray-500">{[peek.category, peek.typeLabel ?? LAW_TYPES.find(x => x.key === peek.lawType)?.label].filter(Boolean).join(' · ')}</p>
             <div className={`rounded-lg px-3 py-2 text-[13px] ${peek.state === 'done' ? 'bg-green-50 text-green-900' : peek.state === 'plan' || peek.state === 'later' ? 'bg-gray-50 text-gray-700' : 'bg-amber-50 text-amber-900'}`}>
               {peek.state === 'plan' ? 'Planned. It can be done on the day.' : peek.state === 'done' ? `Done${peek.by ? ` by ${nm(peek.by)}` : ''}${peek.at ? ` at ${peek.at}` : ''}.` : peek.state === 'no' ? `Marked not done${peek.by ? ` by ${nm(peek.by)}` : ''}. Reason: ${peek.note ?? ''}` : peek.state === 'miss' ? 'Missed: nobody did it that day.' : 'Not done yet.'}
@@ -157,7 +157,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                   <p className="mb-0.5 text-[12px] font-extrabold uppercase tracking-wide text-gray-500">{b.label}</p>
                   <div className={tileGrid(density)}>{rows.map(d => {
                     const whoL = (d.role && d.role !== 'Joe' ? `${d.role}${d.owner ? ` · ${nm(d.owner)}` : ''}` : d.owner ? nm(d.owner) : d.role ?? 'Everyone')
-                    return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
+                    return <TaskTile key={d.key} density={density} time={d.kind === 'task' ? `${String(Math.floor((d.shown ?? d.due) / 60)).padStart(2, '0')}:${String((d.shown ?? d.due) % 60).padStart(2, '0')}${d.mins ? ` · ${d.mins} min` : ''}` : d.time || undefined} title={d.title} who={whoL} category={d.category} type={d.typeLabel ?? LAW_TYPES.find(x => x.key === d.lawType)?.label}
                       badge={d.count} detail={d.detail ?? d.note} tone={d.kind === 'oneoff' || d.kind === 'job' ? 'border-indigo-300 bg-indigo-50' : d.kind === 'periodic' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
                       onClick={d.kind === 'task' && sel > today ? () => openFuture(d) : d.kind === 'task' || d.kind === 'periodic' ? () => setPeek(d) : d.href ? () => go(d.href!) : undefined} onLaw={canManage && lawPageHref(d.lawId, d.category) ? () => go(lawPageHref(d.lawId, d.category)!) : undefined} />
                   })}</div>

@@ -138,7 +138,7 @@ function AreaRecord({ label, icon, areaCategories, subs, onLaw }: { label: strin
   if (failed) return <p className="py-6 text-center text-sm text-red-600">Could not load. Try again.</p>
   if (!data) return <p className="py-6 text-center text-sm text-gray-400">Loading…</p>
   const mine = new Map(data.tiles.filter(t => t.category && areaCategories.includes(t.category) && (!subs?.length || subs.includes(t.subcategory ?? ''))).map(t => [t.id, t]))
-  const duties = data.duties.filter(d => d.kind === 'task' && mine.has(d.id)).sort((a, b) => a.due - b.due)
+  const duties = data.duties.filter(d => d.kind === 'task' && mine.has(d.id)).sort((a, b) => (a.shown ?? a.due) - (b.shown ?? b.due))
   const latest = (t: CheckTile) => data.events.filter(e => e.tile_id === t.id && inPeriod(t.frequency, e.day, data.day)).at(-1)
   const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   return (
@@ -149,7 +149,7 @@ function AreaRecord({ label, icon, areaCategories, subs, onLaw }: { label: strin
       {duties.length === 0 ? <p className="py-6 text-center text-sm text-gray-500">No {label} tasks today.</p> : (
         <div className="grid max-w-4xl grid-cols-3 gap-1 sm:grid-cols-4">
           {duties.map(d => (
-            <TaskTile key={d.key} density="full" time={`${hm(d.due)}${d.mins ? ` · ${d.mins} min` : ''}`} title={d.title} who={d.by ? d.by.charAt(0).toUpperCase() + d.by.slice(1) : d.role ?? (d.owner ? d.owner.charAt(0).toUpperCase() + d.owner.slice(1) : 'Anyone on shift')}
+            <TaskTile key={d.key} density="full" time={`${hm(d.shown ?? d.due)}${d.mins ? ` · ${d.mins} min` : ''}`} title={d.title} who={d.by ? d.by.charAt(0).toUpperCase() + d.by.slice(1) : d.role ?? (d.owner ? d.owner.charAt(0).toUpperCase() + d.owner.slice(1) : 'Anyone on shift')}
               mark={d.state === 'done' ? 'done' : d.state === 'no' ? 'no' : d.state === 'miss' || d.state === 'late' ? 'miss' : undefined}
               tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : d.state === 'miss' || d.state === 'late' ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}
               onClick={() => setSheet(mine.get(d.id)!)} onLaw={onLaw && d.lawId ? () => onLaw(Number(d.lawId)) : undefined} />

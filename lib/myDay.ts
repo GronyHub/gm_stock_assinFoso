@@ -83,15 +83,15 @@ async function myDayBuild(me: string, user: unknown, opts: DayOpts = {}): Promis
   const cap = opts.lens === 'notdone' ? 500 : 8
   const meta = (d: Duty) => ({ who: me1, category: d.category ?? undefined, type: d.typeLabel ?? lawTypeLabel(d.lawType) })
   for (const d of late.slice(0, cap)) {
-    const mins = nowMin - d.due
-    add({ key: `task-${d.id}`, icon: '⏳', title: d.title, time: hhmm(d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), detail: `Due ${hhmm(d.due)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}.${d.lawId != null ? ' Left undone at day end it costs a point.' : ''}`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${d.id}` })
+    const mins = nowMin - (d.shown ?? d.due)
+    add({ key: `task-${d.id}`, icon: '⏳', title: d.title, time: hhmm(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), detail: `Due ${hhmm(d.shown ?? d.due)}${mins > 0 ? `, ${mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`} late` : ''}.${d.lawId != null ? ' Left undone at day end it costs a point.' : ''}`, count: 1, urgency: mins >= 30 ? 'now' : 'soon', href: `/todo?tile=${d.id}` })
   }
   if (late.length > cap) add({ key: 'tasks-more', icon: '⏳', title: `${late.length - cap} more tasks to do now`, detail: 'Open Waiting for team to see them all.', count: late.length - cap, urgency: 'now', href: '/todo' })
   if (opts.lens === 'notdone') return items.sort((a, b) => (a.urgency === b.urgency ? 0 : a.urgency === 'now' ? -1 : 1))
-  for (const d of tasks.filter(x => x.state === 'later')) add({ key: `tasknext-${d.id}`, icon: '🕘', title: d.title, time: hhmm(d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), detail: `Due ${hhmm(d.due)}.`, count: 0, urgency: 'later', href: `/todo?tile=${d.id}` })
+  for (const d of tasks.filter(x => x.state === 'later')) add({ key: `tasknext-${d.id}`, icon: '🕘', title: d.title, time: hhmm(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), detail: `Due ${hhmm(d.shown ?? d.due)}.`, count: 0, urgency: 'later', href: `/todo?tile=${d.id}` })
   for (const d of tasks.filter(x => x.state === 'done' || x.state === 'no')) {
     const done = d.state === 'done'
-    add({ key: `taskdone-${d.id}`, icon: done ? '✅' : '➖', title: d.title, time: hhmm(d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), state: done ? 'done' : 'not',
+    add({ key: `taskdone-${d.id}`, icon: done ? '✅' : '➖', title: d.title, time: hhmm(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : ''), ...meta(d), state: done ? 'done' : 'not',
       detail: done ? `Done by ${cap1(d.by ?? me)} at ${d.at}.` : `Marked not done by ${cap1(d.by ?? me)} at ${d.at}${d.note ? `: ${d.note}` : ''}.`, count: 0, urgency: 'later' })
   }
 
@@ -142,7 +142,7 @@ export async function personDay(me: string, date: string, _user?: unknown): Prom
   // Duties for everyone (a one-off for the whole team, a weekly law nobody is named for) are on each person's list too.
   const mine = all.filter(d => fallsOn(d, me))
   return mine.map(d => {
-    const hh = d.kind === 'task' ? `${String(Math.floor(d.due / 60)).padStart(2, '0')}:${String(d.due % 60).padStart(2, '0')}` : d.time || undefined
+    const hh = d.kind === 'task' ? `${String(Math.floor((d.shown ?? d.due) / 60)).padStart(2, '0')}:${String((d.shown ?? d.due) % 60).padStart(2, '0')}` : d.time || undefined
     const base = { key: `${d.state}-${d.key}`, title: d.title, time: hh, who: cap1(me), category: d.category ?? undefined, type: d.typeLabel ?? lawTypeLabel(d.lawType), count: 0, urgency: 'later' as const }
     const by = d.by ? cap1(d.by) : cap1(me)
     if (d.state === 'plan') return { ...base, icon: '🕘', detail: d.detail ?? (d.kind === 'task' ? `Planned for ${hh}.` : 'Planned.') }

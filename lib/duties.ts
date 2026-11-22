@@ -13,7 +13,8 @@ export type DutyState = 'done' | 'no' | 'miss' | 'late' | 'now' | 'later' | 'pla
 export type DutyKind = 'task' | 'periodic' | 'standing' | 'oneoff' | 'job'
 export type Duty = {
   kind: DutyKind; key: string; detail?: string; count?: number; typeLabel?: string; href?: string
-  id: number; title: string; time: string; mins?: number; due: number    // mins = how long it takes; due = minutes after midnight (queued from the first clock-in)
+  id: number; title: string; time: string; mins?: number; due: number    // mins = how long it takes; due = minutes after midnight (queued from the first clock-in, used to decide late)
+  shown?: number                                                          // the time written in the law, in minutes after midnight: the time that is shown and that the list is ordered by
   owner: string | null; role: 'Opener' | 'Closer' | 'Joe' | null    // owner = the one person it falls on (lower case)
   category: string | null; lawType: string | null; lawId: number | null
   state: DutyState; by?: string; note?: string | null; at?: string  // who ended it, with the reason, and when
@@ -62,10 +63,10 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
     else if (!isToday) state = 'miss'
     else if (noClockIn) state = 'later'
     else { const mins = nowMin - d; state = mins >= 15 ? 'late' : mins >= 0 ? 'now' : 'later' }
-    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, mins: t.minutes ?? undefined, due: d, owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state,
+    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, mins: t.minutes ?? undefined, due: d, shown: Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3)), owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state,
       by: ev && (state === 'done' || state === 'no') ? ev.recorded_by : undefined, note: ev?.note ?? null, at: ev && (state === 'done' || state === 'no') ? hhmm(new Date(ev.recorded_at)) : undefined })
   }
-  return out.sort((x, y) => x.due - y.due || x.id - y.id)
+  return out.sort((x, y) => (x.shown ?? x.due) - (y.shown ?? y.due) || x.id - y.id)
 }
 
 // ---- Personal items that have no date of their own and wait until dealt with: tasks a manager assigned, questions, penalty points to acknowledge, clock matters, decisions, drafts, pending jobs.
@@ -201,9 +202,11 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
       const a = t.assignment ?? 'all'
       const ev = evs.filter(e => e.tile_id === t.id && inPeriod(t.frequency as Frequency, e.day, date)).at(-1)
       const doneNow = !!ev && ev.value !== 'Not done'
-      out.push({ kind: 'periodic', key: `p${t.id}`, id: t.id, title: t.title, time: t.time ?? t.frequency, due: 23 * 60, role: a === 'opener' ? 'Opener' : a === 'closer' ? 'Closer' : a === 'managers' ? 'Joe' : null,
+      const own = t.time && /^[0-2]\d:[0-5]\d$/.test(t.time) ? Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3)) : null
+      const nowM = new Date().getUTCHours() * 60 + new Date().getUTCMinutes()
+      out.push({ kind: 'periodic', key: `p${t.id}`, id: t.id, title: t.title, time: t.time ?? t.frequency, due: own ?? 23 * 60, shown: own ?? undefined, role: a === 'opener' ? 'Opener' : a === 'closer' ? 'Closer' : a === 'managers' ? 'Joe' : null,
         owner: a === 'opener' ? (future ? rr?.opener ?? null : openerNow ?? rr?.opener ?? null) : a === 'closer' ? rr?.closer ?? null : a === 'managers' ? 'joe' : null, category: t.category, lawType: t.law_type, lawId: t.law_id,
-        state: future ? 'plan' : doneNow ? 'done' : isToday ? 'now' : 'miss', by: doneNow ? ev!.recorded_by : undefined, note: t.frequency === 'monthly' && !t.month_day ? 'Sometime this month' : null })
+        state: future ? 'plan' : doneNow ? 'done' : isToday ? (own == null ? 'now' : nowM - own >= 15 ? 'late' : nowM >= own ? 'now' : 'later') : 'miss', by: doneNow ? ev!.recorded_by : undefined, note: t.frequency === 'monthly' && !t.month_day ? 'Sometime this month' : null })
     }
   } catch { /* leave out */ }
   try {
