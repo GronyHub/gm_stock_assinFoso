@@ -4682,7 +4682,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
           <input type="radio" name="criticalBar" checked={inCountTab}
             onChange={goCountMode}
             className="cursor-pointer w-3 h-3" />
-          <span>To count ({new Set([...Array.from(liveCountStatus.keys()), ...Array.from(liveNegSohIds)]).size})</span>
+          <span>To count ({liveCatalogueItems.filter(i => liveCountStatus.has(i.id) || liveNegSohIds.has(i.id)).length})</span>
         </label>
         </>)}
 
@@ -5268,6 +5268,9 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     {renderClickableItemName(item.name, 'text-[12px] font-semibold truncate')}
                     <span className="shrink-0 text-[12px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: isNeg ? '#b91c1c' : tierColor }}>{isNeg ? 'Negative' : tier}</span>
                   </div>
+                  {isNeg ? (
+                    <p className="text-[12px] leading-snug text-gray-600">Stock shows {Math.ceil(Number(item.soh))}. Count what is on the shelf. Last counted: {lastCounted ? fmtDate(lastCounted) : 'never'}</p>
+                  ) : (
                   <p className="text-[12px] text-gray-500 truncate">
                     {expectedLabel}
                     <span className="text-gray-400"> · </span>
@@ -5276,10 +5279,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                     Last ctd: {lastCounted ? fmtDate(lastCounted) : 'Never'}
                     <span className="text-gray-400"> · </span>
                     SOH: {Math.ceil(Number(item.soh))}
-                  </p>
-                  <div className="mt-1 h-1.5 w-full max-w-[160px] bg-gray-100 rounded-full overflow-hidden">
+                  </p>)}
+                  {!isNeg && <div className="mt-1 h-1.5 w-full max-w-[160px] bg-gray-100 rounded-full overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${barPct}%`, background: tierColor }} />
-                  </div>
+                  </div>}
                 </div>
                 <div className="shrink-0 flex items-center gap-1">
                   {/* One tap for the common case -- the physical count

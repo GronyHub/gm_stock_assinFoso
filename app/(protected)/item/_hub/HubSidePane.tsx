@@ -103,7 +103,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
-              {flat && lossView === 'items' && <SidePaneButton icon={pics ? '🖼️' : '▦'} label={pics ? 'Pictures' : 'Compact'} mode={cashDisplayMode} noNewTab active={false}
+              {flat && lossView === 'items' && !h.inCountTab && <SidePaneButton icon={pics ? '🖼️' : '▦'} label={pics ? 'Pictures' : 'Compact'} mode={cashDisplayMode} noNewTab active={false}
                 onClick={() => { const on = !pics; setPics(on); window.dispatchEvent(new CustomEvent('live-pictures', { detail: on })) }} />}
             </div>
             )}
