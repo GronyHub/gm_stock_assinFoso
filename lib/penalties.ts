@@ -60,6 +60,19 @@ export async function totalPoints(staff: string): Promise<number> {
 
 type Add = { staff: string; points?: number; reason: string; source: string; ref?: string; day?: string; lawId?: number | null; status?: 'active' | 'pending'; by?: string; violation?: string; lawCode?: string | null }
 // Records a violation. During the learning period it is a warning (does not count); a pending one waits for the owner.
+const SOURCE_LAW: Record<string, [string, string, string]> = {
+  attendance: ['Staff management', 'Attendance', 'Work the shifts%'],
+  backdate: ['Staff management', 'Attendance', 'Clock in with the Clock In button%'],
+  'backdate-point': ['Staff management', 'Attendance', 'Clock in with the Clock In button%'],
+  dress: ['Staff management', 'Dress code', 'Dress code%'],
+}
+async function lawForSource(source: string): Promise<number | null> {
+  const w = SOURCE_LAW[source]
+  if (!w) return null
+  const [r] = await sql`SELECT id FROM page_laws WHERE category = ${w[0]} AND subcategory = ${w[1]} AND text ILIKE ${w[2]} ORDER BY id LIMIT 1`.catch(() => [])
+  return r?.id ? Number(r.id) : null
+}
+
 export async function addPoint(a: Add) {
   await ensurePenalties()
   const staff = a.staff.toLowerCase(), day = a.day ?? dayKey(), points = a.points ?? 1, status = a.status ?? 'active'
@@ -67,8 +80,10 @@ export async function addPoint(a: Add) {
   if (!['manual', 'behaviour', 'backdate', 'backdate-point'].includes(a.source) && !(await someoneClockedIn(day))) return null
   const counted = status === 'active' && await isCounting(day)
   const before = await totalPoints(staff)
+  // A point the app adds by itself is tied to the law it comes from, so that law shows it on its own card.
+  const lawId = a.lawId ?? await lawForSource(a.source)
   const [row] = await sql`INSERT INTO staff_penalties (staff, points, kind, reason, source, ref, day, law_id, counted, status, created_by, violation, law_code)
-    VALUES (${staff}, ${points}, 'violation', ${a.reason}, ${a.source}, ${a.ref ?? null}, ${day}, ${a.lawId ?? null}, ${counted}, ${status}, ${a.by ?? 'system'}, ${a.violation ?? null}, ${a.lawCode ?? null})
+    VALUES (${staff}, ${points}, 'violation', ${a.reason}, ${a.source}, ${a.ref ?? null}, ${day}, ${lawId}, ${counted}, ${status}, ${a.by ?? 'system'}, ${a.violation ?? null}, ${a.lawCode ?? null})
     ON CONFLICT DO NOTHING RETURNING id, staff, points, reason, counted, status`
   if (!row) return null
   void recordActivity(a.by ?? 'app', status === 'pending' ? 'logged a violation for confirmation' : 'added a penalty point', `${cap(staff)} (${points}): ${a.reason}`.slice(0, 240))
