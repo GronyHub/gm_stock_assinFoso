@@ -10,6 +10,7 @@ import { type ColumnPrefs, ResizableTh } from './columnPrefs'
 import { type ColKey, COLUMNS } from './billsTabColumns'
 import { useAttachments, AttachmentPicker, type Attachment } from './attachmentsShared'
 import ItemDetailModal from './ItemDetailModal'
+import { useIsPhone } from '@/lib/useIsPhone'
 
 type Item = { id: number; item_name: string; cf_group: string | null; selling_price?: string | number | null; cost_price?: string | number | null; converts_to_item_id?: number | null; gmc_type?: string | null }
 
@@ -413,6 +414,7 @@ function BillsTab({
   // Editing is bill-level now, triggered from the ✏️ on a group's bar
   // rather than by clicking any line -- keyed by bill id directly.
   const [editingBillId, setEditingBillId] = useState<number | null>(null)
+  const phone = useIsPhone()   // a phone gets one card per bill and a full-screen edit form; a larger screen keeps the table
   // While a bill is being edited: each item line's figures as typed (quantity, unit price, line total).
   const [lineDrafts, setLineDrafts] = useState<Record<number, { qty: string; price: string; total: string }>>({})
   const [editForm, setEditForm] = useState({ bill_date: '', vendor_name: '' })
@@ -1037,45 +1039,9 @@ function BillsTab({
     </div>
   )
 
-  const tableNaturalWidth = wOf('item')
-    + colPrefs.shownColumns.reduce((s, c) => s + wOf(c.key), 0)
-
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="overflow-x-auto" ref={el => {
-          wrapRef.current = el
-          if (el && el.clientWidth !== wrapWidth) setWrapWidth(el.clientWidth)
-        }}>
-        <table className="border-collapse text-[12px]" style={{
-          tableLayout: 'fixed',
-          width: tableNaturalWidth,
-          zoom: compact && wrapWidth > 0 ? Math.min(1, Math.max(0.5, wrapWidth / tableNaturalWidth)) : undefined,
-        }}>
-          <colgroup>
-            <col style={{ width: wOf('item') }} />
-            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: wOf(c.key) }} />)}
-          </colgroup>
-          <thead className="sticky top-0 bg-gray-100 z-10">
-            <tr>
-              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, colDefaults.item)} onReset={() => colPrefs.resetWidth('item')}
-                className="text-[12px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
-              {colPrefs.shownColumns.map((c, i) => (
-                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[12px]"
-                  onResize={d => colPrefs.resizeWidth(c.key, d, colDefaults[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
-                  {c.label}
-                </ResizableTh>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {groupedList.slice(0, shownGroups).map(g => {
-              const isEditing = editingBillId === g.editBillId
-
-              if (isEditing) {
-                return (
-                  <tr key={g.key}>
-                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-2 bg-white space-y-2 border-b border-gray-200">
+  // One bill's edit form: under its row in the table, and full screen on a phone.
+  const renderEditForm = (g: (typeof groupedList)[number]) => (
+    <>
                       <p className="text-[12px] font-bold text-gray-600">Edit Bill · {billsById[g.editBillId]?.bill_number}</p>
                       <div>
                         <p className="text-[12px] text-gray-400 mb-0.5">Date</p>
@@ -1131,6 +1097,113 @@ function BillsTab({
                             className="px-3 py-1 bg-red-600 text-white text-[12px] font-semibold rounded disabled:opacity-40">Delete</button>
                         )}
                       </div>
+    </>
+  )
+
+  // The bills on a phone: one card per bill (date and numbers, vendor, items, total), its item lines underneath. Quantity and unit price still edit in place.
+  const renderBillCards = () => (
+    <div className="space-y-2 p-2 pb-24">
+      {groupedList.slice(0, shownGroups).map(g => (
+        <div key={g.key} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex items-start gap-2 px-3 py-2.5" onClick={() => toggleExpanded(g.key)}>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{fmtShort(g.billDate)}{g.billNumbers.length > 0 ? ` · ${g.billNumbers.join(', ')}` : ''}</p>
+              <p className="mt-0.5 break-words text-[15px] font-semibold leading-snug text-gray-900">{g.vendorName ?? '—'}</p>
+              <p className="text-[12px] text-gray-500">{g.rows.length} item{g.rows.length === 1 ? '' : 's'}{g.sharedExpensesTotal > 0 ? ` · +₵${g.sharedExpensesTotal.toFixed(2)} shared` : ''}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[16px] font-extrabold tabular-nums text-gray-900">₵{fmt(g.total.toFixed(2))}</p>
+              <div className="mt-1 flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
+                <button type="button" onClick={() => toggleEdit(g.editBillId)} title="Edit this bill" className="rounded-lg bg-blue-50 px-2 py-1 text-[12px] font-bold text-blue-700">✏️ Edit</button>
+                <AddBillExpenseButton billId={g.editBillId} onAdded={row => setBillExpenses(prev => [...prev, row])} />
+              </div>
+            </div>
+          </div>
+          {(!barsOnly || expandedIds.has(g.key)) && (
+            <div className="border-t border-gray-100">
+              {g.rows.map(row => (
+                <div key={row.key} id={`billrow-${row.billId}`} className={`border-b border-gray-100 px-3 py-2 last:border-0 ${row.unresolved ? 'bg-red-50' : ''}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    {row.itemId ? (
+                      <button type="button" onClick={() => setViewingItemId(row.itemId)} className="min-w-0 break-words text-left text-[13px] font-semibold text-blue-600">{row.itemName}</button>
+                    ) : (
+                      <span className="min-w-0 break-words text-[13px] font-semibold text-red-600">{row.itemName}</span>
+                    )}
+                    <span className="shrink-0 text-[13px] font-bold tabular-nums text-gray-900">{fmt(row.itemTotal)}</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[12px] text-gray-600">
+                    <span>Qty <EditableLineCell lineId={row.lineId} field="quantity" value={row.quantity} display={v => parseFloat(v)} onSaved={handleLineSaved} /></span>
+                    <span>Unit price <EditableLineCell lineId={row.lineId} field="unit_price" value={row.unitPrice} display={fmt} onSaved={handleLineSaved} /></span>
+                    {row.itemId && <span>Cost now <b className="text-blue-600">{fmt(String(itemsById.get(row.itemId)?.cost_price ?? ''))}</b></span>}
+                  </div>
+                  {row.itemId && (
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-gray-600" onClick={e => e.stopPropagation()}>
+                      New selling price
+                      <NewSpCell itemId={row.itemId}
+                        currentSp={sellingPriceOverrides[row.itemId] ?? itemsById.get(row.itemId)?.selling_price ?? null}
+                        onSaved={(id, sp) => setSellingPriceOverrides(prev => ({ ...prev, [id]: sp }))} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {g.expenseRows.map(e => (
+                <div key={`exp-${e.id}`} className="flex items-start justify-between gap-2 border-b border-gray-100 bg-purple-50/50 px-3 py-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold uppercase italic tracking-wide text-purple-400">Related expense</p>
+                    <p className="break-words text-[13px] font-semibold text-purple-700">{e.description || 'Other'} — ₵{fmt(e.amount)}</p>
+                  </div>
+                  <button type="button" onClick={() => removeBillExpense(e.id)} title="Remove this related expense" className="shrink-0 px-1 text-lg font-bold leading-none text-purple-300">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+      {shownGroups < groupedList.length && <div ref={groupSentinel} className="py-3 text-center text-[12px] text-gray-400">Loading more…</div>}
+    </div>
+  )
+
+  const tableNaturalWidth = wOf('item')
+    + colPrefs.shownColumns.reduce((s, c) => s + wOf(c.key), 0)
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="overflow-x-auto" ref={el => {
+          wrapRef.current = el
+          if (el && el.clientWidth !== wrapWidth) setWrapWidth(el.clientWidth)
+        }}>
+        {phone ? renderBillCards() : (
+        <table className="border-collapse text-[12px]" style={{
+          tableLayout: 'fixed',
+          width: tableNaturalWidth,
+          zoom: compact && wrapWidth > 0 ? Math.min(1, Math.max(0.5, wrapWidth / tableNaturalWidth)) : undefined,
+        }}>
+          <colgroup>
+            <col style={{ width: wOf('item') }} />
+            {colPrefs.shownColumns.map(c => <col key={c.key} style={{ width: wOf(c.key) }} />)}
+          </colgroup>
+          <thead className="sticky top-0 bg-gray-100 z-10">
+            <tr>
+              <ResizableTh onResize={d => colPrefs.resizeWidth('item', d, colDefaults.item)} onReset={() => colPrefs.resetWidth('item')}
+                className="text-[12px] sticky left-0 z-20 bg-gray-100">ITEM</ResizableTh>
+              {colPrefs.shownColumns.map((c, i) => (
+                <ResizableTh key={c.key} align="right" noDivider={i === colPrefs.shownColumns.length - 1} className="text-[12px]"
+                  onResize={d => colPrefs.resizeWidth(c.key, d, colDefaults[c.key] ?? 80)} onReset={() => colPrefs.resetWidth(c.key)}>
+                  {c.label}
+                </ResizableTh>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groupedList.slice(0, shownGroups).map(g => {
+              const isEditing = editingBillId === g.editBillId
+
+              if (isEditing) {
+                return (
+                  <tr key={g.key}>
+                    <td colSpan={1 + colPrefs.shownColumns.length} className="p-2 bg-white space-y-2 border-b border-gray-200">
+                      {renderEditForm(g)}
                     </td>
                   </tr>
                 )
@@ -1266,6 +1339,7 @@ function BillsTab({
             {shownGroups < groupedList.length && <tr ref={groupSentinel}><td colSpan={1 + colPrefs.shownColumns.length} className="py-3 text-center text-[12px] text-gray-400">Loading more…</td></tr>}
           </tbody>
         </table>
+        )}
         {filtered.length === 0 && bills.length === 0 && billsLoadError ? (
           <div className="text-center py-10 space-y-2">
             <p className="text-sm text-red-600">Couldn&apos;t load bills.</p>
@@ -1275,6 +1349,18 @@ function BillsTab({
         ) : filtered.length === 0 && <p className="text-[12px] text-gray-400 text-center py-10">No bills</p>}
         </div>
       </div>
+      {phone && editingBillId != null && (() => {
+        const g = groupedList.find(x => x.editBillId === editingBillId)
+        return g ? (
+          <div className="fixed inset-0 z-[70] flex flex-col bg-white">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-gray-200 px-3 py-2">
+              <p className="min-w-0 truncate text-[15px] font-bold text-[#14213D]">Edit bill</p>
+              <button type="button" onClick={() => { setEditingBillId(null); setEditError('') }} className="shrink-0 rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-700">Close</button>
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-auto p-3">{renderEditForm(g)}</div>
+          </div>
+        ) : null
+      })()}
       {viewingItemId != null && (
         <ItemDetailModal itemId={viewingItemId} onClose={() => setViewingItemId(null)} />
       )}
