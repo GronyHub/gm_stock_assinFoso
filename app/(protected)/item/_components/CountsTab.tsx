@@ -1,6 +1,7 @@
 'use client'
 import WithMic from '@/components/WithMic'
 import CountCards from './CountCards'
+import CountWeek from '@/components/CountWeek'
 import { useIsPhone } from '@/lib/useIsPhone'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import PageToolbar from '@/lib/pageToolbar'
@@ -560,6 +561,7 @@ function CountsTab({ items, groupFilter, search, violation, onFixRecords, onGoTo
         <ManualCountForm items={items} initialItem={scanned} onClose={() => { setShowManual(false); setScanned(null) }} onLoss={promptLoss} onPairing={promptPairing}
           onSaved={() => { loadRecords(); loadDaily() }} />
       )}
+      {!showAnalytics && <div className="shrink-0 px-2 pt-2"><CountWeek /></div>}
       {!showAnalytics && phone && filtered.length > 0 && (
         <div className="flex-1 overflow-y-auto min-h-0 px-2 pt-2">
           <CountCards rows={filtered} fmtDate={fmtShort} highlightId={highlightId} editingId={editingId} editQty={editQty} editNotes={editNotes} saving={saving} canDelete={!!canDelete}

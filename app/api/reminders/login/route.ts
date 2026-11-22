@@ -26,8 +26,13 @@ export async function GET() {
       const fq = await import('@/lib/flagQuota')
       const p = await fq.progress(today).catch(() => null)
       if (p && p.fixed < p.needed) out.unshift({ key: 'flags', tone: 'red', title: 'Fix today\'s flags', text: fq.progressText(p) })
-      const cq = await import('@/lib/countQuota'), cn = await cq.countsToday(today)
-      if (cn < cq.COUNTS_PER_DAY) out.unshift({ key: 'counts', tone: 'red', title: 'Count at least 10 items today', text: cq.countsText(cn) })
+    }
+    if ((user as { role?: string }).role !== 'owner') {
+      const cq = await import('@/lib/countQuota'), wp = await cq.weekProgress(me, today).catch(() => null)
+      if (wp && wp.started && wp.mine < wp.target) {
+        const dow = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7
+        out.unshift({ key: 'counts', tone: dow >= 4 ? 'red' : 'amber', title: `Count ${wp.target} items this week`, text: `You have counted ${wp.mine} of ${wp.target} this week (ends Sunday). Open Counts: negative stock first, then the most overdue.` })
+      }
     }
     const items = await myDay(me, user, {}).catch(() => [])
     const late = items.filter(i => i.urgency === 'now' && i.state == null).reduce((a, i) => a + (i.count || 1), 0)

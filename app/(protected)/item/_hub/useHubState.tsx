@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import CountWeek from '@/components/CountWeek'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useNavSlotEl } from '@/lib/navSlot'
 import { useNavHeightPx } from '@/lib/navHeight'
@@ -894,6 +895,7 @@ export function useHubState() {
   // Home and Waiting for team are one page now ('todo'): the day's cards on top, the waiting list below.
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab: tab === 'dashboard' ? 'todo' : tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
+  const countsGoRef = useRef<() => void>(() => {})
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search)
@@ -904,7 +906,7 @@ export function useHubState() {
     else if (open && MINE_PATHS[open]) wantMine.current = MINE_PATHS[open]
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
     ;(window as unknown as { __gmHub?: boolean }).__gmHub = true
-    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-counts') { setEmbedUrl(null); setShop(null); setPersonal(null); countsGoRef.current(); }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
     const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; openEmbed(d.path) }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
@@ -1475,6 +1477,8 @@ export function useHubState() {
   }
   function cashItemClick(key: string) {
     if (key === 'pl') { pickPL(); return }
+    // Counts opens on the To count list; the saved records are behind its "All count records" button.
+    if (key === 'counts') { goCountMode(); return }
     pickLossView(key as LossView)
   }
   function cashItemTaskScope(key: string) {
@@ -4674,19 +4678,12 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         <span className="font-extrabold text-red-700 uppercase tracking-wide shrink-0">{only ? 'Flags' : 'Critical, Do Now'}</span>
         {show('counts') && (<>
         {divider}
-        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-gray-700 shrink-0">
-          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'count_due_chart'}
+        <label className={`flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap shrink-0 ${liveNegSohCount > 0 ? 'text-red-700 font-semibold' : 'text-gray-700'}`}>
+          <input type="radio" name="criticalBar" checked={inCountTab}
             onChange={goCountMode}
             className="cursor-pointer w-3 h-3" />
-          <span>Count Due{liveCountStatus.size > 0 && ` (${liveCountStatus.size})`}</span>
+          <span>To count ({new Set([...Array.from(liveCountStatus.keys()), ...Array.from(liveNegSohIds)]).size})</span>
         </label>
-        {liveNegSohCount > 0 && (<>{divider}
-        <label className="flex items-center gap-0.5 cursor-pointer hover:underline whitespace-nowrap text-red-700 font-semibold shrink-0">
-          <input type="radio" name="criticalBar" checked={inCountTab && liveSaleView?.kind === 'negative_soh_chart'}
-            onChange={() => { goCountMode(); setLiveSaleViolationFilter('negSoh'); setLiveSaleView({ kind: 'negative_soh_chart' }) }}
-            className="cursor-pointer w-3 h-3" />
-          <span>Negative SOH ({liveNegSohCount})</span>
-        </label></>)}
         </>)}
 
         {/* Items violations */}
@@ -4832,6 +4829,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     toGrid()
     pickCountMode()
   }
+  countsGoRef.current = goCountMode
   function modeActive(mode: string) {
     return (lossView === 'items' || lossView === 'sales') && !inCountTab && itemsPageMode === mode
   }
@@ -5219,15 +5217,17 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     // instead (see renderNegativeSohChart) -- it needs a count regardless
     // of its due date, so showing it here too would just be the same
     // to-do twice under two different names.
+    // One To count list: negative stock first (it needs a count whatever its due date), then everything overdue, most overdue first.
     const scored = liveCatalogueItems
-      .filter(item => liveCountStatus.has(item.id) && !liveNegSohIds.has(item.id))
+      .filter(item => liveCountStatus.has(item.id) || liveNegSohIds.has(item.id))
       .map(item => {
-        const status = liveCountStatus.get(item.id)!
+        const isNeg = liveNegSohIds.has(item.id)
+        const status = liveCountStatus.get(item.id) ?? { level: 'overdue' as const, label: 'Negative stock', days_overdue: null as number | null }
         // Never-counted items (no baseline to measure a day count from) are
         // the worst case -- worse than any item merely N days overdue --
         // same ranking submitCount/scoreFns.count_status already use.
-        const severity = status.days_overdue === null ? 2000 : (status.level === 'overdue' ? 1000 + status.days_overdue : status.days_overdue ?? 0)
-        return { item, status, severity }
+        const severity = isNeg ? 5000 : status.days_overdue === null ? 2000 : (status.level === 'overdue' ? 1000 + status.days_overdue : status.days_overdue ?? 0)
+        return { item, status, severity, isNeg }
       })
       .sort((a, b) => b.severity - a.severity || a.item.name.localeCompare(b.item.name))
 
@@ -5240,16 +5240,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     return (
       <div className="flex-1 overflow-y-auto">
         <div className="px-2 py-1 bg-gray-800 text-[12px] font-bold text-white uppercase tracking-wide">
-          {scored.length} item{scored.length !== 1 ? 's' : ''} need{scored.length === 1 ? 's' : ''} counting
+          {scored.length} item{scored.length !== 1 ? 's' : ''} to count{scored.some(s => s.isNeg) ? ` · ${scored.filter(s => s.isNeg).length} negative stock first` : ''}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-2 py-1.5">
+          <CountWeek />
+          <button type="button" onClick={() => pickLossView('counts')} className="ml-auto rounded-lg bg-gray-100 px-3 py-1.5 text-[12px] font-bold text-gray-700">All count records</button>
         </div>
         <div className="divide-y divide-gray-100">
-          {scored.map(({ item, status, severity }, i) => {
+          {scored.map(({ item, status, severity, isNeg }, i) => {
             const pct = scored.length <= 1 ? 0 : i / (scored.length - 1)
             const tier: 'Critical' | 'High' | 'Watch' = pct < 1 / 3 ? 'Critical' : pct < 2 / 3 ? 'High' : 'Watch'
             const tierColor = tier === 'Critical' ? '#ef4444' : tier === 'High' ? '#f97316' : '#eab308'
             const barPct = Math.max(8, Math.round((severity / maxSeverity) * 100))
-            let expectedLabel = 'Never counted'
-            if (status.days_overdue !== null) {
+            let expectedLabel = isNeg ? 'Stock is negative: type what is on the shelf' : 'Never counted'
+            if (!isNeg && status.days_overdue !== null) {
               const d = new Date()
               if (status.days_overdue > 0) d.setDate(d.getDate() - status.days_overdue)
               expectedLabel = `Expected ${fmtDate(d.toISOString())}`
@@ -5262,7 +5266,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                 <div className="flex-1 min-w-0 pl-2">
                   <div className="flex items-center gap-1.5">
                     {renderClickableItemName(item.name, 'text-[12px] font-semibold truncate')}
-                    <span className="shrink-0 text-[12px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: tierColor }}>{tier}</span>
+                    <span className="shrink-0 text-[12px] font-extrabold uppercase tracking-wide px-1 py-0.5 rounded text-white" style={{ background: isNeg ? '#b91c1c' : tierColor }}>{isNeg ? 'Negative' : tier}</span>
                   </div>
                   <p className="text-[12px] text-gray-500 truncate">
                     {expectedLabel}
@@ -5285,14 +5289,14 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
                       qty box, so a genuine mismatch still goes through the
                       usual loss-reason gate -- this is just a shortcut for
                       when there isn't one, not a bypass of it. */}
-                  <button
+                  {!isNeg && <button
                     type="button"
                     disabled={liveCountSaving}
                     onClick={() => submitCount(item, Math.ceil(Number(item.soh)))}
                     className="shrink-0 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold whitespace-nowrap disabled:opacity-30"
                   >
                     Same as {Math.ceil(Number(item.soh))}, no loss
-                  </button>
+                  </button>}
                   <input
                     type="number" inputMode="decimal" placeholder="Qty"
                     value={qty}

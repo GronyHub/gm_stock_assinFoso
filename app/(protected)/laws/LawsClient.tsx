@@ -472,6 +472,9 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                             {s.m.length > 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700">⚠ Not done {s.m.length}×</span>}
                             {s.p.length > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-800">⚖ {s.p.length} violation{s.p.length === 1 ? '' : 's'} recorded</span>}
                             {!last && s.m.length === 0 && s.p.length === 0 && <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-500">{l.law_type === 'recurring' ? 'Nothing recorded in 30 days' : 'No penalties recorded in 30 days'}</span>}
+                            {l.subcategory === 'Counts' && l.law_type === 'standing' && /items a week/i.test(l.text) && (
+                              <button type="button" onClick={() => window.parent.postMessage({ type: 'open-counts' }, window.location.origin)} className="rounded-md bg-blue-600 px-2 py-1 text-[12px] font-bold text-white">Items to count now →</button>
+                            )}
                             {canLog && vs.map((v, i) => v.by === 'manager' && v.points > 0 ? (
                               <button key={i} type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-2 py-1 text-[12px] font-bold text-white">⚖ Record violation{vs.filter(x => x.by === 'manager' && x.points > 0).length > 1 ? `: ${v.text.slice(0, 28)}` : ''}</button>
                             ) : null)}

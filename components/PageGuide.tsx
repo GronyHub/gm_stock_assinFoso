@@ -1,11 +1,17 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { areaForGuide } from '@/lib/lawAreas'
 
 // The Laws page of a Cash page: a sheet over the page with the page's laws. Each law carries its own record (done, not done, violations) and a Record violation button.
 
 export function LawsSheet({ areaKey, label, onClose }: { areaKey: string; label: string; onClose: () => void }) {
+  // A button inside the laws (for example 'Items to count now') asks the hub to open a page: the sheet gets out of the way.
+  useEffect(() => {
+    const h = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data?.type === 'open-counts') onClose() }
+    window.addEventListener('message', h)
+    return () => window.removeEventListener('message', h)
+  }, [onClose])
   if (typeof document === 'undefined') return null
   return createPortal(
     <div className="fixed inset-0 z-[70] flex flex-col bg-white">
