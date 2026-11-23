@@ -182,7 +182,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
       {acct && username && <HubProfileWindow h={h} onClose={() => setAcct(false)} />}
       <PersonTiles h={h} who={who} />
       <MyShift h={h} />
-      <div className="grid grid-cols-5 gap-1.5">
+      {(!showFlags || !(isOwnerOrJoe && (h.canSeeManage || h.canSeeTeam))) && <div className="grid grid-cols-5 gap-1.5">
         {!showFlags && (
           <Card wide title="Your sales today" onClick={go(() => goItemsMode('log'))} value={<MoneyText v={mySales} />} sub={`Shop total ${Number(liveTodaySalesTotal).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`} />
         )}
@@ -190,7 +190,7 @@ export default function HubHome({ h }: { h: HubCtx }) {
           <Card title="Team" value={team === null ? '–' : clockedIn.length} tone="plain" onClick={() => openShop('times')}
           sub={team === null ? 'Loading…' : clockedIn.length ? clockedIn.map(r => nm(r.staff_name)).join(', ') : 'Nobody clocked in yet'} />
         )}
-      </div>
+      </div>}
     </div>
   )
 }

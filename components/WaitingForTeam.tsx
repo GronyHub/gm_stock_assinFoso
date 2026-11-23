@@ -42,13 +42,13 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   const whoTouched = useRef(false)
   useEffect(() => { if (self && !whoTouched.current) setWho(self) }, [self])
   const [cardsOpen, setCardsOpen] = useState<null | 'approve' | 'cards'>(null)   // the clock notices, decisions and approvals open in a sheet, not as cards above the tiles
-  const [teamLate, setTeamLate] = useState(0)
+  const [lateList, setLateList] = useState<Duty[]>([])
   const [refresh, setRefresh] = useState(0)
   // For the owner and Joe: how many tasks anyone has overdue right now, shown beside the list (they start on their own name).
   useEffect(() => {
     if (!canManage) return
     let live = true
-    const go = () => fetch('/api/daily-checks', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (live && Array.isArray(j?.duties)) setTeamLate((j.duties as Duty[]).filter(d => d.state === 'late' && d.kind === 'task').length) }).catch(() => {})
+    const go = () => fetch('/api/daily-checks', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (live && Array.isArray(j?.duties)) setLateList((j.duties as Duty[]).filter(d => d.state === 'late' && d.kind === 'task')) }).catch(() => {})
     void go(); const t = setInterval(go, 120000)
     return () => { live = false; clearInterval(t) }
   }, [canManage, refresh])
@@ -113,7 +113,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
             <option value="">Everyone</option>
             {chipNames.map(n => <option key={n} value={n}>{nm(n)}{n === self ? ' (me)' : ''}</option>)}
           </select>
-          {sel === today && person !== '' && teamLate > 0 && <button type="button" onClick={() => { whoTouched.current = true; setWho('') }} className="shrink-0 rounded-full bg-red-50 px-2.5 py-1.5 text-[12px] font-bold text-red-700">Everyone: {teamLate} overdue</button>}
+          {sel === today && person !== '' && lateList.filter(d => !fallsOn(d, person)).length > 0 && <button type="button" onClick={() => { whoTouched.current = true; setWho('') }} className="shrink-0 rounded-full bg-red-50 px-2.5 py-1.5 text-[12px] font-bold text-red-700">Others: {lateList.filter(d => !fallsOn(d, person)).length} overdue</button>}
         </div>)}
       {!noPeople && !canManage && chipNames.length > 0 && (
         <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
@@ -163,7 +163,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
             <ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className="grid grid-cols-1 gap-2"><ClockApprovals density={density} /></div>}
           </div>
         </div>)}
-      <div className="mt-2">
+      <div className="mt-1">
         {sel <= today
           ? <DailyChecklistClient key={`${sel}-${refresh}`} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}
               inlineFor={sel === today && (!person || person === self) ? self : null} />
