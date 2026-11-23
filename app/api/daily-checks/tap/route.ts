@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     { const msg = await suspendedMessage(actorKey(session.user as any), dayKey()); if ((session.user as { role?: string })?.role !== 'owner' && msg) return badRequest(msg) }
     const b = await req.json().catch(() => ({}))
     const id = Number(b.tile_id)
-    const [t] = await sql`SELECT id, title, minutes, kind, log_category, needs_photo, section, assignment FROM daily_check_tiles WHERE id = ${id} AND active`
+    const [t] = await sql`SELECT id, title, minutes, kind, log_category, needs_photo, section, assignment, needs_confirm FROM daily_check_tiles WHERE id = ${id} AND active`
     if (!t) return badRequest('Unknown tile.')
     // Anyone clocked in may do a tile that is not named for them (it counts as done for the day); only a tile reserved for the managers needs a manager.
     if (t.assignment === 'managers' && !isOwnerLevel(session.user as never) && !isManagerName(actorKey(session.user as never))) return badRequest('This one is for the manager. Ask Joe or Bino.')
@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
 
     // A second Done for the same task and day (a double tap) records nothing new.
     if (b.value !== 'Not done') {
-      const [have] = await sql`SELECT id, tile_id, day, value, note, extra, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ${id} AND day = ${dayKey(now)} AND value = 'Done' ORDER BY id LIMIT 1`
+      const [have] = await sql`SELECT id, tile_id, day, value, note, extra, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ${id} AND day = ${dayKey(now)} AND value = 'Done' AND COALESCE(extra->>'confirm', '') <> 'rejected' ORDER BY id LIMIT 1`
+      // A task a supervisor must confirm waits for that confirmation once it is ticked.
+      if (!have && t.needs_confirm) extra.confirm = 'pending'
       if (have) return success({ ...have, already: true })
     }
 

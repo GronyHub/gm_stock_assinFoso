@@ -5,7 +5,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { SIGNERS } from '@/lib/signers'
-import { inPeriod, WEEKDAYS, CHECKLIST_START, type Frequency } from '@/lib/dailyChecksShared'
+import { addDays, inPeriod, WEEKDAYS, CHECKLIST_START, type Frequency } from '@/lib/dailyChecksShared'
 
 // THE one calculation of the checklist duties on a date: every timed daily task, who it falls on, and how it stands. Waiting for team reads all of them,
 // Waiting for me reads one person's, so the two can never disagree about whose a task is or whether it is late.
@@ -18,6 +18,7 @@ export type Duty = {
   owner: string | null; role: 'Opener' | 'Closer' | 'Joe' | null    // owner = the one person it falls on (lower case)
   category: string | null; lawType: string | null; lawId: number | null
   state: DutyState; by?: string; note?: string | null; at?: string  // who ended it, with the reason, and when
+  awaiting?: boolean   // ticked, and a supervisor has yet to confirm it was really done
 }
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -40,8 +41,10 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
   const all = await sql`SELECT id, title, time, minutes, frequency, kind, days, assignment, category, condition, law_id,
       (SELECT l.law_type FROM page_laws l WHERE l.id = daily_check_tiles.law_id) AS law_type FROM daily_check_tiles
     WHERE active AND frequency = 'daily' AND kind <> 'properties' AND time ~ '^[0-2][0-9]:[0-5][0-9]$' AND created_at::date <= ${date}::date` as unknown as { id: number; title: string; time: string; minutes: number | null; frequency: string; kind: string; days: string | null; assignment: string | null; category: string | null; condition: string | null; law_type: string | null; law_id: number | null }[]
-  const evRows = future ? [] : await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${date} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean } | null }[]
-  const latest = new Map<number, (typeof evRows)[number]>(); for (const r of evRows) latest.set(r.tile_id, r)
+  const evRows = future ? [] : await sql`SELECT tile_id, value, note, recorded_by, recorded_at, extra FROM daily_check_events WHERE day = ${date} ORDER BY recorded_at, id` as unknown as { tile_id: number; value: string; note: string | null; recorded_by: string; recorded_at: string; extra: { overruled?: boolean; confirm?: string; rejected_by?: string; reject_note?: string } | null }[]
+  // A tick the supervisor did not accept counts as not done (the task is back to waiting); what the supervisor wrote is kept to show on the tile.
+  const latest = new Map<number, (typeof evRows)[number]>(); const rejected = new Map<number, (typeof evRows)[number]>()
+  for (const r of evRows) { if (r.extra?.confirm === 'rejected') { rejected.set(r.tile_id, r); latest.delete(r.tile_id) } else { latest.set(r.tile_id, r); rejected.delete(r.tile_id) } }
   // A task that depends on a condition is listed when it is asked for today, on an earlier day only if it was actually answered, and ahead (nobody can tell yet).
   const unmet = isToday ? await unmetConditions() : new Set<string>()
   const tiles = all.filter(t => appliesOn(t, date) && (!t.condition || (isToday ? !unmet.has(t.condition) : future || latest.has(t.id))))
@@ -63,8 +66,9 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
     else if (!isToday) state = 'miss'
     else if (noClockIn) state = 'later'
     else { const mins = nowMin - d; state = mins >= 15 ? 'late' : mins >= 0 ? 'now' : 'later' }
-    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, mins: t.minutes ?? undefined, due: d, shown: Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3)), owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state,
-      by: ev && (state === 'done' || state === 'no') ? ev.recorded_by : undefined, note: ev?.note ?? null, at: ev && (state === 'done' || state === 'no') ? hhmm(new Date(ev.recorded_at)) : undefined })
+    const rej = rejected.get(t.id), awaiting = !!ev && state === 'done' && ev.extra?.confirm === 'pending'
+    out.push({ kind: 'task', key: `t${t.id}`, id: t.id, title: t.title, time: t.time, mins: t.minutes ?? undefined, due: d, shown: Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3)), owner: owner ?? null, role, category: t.category, lawType: t.law_type, lawId: t.law_id, state, awaiting,
+      by: ev && (state === 'done' || state === 'no') ? ev.recorded_by : undefined, note: awaiting ? 'Done. Waiting for the supervisor to confirm.' : rej && !ev ? `Not accepted${rej.extra?.rejected_by ? ` by ${rej.extra.rejected_by}` : ''}: ${rej.extra?.reject_note ?? 'it was not done'}. Do it again.` : ev?.note ?? null, at: ev && (state === 'done' || state === 'no') ? hhmm(new Date(ev.recorded_at)) : undefined })
   }
   return out.sort((x, y) => (x.shown ?? x.due) - (y.shown ?? y.due) || x.id - y.id)
 }
@@ -78,6 +82,7 @@ const PERSONAL: Record<string, { title: string; icon: string; type: string; deta
   'clock-auto': { title: 'Check the clock times', icon: '🕐', type: 'Clock', detail: 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' },
   sanctions: { title: 'Sanctions to approve', icon: '⚖', type: 'Decision', detail: 'A staff member reached a points level.' },
   violations: { title: 'Penalty points to confirm or review', icon: '⚖', type: 'Decision', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.' },
+  confirm: { title: 'Tasks to confirm', icon: '👀', type: 'Confirm', detail: 'Someone ticked these as done. Confirm they were really done, or send them back.' },
   'extra-time': { title: 'Extra time to approve for pay', icon: '⏱️', type: 'Decision', detail: 'Time before the rostered start or after the rostered finish is paid only if approved.' },
   drafts: { title: 'Draft laws to approve', icon: '📜', type: 'Decision', detail: 'Approving creates the checklist tasks.' },
   'pending-jobs': { title: 'Pending jobs overdue', icon: '🧾', type: 'Customer job', detail: 'Jobs customers left are past the promised date. Finish them, or call the customer.' },
@@ -119,6 +124,14 @@ export async function personalDuties(): Promise<Duty[]> {
     if (num(drafts[0]?.n) > 0) for (const d of deciders) out.push(mk('drafts', d, num(drafts[0].n), false))
   } catch { /* leave out */ }
   try {
+    // Ticks waiting for a supervisor (the last two days): Joe confirms what staff did, the owner confirms Joe's.
+    const cf = await sql`SELECT LOWER(recorded_by) AS who, COUNT(*)::int AS n FROM daily_check_events WHERE extra->>'confirm' = 'pending' AND day >= ${addDays(todayKey, -1)} GROUP BY 1`
+    const forJoe = cf.filter(x => !['joe', 'grony'].includes(String(x.who))).reduce((a, x) => a + num(x.n), 0)
+    const forGrony = cf.filter(x => String(x.who) === 'joe').reduce((a, x) => a + num(x.n), 0)
+    if (forJoe > 0) out.push(mk('confirm', 'joe', forJoe, false))
+    if (forGrony > 0) out.push(mk('confirm', 'grony', forGrony, false))
+  } catch { /* leave out */ }
+  try {
     const pj = await sql`SELECT COUNT(*)::int AS n FROM pending_jobs WHERE status <> 'done' AND due_on < ${todayKey}::date`
     if (num(pj[0]?.n) > 0) out.push(mk('pending-jobs', null, num(pj[0].n), true))
   } catch { /* leave out */ }
@@ -135,7 +148,7 @@ const STANDING: Record<StandingRow['kind'], { title: string; icon: string; type:
 }
 // Where a tap on a standing duty goes (the same places Waiting for me sends the person).
 export const STAND_HREF: Record<string, string> = { cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws-drafts','pending-jobs': '/pending-jobs',
-  'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1', 'extra-time': '/todo?approve=1' }
+  'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1', 'extra-time': '/todo?approve=1', confirm: '/todo' }
 const num = (v: unknown) => Number(v ?? 0)
 // One query set for every person: how many of each standing duty fall due on each date, and how many of those are already done.
 export async function standingRowsAll(): Promise<StandingRow[]> {
@@ -199,7 +212,7 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
       FROM daily_check_tiles t JOIN page_laws l ON l.id = t.law_id AND l.tile_id = t.id
       WHERE t.active AND l.status = 'live' AND t.kind <> 'properties' AND t.frequency IN ('weekly', 'monthly') AND (${includeManagerLaws} OR l.audience <> 'managers')` as unknown as { id: number; title: string; time: string | null; frequency: string; days: string | null; weekday: string | null; assignment: string | null; law_id: number; month_day: number | null; category: string | null; law_type: string | null }[]
     const hits = tiles.filter(t => t.frequency === 'weekly' ? w === (t.weekday ?? (t.days ? t.days.split(',')[0].trim() : 'mon')) : t.month_day ? Number(date.slice(8)) === Math.min(t.month_day, daysIn(date)) : date.endsWith('-01'))
-    const evs = hits.length && !future ? await sql`SELECT tile_id, day, value, note, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ANY(${hits.map(t => t.id)}) AND day <= ${date}` as unknown as { tile_id: number; day: string; value: string; note: string | null; recorded_by: string; recorded_at: string }[] : []
+    const evs = hits.length && !future ? await sql`SELECT tile_id, day, value, note, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ANY(${hits.map(t => t.id)}) AND day <= ${date} AND COALESCE(extra->>'confirm', '') <> 'rejected'` as unknown as { tile_id: number; day: string; value: string; note: string | null; recorded_by: string; recorded_at: string }[] : []
     for (const t of hits) {
       const a = t.assignment ?? 'all'
       const ev = evs.filter(e => e.tile_id === t.id && inPeriod(t.frequency as Frequency, e.day, date)).at(-1)

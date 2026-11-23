@@ -71,6 +71,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const tapDuty = (d: Duty): (() => void) | undefined => {
     const k = dutyKind(d)
     if (k === 'approve' || k === 'extra-time') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
+    if (k === 'confirm') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'confirm' }))
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
     if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }
     return d.href ? () => goTo(d.href!) : undefined
@@ -110,7 +111,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3500) }
   const isToday = !!day && day === today
-  const latest = (t: CheckTile) => day ? events.filter(e => e.tile_id === t.id && inPeriod(t.frequency, e.day, day)).at(-1) : undefined
+  const latest = (t: CheckTile) => day ? events.filter(e => e.tile_id === t.id && e.extra?.confirm !== 'rejected' && inPeriod(t.frequency, e.day, day)).at(-1) : undefined
   // On a given day: daily tiles always; weekly/monthly/yearly tiles stay on their tab; a weekday tile only when it is that weekday (or already done).
   const visible = useMemo(() => tiles.filter(t => !day || appliesOn(t, day)), [tiles, day])
 
@@ -214,7 +215,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
-                tone={st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
+                tone={st === 'done' && d.awaiting ? 'border-amber-300 bg-amber-50' : st === 'done' ? 'border-green-400 bg-green-50' : st === 'no' ? 'border-gray-300 bg-gray-100' : st === 'late' ? 'border-red-300 bg-red-50' : st === 'now' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />
             ))}
           </div>

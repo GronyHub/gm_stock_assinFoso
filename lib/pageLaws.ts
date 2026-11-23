@@ -67,7 +67,7 @@ async function ensureCompanyLawsImpl() {
   await ensurePageLawsTable()
   await sql`ALTER TABLE page_laws
     ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_type TEXT NOT NULL DEFAULT 'standing',
-    ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
+    ADD COLUMN IF NOT EXISTS needs_confirm BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
@@ -185,6 +185,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     dos: t(b.dos, 1500), donts: t(b.donts, 1500),
     violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff', reminder: ['login', 'first_sale'].includes(b.reminder) ? String(b.reminder) : 'none',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
+    needs_confirm: recurring && !!b.needs_confirm,
     assignment: cleanAssignment(b.assignment),
     // monthly laws: the day of the month it is done on (1 to 31; a short month uses its last day)
     month_day: recurring && String(b.frequency ?? '') === 'monthly' && Number.isInteger(Number(b.month_day)) && Number(b.month_day) >= 1 && Number(b.month_day) <= 31 ? Number(b.month_day) : null,
