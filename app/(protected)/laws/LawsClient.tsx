@@ -436,8 +436,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                     return (
                     <div key={l.id} id={`law-${l.id}`} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
                       <div className="min-w-0">
-                        <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.title || firstSentence(l.text)}</p>
-                        {l.text && l.text !== (l.title || firstSentence(l.text)) && <p className="mt-1 text-[12px] leading-snug text-gray-700">{l.text}</p>}
+                        <p className="text-[13px] font-semibold leading-snug text-gray-900">{l.text || l.title}</p>
                         {l.status === 'draft' && <p className="text-[11px] font-extrabold uppercase text-amber-700">Draft: not in force yet</p>}
                       </div>
                       <div className="min-w-0 text-[12px] leading-snug">
@@ -645,7 +644,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
   async function save() {
     if (!d.violations.some(v => v.text.trim())) { setErr('Add at least one violation: what exactly breaks this law.'); return }
     setBusy(true); setErr('')
-    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: v.points === '0' ? 0 : Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })) }) })
+    const r = await fetch(d.id ? `/api/page-laws/${d.id}` : '/api/page-laws', { method: d.id ? 'PUT' : 'POST', headers: json, body: JSON.stringify({ ...d, title: '', minutes: Number(d.minutes) || null, violations: d.violations.filter(v => v.text.trim()).map(v => ({ text: v.text, points: v.points === '0' ? 0 : Number(v.points) || 1, by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })) }) })
     const j = await r.json().catch(() => ({}))
     setBusy(false)
     if (!r.ok) setErr(j.error ?? 'Could not save'); else onSaved(d.id ? 'Law saved' : 'Law added')
@@ -657,8 +656,7 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
         <p className="text-base font-bold">{d.id ? 'Edit law' : 'New law'}</p>
         <div><label className={lab}>Who sees and keeps this law</label><select value={d.audience} onChange={e => set('audience', e.target.value)} className={inp}><option value="staff">All staff</option><option value="managers">Managers and owners only</option></select></div>
         {d.law_type === 'standing' && <div><label className={lab}>App reminder (standing orders)</label><select value={d.reminder} onChange={e => set('reminder', e.target.value)} className={inp}><option value="none">No reminder</option><option value="login">After login, before work starts</option><option value="first_sale">After the staff member&apos;s first sale of the day</option></select></div>}
-        <div><label className={lab}>Short title (shown in the table)</label><input value={d.title} onChange={e => set('title', e.target.value)} placeholder="For example: Record every sale as soon as it happens" className={inp} /></div>
-        <div><label className={lab}>The law (full statement, used for the tasks)</label><textarea value={d.text} onChange={e => set('text', e.target.value)} rows={4} className={inp} /></div>
+        <div><label className={lab}>The law (shown everywhere, and on the task)</label><textarea value={d.text} onChange={e => set('text', e.target.value)} rows={4} className={inp} /></div>
         <div className="grid grid-cols-2 gap-2">
           <div><label className={lab}>Category (required)</label><select value={d.category} onChange={e => set('category', e.target.value)} className={inp}><option value="" disabled>Choose…</option>{LAW_CATEGORIES.map(c => <option key={c.key}>{c.key}</option>)}</select></div>
           <div><label className={lab}>Subcategory</label><input list="law-subs" value={d.subcategory} onChange={e => set('subcategory', e.target.value)} className={inp} /><datalist id="law-subs">{subs.map(s => <option key={s} value={s} />)}</datalist></div>
