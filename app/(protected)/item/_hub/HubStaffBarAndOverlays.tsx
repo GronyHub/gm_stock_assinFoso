@@ -18,7 +18,7 @@ import { ADVERT_ITEMS, GRONY_CHECKS_ITEMS, type ManageView } from '../_component
 // Manage's tiles, under headings. A tile goes in the first heading that matches it; any tile that matches none lands under
 // "Other", so every tile shows.
 const MANAGE_SECTIONS: { heading: string; test: (k: string, label: string) => boolean }[] = [
-  { heading: 'Staff', test: k => ['team', 'times', 'rota', 'penalties', 'm:staff_rules', 'm:opener', 'm:closer'].includes(k) },
+  { heading: 'Staff', test: k => ['team', 'times', 'rota', 'penalties', 'm:staff_rules', 'm:prompt_joe', 'm:opener', 'm:closer'].includes(k) },
   { heading: 'Team', test: (_k, label) => /\bTeam\b/.test(label) },
   { heading: 'Shop checks', test: k => ['m:cleanliness', 'm:arrangement', 'm:customer_display', 'm:repair_works', 'm:security_chk', 'm:unfortunate_events', 'm:quality_assurance', 'm:customer_service', 'm:grony_checks', 'm:properties', 'm:future'].includes(k) },
   { heading: 'Adverts', test: k => ['m:advert', 'm:audio', 'm:audio_status', 'm:equipment', 'm:photoshop', 'm:facebook', 'm:tiktok', 'm:whatsapp', 'm:youtube', 'm:video', 'm:item_photos', 'm:advert_log'].includes(k) },

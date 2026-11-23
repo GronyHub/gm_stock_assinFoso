@@ -78,6 +78,7 @@ const PERSONAL: Record<string, { title: string; icon: string; type: string; deta
   'clock-auto': { title: 'Check the clock times', icon: '🕐', type: 'Clock', detail: 'A clock-in or clock-out was set for them. They tap OK or send the correct time.' },
   sanctions: { title: 'Sanctions to approve', icon: '⚖', type: 'Decision', detail: 'A staff member reached a points level.' },
   violations: { title: 'Penalty points to confirm or review', icon: '⚖', type: 'Decision', detail: 'Reports waiting to be confirmed and disputes waiting for a decision.' },
+  'extra-time': { title: 'Extra time to approve for pay', icon: '⏱️', type: 'Decision', detail: 'Time before the rostered start or after the rostered finish is paid only if approved.' },
   drafts: { title: 'Draft laws to approve', icon: '📜', type: 'Decision', detail: 'Approving creates the checklist tasks.' },
   'pending-jobs': { title: 'Pending jobs overdue', icon: '🧾', type: 'Customer job', detail: 'Jobs customers left are past the promised date. Finish them, or call the customer.' },
 }
@@ -113,6 +114,7 @@ export async function personalDuties(): Promise<Duty[]> {
       const sc = sanc.filter(x => can(d, x.staff)).length, vc = viol.filter(x => can(d, x.staff)).length
       if (sc > 0) out.push(mk('sanctions', d, sc, false)); if (vc > 0) out.push(mk('violations', d, vc, false))
     }
+    try { const ex = (await (await import('./extraTime')).listExtra({ pendingOnly: true })).length; if (ex > 0) for (const d of deciders) out.push(mk('extra-time', d, ex, false)) } catch { /* leave out */ }
     const drafts = await sql`SELECT COUNT(*)::int AS n FROM page_laws WHERE status = 'draft'`
     if (num(drafts[0]?.n) > 0) for (const d of deciders) out.push(mk('drafts', d, num(drafts[0].n), false))
   } catch { /* leave out */ }
@@ -133,7 +135,7 @@ const STANDING: Record<StandingRow['kind'], { title: string; icon: string; type:
 }
 // Where a tap on a standing duty goes (the same places Waiting for me sends the person).
 export const STAND_HREF: Record<string, string> = { cctv: '/cctv-review', sanctions: '/penalties', violations: '/penalties', drafts: '/laws-drafts','pending-jobs': '/pending-jobs',
-  'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1' }
+  'clock-prev': '/todo', 'clock-auto': '/todo', queries: '/todo', mytasks: '/todo', ack: '/todo', approve: '/todo?approve=1', 'extra-time': '/todo?approve=1' }
 const num = (v: unknown) => Number(v ?? 0)
 // One query set for every person: how many of each standing duty fall due on each date, and how many of those are already done.
 export async function standingRowsAll(): Promise<StandingRow[]> {

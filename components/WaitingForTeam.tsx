@@ -38,19 +38,25 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   const [viewable, setViewable] = useState<string[]>([])
   const [self, setSelf] = useState('')
   useEffect(() => { fetch('/api/my-day?people=1', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { setViewable(Array.isArray(d?.people) ? d.people : []); setSelf(String(d?.self ?? '')) }).catch(() => {}) }, [])
-  // Staff open this page on their own name; the owner and Joe start on Everyone. (Waiting for me is this page filtered to one person, so there is no separate list to keep in step.)
+  // Everyone, the owner and Joe too, opens this page on their own name: what they have to do is what they see first. The owner and Joe can pick Everyone or one person from the list.
   const whoTouched = useRef(false)
-  useEffect(() => { if (!canManage && self && !whoTouched.current) setWho(self) }, [canManage, self])
+  useEffect(() => { if (self && !whoTouched.current) setWho(self) }, [self])
+  const [cardsOpen, setCardsOpen] = useState<null | 'approve' | 'cards'>(null)   // the clock notices, decisions and approvals open in a sheet, not as cards above the tiles
+  const [teamLate, setTeamLate] = useState(0)
   const [refresh, setRefresh] = useState(0)
+  // For the owner and Joe: how many tasks anyone has overdue right now, shown beside the list (they start on their own name).
+  useEffect(() => {
+    if (!canManage) return
+    let live = true
+    const go = () => fetch('/api/daily-checks', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (live && Array.isArray(j?.duties)) setTeamLate((j.duties as Duty[]).filter(d => d.state === 'late' && d.kind === 'task').length) }).catch(() => {})
+    void go(); const t = setInterval(go, 120000)
+    return () => { live = false; clearInterval(t) }
+  }, [canManage, refresh])
   // A tap on a clock/question/approval duty tile: show the person's own cards (chip = Everyone for a manager, else their own name), then scroll to them.
   useEffect(() => {
     const f = (e: Event) => {
       const what = String((e as CustomEvent).detail ?? '')
-      whoTouched.current = true; setWho(canManage ? '' : self); setSel(today)
-      setTimeout(() => {
-        if (what === 'approve') window.dispatchEvent(new CustomEvent('wft-focus-ready', { detail: 'approve' }))
-        else { const el = document.getElementById('wft-cards'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('ring-4', 'ring-blue-500'); setTimeout(() => el.classList.remove('ring-4', 'ring-blue-500'), 4000) } }
-      }, 350)
+      whoTouched.current = true; setWho(self); setSel(today); setCardsOpen(what === 'approve' ? 'approve' : 'cards')
     }
     window.addEventListener('wft-focus', f); return () => window.removeEventListener('wft-focus', f)
   }, [canManage, self, today])
@@ -100,7 +106,16 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[12px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
-      {!noPeople && chipNames.length > 0 && (
+      {!noPeople && canManage && chipNames.length > 0 && (
+        <div className="mt-0.5 flex items-center gap-2 px-2">
+          <select aria-label="Whose tasks" value={person} onChange={e => { whoTouched.current = true; setWho(e.target.value) }}
+            className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[14px] font-bold text-gray-900">
+            <option value="">Everyone</option>
+            {chipNames.map(n => <option key={n} value={n}>{nm(n)}{n === self ? ' (me)' : ''}</option>)}
+          </select>
+          {sel === today && person !== '' && teamLate > 0 && <button type="button" onClick={() => { whoTouched.current = true; setWho('') }} className="shrink-0 rounded-full bg-red-50 px-2.5 py-1.5 text-[12px] font-bold text-red-700">Everyone: {teamLate} overdue</button>}
+        </div>)}
+      {!noPeople && !canManage && chipNames.length > 0 && (
         <div className="mt-0.5 flex flex-nowrap gap-1 overflow-x-auto px-2">
           {['', ...chipNames].map(n => (
             <button key={n || 'all'} type="button" onClick={() => { whoTouched.current = true; setWho(n) }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${person === n ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{n ? nm(n) : 'Everyone'}</button>
@@ -142,7 +157,13 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
       )}
       {/* The answers that belong to the signed-in person (a missing clock time, a supervisor's question, a decision) sit here, on this page, when their own name (or Everyone) is in focus. */}
       <WorkloadStrip date={sel} />
-      {sel === today && (!person || person === self) && <div id="wft-cards" className="mt-2 space-y-2 rounded-xl px-2 empty:hidden"><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className={tileGrid(density)}><ClockApprovals density={density} /></div>}</div>}
+      {cardsOpen && sel === today && (
+        <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setCardsOpen(null)}>
+          <div role="dialog" aria-label="To decide or answer" className="mx-auto max-h-[88vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between"><p className="text-base font-bold text-gray-900">{cardsOpen === 'approve' ? 'To approve' : 'To answer'}</p><button type="button" onClick={() => setCardsOpen(null)} aria-label="Close" className="text-xl text-gray-500">✕</button></div>
+            <ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className="grid grid-cols-1 gap-2"><ClockApprovals density={density} /></div>}
+          </div>
+        </div>)}
       <div className="mt-2">
         {sel <= today
           ? <DailyChecklistClient key={`${sel}-${refresh}`} canManage={canManage} embedded density={density} person={person} dayParam={sel === today ? null : sel}

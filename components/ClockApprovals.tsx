@@ -51,7 +51,7 @@ export default function ClockApprovals(_props: { density?: TileDensity }) {
   return (
     <>
       {/* CCTV reviews show as the "CCTV reviews to do" duty tile, not here. */}
-      {me === 'grony' && (
+      {false && me === 'grony' && (
         <div className="col-span-full flex items-center gap-2"><button type="button" onClick={() => void nudge()} className="rounded-md bg-[#14213D] px-2.5 py-1 text-[12px] font-bold text-white">🔔 Prompt Joe to check</button>{sent && <span className="text-[12px] text-gray-600">{sent}</span>}</div>)}
       {extra.length > 0 && (
         <div className="col-span-full rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3">

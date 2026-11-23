@@ -70,7 +70,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const dutyKind = (d: Duty) => (d.kind === 'standing' ? d.key.split(':')[1] : '')
   const tapDuty = (d: Duty): (() => void) | undefined => {
     const k = dutyKind(d)
-    if (k === 'approve') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
+    if (k === 'approve' || k === 'extra-time') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
     if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }
     return d.href ? () => goTo(d.href!) : undefined
@@ -204,7 +204,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
       </div>}
       {!settling && isToday && (
         <div className="mx-2 mb-2 space-y-1.5 rounded-xl border border-[#14213D] bg-white p-1">
-          {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet. The day&apos;s tasks start when the first person does; they are listed at their planned times.</p>}
+          {dayStart == null && <p className="text-xs font-semibold text-gray-600">Nobody has clocked in yet: tasks start with the first clock-in.</p>}
           {locked && <p className="rounded-lg bg-amber-50 p-2 text-xs font-semibold text-amber-800">You are not clocked in. Clock in first, then you can tick tasks. You can still read them.</p>}
           {dayStart != null && late.length === 0 && dueNow.length === 0 && <p className="text-xs font-semibold text-green-700">Nothing late. {next.length ? 'Later tasks are below.' : 'All timed tasks are done.'}</p>}
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
