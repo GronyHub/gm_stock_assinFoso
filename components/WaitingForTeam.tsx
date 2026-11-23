@@ -106,7 +106,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
         <DateStrip dates={dates} sel={sel} today={today} onSel={setSel} more={more} />
         {canAdd && <button type="button" onClick={() => setAdding(a => !a)} title="Add a to-do for a date" className="shrink-0 rounded-lg bg-[#14213D] px-2 py-1.5 text-[12px] font-bold text-white">{adding ? '✕' : '+ To do'}</button>}
       </div>
-      {!noPeople && canManage && chipNames.length > 0 && (
+      {canManage && chipNames.length > 0 && (
         <div className="mt-0.5 flex items-center gap-2 px-2">
           <select aria-label="Whose tasks" value={person} onChange={e => { whoTouched.current = true; setWho(e.target.value) }}
             className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-[14px] font-bold text-gray-900">
@@ -156,7 +156,6 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
         </div>
       )}
       {/* The answers that belong to the signed-in person (a missing clock time, a supervisor's question, a decision) sit here, on this page, when their own name (or Everyone) is in focus. */}
-      <WorkloadStrip date={sel} />
       {cardsOpen && sel === today && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setCardsOpen(null)}>
           <div role="dialog" aria-label="To decide or answer" className="mx-auto max-h-[88vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
@@ -184,6 +183,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                 </div>) })}
             </div>)}
       </div>
+      <WorkloadStrip date={sel} only={person || undefined} />
     </div>
   )
 }

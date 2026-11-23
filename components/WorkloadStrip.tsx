@@ -6,19 +6,22 @@ const hm = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 // The workload rule, shown for the chosen day: the tasks that fall on each person should add up to at least half of the time they are at the shop.
-export default function WorkloadStrip({ date }: { date: string }) {
+export default function WorkloadStrip({ date, only }: { date: string; only?: string }) {
   const [people, setPeople] = useState<P[] | null>(null)
   useEffect(() => {
     let live = true
     fetch(`/api/workload?date=${date}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { if (live) setPeople(Array.isArray(d?.people) ? d.people : []) }).catch(() => { if (live) setPeople([]) })
     return () => { live = false }
   }, [date])
-  if (!people || people.length === 0) return null
+  const shown = (people ?? []).filter(p => !only || p.name.toLowerCase() === only.toLowerCase())
+  if (!people || shown.length === 0) return null
+  const short = shown.filter(p => p.worked < p.target)
   return (
-    <details className="mx-2 mt-2 rounded-xl border border-gray-200 bg-white" open>
-      <summary className="cursor-pointer px-3 py-2 text-[13px] font-semibold text-gray-900">Workload: logged work should fill at least half of each person&apos;s time</summary>
+    <details className="mx-2 mt-3 rounded-xl border border-gray-200 bg-white">
+      <summary className="cursor-pointer px-3 py-2 text-[13px] font-semibold text-gray-900">Workload{short.length ? `: ${short.map(p => cap(p.name)).join(' and ')} below half their time` : ': everyone has enough logged'}</summary>
       <div className="space-y-2 px-3 pb-3">
-        {people.map(p => {
+        <p className="text-[12px] text-gray-500">Logged work should fill at least half of each person&apos;s time.</p>
+        {shown.map(p => {
           const pct = p.target > 0 ? Math.min(100, Math.round((p.worked / p.target) * 100)) : 100
           const enough = p.worked >= p.target
           return (
