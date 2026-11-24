@@ -6,7 +6,7 @@ type D = {
   who: string; days: number; counting: boolean; startCounting: string
   points: { total: number; entries: { day: string; points: number; reason: string; status: string }[] }
   tasks: { done: number; notDone: number; missed: number; areas: Area[] }
-  time: { daysWorked: number; minutes: number }
+  time: { daysWorked: number; minutes: number; fullDays: number }
   attendance: { late: number; absent: number; backdated: number }
   sales: { total: number; count: number }
 }
@@ -38,7 +38,7 @@ export default function PersonSummary({ who }: { who: string }) {
         {!d.counting && <p className="text-[12px] text-blue-800">Pilot: points count from {dlabel(d.startCounting)}.</p>}
         {d.points.entries.length === 0
           ? <p className="text-[13px] text-green-700">No violations in the last {d.days} days.</p>
-          : <details className="mt-1"><summary className="cursor-pointer text-[13px] font-semibold text-blue-700">{d.points.entries.length} violation{d.points.entries.length === 1 ? '' : 's'} in the last {d.days} days</summary>
+          : <details className="mt-1"><summary className="cursor-pointer text-[13px] font-semibold text-blue-700">{d.points.entries.length} entr{d.points.entries.length === 1 ? 'y' : 'ies'} in the last {d.days} days (some carry no points)</summary>
               <ul className="mt-1 space-y-1 text-[12px] leading-snug text-gray-800">{d.points.entries.map((e, i) => <li key={i}><b>{dlabel(e.day)}</b> · {e.points} pt{e.status !== 'active' ? ` (${e.status})` : ''} · {e.reason}</li>)}</ul></details>}
       </div>
 
@@ -60,7 +60,7 @@ export default function PersonSummary({ who }: { who: string }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div className={card}><p className={h}>At the shop</p><p className="text-lg font-extrabold text-gray-900">{hm(d.time.minutes)}</p><p className="text-[12px] text-gray-500">{d.time.daysWorked} day{d.time.daysWorked === 1 ? '' : 's'} worked</p></div>
+        <div className={card}><p className={h}>At the shop</p><p className="text-lg font-extrabold text-gray-900">{hm(d.time.minutes)}</p><p className="text-[12px] text-gray-500">{d.time.daysWorked} day{d.time.daysWorked === 1 ? '' : 's'} worked. Hours counted on the {d.time.fullDays} with both a time in and a time out.</p></div>
         <div className={card}><p className={h}>Sales</p><p className="text-lg font-extrabold text-gray-900">₵{d.sales.total.toLocaleString('en-GB', { maximumFractionDigits: 2 })}</p><p className="text-[12px] text-gray-500">{d.sales.count} sale{d.sales.count === 1 ? '' : 's'} recorded</p></div>
       </div>
 

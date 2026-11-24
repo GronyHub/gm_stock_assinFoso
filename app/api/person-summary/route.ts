@@ -46,21 +46,24 @@ export async function GET(req: NextRequest) {
     for (const r of notDoneRows) row(String(r.cat)).notDone += Number(r.n)
     const days: string[] = []
     for (let i = 1; i <= DAYS; i++) { const d = addDays(today, -i); if (d >= CHECKLIST_START) days.push(d) }
-    for (let i = 0; i < days.length; i += 6) {
-      const chunk = await Promise.all(days.slice(i, i + 6).map(d => dutiesForDate(d).catch(() => [])))
+    // A task is counted as missed only on a day the person was at the shop (clocked in): a manager-only task does not count against Joe on his day off.
+    const worked = new Set(times.map(t => String(t.work_date).slice(0, 10)))
+    const workedDays = days.filter(d => worked.has(d))
+    for (let i = 0; i < workedDays.length; i += 6) {
+      const chunk = await Promise.all(workedDays.slice(i, i + 6).map(d => dutiesForDate(d).catch(() => [])))
       for (const du of chunk) for (const t of du) if (t.kind === 'task' && t.state === 'miss' && String(t.owner ?? '').toLowerCase() === who) row(t.category ?? 'Other').missed += 1
     }
     const areas = Array.from(byArea.values()).sort((a, b) => (b.missed + b.notDone) - (a.missed + a.notDone) || b.done - a.done)
     const tot = areas.reduce((a, r) => ({ done: a.done + r.done, notDone: a.notDone + r.notDone, missed: a.missed + r.missed }), { done: 0, notDone: 0, missed: 0 })
 
-    let minutes = 0
-    for (const t of times) { const a = toMin(t.actual_in), b = toMin(t.actual_out); if (a != null && b != null && b > a) minutes += b - a }
+    let minutes = 0, fullDays = 0
+    for (const t of times) { const a = toMin(t.actual_in), b = toMin(t.actual_out); if (a != null && b != null && b > a) { minutes += b - a; fullDays += 1 } }
     const reasons = viol.map(v => String(v.reason))
     const data = {
       who, days: DAYS, counting: today >= st.startCounting, startCounting: st.startCounting,
       points: { total: points, entries: viol.map(v => ({ day: String(v.day), points: Number(v.points), reason: String(v.reason), status: String(v.status) })) },
       tasks: { ...tot, areas },
-      time: { daysWorked: new Set(times.map(t => String(t.work_date))).size, minutes },
+      time: { daysWorked: new Set(times.map(t => String(t.work_date))).size, minutes, fullDays },
       attendance: { late: reasons.filter(r => /^Late without/i.test(r)).length, absent: reasons.filter(r => /^Absent without/i.test(r)).length, backdated: reasons.filter(r => /^Clock-in time written/i.test(r)).length },
       sales: { total: Number(sales[0]?.total ?? 0), count: Number(sales[0]?.n ?? 0) },
     }
