@@ -17,7 +17,7 @@ export function quizFor(law: { id: number; title: string; text: string; law_type
   const wrong = [0, 1, 2].map(k => others[(law.id * 3 + k * 5) % Math.max(others.length, 1)]).filter((t, i, a) => t && a.indexOf(t) === i)
   const out: LawQuestion[] = []
   const why = law.text.replace(/\s+/g, ' ').slice(0, 280)
-  if (wrong.length >= 3) { const p = place(law.id, law.title, wrong); out.push({ q: 'Which of these is the rule in THIS law (the one you are reading and signing)?', options: p.options, answer: p.answer, why }) }
+  if (wrong.length >= 3) { const p = place(law.id, law.title, wrong); out.push({ q: 'Which of these is the rule in THIS law?', options: p.options, answer: p.answer, why }) }
   const c = CONSEQUENCE[law.law_type ?? 'standing'] ?? CONSEQUENCE.standing
   const p2 = place(law.id + 1, c.right, c.wrong)
   out.push({ q: `If you do not follow this law (${law.title.slice(0, 70)}), what happens?`, options: p2.options, answer: p2.answer, why: 'Every law has a violation line. ' + why })

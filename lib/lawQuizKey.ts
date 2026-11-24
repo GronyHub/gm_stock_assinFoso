@@ -43,7 +43,7 @@ export async function betterQuizzesOnce() {
     const rows = await sql`SELECT id, text, quiz FROM page_laws WHERE status = 'live'` as unknown as { id: number; text: string; quiz: string | null }[]
     for (const r of rows) {
       const k = K.find(x => x.re.test(r.text)); if (!k) continue
-      const mechanical = !r.quiz || r.quiz === '[]' || r.quiz.includes('THIS law (the one you are reading and signing)') || r.quiz.includes('Which of these is a Company Law?')
+      const mechanical = !r.quiz || r.quiz === '[]' || r.quiz.includes('THIS law (the one you are reading and signing)') || r.quiz.includes('Which of these is the rule in THIS law?') || r.quiz.includes('Which of these is a Company Law?')
       if (mechanical) await sql`UPDATE page_laws SET quiz = ${JSON.stringify(k.quiz)} WHERE id = ${r.id}`
     }
   } catch (e) { console.error('key law quizzes failed:', e instanceof Error ? e.message : String(e)) }
