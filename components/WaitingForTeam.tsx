@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import PersonSummary from '@/components/PersonSummary'
 import ConfirmTasks from '@/components/ConfirmTasks'
 import type { Duty } from '@/lib/duties'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
@@ -184,6 +185,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
                 </div>) })}
             </div>)}
       </div>
+      {sel === today && person !== '' && (canManage || person === self) && <PersonSummary who={person} />}
       <WorkloadStrip date={sel} only={person || undefined} />
     </div>
   )
