@@ -14,6 +14,9 @@ const MAX_DAYS = 92
 const TTL = 20 * 60 * 1000
 const toMin = (t: unknown) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t ?? '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null }
 const DATE = /^\d{4}-\d{2}-\d{2}$/
+// The database driver may hand back a date as a Date object or as text: both become 'YYYY-MM-DD', and a timestamp becomes 'HH:MM' (UTC), without ever throwing.
+const ymdOf = (v: unknown): string => { if (v instanceof Date) return Number.isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10); const t = String(v ?? ''); return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : (() => { const d = new Date(t); return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10) })() }
+const hmOf = (v: unknown): string => { const d = v instanceof Date ? v : new Date(String(v ?? '').replace(' ', 'T')); if (!Number.isNaN(d.getTime())) return d.toISOString().slice(11, 16); const m = /(\d{2}:\d{2})/.exec(String(v ?? '')); return m ? m[1] : '' }
 
 type Missed = { day: string; time: string; title: string; category: string | null; law_id: number | null }
 type Base = { done: number; notDone: number; missed: number; areas: Map<string, { cat: string; done: number; notDone: number; missed: number }>; missedList: Missed[]; missedByDay: Map<string, number>; missedTitles: Map<string, number>
@@ -38,7 +41,7 @@ async function computeBase(from: string, to: string) {
   const workedBy = new Map<string, Set<string>>()
   for (const t of times) {
     const who = String(t.who), b = per.get(who); if (!b) continue
-    const d = String(t.work_date).slice(0, 10); (workedBy.get(who) ?? workedBy.set(who, new Set()).get(who)!).add(d)
+    const d = ymdOf(t.work_date); if (!d) continue; (workedBy.get(who) ?? workedBy.set(who, new Set()).get(who)!).add(d)
     const a = toMin(t.actual_in), z = toMin(t.actual_out); if (a != null && z != null && z > a) { b.minutes += z - a; b.fullDays += 1 }
   }
   for (const [who, set] of workedBy) per.get(who)!.daysWorked = set.size
@@ -105,12 +108,12 @@ export async function GET(req: NextRequest) {
     // Lateness in minutes, from the point entries ("rostered 08:00, clocked in 09:10").
     const lateByDay = new Map<string, number>()
     for (const p of latePens) { const m = /on (\d{4}-\d{2}-\d{2}) \(rostered (\d\d:\d\d), clocked in (\d\d:\d\d)\)/.exec(String(p.reason)); if (m) { const a = toMin(m[2])!, z = toMin(m[3])!; if (z > a) lateByDay.set(m[1], z - a) } }
-    const perDay = timeRows.map(r => { const d = String(r.work_date).slice(0, 10), a = toMin(r.actual_in), z = toMin(r.actual_out); return { day: d, in: r.actual_in ? String(r.actual_in).slice(0, 5) : null, out: r.actual_out ? String(r.actual_out).slice(0, 5) : null, minutes: a != null && z != null && z > a ? z - a : null, lateMin: lateByDay.get(d) ?? 0 } })
+    const perDay = timeRows.map(r => { const d = ymdOf(r.work_date), a = toMin(r.actual_in), z = toMin(r.actual_out); return { day: d, in: r.actual_in ? String(r.actual_in).slice(0, 5) : null, out: r.actual_out ? String(r.actual_out).slice(0, 5) : null, minutes: a != null && z != null && z > a ? z - a : null, lateMin: lateByDay.get(d) ?? 0 } })
     const weeks = new Map<string, { week: string; minutes: number; days: number; lateMin: number }>()
-    for (const d of perDay) { const w = weekStart(d.day); const r = weeks.get(w) ?? { week: w, minutes: 0, days: 0, lateMin: 0 }; r.minutes += d.minutes ?? 0; r.days += 1; r.lateMin += d.lateMin; weeks.set(w, r) }
+    for (const d of perDay) { if (!d.day) continue; const w = weekStart(d.day); const r = weeks.get(w) ?? { week: w, minutes: 0, days: 0, lateMin: 0 }; r.minutes += d.minutes ?? 0; r.days += 1; r.lateMin += d.lateMin; weeks.set(w, r) }
 
     const tasks = [
-      ...doneList.map(r => ({ day: String(r.day).slice(0, 10), time: new Date(r.recorded_at).toISOString().slice(11, 16), title: String(r.title), category: (r.category as string | null) ?? null, law_id: (r.law_id as number | null) ?? null, outcome: r.value === 'Not done' ? 'notDone' : 'done', note: (r.note as string | null) ?? null })),
+      ...doneList.map(r => ({ day: ymdOf(r.day), time: hmOf(r.recorded_at), title: String(r.title), category: (r.category as string | null) ?? null, law_id: (r.law_id as number | null) ?? null, outcome: r.value === 'Not done' ? 'notDone' : 'done', note: (r.note as string | null) ?? null })),
       ...b.missedList.map(m => ({ ...m, outcome: 'missed', note: null as string | null })),
     ].sort((x, y) => y.day.localeCompare(x.day) || y.time.localeCompare(x.time)).slice(0, 400)
 
@@ -122,12 +125,12 @@ export async function GET(req: NextRequest) {
     }
     // ---- Analytics: weekly trend, completion rate, patterns, and (owner and Joe only) the ranking among the staff.
     const wk = new Map<string, { week: string; points: number; done: number; notDone: number; missed: number; minutes: number; sales: number }>()
-    const wrow = (day: string) => { const w = weekStart(day); let r = wk.get(w); if (!r) { r = { week: w, points: 0, done: 0, notDone: 0, missed: 0, minutes: 0, sales: 0 }; wk.set(w, r) } return r }
-    for (const r of evByDay) { const w = wrow(String(r.day).slice(0, 10)); if (r.nd) w.notDone += Number(r.n); else w.done += Number(r.n) }
+    const wrow = (day: string) => { if (!day) return { week: '', points: 0, done: 0, notDone: 0, missed: 0, minutes: 0, sales: 0 }; const w = weekStart(day); let r = wk.get(w); if (!r) { r = { week: w, points: 0, done: 0, notDone: 0, missed: 0, minutes: 0, sales: 0 }; wk.set(w, r) } return r }
+    for (const r of evByDay) { const w = wrow(ymdOf(r.day)); if (r.nd) w.notDone += Number(r.n); else w.done += Number(r.n) }
     for (const [d, n] of b.missedByDay) wrow(d).missed += n
-    for (const r of penByDay) wrow(String(r.day).slice(0, 10)).points += Number(r.points)
+    for (const r of penByDay) wrow(ymdOf(r.day)).points += Number(r.points)
     for (const w of weeks.values()) wrow(w.week).minutes = w.minutes
-    for (const r of salesDay) wrow(String(r.day).slice(0, 10)).sales += Number(r.total)
+    for (const r of salesDay) wrow(ymdOf(r.day)).sales += Number(r.total)
     const weekly = Array.from(wk.values()).sort((x, y) => x.week.localeCompare(y.week))
     const rate = (x: { done: number; notDone: number; missed: number }) => { const all = x.done + x.notDone + x.missed; return all ? Math.round((x.done / all) * 1000) / 10 : null }
     const everyone = Array.from(base.per.values())
@@ -136,8 +139,8 @@ export async function GET(req: NextRequest) {
     for (const x of everyone) for (const a of x.areas.values()) { const t = teamAreas.get(a.cat) ?? { done: 0, notDone: 0, missed: 0 }; t.done += a.done; t.notDone += a.notDone; t.missed += a.missed; teamAreas.set(a.cat, t) }
     const completion = { rate: rate(b), team: owner ? rate(teamTot) : null, areas: areas.map(a => ({ cat: a.cat, rate: rate(a), team: owner && teamAreas.get(a.cat) ? rate(teamAreas.get(a.cat)!) : null, missed: a.missed })) }
     const dow = new Map<number, { dow: number; done: number; missed: number }>()
-    const dr = (day: string) => { const k = new Date(`${day}T12:00:00Z`).getUTCDay(); let r = dow.get(k); if (!r) { r = { dow: k, done: 0, missed: 0 }; dow.set(k, r) } return r }
-    for (const r of evByDay) if (!r.nd) dr(String(r.day).slice(0, 10)).done += Number(r.n)
+    const dr = (day: string) => { if (!day) return { dow: 0, done: 0, missed: 0 }; const k = new Date(`${day}T12:00:00Z`).getUTCDay(); let r = dow.get(k); if (!r) { r = { dow: k, done: 0, missed: 0 }; dow.set(k, r) } return r }
+    for (const r of evByDay) if (!r.nd) dr(ymdOf(r.day)).done += Number(r.n)
     for (const [d, n] of b.missedByDay) dr(d).missed += n
     const weekdays = [1, 2, 3, 4, 5, 6, 0].map(k => { const r = dow.get(k) ?? { dow: k, done: 0, missed: 0 }; return { ...r, rate: rate({ done: r.done, notDone: 0, missed: r.missed }) } })
     const patterns = {
@@ -161,7 +164,7 @@ export async function GET(req: NextRequest) {
     }
     return success({
       who, from, to, counting: today >= st.startCounting, startCounting: st.startCounting, team,
-      points: { total, inRange: b.points, entries: entries.map(v => ({ day: String(v.day).slice(0, 10), points: Number(v.points), reason: String(v.reason), status: String(v.status) })), byLaw, byMonth },
+      points: { total, inRange: b.points, entries: entries.map(v => ({ day: ymdOf(v.day), points: Number(v.points), reason: String(v.reason), status: String(v.status) })), byLaw, byMonth },
       tasks: { done: b.done, notDone: b.notDone, missed: b.missed, areas, list: tasks },
       time: { daysWorked: b.daysWorked, minutes: b.minutes, fullDays: b.fullDays, perDay, perWeek: Array.from(weeks.values()).sort((x, y) => y.week.localeCompare(x.week)) },
       attendance: { late: b.late, absent: b.absent, backdated: b.backdated },
