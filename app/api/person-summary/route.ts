@@ -20,7 +20,7 @@ const hmOf = (v: unknown): string => { const d = v instanceof Date ? v : new Dat
 
 type Missed = { day: string; time: string; title: string; category: string | null; law_id: number | null }
 type Base = { done: number; notDone: number; missed: number; areas: Map<string, { cat: string; done: number; notDone: number; missed: number }>; missedList: Missed[]; missedByDay: Map<string, number>; missedTitles: Map<string, number>
-  points: number; pointsEntries: number; daysWorked: number; minutes: number; fullDays: number; sales: number; salesN: number; late: number; absent: number; backdated: number }
+  points: number; pilotPoints: number; pointsEntries: number; daysWorked: number; minutes: number; fullDays: number; sales: number; salesN: number; late: number; absent: number; backdated: number }
 const cache = new Map<string, { at: number; staff: string[]; per: Map<string, Base> }>()
 
 async function computeBase(from: string, to: string) {
@@ -28,13 +28,13 @@ async function computeBase(from: string, to: string) {
   if (hit && Date.now() - hit.at < TTL) return hit
   const staff = (await sql`SELECT LOWER(username) AS u FROM app_users WHERE active IS NOT FALSE AND role NOT IN ('owner', 'children_manager')`).map(r => String(r.u))
   const per = new Map<string, Base>()
-  for (const s of staff) per.set(s, { done: 0, notDone: 0, missed: 0, areas: new Map(), missedList: [], missedByDay: new Map(), missedTitles: new Map(), points: 0, pointsEntries: 0, daysWorked: 0, minutes: 0, fullDays: 0, sales: 0, salesN: 0, late: 0, absent: 0, backdated: 0 })
+  for (const s of staff) per.set(s, { done: 0, notDone: 0, missed: 0, areas: new Map(), missedList: [], missedByDay: new Map(), missedTitles: new Map(), points: 0, pilotPoints: 0, pointsEntries: 0, daysWorked: 0, minutes: 0, fullDays: 0, sales: 0, salesN: 0, late: 0, absent: 0, backdated: 0 })
   const area = (b: Base, cat: string) => { let r = b.areas.get(cat); if (!r) { r = { cat, done: 0, notDone: 0, missed: 0 }; b.areas.set(cat, r) } return r }
   const [ev, times, pens, sales] = await Promise.all([
     sql`SELECT LOWER(e.recorded_by) AS who, COALESCE(t.category, 'Other') AS cat, (e.value = 'Not done') AS nd, COUNT(*)::int AS n FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
         WHERE e.day >= ${from} AND e.day <= ${to} AND COALESCE(e.extra->>'confirm', '') <> 'rejected' GROUP BY 1, 2, 3`,
     sql`SELECT LOWER(staff_name) AS who, work_date, actual_in, actual_out FROM staff_times WHERE work_date >= ${from} AND work_date <= ${to} AND actual_in IS NOT NULL`,
-    sql`SELECT staff, reason, points FROM staff_penalties WHERE kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to}`,
+    sql`SELECT staff, reason, points, counted, status FROM staff_penalties WHERE kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to}`,
     sql`SELECT LOWER(staff_name) AS who, COALESCE(SUM(price * COALESCE(quantity, 1)), 0)::float AS total, COUNT(*)::int AS n FROM live_sale_taps WHERE NOT COALESCE(undone, false) AND tapped_at >= ${from}::date AND tapped_at < (${to}::date + 1) GROUP BY 1`,
   ])
   for (const r of ev) { const b = per.get(String(r.who)); if (!b) continue; if (r.nd) { b.notDone += Number(r.n); area(b, String(r.cat)).notDone += Number(r.n) } else { b.done += Number(r.n); area(b, String(r.cat)).done += Number(r.n) } }
@@ -45,7 +45,7 @@ async function computeBase(from: string, to: string) {
     const a = toMin(t.actual_in), z = toMin(t.actual_out); if (a != null && z != null && z > a) { b.minutes += z - a; b.fullDays += 1 }
   }
   for (const [who, set] of workedBy) per.get(who)!.daysWorked = set.size
-  for (const p of pens) { const b = per.get(String(p.staff).toLowerCase()); if (!b) continue; const r = String(p.reason); b.points += Number(p.points); b.pointsEntries += 1
+  for (const p of pens) { const b = per.get(String(p.staff).toLowerCase()); if (!b) continue; const r = String(p.reason); if (p.counted && p.status === 'active') b.points += Number(p.points); else if (!p.counted) b.pilotPoints += Number(p.points); b.pointsEntries += 1
     if (/^Late without/i.test(r)) b.late += 1; else if (/^Absent without/i.test(r)) b.absent += 1; else if (/^Clock-in time written/i.test(r)) b.backdated += 1 }
   for (const s of sales) { const b = per.get(String(s.who)); if (b) { b.sales = Number(s.total); b.salesN = Number(s.n) } }
   // Missed: a task that fell on someone and nobody did, counted only on a day that person was at the shop.
@@ -85,14 +85,16 @@ export async function GET(req: NextRequest) {
     await ensurePenalties()
     const st = await getSettings()
     const base = await computeBase(from, to)
-    const b = base.per.get(who) ?? { done: 0, notDone: 0, missed: 0, areas: new Map(), missedList: [], missedByDay: new Map(), missedTitles: new Map(), points: 0, pointsEntries: 0, daysWorked: 0, minutes: 0, fullDays: 0, sales: 0, salesN: 0, late: 0, absent: 0, backdated: 0 } as Base
+    const b = base.per.get(who) ?? { done: 0, notDone: 0, missed: 0, areas: new Map(), missedList: [], missedByDay: new Map(), missedTitles: new Map(), points: 0, pilotPoints: 0, pointsEntries: 0, daysWorked: 0, minutes: 0, fullDays: 0, sales: 0, salesN: 0, late: 0, absent: 0, backdated: 0 } as Base
 
-    const [total, entries, byLaw, byMonth, doneList, timeRows, latePens, salesDay, salesGroup, evByDay, penByDay, evHours] = await Promise.all([
-      totalPoints(who),
-      sql`SELECT day, points, reason, status FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} ORDER BY day DESC, id DESC LIMIT 60`,
-      sql`SELECT p.law_id, COALESCE(NULLIF(l.title, ''), left(l.text, 90), 'Not tied to one law') AS name, SUM(p.points)::int AS points, COUNT(*)::int AS n FROM staff_penalties p LEFT JOIN page_laws l ON l.id = p.law_id
+    // Same number as the staff bar and Team page: the counted points once counting has started; during the pilot, the practice points.
+    const pilot = today < st.startCounting
+    const [total0, entries, byLaw, byMonth, doneList, timeRows, latePens, salesDay, salesGroup, evByDay, penByDay, evHours] = await Promise.all([
+      pilot ? sql`SELECT COALESCE(SUM(points), 0)::int AS t FROM staff_penalties WHERE staff = ${who} AND status = 'active' AND NOT counted AND kind = 'violation'`.then(r => Number(r[0]?.t ?? 0)) : totalPoints(who),
+      sql`SELECT day, points, reason, status, counted FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} ORDER BY day DESC, id DESC LIMIT 60`,
+      sql`SELECT p.law_id, COALESCE(NULLIF(l.title, ''), left(l.text, 90), 'Not tied to one law') AS name, SUM(CASE WHEN p.counted AND p.status = 'active' THEN p.points ELSE 0 END)::int AS points, SUM(CASE WHEN NOT p.counted THEN p.points ELSE 0 END)::int AS pilot, COUNT(*)::int AS n FROM staff_penalties p LEFT JOIN page_laws l ON l.id = p.law_id
           WHERE p.staff = ${who} AND p.kind = 'violation' AND p.status IN ('active', 'pending', 'disputed') AND p.day >= ${from} AND p.day <= ${to} GROUP BY 1, 2 ORDER BY 3 DESC, 4 DESC LIMIT 30`,
-      sql`SELECT substr(day::text, 1, 7) AS month, SUM(points)::int AS points, COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} GROUP BY 1 ORDER BY 1 DESC`,
+      sql`SELECT substr(day::text, 1, 7) AS month, SUM(CASE WHEN counted AND status = 'active' THEN points ELSE 0 END)::int AS points, SUM(CASE WHEN NOT counted THEN points ELSE 0 END)::int AS pilot, COUNT(*)::int AS n FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} GROUP BY 1 ORDER BY 1 DESC`,
       sql`SELECT e.day, e.recorded_at, e.value, e.note, t.title, t.category, t.law_id FROM daily_check_events e JOIN daily_check_tiles t ON t.id = e.tile_id
           WHERE LOWER(e.recorded_by) = ${who} AND e.day >= ${from} AND e.day <= ${to} AND COALESCE(e.extra->>'confirm', '') <> 'rejected' ORDER BY e.day DESC, e.recorded_at DESC LIMIT 300`,
       sql`SELECT work_date, actual_in, actual_out FROM staff_times WHERE LOWER(staff_name) = ${who} AND work_date >= ${from} AND work_date <= ${to} AND actual_in IS NOT NULL ORDER BY work_date DESC`,
@@ -101,11 +103,12 @@ export async function GET(req: NextRequest) {
       sql`SELECT COALESCE(i.cf_group, 'No group') AS grp, COALESCE(SUM(t.price * COALESCE(t.quantity, 1)), 0)::float AS total, COUNT(*)::int AS n FROM live_sale_taps t LEFT JOIN items i ON i.id = t.item_id
           WHERE LOWER(t.staff_name) = ${who} AND NOT COALESCE(t.undone, false) AND t.tapped_at >= ${from}::date AND t.tapped_at < (${to}::date + 1) GROUP BY 1 ORDER BY 2 DESC LIMIT 20`,
       sql`SELECT day::text AS day, (value = 'Not done') AS nd, COUNT(*)::int AS n FROM daily_check_events WHERE LOWER(recorded_by) = ${who} AND day >= ${from} AND day <= ${to} AND COALESCE(extra->>'confirm', '') <> 'rejected' GROUP BY 1, 2`,
-      sql`SELECT day::text AS day, SUM(points)::int AS points FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} GROUP BY 1`,
+      sql`SELECT day::text AS day, SUM(CASE WHEN counted AND status = 'active' THEN points ELSE 0 END)::int AS points FROM staff_penalties WHERE staff = ${who} AND kind = 'violation' AND status IN ('active', 'pending', 'disputed') AND day >= ${from} AND day <= ${to} GROUP BY 1`,
       sql`SELECT EXTRACT(HOUR FROM recorded_at)::int AS hour, COUNT(*)::int AS n FROM daily_check_events WHERE LOWER(recorded_by) = ${who} AND day >= ${from} AND day <= ${to} AND value <> 'Not done' GROUP BY 1 ORDER BY 1`,
     ])
 
     // Lateness in minutes, from the point entries ("rostered 08:00, clocked in 09:10").
+    const total = total0
     const lateByDay = new Map<string, number>()
     for (const p of latePens) { const m = /on (\d{4}-\d{2}-\d{2}) \(rostered (\d\d:\d\d), clocked in (\d\d:\d\d)\)/.exec(String(p.reason)); if (m) { const a = toMin(m[2])!, z = toMin(m[3])!; if (z > a) lateByDay.set(m[1], z - a) } }
     const perDay = timeRows.map(r => { const d = ymdOf(r.work_date), a = toMin(r.actual_in), z = toMin(r.actual_out); return { day: d, in: r.actual_in ? String(r.actual_in).slice(0, 5) : null, out: r.actual_out ? String(r.actual_out).slice(0, 5) : null, minutes: a != null && z != null && z > a ? z - a : null, lateMin: lateByDay.get(d) ?? 0 } })
@@ -164,7 +167,7 @@ export async function GET(req: NextRequest) {
     }
     return success({
       who, from, to, counting: today >= st.startCounting, startCounting: st.startCounting, team,
-      points: { total, inRange: b.points, entries: entries.map(v => ({ day: ymdOf(v.day), points: Number(v.points), reason: String(v.reason), status: String(v.status) })), byLaw, byMonth },
+      points: { total, inRange: pilot ? b.pilotPoints : b.points, pilotInRange: pilot ? 0 : b.pilotPoints, entries: entries.map(v => ({ day: ymdOf(v.day), points: Number(v.points), reason: String(v.reason), status: String(v.status), counted: !!v.counted })), byLaw, byMonth },
       tasks: { done: b.done, notDone: b.notDone, missed: b.missed, areas, list: tasks },
       time: { daysWorked: b.daysWorked, minutes: b.minutes, fullDays: b.fullDays, perDay, perWeek: Array.from(weeks.values()).sort((x, y) => y.week.localeCompare(x.week)) },
       attendance: { late: b.late, absent: b.absent, backdated: b.backdated },

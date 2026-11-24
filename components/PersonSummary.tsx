@@ -6,7 +6,7 @@ type Task = { day: string; time: string; title: string; category: string | null;
 type D = {
   who: string; from: string; to: string; counting: boolean; startCounting: string
   team: { people: number; done: number; notDone: number; missed: number; points: number; minutes: number; daysWorked: number; sales: number; late: number; absent: number; backdated: number } | null
-  points: { total: number; inRange: number; entries: { day: string; points: number; reason: string; status: string }[]; byLaw: { law_id: number | null; name: string; points: number; n: number }[]; byMonth: { month: string; points: number; n: number }[] }
+  points: { total: number; inRange: number; pilotInRange: number; entries: { day: string; points: number; reason: string; status: string; counted: boolean }[]; byLaw: { law_id: number | null; name: string; points: number; pilot: number; n: number }[]; byMonth: { month: string; points: number; pilot: number; n: number }[] }
   tasks: { done: number; notDone: number; missed: number; areas: Area[]; list: Task[] }
   time: { daysWorked: number; minutes: number; fullDays: number; perDay: { day: string; in: string | null; out: string | null; minutes: number | null; lateMin: number }[]; perWeek: { week: string; minutes: number; days: number; lateMin: number }[] }
   attendance: { late: number; absent: number; backdated: number }
@@ -83,17 +83,18 @@ export default function PersonSummary({ who }: { who: string }) {
       <div className={card}>
         <p className={h}>Penalty points</p>
         <p className="text-3xl font-extrabold tabular-nums text-gray-900">{d.points.total}<span className="ml-2 text-[13px] font-semibold text-gray-500">now</span></p>
-        <p className="text-[13px] text-gray-700">{d.points.inRange} point{d.points.inRange === 1 ? '' : 's'} in this period{tm(d.team?.points)}</p>
+        <p className="text-[13px] text-gray-700">{d.points.inRange} counted point{d.points.inRange === 1 ? '' : 's'} in this period{tm(d.team?.points)}</p>
+        {d.points.pilotInRange > 0 && <p className="text-[12px] text-blue-800">Plus {d.points.pilotInRange} practice point{d.points.pilotInRange === 1 ? '' : 's'} from the learning period. They do not count.</p>}
         {!d.counting && <p className="text-[12px] text-blue-800">Pilot: points count from {dl(d.startCounting)}.</p>}
         {d.points.byLaw.length > 0 && (
           <details className="mt-1"><summary className="cursor-pointer text-[13px] font-semibold text-blue-700">By law</summary>
-            <ul className="mt-1 divide-y divide-gray-100 text-[13px]">{d.points.byLaw.map((l, i) => <li key={i} className="flex items-baseline justify-between gap-2 py-1.5"><span className="min-w-0 flex-1 leading-snug text-gray-900">{l.name}</span><span className="shrink-0 tabular-nums font-bold text-red-700">{l.points} pt <span className="font-normal text-gray-500">· {l.n}×</span></span></li>)}</ul></details>)}
+            <ul className="mt-1 divide-y divide-gray-100 text-[13px]">{d.points.byLaw.map((l, i) => <li key={i} className="flex items-baseline justify-between gap-2 py-1.5"><span className="min-w-0 flex-1 leading-snug text-gray-900">{l.name}</span><span className="shrink-0 tabular-nums font-bold text-red-700">{l.points} pt <span className="font-normal text-gray-500">· {l.n}×{l.pilot ? ` · ${l.pilot} practice` : ''}</span></span></li>)}</ul></details>)}
         {d.points.byMonth.length > 0 && (
           <details className="mt-1"><summary className="cursor-pointer text-[13px] font-semibold text-blue-700">By month</summary>
-            <ul className="mt-1 divide-y divide-gray-100 text-[13px]">{d.points.byMonth.map(m => <li key={m.month} className="flex items-center justify-between gap-2 py-1.5"><span className="font-semibold text-gray-900">{new Date(`${m.month}-01T12:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span><span className="tabular-nums"><b className="text-red-700">{m.points} pt</b> <span className="text-gray-500">· {m.n} entr{m.n === 1 ? 'y' : 'ies'}</span></span></li>)}</ul></details>)}
+            <ul className="mt-1 divide-y divide-gray-100 text-[13px]">{d.points.byMonth.map(m => <li key={m.month} className="flex items-center justify-between gap-2 py-1.5"><span className="font-semibold text-gray-900">{new Date(`${m.month}-01T12:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span><span className="tabular-nums"><b className="text-red-700">{m.points} pt</b> <span className="text-gray-500">· {m.n} entr{m.n === 1 ? 'y' : 'ies'}{m.pilot ? ` · ${m.pilot} practice` : ''}</span></span></li>)}</ul></details>)}
         {d.points.entries.length > 0 && (
           <details className="mt-1"><summary className="cursor-pointer text-[13px] font-semibold text-blue-700">Every entry ({d.points.entries.length})</summary>
-            <ul className="mt-1 space-y-1 text-[12px] leading-snug text-gray-800">{d.points.entries.map((e, i) => <li key={i}><b>{dl(e.day)}</b> · {e.points} pt{e.status !== 'active' ? ` (${e.status})` : ''} · {e.reason}</li>)}</ul></details>)}
+            <ul className="mt-1 space-y-1 text-[12px] leading-snug text-gray-800">{d.points.entries.map((e, i) => <li key={i}><b>{dl(e.day)}</b> · {e.points} pt{!e.counted ? ' (practice)' : e.status !== 'active' ? ` (${e.status})` : ''} · {e.reason}</li>)}</ul></details>)}
         {d.points.entries.length === 0 && <p className="mt-1 text-[13px] text-green-700">No violations in this period.</p>}
       </div>
 
