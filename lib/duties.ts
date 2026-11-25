@@ -54,7 +54,7 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
   const out: Duty[] = []
   for (const t of tiles) {
     if (!due.has(t.id)) continue
-    const a = t.assignment ?? 'all', d = due.get(t.id)!
+    const a = !t.assignment || t.assignment === 'all' ? 'managers' : t.assignment, d = due.get(t.id)!
     const owner = a === 'opener' ? clock.opener : a === 'closer' ? clock.lastOut : a === 'managers' ? 'joe' : allocatedTo(t.id, d, clock, shifts)
     const role: Duty['role'] = a === 'opener' ? 'Opener' : a === 'closer' ? 'Closer' : a === 'managers' ? 'Joe' : null
     const ev = latest.get(t.id)
@@ -214,7 +214,7 @@ export async function otherDuties(date: string, includeManagerLaws: boolean): Pr
     const hits = tiles.filter(t => t.frequency === 'weekly' ? w === (t.weekday ?? (t.days ? t.days.split(',')[0].trim() : 'mon')) : t.month_day ? Number(date.slice(8)) === Math.min(t.month_day, daysIn(date)) : date.endsWith('-01'))
     const evs = hits.length && !future ? await sql`SELECT tile_id, day, value, note, recorded_by, recorded_at FROM daily_check_events WHERE tile_id = ANY(${hits.map(t => t.id)}) AND day <= ${date} AND COALESCE(extra->>'confirm', '') <> 'rejected'` as unknown as { tile_id: number; day: string; value: string; note: string | null; recorded_by: string; recorded_at: string }[] : []
     for (const t of hits) {
-      const a = t.assignment ?? 'all'
+      const a = !t.assignment || t.assignment === 'all' ? 'managers' : t.assignment
       const ev = evs.filter(e => e.tile_id === t.id && inPeriod(t.frequency as Frequency, e.day, date)).at(-1)
       const doneNow = !!ev && ev.value !== 'Not done'
       const own = t.time && /^[0-2]\d:[0-5]\d$/.test(t.time) ? Number(t.time.slice(0, 2)) * 60 + Number(t.time.slice(3)) : null

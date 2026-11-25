@@ -5,9 +5,9 @@ import type { Group, ItemKind } from '@/lib/questionGroups'
 type Law = { id: number; category: string | null; subcategory: string | null; law_type: string | null; tile_id: number | null; assignment: string | null; text: string }
 type Item = { text: string; kind: ItemKind; detail_on: 'yes' | 'no' | null; law_id: number | null; key: string | null; required: boolean }
 type Form = { id?: number; name: string; lawId: number | null; time: string; assignment: string; category: string; bridge: string | null; items: Item[] }
-const EMPTY: Form = { name: '', lawId: null, time: '18:00', assignment: 'all', category: '', bridge: null, items: [] }
+const EMPTY: Form = { name: '', lawId: null, time: '18:00', assignment: 'managers', category: '', bridge: null, items: [] }
 const KIND_LABEL: Record<ItemKind, string> = { tick: 'Tick when done', yesno: 'Yes / No', text: 'Text answer', number: 'Number', persons: 'Which staff' }
-const WHO: Record<string, string> = { all: 'Anyone on shift', opener: 'The opener', closer: 'The closer', managers: 'The manager' }
+const WHO: Record<string, string> = { opener: 'The opener', closer: 'The closer', managers: 'The manager' }
 const first = (t: string) => { const o = t.replace(/\s+/g, ' ').trim(); const m = o.match(/^(.{15,140}?[.!?])(\s|$)/); return (m ? m[1] : o).slice(0, 200) }
 const inp = 'w-full rounded-lg border border-gray-300 bg-white p-2 text-sm text-gray-900'
 
@@ -27,7 +27,7 @@ export default function GroupsBuilder() {
   const shown = laws.filter(l => !q || `${l.category} ${l.subcategory} ${l.text}`.toLowerCase().includes(q.toLowerCase())).slice(0, 60)
 
   function edit(g: Group) {
-    setF({ id: g.id, name: g.name, lawId: g.law_id, time: g.time ?? '18:00', assignment: g.assignment ?? 'all', category: g.category ?? '', bridge: g.bridge,
+    setF({ id: g.id, name: g.name, lawId: g.law_id, time: g.time ?? '18:00', assignment: !g.assignment || g.assignment === 'all' ? 'managers' : g.assignment, category: g.category ?? '', bridge: g.bridge,
       items: g.items.map(i => ({ text: i.text, kind: i.kind, detail_on: i.detail_on, law_id: i.law_id, key: i.key, required: i.required })) }); setMsg('')
   }
   const setItem = (n: number, p: Partial<Item>) => setF(s => s && ({ ...s, items: s.items.map((x, i) => i === n ? { ...x, ...p } : x) }))
@@ -61,7 +61,7 @@ export default function GroupsBuilder() {
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-gray-900">{g.name}</p>
-              <p className="text-[12px] text-gray-500">{WHO[g.assignment ?? 'all'] ?? g.assignment} · from {g.time ?? '—'} · {g.items.length} question{g.items.length === 1 ? '' : 's'}{g.law_id ? '' : ' · no law behind it (cannot cost points)'}</p>
+              <p className="text-[12px] text-gray-500">{WHO[g.assignment ?? 'managers'] ?? 'The manager'} · from {g.time ?? '—'} · {g.items.length} question{g.items.length === 1 ? '' : 's'}{g.law_id ? '' : ' · no law behind it (cannot cost points)'}</p>
             </div>
             <button type="button" onClick={() => edit(g)} className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">Edit</button>
             <button type="button" onClick={() => void remove(g)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">Remove</button>

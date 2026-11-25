@@ -10,7 +10,8 @@ export const ASSIGNMENTS = [
   { key: 'closer', label: 'The Closer (last out)' },
 ] as const
 export type Assignment = typeof ASSIGNMENTS[number]['key']
-export const cleanAssignment = (v: unknown): Assignment => (ASSIGNMENTS.some(a => a.key === v) ? v as Assignment : 'all')
+// A task is never given to "everyone": anything that is not clearly the opener's or the closer's is the manager's (Joe's).
+export const cleanAssignment = (v: unknown): Assignment => (ASSIGNMENTS.some(a => a.key === v && a.key !== 'all') ? v as Assignment : 'managers')
 
 // Does this person carry a task with this assignment today? `closer` is only known once people clock out; until then everyone still in may do it.
 export function owes(assignment: string | null | undefined, name: string, ctx: { opener: string | null; lastOut: string | null }): boolean {

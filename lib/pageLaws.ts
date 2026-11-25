@@ -186,7 +186,7 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     violations: parseViolations(b.violations), not_violation: t(b.not_violation, 500), title: t(b.title, 80), audience: b.audience === 'managers' ? 'managers' : 'staff', reminder: ['login', 'first_sale'].includes(b.reminder) ? String(b.reminder) : 'none',
     proof: recurring && ['photo', 'question', 'persons'].includes(b.proof) ? String(b.proof) : 'tick',
     needs_confirm: recurring && !!b.needs_confirm,
-    assignment: cleanAssignment(b.assignment),
+    assignment: recurring ? cleanAssignment(b.assignment) : 'all',   // a standing rule applies to everyone; a task (recurring) is never everyone's
     // monthly laws: the day of the month it is done on (1 to 31; a short month uses its last day)
     month_day: recurring && String(b.frequency ?? '') === 'monthly' && Number.isInteger(Number(b.month_day)) && Number(b.month_day) >= 1 && Number(b.month_day) <= 31 ? Number(b.month_day) : null,
     // The law's own points follow its first violation line (the only points box in the editor); the old fallback only applies to a law without a violation line.

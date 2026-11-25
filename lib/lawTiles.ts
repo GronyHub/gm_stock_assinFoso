@@ -45,7 +45,7 @@ export async function syncLawTile(lawId: number) {
     const [t] = await sql`INSERT INTO daily_check_tiles (section, category, subcategory, time, title, icon, how, kind, frequency, days, weekday, minutes, law_id, position, created_by, needs_photo, log_category, ask, ok_label, issue_label)
       VALUES (${l.category}, ${l.category}, ${l.subcategory}, ${time}, ${title}, ${icon}, ${how}, ${kind}, ${l.frequency}, ${days}, ${weekday}, ${l.minutes}, ${lawId},
               (SELECT COALESCE(MAX(position), 0) + 1 FROM daily_check_tiles), 'law', ${photo}, ${logCat}, ${ask}, ${okLabel}, ${issueLabel}) RETURNING id`
-    await sql`UPDATE daily_check_tiles SET assignment = ${l.assignment ?? 'all'}, needs_confirm = ${!!l.needs_confirm} WHERE id = ${t.id}`
+    await sql`UPDATE daily_check_tiles SET assignment = ${!l.assignment || l.assignment === 'all' ? 'managers' : l.assignment}, needs_confirm = ${!!l.needs_confirm} WHERE id = ${t.id}`
     await sql`UPDATE page_laws SET tile_id = ${t.id} WHERE id = ${lawId}`
   }
 }

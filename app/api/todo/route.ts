@@ -32,10 +32,10 @@ export async function POST(req: NextRequest) {
     const b = await req.json().catch(() => ({}))
     const title = String(b.title ?? '').trim().slice(0, 200)
     const date = String(b.date ?? '')
-    const who = String(b.who ?? '').toLowerCase()
+    const who = String(b.who ?? '').toLowerCase() || 'joe'   // a to-do is never left for everyone: with no name it is the manager's
     if (!title) return badRequest('Say what has to be done.')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < dayKey()) return badRequest('Pick today or a future date.')
-    if (who && !ACTIVE_STAFF.includes(who)) return badRequest('Pick a team member, or leave it for everyone.')
+    if (who && !ACTIVE_STAFF.includes(who)) return badRequest('Pick a team member.')
     await ensureCompanyLaws()
     const [law] = await sql`SELECT id FROM page_laws WHERE seed = 'todo-rota-v1' AND title = ${ONE_OFF_LAW} ORDER BY id LIMIT 1`
     await sql`ALTER TABLE custom_tasks ADD COLUMN IF NOT EXISTS law_id INTEGER`.catch(() => {})
