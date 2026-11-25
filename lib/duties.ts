@@ -132,6 +132,17 @@ export async function personalDuties(): Promise<Duty[]> {
     if (forGrony > 0) out.push(mk('confirm', 'grony', forGrony, false))
   } catch { /* leave out */ }
   try {
+    // Weekly targets: each person's progress this week, as a tile on their own Today.
+    const dow = (new Date(`${todayKey}T00:00:00Z`).getUTCDay() + 6) % 7
+    for (const p of await (await import('./targets')).targetProgress(todayKey)) {
+      if (!p.started) continue
+      const done = p.mine >= p.target
+      out.push({ kind: 'standing', key: `s:target:${p.who}:${p.lawId}`, id: -1, title: `${p.label}: ${p.mine} of ${p.target} ${p.unit} this week`, time: '', due: 24 * 60 + 2, owner: p.who, role: null,
+        category: 'Weekly target', lawType: 'target', lawId: p.lawId, href: p.href, typeLabel: 'Weekly target', state: done ? 'done' : dow >= 4 ? 'late' : 'now', count: 0,
+        detail: done ? 'Target reached for the week.' : `${Math.round((p.target - p.mine) * 10) / 10} to go before Sunday. Short of it, a point is added on the next working day.` })
+    }
+  } catch { /* leave out */ }
+  try {
     const pj = await sql`SELECT COUNT(*)::int AS n FROM pending_jobs WHERE status <> 'done' AND due_on < ${todayKey}::date`
     if (num(pj[0]?.n) > 0) out.push(mk('pending-jobs', null, num(pj[0].n), true))
   } catch { /* leave out */ }

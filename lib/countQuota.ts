@@ -32,18 +32,7 @@ export async function weekProgress(staff: string, day: string) {
   return { weekStart: ws, weekEnd: addDays(ws, 6), mine: await countedInWeek(staff, ws), target: COUNTS_PER_WEEK, started: day >= COUNTS_WEEKLY_START }
 }
 
-// Checks the week that has just ended (called every working day at 19:25: the points have a fixed ref per person and week, so a repeat adds nothing).
+// The weekly check now runs through the weekly target laws (lib/targets.ts): the counts law is one of them.
 export async function assessCounts(day: string) {
-  await ensurePenalties()
-  const prev = addDays(weekStart(day), -7)
-  if (prev < COUNTS_WEEKLY_START) return
-  const people = await sql`SELECT LOWER(username) AS u FROM app_users WHERE active IS NOT FALSE AND role NOT IN ('owner', 'children_manager')` as unknown as { u: string }[]
-  const law = await lawId()
-  for (const { u } of people) {
-    const target = targetFor(await daysWorkedInWeek(u, prev))
-    if (target === 0) continue
-    const n = await countedInWeek(u, prev)
-    if (n >= target) continue
-    await addPoint({ staff: u, points: 1, lawId: law ?? undefined, reason: `Only ${n} of ${target} items counted in the week of ${prev} (the law: at least ${COUNTS_PER_WEEK} a week, scaled to the days worked)`, source: 'counts', ref: `counts-week:${prev}`, day, by: 'system' })
-  }
+  await (await import('./targets')).assessTargets(day)
 }
