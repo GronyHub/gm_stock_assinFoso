@@ -2,22 +2,13 @@ import sql from '@/lib/db'
 import { addPoint, ensurePenalties } from '@/lib/penalties'
 import { parseViolations } from '@/lib/lawViolations'
 import { addDays, dayKey, weekStart } from '@/lib/dailyChecksShared'
+import { measureOf } from '@/lib/targetMeasures'
 
 // WEEKLY TARGETS. A law of type "target" names something the app can count and a number: every staff member reaches it each week (Monday to Sunday).
 // A week with fewer than 5 working days is scaled to the days worked (when the law says so). The first working day of the next week, each person who fell short gets
 // the points on the law's first violation line. The same figures are shown on each person's Today (Waiting) as a tile with progress.
 export const FULL_WEEK_DAYS = 5
-export const TARGET_MEASURES: { key: string; label: string; unit: string; href?: string }[] = [
-  { key: 'counts', label: 'Different items counted (Counts)', unit: 'items', href: '/item?view=counts' },
-  { key: 'sales_count', label: 'Sales recorded (Live)', unit: 'sales' },
-  { key: 'sales_value', label: 'Sales value recorded (₵)', unit: '₵' },
-  { key: 'tasks_done', label: 'Checklist tasks done', unit: 'tasks', href: '/todo' },
-  { key: 'customers_added', label: 'Customers registered', unit: 'customers', href: '/customers' },
-  { key: 'bills_recorded', label: 'Bills recorded', unit: 'bills' },
-  { key: 'expenses_recorded', label: 'Expenses recorded', unit: 'expenses' },
-  { key: 'jobs_done', label: 'Pending jobs finished', unit: 'jobs', href: '/pending-jobs' },
-]
-export const measureOf = (k: string | null | undefined) => TARGET_MEASURES.find(m => m.key === k)
+export { TARGET_MEASURES, measureOf } from '@/lib/targetMeasures'
 
 type Law = { id: number; text: string; title: string | null; target_measure: string | null; target_n: string | number | null; target_scale: boolean | null; target_from: string | null; violations: string | null; points: number | null }
 

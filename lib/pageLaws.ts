@@ -1,5 +1,5 @@
 import { seedDone } from '@/lib/seedGuard'
-import { TARGET_MEASURES } from '@/lib/targets'
+import { TARGET_MEASURES } from '@/lib/targetMeasures'
 import { addDays, dayKey, weekStart } from '@/lib/dailyChecksShared'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 import { mergeCustomerServiceCode } from '@/lib/csMerge'
