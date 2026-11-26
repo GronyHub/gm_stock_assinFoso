@@ -7,7 +7,7 @@ import GroupForm from '@/components/GroupForm'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAW_CATEGORIES, LAW_TYPES } from '@/lib/lawCategories'
 import { lawPageHref } from '@/lib/lawAreas'
-import TaskTile, { tileGrid, type TileDensity } from '@/components/TaskTile'
+import TaskTile, { TaskRow, tileGrid, type TileDensity } from '@/components/TaskTile'
 import type { Duty } from '@/lib/duties'
 import {
   CHECK_SECTIONS, CHECKLIST_START, FREQUENCIES, NOT_AVAILABLE_REASONS, NOT_WORKING_REASONS, PERIOD_WORD, PROPERTY_LOCATIONS, WEEKDAY_LABEL,
@@ -214,6 +214,17 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           {/* The decisions and day duties that matter most (clock times and CCTV for the owner and Joe, the closing report, pending jobs) come first, above the timed tasks. */}
           {!person && <div className={`${tileGrid(density)} empty:hidden`}><ClosingReportCard density={density} closer={roles.closer} />{extras}</div>}
           {person && dayList.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-xs font-semibold text-gray-600">Nothing falls on {nm(person)} today yet. Tasks are shared out by the rota once they are at work.</p>}
+          {density === 'full' ? (
+            <div className="space-y-1">
+              {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
+                <TaskRow key={d.key} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} type={typeOf(d)} badge={d.count}
+                  detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
+                  stripe={st === 'done' && d.awaiting ? 'bg-amber-400' : st === 'done' ? 'bg-green-500' : st === 'no' ? 'bg-gray-400' : st === 'late' ? 'bg-red-500' : st === 'now' ? 'bg-amber-400' : 'bg-gray-300'}
+                  bg={st === 'done' && !d.awaiting ? 'bg-green-50' : st === 'late' ? 'bg-red-50' : st === 'now' || (st === 'done' && d.awaiting) ? 'bg-amber-50' : 'bg-white'}
+                  onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />
+              ))}
+            </div>
+          ) : (
           <div className={tileGrid(density)}>
             {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
@@ -222,6 +233,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />
             ))}
           </div>
+          )}
         </div>
       )}
       {tickAsk && (() => {
