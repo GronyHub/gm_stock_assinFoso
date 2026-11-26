@@ -152,8 +152,13 @@ html.framed .no-frame { display: none !important; }
 /* The phone's top row carries every Cash tab and scrolls sideways. Pending jobs is left off: it is also the Job button on the Live page. */
 @media (max-width: 639px) {
   .cash-strip nav button[aria-label="Pending jobs"] { display: none; }
-  /* Search is always the last tab in the row. */
-  .cash-strip nav button[aria-label="Search"] { order: 100; }
+  /* The tabs staff do not have to visit (a law pushes them onto Waiting) wait in the More dropdown. */
+  .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Activity times"],
+  .cash-strip nav button[aria-label="Loss by Date"], .cash-strip nav button[aria-label="Loss by Items"], .cash-strip nav button[aria-label="Net Loss"], .cash-strip nav button[aria-label="Cost ≥ Selling Price"],
+  .cash-strip nav button[aria-label="Flags"] { display: none; }
+  /* Search, then More, are the last tabs in the row. */
+  .cash-strip nav button[aria-label="Search"] { order: 99; }
+  .cash-strip nav button[aria-label="More"], .cash-strip nav button[aria-label="Less"] { order: 100; }
 }
 
 /* Phone: the Edit expense sheet shows only the form, full size (the table's own zoom-out and columns are dropped). */

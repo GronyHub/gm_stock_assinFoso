@@ -1,6 +1,7 @@
 'use client'
 import { SIDEBAR_RULES, type SidebarPerms, type SidebarRule } from '@/lib/sidebarAccess'
 import { Fragment, useEffect, useState } from 'react'
+import StripMoreMenu from './StripMoreMenu'
 import { signOut } from 'next-auth/react'
 import { isOwnerLevel } from '@/lib/roles'
 import PaneDaily from '../_components/PaneDaily'
@@ -22,6 +23,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
   // Phone top row (stripAll): every Cash page is its own tab in one row that scrolls sideways, none nested inside another (see the .cash-strip rules in globals.css).
   const flat = !isDesktop && !!(h as { stripAll?: boolean }).stripAll
   const [pics, setPics] = useState(false)
+  const [stripMore, setStripMore] = useState(false)
   useEffect(() => { try { setPics(localStorage.getItem('livePictures') === '1') } catch { /* ignore */ } }, [lossView])
   // In the phone's New sale strip they are always there: the strip is not shown on the Bills pages, so there would be no way to open them.
   const purchasingOpen = !!(h as { stripAll?: boolean }).stripAll || paneActive(modeActive('bills')) || lossView === 'purchaseOrders' || lossView === 'vendors'
@@ -103,6 +105,8 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                     onClick={() => cashItemClick(v.key)} />
                 </Fragment>
               ))}
+              {flat && <SidePaneButton icon="⋯" label={stripMore ? 'Less' : 'More'} mode={cashDisplayMode} active={stripMore} noNewTab onClick={() => setStripMore(o => !o)} />}
+              {flat && stripMore && <StripMoreMenu onClose={() => setStripMore(false)} showView={false} />}
               {flat && lossView === 'items' && !h.inCountTab && <SidePaneButton icon={pics ? '🖼️' : '▦'} label={pics ? 'Pictures' : 'Compact'} mode={cashDisplayMode} noNewTab active={false}
                 onClick={() => { const on = !pics; setPics(on); window.dispatchEvent(new CustomEvent('live-pictures', { detail: on })) }} />}
             </div>
