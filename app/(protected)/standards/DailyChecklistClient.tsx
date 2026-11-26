@@ -186,12 +186,22 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               <button key={k} type="button" onClick={() => setPastFilter(k)} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-bold ${pastFilter === k ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>{label} {n}</button>
             ))}
           </div>
+          {density === 'full' ? (
+            <div className="space-y-1">
+              {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
+                <TaskRow key={d.key} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} type={typeOf(d)} badge={d.count}
+                  detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'}
+                  stripe={d.state === 'done' ? 'bg-green-500' : d.state === 'no' ? 'bg-gray-400' : 'bg-red-500'} bg={d.state === 'done' ? 'bg-green-50' : d.state === 'no' ? 'bg-gray-100' : 'bg-red-50'}
+                  onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />))}
+            </div>
+          ) : (
           <div className={tileGrid(density)}>
             {pastDuties.filter(d => pastFilter === 'all' || d.state === pastFilter).map(d => (
               <TaskTile key={d.key} density={density} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} category={d.category} type={typeOf(d)} badge={d.count}
                 detail={d.detail ?? d.note ?? null} mark={d.state === 'done' ? 'done' : d.state === 'miss' ? 'miss' : 'no'} tone={d.state === 'done' ? 'border-green-400 bg-green-50' : d.state === 'no' ? 'border-gray-300 bg-gray-100' : 'border-red-300 bg-red-50'}
                 onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />))}
           </div>
+          )}
           {pastDuties.length === 0 && <p className="text-sm text-gray-400">No tasks were recorded for this day.</p>}
           {adhoc.length > 0 && (
             <div className="space-y-1"><p className="text-[12px] font-extrabold uppercase text-gray-500">Other work logged</p>
