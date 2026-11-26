@@ -5,7 +5,7 @@ import { unmetConditions } from '@/lib/tileConditions'
 import { rotaShifts, allocatedTo } from '@/lib/allocation'
 import { isShopDay, rotaRolesFor } from '@/lib/rota'
 import { SIGNERS } from '@/lib/signers'
-import { addDays, inPeriod, WEEKDAYS, CHECKLIST_START, type Frequency } from '@/lib/dailyChecksShared'
+import { addDays, weekStart, inPeriod, WEEKDAYS, CHECKLIST_START, type Frequency } from '@/lib/dailyChecksShared'
 
 // THE one calculation of the checklist duties on a date: every timed daily task, who it falls on, and how it stands. Waiting for team reads all of them,
 // Waiting for me reads one person's, so the two can never disagree about whose a task is or whether it is late.
@@ -128,8 +128,11 @@ export async function personalDuties(): Promise<Duty[]> {
     const cf = await sql`SELECT LOWER(recorded_by) AS who, COUNT(*)::int AS n FROM daily_check_events WHERE extra->>'confirm' = 'pending' AND day >= ${addDays(todayKey, -1)} GROUP BY 1`
     const forJoe = cf.filter(x => !['joe', 'grony'].includes(String(x.who))).reduce((a, x) => a + num(x.n), 0)
     const forGrony = cf.filter(x => String(x.who) === 'joe').reduce((a, x) => a + num(x.n), 0)
-    if (forJoe > 0) out.push(mk('confirm', 'joe', forJoe, false))
-    if (forGrony > 0) out.push(mk('confirm', 'grony', forGrony, false))
+    // Weekly ticks (this week and last) waiting for a supervisor count here too; after Monday evening of the next week they are late.
+    const tk = await sql`SELECT LOWER(staff) AS who, COUNT(*)::int AS n FROM target_ticks WHERE status = 'pending' AND week_start >= ${addDays(todayKey, -13)} GROUP BY 1`
+    const tJoe = tk.filter(x => !['joe', 'grony'].includes(String(x.who))).reduce((a, x) => a + num(x.n), 0), tGrony = tk.filter(x => String(x.who) === 'joe').reduce((a, x) => a + num(x.n), 0)
+    if (forJoe + tJoe > 0) out.push(mk('confirm', 'joe', forJoe + tJoe, false))
+    if (forGrony + tGrony > 0) out.push(mk('confirm', 'grony', forGrony + tGrony, false))
   } catch { /* leave out */ }
   try {
     // Flag laws: while anything is open on a flag, a tile on the manager's Today with the number open.
@@ -153,6 +156,26 @@ export async function personalDuties(): Promise<Duty[]> {
       out.push({ kind: 'standing', key: `s:target:${p.who}:${p.lawId}`, id: -1, title: `${p.label}: ${p.mine} of ${p.target} ${p.unit} this week`, time: '', due: 24 * 60 + 2, owner: p.who, role: null,
         category: 'Weekly target', lawType: 'target', lawId: p.lawId, href: p.href, typeLabel: 'Weekly target', state: done ? 'done' : dow >= 4 ? 'late' : 'now', count: 0,
         detail: done ? 'Target reached for the week.' : `${Math.round((p.target - p.mine) * 10) / 10} to go before Sunday. Short of it, a point is added on the next working day.` })
+    }
+  } catch { /* leave out */ }
+  try {
+    // Ticked weekly targets (for example a TikTok and a Facebook live video): one tile per item on each person's own Today. Ticked and waiting for the supervisor shows as done, awaiting.
+    const tl = await import('./ticks'), laws = await tl.tickLaws()
+    if (laws.length) {
+      const ws = weekStart(todayKey), ticks = await tl.ticksOfWeek(ws), staffList = await (await import('./targets')).staffNames()
+      const dow = (new Date(`${todayKey}T00:00:00Z`).getUTCDay() + 6) % 7
+      for (const l of laws) {
+        if (ws < weekStart(l.target_from ?? ws)) continue
+        const items = tl.itemsOf(l)
+        for (const who of staffList) items.forEach((item, i) => {
+          const t = ticks.find(x => x.law_id === l.id && x.staff === who && x.item === item)
+          const done = t && t.status !== 'rejected'
+          out.push({ kind: 'standing', key: `s:tick:${who}:${l.id}:${i}`, id: -1, title: `${item}: ${t?.status === 'confirmed' ? 'confirmed' : t?.status === 'pending' ? 'ticked, waiting for confirmation' : t?.status === 'rejected' ? 'sent back, tick again' : 'once this week'}`,
+            time: '', due: 24 * 60 + 2, owner: who, role: null, category: 'Weekly target', lawType: 'target', lawId: l.id, typeLabel: 'Weekly tick', state: done ? 'done' : dow >= 5 ? 'late' : 'now', count: 0, awaiting: t?.status === 'pending',
+            note: t?.status === 'rejected' ? t.note : null,
+            detail: done ? (t!.status === 'confirmed' ? 'Confirmed by the supervisor.' : 'The supervisor confirms it by Monday evening.') : 'Tick it once Monday to Sunday. A supervisor then confirms it. Not ticked by the end of the week, a point is added.' })
+        })
+      }
     }
   } catch { /* leave out */ }
   try {

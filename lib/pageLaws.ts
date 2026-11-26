@@ -71,7 +71,7 @@ async function ensureCompanyLawsImpl() {
   await ensurePageLawsTable()
   await sql`ALTER TABLE page_laws
     ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_type TEXT NOT NULL DEFAULT 'standing',
-    ADD COLUMN IF NOT EXISTS flag_key TEXT, ADD COLUMN IF NOT EXISTS flag_per_day NUMERIC, ADD COLUMN IF NOT EXISTS target_measure TEXT, ADD COLUMN IF NOT EXISTS target_n NUMERIC, ADD COLUMN IF NOT EXISTS target_scale BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN IF NOT EXISTS target_from TEXT, ADD COLUMN IF NOT EXISTS needs_confirm BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
+    ADD COLUMN IF NOT EXISTS flag_key TEXT, ADD COLUMN IF NOT EXISTS flag_per_day NUMERIC, ADD COLUMN IF NOT EXISTS target_measure TEXT, ADD COLUMN IF NOT EXISTS target_n NUMERIC, ADD COLUMN IF NOT EXISTS target_scale BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN IF NOT EXISTS target_from TEXT, ADD COLUMN IF NOT EXISTS target_items TEXT, ADD COLUMN IF NOT EXISTS needs_confirm BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
@@ -172,6 +172,8 @@ async function seedAdvertsPilot() {
 }
 
 // Cleans a law sent from the Company Laws screen (used by add and edit).
+// The things a person ticks each week for a "ticked" target (one per line, each its own tick).
+export const cleanItems = (v: unknown): string[] => String(v ?? '').split(/[\n,]/).map(x => x.trim().slice(0, 60)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, 6)
 export function cleanLawBody(b: any, valid: { categories: string[]; types: string[]; days: string[]; freqs: string[] }) {
   const t = (v: unknown, n: number) => { const x = String(v ?? '').trim().slice(0, n); return x || null }
   const days = (Array.isArray(b.days) ? b.days : String(b.days ?? '').split(',')).map((d: unknown) => String(d).trim().toLowerCase()).filter((d: string) => valid.days.includes(d))
@@ -192,7 +194,8 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     needs_confirm: recurring && !!b.needs_confirm,
     // weekly target: what is counted, how many a week, scaled to the days worked, and the first Monday that counts
     target_measure: type === 'target' && TARGET_MEASURES.some(m => m.key === b.target_measure) ? String(b.target_measure) : null,
-    target_n: type === 'target' && Number(b.target_n) > 0 && Number(b.target_n) <= 100000 ? Number(b.target_n) : null,
+    target_n: type === 'target' && b.target_measure === 'ticks' ? Math.max(1, cleanItems(b.target_items).length) : type === 'target' && Number(b.target_n) > 0 && Number(b.target_n) <= 100000 ? Number(b.target_n) : null,
+    target_items: type === 'target' && b.target_measure === 'ticks' ? (cleanItems(b.target_items).join('\n') || null) : null,
     flag_key: type === 'flag' && FLAGS.some(f => f.key === b.flag_key) ? String(b.flag_key) : null,
     flag_per_day: type === 'flag' && Number(b.flag_per_day) > 0 && Number(b.flag_per_day) <= 1000 ? Number(b.flag_per_day) : null,
     target_scale: b.target_scale !== false,

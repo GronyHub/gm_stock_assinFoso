@@ -53,7 +53,7 @@ export async function targetProgress(day = dayKey(), only?: string): Promise<Pro
   if (hit && Date.now() - hit.at < 3 * 60 * 1000) return hit.data
   const laws = await targetLaws(), staff = only ? [only] : await staffNames(), out: Progress[] = []
   for (const l of laws) {
-    const m = measureOf(l.target_measure); if (!m) continue
+    const m = measureOf(l.target_measure); if (!m || m.key === 'ticks') continue
     for (const who of staff) {
       const from = l.target_from ?? ws
       out.push({ lawId: l.id, who, label: label(l), measure: m.key, unit: m.unit, mine: Math.round(await measured(m.key, who, ws) * 10) / 10, target: Number(l.target_n), started: ws >= weekStart(from), from, href: m.href })
@@ -69,7 +69,7 @@ export async function assessTargets(day: string) {
   const prev = addDays(weekStart(day), -7)
   const laws = await targetLaws(), staff = await staffNames()
   for (const l of laws) {
-    const m = measureOf(l.target_measure); if (!m) continue
+    const m = measureOf(l.target_measure); if (!m || m.key === 'ticks') continue
     if (prev < weekStart(l.target_from ?? prev)) continue
     const pts = parseViolations(l.violations)[0]?.points ?? l.points ?? 1
     if (!(pts > 0)) continue
@@ -79,6 +79,26 @@ export async function assessTargets(day: string) {
       const mine = await measured(m.key, who, prev)
       if (mine >= target) continue
       await addPoint({ staff: who, points: pts, lawId: l.id, reason: `${label(l)}: ${Math.round(mine * 10) / 10} of ${Math.round(target * 10) / 10} ${m.unit} in the week of ${prev} (the weekly target is ${Number(l.target_n)}${l.target_scale !== false ? ', scaled to the days worked' : ''})`, source: 'target', ref: `target:${l.id}:${prev}`, day, by: 'system' })
+    }
+  }
+  await assessTicks(day, prev, staff)
+}
+
+// Ticked targets: each staff member needs a tick for every item that was not sent back. A tick still waiting for confirmation counts (the supervisor, not the staff member, is late then).
+async function assessTicks(day: string, prev: string, staff: string[]) {
+  const { tickLaws, itemsOf, ticksOfWeek } = await import('./ticks')
+  const laws = await tickLaws(), ticks = await ticksOfWeek(prev)
+  for (const l of laws) {
+    if (prev < weekStart(l.target_from ?? prev)) continue
+    const pts = parseViolations(l.violations)[0]?.points ?? l.points ?? 1
+    if (!(pts > 0)) continue
+    const items = itemsOf(l)
+    for (const who of staff) {
+      if ((await daysWorked(who, prev)) <= 0) continue
+      for (const item of items) {
+        if (ticks.some(t => t.law_id === l.id && t.staff === who && t.item === item && t.status !== 'rejected')) continue
+        await addPoint({ staff: who, points: pts, lawId: l.id, reason: `${item}: not ticked (or sent back by the supervisor) in the week of ${prev}`, source: 'target', ref: `tick:${l.id}:${prev}:${items.indexOf(item)}`, day, by: 'system' })
+      }
     }
   }
 }

@@ -58,6 +58,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [sheet, setSheet] = useState<CheckTile | null>(null)
+  const [tickAsk, setTickAsk] = useState<{ d: Duty; busy: boolean; err: string } | null>(null)
   const [reporting, setReporting] = useState(false)
   const [clock, setClock] = useState(() => nowHM())
   useEffect(() => { const t = setInterval(() => setClock(nowHM()), 30000); return () => clearInterval(t) }, [])
@@ -71,6 +72,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
   const tapDuty = (d: Duty): (() => void) | undefined => {
     const k = dutyKind(d)
     if (k === 'approve' || k === 'extra-time') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
+    if (k === 'tick') { const mine = d.state !== 'done' || d.title.includes('sent back'); return mine ? () => setTickAsk({ d, busy: false, err: '' }) : undefined }
     if (k === 'confirm') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'confirm' }))
     if (k === 'flag') return () => window.postMessage({ type: 'open-flag', key: d.key.split(':')[3] }, window.location.origin)
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
@@ -222,6 +224,31 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
           </div>
         </div>
       )}
+      {tickAsk && (() => {
+        const [lawId, idx] = [Number(tickAsk.d.key.split(':')[3]), Number(tickAsk.d.key.split(':')[4])]
+        const item = tickAsk.d.title.split(': ')[0]
+        const send = async () => {
+          setTickAsk({ ...tickAsk, busy: true, err: '' })
+          const r = await fetch('/api/target-ticks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lawId, item, idx, for: tickAsk.d.owner }) })
+          const j = await r.json().catch(() => ({}))
+          if (!r.ok) { setTickAsk({ ...tickAsk, busy: false, err: j.error ?? 'Could not save.' }); return }
+          setTickAsk(null); flash('Ticked. The supervisor will confirm it.'); void load(day)
+        }
+        return (
+          <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setTickAsk(null)}>
+            <div className="w-full space-y-3 rounded-t-2xl bg-white p-4 pb-6" onClick={e => e.stopPropagation()}>
+              <p className="text-[12px] font-bold uppercase tracking-wide text-gray-500">Weekly tick</p>
+              <p className="text-[17px] font-bold leading-snug text-gray-900">{item}</p>
+              <p className="text-[14px] text-gray-700">Have you done it this week? A supervisor will confirm it.</p>
+              {tickAsk.err && <p className="text-sm text-red-600">{tickAsk.err}</p>}
+              <div className="flex gap-2">
+                <button type="button" disabled={tickAsk.busy} onClick={() => void send()} className="min-h-[48px] flex-1 rounded-xl bg-green-600 text-[16px] font-bold text-white disabled:opacity-40">Yes, I have done it</button>
+                <button type="button" onClick={() => setTickAsk(null)} className="min-h-[48px] flex-1 rounded-xl bg-gray-100 text-[16px] font-bold text-gray-700">Not yet</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
       {sheet && (sheet.kind === 'properties'
         ? <PropsSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />
         : <TileSheet t={sheet} ev={latest(sheet)} isToday={isToday && !locked} canEdit={canEdit} present={present} onClose={() => setSheet(null)} onSaved={m => { flash(m); void load(day) }} />)}
