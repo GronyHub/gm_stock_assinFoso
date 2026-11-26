@@ -64,7 +64,7 @@ export function TaskRow({ time, title, who, type, detail, stripe, bg, mark, badg
   return (
     <div className={`relative flex items-stretch overflow-hidden rounded-lg border border-gray-200 ${bg}`}>
       <span className={`w-1.5 shrink-0 ${stripe}`} />
-      <button type="button" onClick={onClick} onContextMenu={e => e.preventDefault()} disabled={!onClick} className="flex min-h-[3rem] flex-1 select-none items-start gap-2 px-2 py-1.5 text-left active:opacity-70 disabled:active:opacity-100">
+      <button type="button" onClick={onClick} onContextMenu={e => e.preventDefault()} disabled={!onClick} className="flex min-h-[3.9rem] flex-1 select-none items-start gap-2 px-2 py-1.5 text-left active:opacity-70 disabled:active:opacity-100">
         <span className="w-[3.3rem] shrink-0 leading-tight">
           <span className="block text-[13px] font-extrabold text-gray-700">{at || ' '}</span>
           {len ? <span className="block text-[11px] font-semibold text-gray-500">{len}</span> : null}
@@ -72,11 +72,11 @@ export function TaskRow({ time, title, who, type, detail, stripe, bg, mark, badg
         <span className="min-w-0 flex-1">
           <span className="block whitespace-pre-line break-words text-[14px] font-semibold leading-snug text-gray-900">{text}</span>
           {detail ? <span className="mt-0.5 block text-[12px] leading-snug text-gray-600">{detail}</span> : null}
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-bold text-indigo-800">{who ? <span>{who}</span> : null}{type ? <span className="font-semibold text-gray-500">{type}</span> : null}{badge && badge > 1 ? <span className="rounded-full bg-[#14213D] px-1.5 text-[11px] text-white">{badge}</span> : null}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-bold text-indigo-800">{who ? <span>{who}</span> : null}{type && type !== 'Recurring task' ? <span className="font-semibold text-gray-500">{type}</span> : null}{badge && badge > 1 ? <span className="rounded-full bg-[#14213D] px-1.5 text-[11px] text-white">{badge}</span> : null}</span>
         </span>
         {mark ? <span className={`shrink-0 text-lg font-black leading-none ${mark === 'done' ? 'text-green-600' : mark === 'miss' ? 'text-red-600' : 'text-gray-500'}`}>{mark === 'done' ? '✓' : mark === 'miss' ? '✗' : '–'}</span> : null}
       </button>
-      {lawHref ? <a href={lawHref} title="Open the law behind this task" onClick={e => e.stopPropagation()} className="flex shrink-0 items-end"><span className="rounded-tl-md bg-blue-600 px-1.5 py-0.5 text-[11px] font-extrabold leading-none text-white">Law</span></a> : null}
+      {lawHref ? <a href={lawHref} title="Open the law behind this task" aria-label="Open the law behind this task" onClick={e => e.stopPropagation()} className="absolute left-[0.95rem] top-[2.5rem] text-[15px] leading-none text-blue-700">⚖</a> : null}
     </div>
   )
 }

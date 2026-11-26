@@ -219,7 +219,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
               {dayList.filter(x => todayFilter === 'all' || (todayFilter === 'waiting' && (x.st === 'now' || x.st === 'later')) || (todayFilter === 'overdue' && x.st === 'late') || (todayFilter === 'done' && (x.st === 'done' || x.st === 'no'))).map(({ d, st }) => (
                 <TaskRow key={d.key} time={d.kind === 'task' ? fmt(d.shown ?? d.due) + (d.mins ? ` · ${d.mins} min` : '') : d.time || undefined} title={d.title} who={d.by ? nm(d.by) : whoOfDuty(d)} type={typeOf(d)} badge={d.count}
                   detail={d.detail ?? d.note ?? null} mark={st === 'done' ? 'done' : st === 'no' ? 'no' : st === 'late' ? 'miss' : undefined}
-                  stripe={st === 'done' && d.awaiting ? 'bg-amber-400' : st === 'done' ? 'bg-green-500' : st === 'no' ? 'bg-gray-400' : st === 'late' ? 'bg-red-500' : st === 'now' ? 'bg-amber-400' : 'bg-gray-300'}
+                  stripe={st === 'done' && d.awaiting ? 'bg-amber-400' : st === 'done' ? 'bg-green-500' : st === 'no' ? 'bg-gray-400' : st === 'late' ? 'bg-red-500' : st === 'now' ? 'bg-amber-400' : 'bg-gray-400'}
                   bg={st === 'done' && !d.awaiting ? 'bg-green-50' : st === 'late' ? 'bg-red-50' : st === 'now' || (st === 'done' && d.awaiting) ? 'bg-amber-50' : 'bg-white'}
                   onClick={tileOf(d) ? () => setSheet(tileOf(d)!) : tapDuty(d)} lawHref={lawPageHref(d.lawId, d.category)} />
               ))}
