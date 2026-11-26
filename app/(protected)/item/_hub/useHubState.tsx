@@ -4658,7 +4658,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveCurrentView({ kind: 'violation' as const, key: v.slice('violation:'.length) })
   }
   // A flag tile or a flag law's button: open the page where that flag's items are fixed, already filtered to the flag.
-  const FLAG_LIVE_VALUE: Record<string, string> = { neg_soh: 'violation:neg_soh', no_sp: 'sale:noSp', no_cp: 'sale:noCp', no_group: 'sale:noGroup', duplicates: 'sale:duplicates', unlinked_named: 'sale:unlinked', unknown_qty: 'sale:unknownQty', gmc_overage: 'sale:gmcOverage', low_confidence_alias: 'sale:lowConfidenceAlias', prezoho_notes: 'sale:prezohoNotes', service_violation: 'sale:service', needs_review: 'sale:needsReview', alias_prezoho_sales: 'violation:alias_prezoho_sales', alias_prezoho_bills: 'violation:alias_prezoho_bills', alias_prezoho_receipts: 'violation:alias_prezoho_receipts', alias_flagged: 'violation:alias_flagged', alias_ambiguous: 'violation:alias_ambiguous', alias_name_conflicts: 'violation:alias_name_conflicts' }
+  const FLAG_LIVE_VALUE: Record<string, string> = { neg_soh: 'violation:neg_soh', no_sp: 'sale:noSp', no_cp: 'sale:noCp', no_group: 'sale:noGroup', duplicates: 'sale:duplicates', unlinked_named: 'sale:unlinked', unknown_qty: 'sale:unknownQty', gmc_overage: 'sale:gmcOverage', low_confidence_alias: 'sale:lowConfidenceAlias', prezoho_notes: 'sale:prezohoNotes', service_violation: 'sale:service', empty_row: 'sale:emptyRow', net_gain: 'sale:netGain', needs_review: 'sale:needsReview', alias_prezoho_sales: 'violation:alias_prezoho_sales', alias_prezoho_bills: 'violation:alias_prezoho_bills', alias_prezoho_receipts: 'violation:alias_prezoho_receipts', alias_flagged: 'violation:alias_flagged', alias_ambiguous: 'violation:alias_ambiguous', alias_name_conflicts: 'violation:alias_name_conflicts' }
   function openFlagByKey(key: string) {
     const v = FLAG_LIVE_VALUE[key]
     if (v) { pickLossView('items'); pickLiveFlag(v); return }
@@ -4666,6 +4666,10 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (key === 'cost_gte_sp') { goLossSubView('cost_gte_sp'); return }
     if (['no_cash', 'missing_days', 'dup_receipts', 'high_wnw'].includes(key)) { goItemsMode('log'); return }
     if (['no_vendor_bills', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'vcp_jump'].includes(key)) { goItemsMode('bills'); return }
+    if (key === 'net_loss') { goLossSubView('net_loss'); return }
+    if (key.startsWith('exp_')) { goItemsMode('expenses'); return }
+    if (key === 'cust_missing') { jumpToCustomersTab(); return }
+    if (key === 'vend_missing') { pickLossView('vendors'); return }
     if (key === 'unchecked_cab') { pickLossView('cab'); return }
     if (['no_staff_times', 'open_clocks', 'missing_closing_reports'].includes(key)) { pickLossView('teamTimes'); return }
     if (key === 'no_advert') { pickLossView('audio_status' as LossView); return }

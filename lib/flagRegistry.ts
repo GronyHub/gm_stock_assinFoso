@@ -6,7 +6,7 @@ export type FlagDef = {
   law: string                                        // the draft law, in plain words
   breaks: string                                     // the violation line
 }
-export const FLAG_PAGES: Record<string, string> = { live: 'Live', log: 'Sales Log', bills: 'Bills', cab: 'CAB', loss: 'Losses', team: 'Staff times', adverts: 'Adverts and audio' }
+export const FLAG_PAGES: Record<string, string> = { live: 'Live', log: 'Sales Log', bills: 'Bills', cab: 'CAB', loss: 'Losses', team: 'Staff times', adverts: 'Adverts and audio', expenses: 'Expenses', customers: 'Customers', vendors: 'Vendors' }
 export const FLAGS: FlagDef[] = [
   { key: 'neg_soh', label: 'Negative stock', page: 'live', list: 'items:neg', law: 'No item has negative stock. Any item below zero is counted and its cause found and fixed.', breaks: 'Negative stock is left open' },
   { key: 'no_sp', label: 'No selling price', page: 'live', list: 'items:no_sp', law: 'Every item has a selling price above zero.', breaks: 'An item is left with no selling price' },
@@ -43,5 +43,15 @@ export const FLAGS: FlagDef[] = [
   { key: 'alias_name_conflicts', label: 'Alias name conflicts', page: 'live', list: 'extra', law: 'No alias has the same text as a different item\'s own name.', breaks: 'An alias name conflict is left open' },
   { key: 'service_violation', label: 'Service violations', page: 'live', list: 'extra', law: 'A service item never has stock counts, GMC use or bill activity.', breaks: 'A service violation is left open' },
   { key: 'needs_review', label: 'Items needing review', page: 'live', list: 'extra', law: 'Every item marked as needing review is reviewed and cleared.', breaks: 'An item needing review is left open' },
+  { key: 'empty_row', label: 'Empty rows', page: 'live', list: 'extra', law: 'No item has a day with nothing in it (no count, sales, GMC or bills). The empty day is removed.', breaks: 'An empty day is left on an item' },
+  { key: 'net_gain', label: 'Net gains', page: 'live', list: 'extra', law: 'No item is left with a net gain. A gain means a bill or GMC take was never recorded, or a count was wrong, and it is corrected.', breaks: 'A net gain is left open' },
+  { key: 'net_loss', label: 'Net losses', page: 'loss', list: 'extra', law: 'Every item with a net loss is looked into and its cause found.', breaks: 'A net loss is left uninvestigated' },
+  { key: 'exp_similar', label: 'Expenses: similar account names', page: 'expenses', list: 'extra', law: 'No two expense accounts are almost the same name. They are merged into one.', breaks: 'Similar expense account names are left open' },
+  { key: 'exp_bundled', label: 'Expenses: bundled purchases', page: 'expenses', list: 'extra', law: 'Each purchase has its own expense line. Several purchases are not lumped into one.', breaks: 'A bundled expense is left open' },
+  { key: 'exp_no_vendor', label: 'Expenses with no vendor', page: 'expenses', list: 'extra', law: 'Every expense has its vendor recorded.', breaks: 'An expense is left with no vendor' },
+  { key: 'exp_property_no_location', label: 'Properties with no location', page: 'expenses', list: 'extra', law: 'Every available property expense has its location recorded.', breaks: 'A property is left with no location' },
+  { key: 'exp_delivery_unresolved', label: 'Delivery expenses unresolved', page: 'expenses', list: 'extra', law: 'Every delivery expense is moved onto its bill or marked as related to its property.', breaks: 'A delivery expense is left unresolved' },
+  { key: 'cust_missing', label: 'Customers missing details', page: 'customers', list: 'extra', law: 'Every customer has a location, phone, email and WhatsApp group.', breaks: 'A customer is left with missing details' },
+  { key: 'vend_missing', label: 'Vendors missing details', page: 'vendors', list: 'extra', law: 'Every vendor has a phone and a location.', breaks: 'A vendor is left with missing details' },
 ]
 export const flagOf = (k: string | null | undefined) => FLAGS.find(f => f.key === k)
