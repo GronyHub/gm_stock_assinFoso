@@ -896,6 +896,7 @@ export function useHubState() {
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab: tab === 'dashboard' ? 'todo' : tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
   const countsGoRef = useRef<() => void>(() => {})
+  const openFlagRef = useRef<(k: string) => void>(() => {})
   useEffect(() => { setEmbedUrl(null); setPersonal(null); setShop(null) }, [lossView, outerTab])
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search)
@@ -906,7 +907,7 @@ export function useHubState() {
     else if (open && MINE_PATHS[open]) wantMine.current = MINE_PATHS[open]
     else if (open && open.startsWith('/') && !open.startsWith('//')) { const r = shopRoute(open); if (r) setShop(r); else setEmbedUrl(open) }
     ;(window as unknown as { __gmHub?: boolean }).__gmHub = true
-    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-counts') { setEmbedUrl(null); setShop(null); setPersonal(null); countsGoRef.current(); }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
+    const msg = (e: MessageEvent) => { if (e.origin !== window.location.origin) return; if (e.data?.type === 'close-embed') { setEmbedUrl(null); setShop(null) }; if (e.data?.type === 'open-counts') { setEmbedUrl(null); setShop(null); setPersonal(null); countsGoRef.current(); }; if (e.data?.type === 'open-flag' && typeof e.data.key === 'string') { setEmbedUrl(null); setShop(null); setPersonal(null); openFlagRef.current(e.data.key); }; if (e.data?.type === 'open-path' && typeof e.data.path === 'string' && e.data.path.startsWith('/') && !e.data.path.startsWith('//')) openEmbed(e.data.path); if (e.data?.type === 'open-personal') { setEmbedUrl(null); setShop(null); setPersonal({ name: typeof e.data.name === 'string' && e.data.name ? e.data.name : usernameRef.current, tab: String(e.data.tab ?? 'times') }) } }
     const own = (e: Event) => { const d = (e as CustomEvent).detail as { name: string; tab?: string; handled: boolean }; d.handled = true; setEmbedUrl(null); setShop(null); setPersonal({ name: d.name, tab: d.tab ?? 'times' }) }
     const hubOpen = (e: Event) => { const d = (e as CustomEvent).detail as { path: string; handled: boolean }; d.handled = true; openEmbed(d.path) }
     window.addEventListener('message', msg); window.addEventListener('open-staff-member', own); window.addEventListener('hub-open', hubOpen)
@@ -4656,6 +4657,20 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (v.startsWith('sale:')) { setLiveCurrentView(null); pickSaleFilter(v.slice(5) as typeof liveSaleViolationFilter); return }
     setLiveCurrentView({ kind: 'violation' as const, key: v.slice('violation:'.length) })
   }
+  // A flag tile or a flag law's button: open the page where that flag's items are fixed, already filtered to the flag.
+  const FLAG_LIVE_VALUE: Record<string, string> = { neg_soh: 'violation:neg_soh', no_sp: 'sale:noSp', no_cp: 'sale:noCp', no_group: 'sale:noGroup', duplicates: 'sale:duplicates', unlinked_named: 'sale:unlinked', unknown_qty: 'sale:unknownQty', gmc_overage: 'sale:gmcOverage', low_confidence_alias: 'sale:lowConfidenceAlias', prezoho_notes: 'sale:prezohoNotes' }
+  function openFlagByKey(key: string) {
+    const v = FLAG_LIVE_VALUE[key]
+    if (v) { pickLossView('items'); pickLiveFlag(v); return }
+    if (key === 'to_count') { goCountMode(); return }
+    if (key === 'cost_gte_sp') { goLossSubView('cost_gte_sp'); return }
+    if (['no_cash', 'missing_days', 'dup_receipts', 'high_wnw'].includes(key)) { goItemsMode('log'); return }
+    if (['no_vendor_bills', 'no_items_bills', 'bill_total_mismatch', 'bill_no_attachment', 'bill_no_expense', 'vcp_jump'].includes(key)) { goItemsMode('bills'); return }
+    if (key === 'unchecked_cab') { pickLossView('cab'); return }
+    if (['no_staff_times', 'open_clocks', 'missing_closing_reports'].includes(key)) { pickLossView('teamTimes'); return }
+    if (key === 'no_advert') { pickLossView('audio_status' as LossView); return }
+  }
+  openFlagRef.current = openFlagByKey
   function renderCriticalBar(only?: 'counts' | 'items' | 'receipts' | 'bills') {
     const show = (k: 'counts' | 'items' | 'receipts' | 'bills') => !only || only === k
     const violationButton = (label: string, count: number, onClick: () => void, textColor: string = 'text-gray-700') => {

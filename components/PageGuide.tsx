@@ -8,7 +8,7 @@ import { areaForGuide } from '@/lib/lawAreas'
 export function LawsSheet({ areaKey, label, onClose }: { areaKey: string; label: string; onClose: () => void }) {
   // A button inside the laws (for example 'Items to count now') asks the hub to open a page: the sheet gets out of the way.
   useEffect(() => {
-    const h = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data?.type === 'open-counts') onClose() }
+    const h = (e: MessageEvent) => { if (e.origin === window.location.origin && (e.data?.type === 'open-counts' || e.data?.type === 'open-flag')) onClose() }
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
   }, [onClose])

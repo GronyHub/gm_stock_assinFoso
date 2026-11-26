@@ -7,6 +7,7 @@ import CategoryTraining, { hasTraining, useQuizMine } from './CategoryTraining'
 import GuideVideo from '@/components/GuideVideo'
 import { ASSIGNMENTS } from '@/lib/assignment'
 import { TARGET_MEASURES } from '@/lib/targetMeasures'
+import { FLAGS, FLAG_PAGES } from '@/lib/flagRegistry'
 import { LAW_AREAS, lawInArea, areaForCategory, type LawArea } from '@/lib/lawAreas'
 import { whyFor, whyForArea, type Why } from '@/lib/lawWhy'
 import { AREA_VIDEO, fmtTime, lawTime, findChapter } from '@/lib/lawVideo'
@@ -19,9 +20,9 @@ import { TOPICS } from '../item/_components/trainingTopics'
 type Law = {
   id: number; text: string; scope_key: string; category: string | null; subcategory: string | null; law_type: string
   days: string | null; law_time: string | null; frequency: string | null; minutes: number | null; dos: string | null; donts: string | null
-  status?: string; kept?: { done: number; of: number; last: string | null; missed_last: boolean }; tile_id?: number | null; proof?: string; assignment?: string; month_day?: number | null; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; needs_confirm?: boolean; target_measure?: string | null; target_n?: number | string | null; target_scale?: boolean; target_from?: string | null; quiz_n?: number; violations?: string | null; not_violation?: string | null
+  status?: string; kept?: { done: number; of: number; last: string | null; missed_last: boolean }; tile_id?: number | null; proof?: string; assignment?: string; month_day?: number | null; points?: number; code?: string | null; title?: string | null; audience?: string; reminder?: string; needs_confirm?: boolean; flag_key?: string | null; flag_per_day?: number | string | null; target_measure?: string | null; target_n?: number | string | null; target_scale?: boolean; target_from?: string | null; quiz_n?: number; violations?: string | null; not_violation?: string | null
 }
-type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; assignment: string; month_day: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string; needs_confirm: boolean; target_measure: string; target_n: string; target_scale: boolean; target_from: string }
+type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; assignment: string; month_day: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string; needs_confirm: boolean; flag_key: string; flag_per_day: string; target_measure: string; target_n: string; target_scale: boolean; target_from: string }
 const json = { 'Content-Type': 'application/json' }
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
@@ -43,8 +44,8 @@ const recordText = (l: { law_type: string }, v: Violation) => v.record ?? (l.law
 const SIGN_NAMES: Record<string, string> = { grony: 'Gro', bino: 'Bin', joe: 'Joe', james: 'Jam' }
 const firstSentence = (t: string) => { const one = t.replace(/\s+/g, ' ').trim(); const m = one.match(/^(.{15,90}?)[.:!?](\s|$)/); return m ? m[1] : one.slice(0, 80) }
 const lines = (s: string | null) => (s ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', assignment: !l.assignment || l.assignment === 'all' ? 'managers' : l.assignment, month_day: l.month_day ? String(l.month_day) : '', needs_confirm: !!l.needs_confirm, target_measure: l.target_measure ?? 'counts', target_n: l.target_n != null ? String(Number(l.target_n)) : '', target_scale: l.target_scale !== false, target_from: l.target_from ?? '', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '', audience: l.audience ?? 'staff', reminder: l.reminder ?? 'none' })
-const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', assignment: 'managers', month_day: '', needs_confirm: false, target_measure: 'counts', target_n: '', target_scale: true, target_from: '', points: '1', violations: [], not_violation: '', title: '', audience: 'staff', reminder: 'none' })
+const toDraft = (l: Law): Draft => ({ id: l.id, text: l.text, category: l.category ?? '', subcategory: l.subcategory ?? '', law_type: l.law_type, days: l.days ? l.days.split(',') : [], law_time: l.law_time ?? '', frequency: l.frequency ?? '', minutes: l.minutes ? String(l.minutes) : '', dos: l.dos ?? '', donts: l.donts ?? '', proof: l.proof ?? 'tick', assignment: !l.assignment || l.assignment === 'all' ? 'managers' : l.assignment, month_day: l.month_day ? String(l.month_day) : '', needs_confirm: !!l.needs_confirm, flag_key: l.flag_key ?? 'no_sp', flag_per_day: l.flag_per_day != null ? String(Number(l.flag_per_day)) : '', target_measure: l.target_measure ?? 'counts', target_n: l.target_n != null ? String(Number(l.target_n)) : '', target_scale: l.target_scale !== false, target_from: l.target_from ?? '', points: String(l.points ?? 1), violations: parseViolations(l.violations).map(v => ({ text: v.text, points: String(v.points), by: v.by, how: v.how, chapter: v.chapter, record: v.record, dismissal: v.dismissal })), not_violation: l.not_violation ?? '', title: l.title ?? '', audience: l.audience ?? 'staff', reminder: l.reminder ?? 'none' })
+const blank = (category: string): Draft => ({ text: '', category, subcategory: '', law_type: 'standing', days: [], law_time: '', frequency: '', minutes: '', dos: '', donts: '', proof: 'tick', assignment: 'managers', month_day: '', needs_confirm: false, flag_key: 'no_sp', flag_per_day: '', target_measure: 'counts', target_n: '', target_scale: true, target_from: '', points: '1', violations: [], not_violation: '', title: '', audience: 'staff', reminder: 'none' })
 
 // Company Laws: category tiles, then each category's subcategories with the law, its dos and don'ts and its schedule.
 // initial: an embedded link (topic or law) is read on the server, so the topic is already set on the first paint -- the general list never flashes.
@@ -95,6 +96,8 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
   type Rec = { done: { law_id: number | null; title: string; day: string; recorded_by: string }[]; missed: { law_id?: number | null; day: string; title: string; owner: string | null; reason: string | null }[]; points: { law_id: number | null; day: string; staff: string; points: number; reason: string }[] }
   const [rec, setRec] = useState<Rec | null>(null)
   const [recTick, setRecTick] = useState(0)
+  const [flagCounts, setFlagCounts] = useState<Record<string, number>>({})
+  useEffect(() => { if (!embed) return; fetch('/api/flag-counts', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => { const x = d?.data ?? d; if (x && typeof x === 'object') setFlagCounts(x as Record<string, number>) }).catch(() => {}) }, [embed?.area])
   const [sf, setSf] = useState<'all' | 'done' | 'missed' | 'viol'>('all')
   const subsKey = embed?.subs.join('|') ?? ''
   useEffect(() => {
@@ -432,7 +435,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                   {embed && <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span><span>Staff taps</span><span className="hidden sm:block">If broken</span></div>}
                   {embed ? list.map(l => {
                     const ds = (l.days ?? '').split(',').map(x => x.trim()).filter(Boolean)
-                    const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.law_type === 'target' ? 'Every week (Mon to Sun)' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
+                    const days = l.law_type === 'standing' ? 'Always' : l.law_type === 'app' ? 'Always' : l.law_type === 'flag' ? 'Every working day' : l.law_type === 'target' ? 'Every week (Mon to Sun)' : l.frequency === 'weekly' ? `Every ${ds.map(d => DAY_NAMES[d]).join(' and ') || 'week'}` : l.frequency === 'monthly' || l.frequency === 'yearly' ? (l.month_day ? `Day ${l.month_day} of the ${l.frequency === 'yearly' ? 'year' : 'month'}` : l.frequency === 'yearly' ? 'Every year' : 'Every month') : ds.length === 0 || ds.length >= 7 ? 'Every day' : ds.map(d => DAY_NAMES[d].slice(0, 3)).join(', ')
                     const who = l.assignment && l.assignment !== 'all' ? (ASSIGNMENTS.find(a => a.key === l.assignment)?.label ?? l.assignment) : l.audience === 'managers' ? 'A manager' : 'Anyone on shift'
                     return (
                     <div key={l.id} id={`law-${l.id}`} className={`grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 rounded-lg border p-2 ${l.status === 'draft' ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
@@ -447,10 +450,10 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                       </div>
                       <div className="min-w-0 text-[12px] leading-snug text-gray-700">
                         <p className="font-semibold text-gray-900">{who}</p>
-                        <p>{l.law_type === 'recurring' ? 'Recurring task' : l.law_type === 'standing' ? 'Standing rule' : l.law_type === 'target' ? 'Weekly target' : 'App rule'}</p>
+                        <p>{l.law_type === 'recurring' ? 'Recurring task' : l.law_type === 'standing' ? 'Standing rule' : l.law_type === 'target' ? 'Weekly target' : l.law_type === 'flag' ? 'Flag law' : 'App rule'}</p>
                       </div>
                       <div className="min-w-0 text-[12px] leading-snug text-gray-700">
-                        <p className="font-semibold text-gray-900">{l.law_type === 'target' ? `${Number(l.target_n)} ${(TARGET_MEASURES.find(m => m.key === l.target_measure)?.unit ?? '')} a week` : l.law_type !== 'recurring' ? 'No task' : l.proof === 'photo' ? 'Photo and note' : l.proof === 'question' ? 'All good / Report a problem' : l.proof === 'persons' ? 'Tick each person' : 'Done'}</p>
+                        <p className="font-semibold text-gray-900">{l.law_type === 'flag' ? (l.flag_per_day ? `Fix ${Number(l.flag_per_day)} a day` : 'Fix them as they appear') : l.law_type === 'target' ? `${Number(l.target_n)} ${(TARGET_MEASURES.find(m => m.key === l.target_measure)?.unit ?? '')} a week` : l.law_type !== 'recurring' ? 'No task' : l.proof === 'photo' ? 'Photo and note' : l.proof === 'question' ? 'All good / Report a problem' : l.proof === 'persons' ? 'Tick each person' : 'Done'}</p>
                         {l.law_type === 'recurring' && l.proof !== 'question' && <p className="text-gray-500">or Not done, with a reason</p>}
                         {canManage && <div className="mt-1 flex gap-1">
                           {l.status === 'draft' && <button type="button" onClick={() => void approve({ id: l.id })} title="Approve" className="rounded bg-green-600 px-2 py-1 text-[12px] font-bold text-white">✓</button>}
@@ -476,6 +479,10 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
                             {l.law_type === 'target' && l.target_measure === 'counts' && (
                               <button type="button" onClick={() => window.parent.postMessage({ type: 'open-counts' }, window.location.origin)} className="rounded-md bg-blue-600 px-2 py-1 text-[12px] font-bold text-white">Items to count now →</button>
                             )}
+                            {l.law_type === 'flag' && l.flag_key && (<>
+                              <span className={`rounded-full px-2 py-0.5 font-semibold ${(flagCounts[l.flag_key] ?? 0) > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{flagCounts[l.flag_key] ?? '…'} open</span>
+                              {(flagCounts[l.flag_key] ?? 0) > 0 && <button type="button" onClick={() => window.parent.postMessage({ type: 'open-flag', key: l.flag_key }, window.location.origin)} className="rounded-md bg-blue-600 px-2 py-1 text-[12px] font-bold text-white">Open the {flagCounts[l.flag_key]} flagged items →</button>}
+                            </>)}
                             {canLog && vs.map((v, i) => v.by === 'manager' && v.points > 0 ? (
                               <button key={i} type="button" onClick={() => setLogFor({ law: l, vi: i })} className="rounded-md bg-gray-800 px-2 py-1 text-[12px] font-bold text-white">⚖ Record violation{vs.filter(x => x.by === 'manager' && x.points > 0).length > 1 ? `: ${v.text.slice(0, 28)}` : ''}</button>
                             ) : null)}
@@ -681,6 +688,14 @@ function Editor({ d: start, subs, onClose, onSaved }: { d: Draft; subs: string[]
               <p className="mt-0.5 text-[12px] text-gray-500">If it is left undone at day end, the point goes to these people only.</p></div>
             <div><label className={lab}>How staff prove it</label><select value={d.proof} onChange={e => set('proof', e.target.value)} className={inp}>{PROOFS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
             <label className="col-span-full flex items-start gap-2 rounded-xl bg-amber-50 p-2 text-sm"><input type="checkbox" checked={d.needs_confirm} onChange={e => set('needs_confirm', e.target.checked)} className="mt-0.5 h-5 w-5" /><span><b>A supervisor must confirm it was done.</b> After the task is ticked, Joe confirms it (you confirm Joe&apos;s). If he says it was not done, it goes back to waiting, with no point.</span></label>
+          </div>
+        )}
+        {d.law_type === 'flag' && (
+          <div className="space-y-2 rounded-xl border border-teal-200 bg-teal-50 p-2">
+            <p className="text-[12px] font-bold uppercase text-teal-800">Flag law</p>
+            <div><label className={lab}>Which flag this law controls</label><select value={d.flag_key} onChange={e => set('flag_key', e.target.value)} className={inp}>{FLAGS.map(f => <option key={f.key} value={f.key}>{f.label} ({FLAG_PAGES[f.page] ?? f.page})</option>)}</select></div>
+            <div><label className={lab}>Fix at least this many each working day (empty = no daily number)</label><input type="number" min="1" step="1" inputMode="numeric" value={d.flag_per_day} onChange={e => set('flag_per_day', e.target.value)} placeholder="For example 5" className={inp} /></div>
+            <p className="text-[12px] leading-snug text-teal-900">While any item is open on this flag, a tile shows on the manager&apos;s Today with the number open. Tapping it opens the page with the flagged items. The points are on the first violation line below.</p>
           </div>
         )}
         {d.law_type === 'target' && (

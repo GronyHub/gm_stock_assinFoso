@@ -1,5 +1,6 @@
 import { seedDone } from '@/lib/seedGuard'
 import { TARGET_MEASURES } from '@/lib/targetMeasures'
+import { FLAGS } from '@/lib/flagRegistry'
 import { addDays, dayKey, weekStart } from '@/lib/dailyChecksShared'
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 import { mergeCustomerServiceCode } from '@/lib/csMerge'
@@ -70,7 +71,7 @@ async function ensureCompanyLawsImpl() {
   await ensurePageLawsTable()
   await sql`ALTER TABLE page_laws
     ADD COLUMN IF NOT EXISTS category TEXT, ADD COLUMN IF NOT EXISTS subcategory TEXT, ADD COLUMN IF NOT EXISTS law_type TEXT NOT NULL DEFAULT 'standing',
-    ADD COLUMN IF NOT EXISTS target_measure TEXT, ADD COLUMN IF NOT EXISTS target_n NUMERIC, ADD COLUMN IF NOT EXISTS target_scale BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN IF NOT EXISTS target_from TEXT, ADD COLUMN IF NOT EXISTS needs_confirm BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
+    ADD COLUMN IF NOT EXISTS flag_key TEXT, ADD COLUMN IF NOT EXISTS flag_per_day NUMERIC, ADD COLUMN IF NOT EXISTS target_measure TEXT, ADD COLUMN IF NOT EXISTS target_n NUMERIC, ADD COLUMN IF NOT EXISTS target_scale BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN IF NOT EXISTS target_from TEXT, ADD COLUMN IF NOT EXISTS needs_confirm BOOLEAN NOT NULL DEFAULT FALSE, ADD COLUMN IF NOT EXISTS days TEXT, ADD COLUMN IF NOT EXISTS law_time TEXT, ADD COLUMN IF NOT EXISTS frequency TEXT, ADD COLUMN IF NOT EXISTS minutes INTEGER,
     ADD COLUMN IF NOT EXISTS dos TEXT, ADD COLUMN IF NOT EXISTS donts TEXT, ADD COLUMN IF NOT EXISTS sort_order INTEGER,
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'live', ADD COLUMN IF NOT EXISTS tile_id INTEGER, ADD COLUMN IF NOT EXISTS seed TEXT, ADD COLUMN IF NOT EXISTS proof TEXT NOT NULL DEFAULT 'tick', ADD COLUMN IF NOT EXISTS points INTEGER NOT NULL DEFAULT 1`.catch(() => {})
   await sql`ALTER TABLE page_laws ADD COLUMN IF NOT EXISTS assignment TEXT NOT NULL DEFAULT 'all'`.catch(() => {})
@@ -192,6 +193,8 @@ export function cleanLawBody(b: any, valid: { categories: string[]; types: strin
     // weekly target: what is counted, how many a week, scaled to the days worked, and the first Monday that counts
     target_measure: type === 'target' && TARGET_MEASURES.some(m => m.key === b.target_measure) ? String(b.target_measure) : null,
     target_n: type === 'target' && Number(b.target_n) > 0 && Number(b.target_n) <= 100000 ? Number(b.target_n) : null,
+    flag_key: type === 'flag' && FLAGS.some(f => f.key === b.flag_key) ? String(b.flag_key) : null,
+    flag_per_day: type === 'flag' && Number(b.flag_per_day) > 0 && Number(b.flag_per_day) <= 1000 ? Number(b.flag_per_day) : null,
     target_scale: b.target_scale !== false,
     target_from: type === 'target' ? (DATE_RE.test(String(b.target_from ?? '')) ? weekStart(String(b.target_from)) : weekStart(addDays(dayKey(), 7))) : null,
     assignment: recurring ? cleanAssignment(b.assignment) : 'all',   // a standing rule applies to everyone; a task (recurring) is never everyone's

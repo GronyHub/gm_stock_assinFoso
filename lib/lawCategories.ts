@@ -1,9 +1,10 @@
 // Company Laws: the categories every law belongs to (compulsory), the three law types, and how a schedule reads.
-export type LawType = 'recurring' | 'standing' | 'app' | 'target'
+export type LawType = 'recurring' | 'standing' | 'app' | 'target' | 'flag'
 export const LAW_TYPES: { key: LawType; label: string; help: string }[] = [
   { key: 'recurring', label: 'Recurring task', help: 'Done on a schedule. Becomes a tile in Waiting for team.' },
   { key: 'standing', label: 'Standing rule', help: 'Always applies. No tile; kept in mind all day.' },
   { key: 'app', label: 'App-enforced', help: 'The app checks this itself and raises a flag.' },
+  { key: 'flag', label: 'Flag law', help: 'The law behind one of the app\'s flags (for example No selling price). It says how many to fix each day and the points if missed, and puts a tile on the manager\'s Today while any are open.' },
   { key: 'target', label: 'Weekly target', help: 'A number each staff member reaches every week, counted by the app. Each person short of it gets the points on the law\'s violation line. Shows on each person\'s Today with progress.' },
 ]
 export const LAW_CATEGORIES: { key: string; icon: string; blurb: string }[] = [

@@ -132,6 +132,19 @@ export async function personalDuties(): Promise<Duty[]> {
     if (forGrony > 0) out.push(mk('confirm', 'grony', forGrony, false))
   } catch { /* leave out */ }
   try {
+    // Flag laws: while anything is open on a flag, a tile on the manager's Today with the number open.
+    const fl = await sql`SELECT id, flag_key, flag_per_day FROM page_laws WHERE law_type = 'flag' AND status = 'live' AND flag_key IS NOT NULL` as unknown as { id: number; flag_key: string; flag_per_day: string | null }[]
+    if (fl.length) {
+      const counts = await (await import('./flagCounts')).openFlagCounts(), reg = await import('./flagRegistry')
+      for (const l of fl) {
+        const f = reg.flagOf(l.flag_key), n = counts[l.flag_key] ?? 0
+        if (!f || n <= 0) continue
+        out.push({ kind: 'standing', key: `s:flag:joe:${l.flag_key}`, id: -1, title: `${f.label}: ${n} open`, time: '', due: 24 * 60 + 3, owner: 'joe', role: null, category: 'Flag', lawType: 'flag', lawId: l.id, typeLabel: 'Flag', state: 'now', count: 0,
+          detail: l.flag_per_day ? `Fix at least ${Number(l.flag_per_day)} today. Tap to open the flagged items.` : 'Tap to open the flagged items and fix them.' })
+      }
+    }
+  } catch { /* leave out */ }
+  try {
     // Weekly targets: each person's progress this week, as a tile on their own Today.
     const dow = (new Date(`${todayKey}T00:00:00Z`).getUTCDay() + 6) % 7
     for (const p of await (await import('./targets')).targetProgress(todayKey)) {
