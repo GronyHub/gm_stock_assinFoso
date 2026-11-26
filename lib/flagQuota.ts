@@ -14,7 +14,7 @@ export const ensureFlagQuota = once(async () => {
   await sql`CREATE TABLE IF NOT EXISTS flag_quota (day TEXT PRIMARY KEY, start_n INTEGER NOT NULL, neg_n INTEGER NOT NULL DEFAULT 0, fixed INTEGER, assessed_at TIMESTAMPTZ)`.catch(() => {})
 })
 
-const keyOf = (list: string, e: unknown) => {
+export const keyOf = (list: string, e: unknown) => {
   const o = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>
   const id = o.id ?? o.item_id ?? o.receipt_id ?? o.bill_id ?? o.day ?? o.date ?? o.work_date ?? o.staff_name ?? o.name
   return `${list}:${id != null ? String(id) : JSON.stringify(o).slice(0, 120)}`

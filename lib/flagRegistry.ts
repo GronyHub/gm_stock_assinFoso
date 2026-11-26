@@ -35,5 +35,13 @@ export const FLAGS: FlagDef[] = [
   { key: 'open_clocks', label: 'Days with no clock-out', page: 'team', list: 'flags:openClocks', law: 'Every day someone clocked in has their clock-out recorded.', breaks: 'A day with no clock-out is left open' },
   { key: 'missing_closing_reports', label: 'Missing closing reports', page: 'team', list: 'flags:missingClosingReports', law: 'Every working day has its closing report.', breaks: 'A working day has no closing report' },
   { key: 'no_advert', label: 'Items with no audio advert', page: 'adverts', list: 'flags:noAdvert', law: 'Every item has an audio advert.', breaks: 'An item is left with no audio advert' },
+  { key: 'alias_prezoho_sales', label: 'Pre-Zoho sales aliases', page: 'live', list: 'extra', law: 'Every pre-Zoho sales name is matched to the right item.', breaks: 'A pre-Zoho sales name is left unmatched' },
+  { key: 'alias_prezoho_bills', label: 'Pre-Zoho bills aliases', page: 'live', list: 'extra', law: 'Every pre-Zoho bill name is matched to the right item.', breaks: 'A pre-Zoho bill name is left unmatched' },
+  { key: 'alias_prezoho_receipts', label: 'Pre-Zoho receipts aliases', page: 'live', list: 'extra', law: 'Every receipt name the app could not match is matched to the right item.', breaks: 'A receipt name is left unmatched' },
+  { key: 'alias_flagged', label: 'Flagged aliases', page: 'live', list: 'extra', law: 'No alias points to an item whose name contradicts it. Each is reassigned or dismissed.', breaks: 'A flagged alias is left open' },
+  { key: 'alias_ambiguous', label: 'Ambiguous aliases', page: 'live', list: 'extra', law: 'A name never maps to more than one item. The right item is picked for each.', breaks: 'An ambiguous alias is left open' },
+  { key: 'alias_name_conflicts', label: 'Alias name conflicts', page: 'live', list: 'extra', law: 'No alias has the same text as a different item\'s own name.', breaks: 'An alias name conflict is left open' },
+  { key: 'service_violation', label: 'Service violations', page: 'live', list: 'extra', law: 'A service item never has stock counts, GMC use or bill activity.', breaks: 'A service violation is left open' },
+  { key: 'needs_review', label: 'Items needing review', page: 'live', list: 'extra', law: 'Every item marked as needing review is reviewed and cleared.', breaks: 'An item needing review is left open' },
 ]
 export const flagOf = (k: string | null | undefined) => FLAGS.find(f => f.key === k)

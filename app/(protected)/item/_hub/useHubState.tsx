@@ -4658,7 +4658,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     setLiveCurrentView({ kind: 'violation' as const, key: v.slice('violation:'.length) })
   }
   // A flag tile or a flag law's button: open the page where that flag's items are fixed, already filtered to the flag.
-  const FLAG_LIVE_VALUE: Record<string, string> = { neg_soh: 'violation:neg_soh', no_sp: 'sale:noSp', no_cp: 'sale:noCp', no_group: 'sale:noGroup', duplicates: 'sale:duplicates', unlinked_named: 'sale:unlinked', unknown_qty: 'sale:unknownQty', gmc_overage: 'sale:gmcOverage', low_confidence_alias: 'sale:lowConfidenceAlias', prezoho_notes: 'sale:prezohoNotes' }
+  const FLAG_LIVE_VALUE: Record<string, string> = { neg_soh: 'violation:neg_soh', no_sp: 'sale:noSp', no_cp: 'sale:noCp', no_group: 'sale:noGroup', duplicates: 'sale:duplicates', unlinked_named: 'sale:unlinked', unknown_qty: 'sale:unknownQty', gmc_overage: 'sale:gmcOverage', low_confidence_alias: 'sale:lowConfidenceAlias', prezoho_notes: 'sale:prezohoNotes', service_violation: 'sale:service', needs_review: 'sale:needsReview', alias_prezoho_sales: 'violation:alias_prezoho_sales', alias_prezoho_bills: 'violation:alias_prezoho_bills', alias_prezoho_receipts: 'violation:alias_prezoho_receipts', alias_flagged: 'violation:alias_flagged', alias_ambiguous: 'violation:alias_ambiguous', alias_name_conflicts: 'violation:alias_name_conflicts' }
   function openFlagByKey(key: string) {
     const v = FLAG_LIVE_VALUE[key]
     if (v) { pickLossView('items'); pickLiveFlag(v); return }

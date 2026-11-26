@@ -171,9 +171,10 @@ export async function attendanceTick(now = new Date()) {
   // The 7pm "are you still at the shop?" question is on screen too (GET /api/clock/open-check).
   if (['08:00', '19:25'].includes(hm) && await claim(`flags:${hm}:${day}`)) {
     const fq = await import('./flagQuota'), cq = await import('./countQuota')
-    if (hm === '08:00') await fq.snapshot(day).catch(() => {})
+    if (hm === '08:00') { await fq.snapshot(day).catch(() => {}); await (await import('./flagLaws')).snapshotFlagLaws(day).catch(() => {}) }
     else {
       await fq.assess(day).catch(e => console.error('flags assess failed:', e instanceof Error ? e.message : String(e)))
+      await (await import('./flagLaws')).assessFlagLaws(day).catch(e => console.error('flag laws assess failed:', e instanceof Error ? e.message : String(e)))
       await cq.assessCounts(day).catch(e => console.error('counts assess failed:', e instanceof Error ? e.message : String(e)))
     }
   }
