@@ -24,6 +24,8 @@ type Law = {
 }
 type Draft = { id?: number; text: string; category: string; subcategory: string; law_type: string; days: string[]; law_time: string; frequency: string; minutes: string; dos: string; donts: string; proof: string; assignment: string; month_day: string; points: string; violations: { text: string; points: string; by: string; how?: string; chapter?: string; record?: string; dismissal?: boolean }[]; not_violation: string; title: string; audience: string; reminder: string; needs_confirm: boolean; flag_key: string; flag_per_day: string; target_measure: string; target_n: string; target_scale: boolean; target_from: string; target_items: string }
 const json = { 'Content-Type': 'application/json' }
+// Flags first, recurring tasks, weekly targets, app-enforced rules, then standing rules.
+const typeRank = (t: string) => ['flag', 'recurring', 'target', 'app', 'standing'].indexOf(t) + 1 || 9
 const typeLabel = (k: string) => LAW_TYPES.find(t => t.key === k)?.label ?? k
 const typeCls: Record<string, string> = { recurring: 'bg-indigo-100 text-indigo-800', standing: 'bg-gray-100 text-gray-700', app: 'bg-sky-100 text-sky-800' }
 const inp = 'w-full rounded-xl border border-gray-300 p-2.5 text-sm'
@@ -402,12 +404,17 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
           ...DAY_CODES.filter(d => list.some(l => dayKey(l) === d)).map(d => [`Every ${DAY_NAMES[d]}, by time`, list.filter(l => dayKey(l) === d).sort(byTime)] as [string, Law[]]),
           ...(list.some(l => !DAY_CODES.includes(dayKey(l) as never)) ? [['Weekly: day not set yet', list.filter(l => !DAY_CODES.includes(dayKey(l) as never)).sort(byTime)] as [string, Law[]]] : []),
         ]
-        const groups: [string, Law[]][] = [
-          [embed ? 'Every day, by time' : 'Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
+        const ofType = (t: string) => all.filter(l => l.law_type === t)
+        const recLaws = all.filter(l => l.law_type === 'recurring')
+        // Order: flags, recurring tasks, weekly targets, app rules, standing rules. A big heading starts each type (the third item).
+        const groups: [string, Law[], string?][] = [
+          ['', ofType('flag').sort((a, b) => (a.subcategory ?? '').localeCompare(b.subcategory ?? '') || a.id - b.id), `Flags (${ofType('flag').length}): the app watches each one. The manager fixes what it flags.`],
+          [embed ? 'Every day, by time' : 'Daily: every day, by time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'daily').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id), `Recurring tasks (${recLaws.length}): done on a schedule. Each becomes a task on Today.`],
           ...(embed ? weeklyGroups(all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly')) : [['Weekly: by day, then time', all.filter(l => l.law_type === 'recurring' && l.frequency === 'weekly').sort((a, b) => DAY_CODES.indexOf(dayKey(a) as never) - DAY_CODES.indexOf(dayKey(b) as never) || (a.law_time ?? '99').localeCompare(b.law_time ?? '99'))] as [string, Law[]]]),
           [embed ? 'Every month or year, by time' : 'Monthly and yearly', all.filter(l => l.law_type === 'recurring' && l.frequency !== 'daily' && l.frequency !== 'weekly').sort((a, b) => (a.law_time ?? '99').localeCompare(b.law_time ?? '99') || a.id - b.id)],
-          ['Standing rules: always', all.filter(l => l.law_type === 'standing')],
-          ['App rules: the app checks these itself', all.filter(l => l.law_type === 'app')],
+          ['', ofType('target'), `Weekly targets (${ofType('target').length}): a number each person reaches every week, Monday to Sunday.`],
+          ['', ofType('app'), `App-enforced rules (${ofType('app').length}): the app checks these itself.`],
+          ['', ofType('standing'), `Standing rules (${ofType('standing').length}): always apply. No task, no tile.`],
         ]
         return (
           <div className="space-y-4">
@@ -427,9 +434,10 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
             {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {embed && all.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No laws here yet.{canManage ? ' Use + Add law to write the first one.' : ''}</p>}
-            {groups.filter(([, list]) => list.length).map(([title, list]) => (
-              <div key={title}>
-                <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>
+            {groups.filter(([, list]) => list.length).map(([title, list, banner]) => (
+              <div key={title || banner}>
+                {banner && <h3 className="mb-1.5 mt-1 rounded-lg bg-[#14213D] px-3 py-2 text-[13px] font-extrabold leading-snug text-white">{banner}</h3>}
+                {title && <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{title} ({list.length})</p>}
                 <div className="space-y-2 overflow-x-auto">
                   <div className={`grid min-w-[820px] ${embed ? 'hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n}>{n.slice(0, 3)}</span>)}</div>
                   {embed && <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.95fr)] sm:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1.8fr)] gap-2 px-2 text-[11px] font-extrabold uppercase text-gray-500"><span>Law</span><span>Days and time</span><span>Who and more</span><span>Staff taps</span><span className="hidden sm:block">If broken</span></div>}
@@ -616,7 +624,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
             <div key={sub} className="overflow-x-auto">
               <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-[#14213D]">{sub}</p>
               {(() => { const wy = whyFor(catLaws.find(x => (x.subcategory ?? 'General') === sub)?.category ?? null, sub === 'General' ? null : sub); return wy ? <p className="mb-1.5 rounded-lg bg-gray-50 px-2 py-1 text-[12px] leading-snug text-gray-700"><b>Why:</b> {wy.exists} <b className="text-red-800">If not done:</b> <span className="text-red-800">{wy.loss}</span></p> : null })()}
-              <div className="space-y-2"><div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).map(l => <LawCard key={l.id} l={l} />)}</div>
+              <div className="space-y-2"><div className={`grid min-w-[820px] ${embed ? 'max-sm:hidden' : ''} rounded-lg bg-[#14213D] px-1.5 py-1.5 text-[12px] font-extrabold uppercase text-white ${COLS}`}>{HEAD.map(h => <span key={h}>{h}</span>)}{(SIGNING ? (sig?.staff ?? ['grony', 'bino', 'joe', 'james']) : []).map(n => <span key={n} title={n} className="text-center">{SIGN_NAMES[n] ?? n.slice(0, 3)}</span>)}</div>{catLaws.filter(l => l.audience !== 'managers' && (l.subcategory ?? 'General') === sub).sort((a, b) => typeRank(a.law_type) - typeRank(b.law_type)).map(l => <LawCard key={l.id} l={l} />)}</div>
             </div>
           ))}
           {!AREA_VIDEO[area.key] && catLaws.some(l => l.audience === 'managers') && <ManagerSection area={area} laws={catLaws.filter(l => l.audience === 'managers')} Card={LawCard} />}
