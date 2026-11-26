@@ -90,6 +90,8 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
   // Two lenses on the same laws: by topic, and by type and when. (Today, the laws due today, is the Shop's To do tab.)
   const [view, setView] = useState<'topic' | 'type' | 'role'>(initial?.embedded ? 'type' : 'topic')
   const vref = useRef<HTMLVideoElement | null>(null)
+  // The video lives on its own tab, so the laws open fast and the page is not slowed down by it.
+  const [mediaTab, setMediaTab] = useState<'laws' | 'video'>('laws')
   const [targets, setTargets] = useState<string[]>([])
   const [logFor, setLogFor] = useState<{ law: Law; vi: number } | null>(null)
   useEffect(() => { fetch('/api/penalties/log-targets').then(r => r.ok ? r.json() : null).then(d => d?.targets && setTargets(d.targets)).catch(() => {}) }, [])
@@ -113,8 +115,9 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
   const [quizFor, setQuizFor] = useState<Law | null>(null)
   const TimeChip = ({ t, label }: { t: number | null; label?: string }) => t === null ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[12px] font-bold text-gray-500">not in the video yet</span> : <button type="button" onClick={e => { e.preventDefault(); e.stopPropagation(); seek(t) }} className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-[12px] font-bold text-white">▶ {fmtTime(t)}{label ? ` ${label}` : ''}</button>
   function seek(t: number) {
-    const v = vref.current; if (!v) return
-    v.scrollIntoView({ behavior: 'smooth', block: 'center' }); v.currentTime = t; void v.play().catch(() => {})
+    const go = () => { const v = vref.current; if (!v) return; v.scrollIntoView({ behavior: 'smooth', block: 'center' }); v.currentTime = t; void v.play().catch(() => {}) }
+    if (vref.current) { go(); return }
+    setMediaTab('video'); setTimeout(go, 600)
   }
   const loadSig = useCallback(() => fetch('/api/law-signatures', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => d && setSig(d)).catch(() => {}), [])
   // Signing is switched off (SIGNING), so the signatures are not fetched.
@@ -362,6 +365,15 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
           )}
   </>) : null
 
+  const hasMedia = !!area && !!(area.guide || (area.training && hasTraining(area.training)))
+  const mediaBar = hasMedia ? (
+    <div className="mb-2 grid grid-cols-2 gap-1">
+      {([['laws', '⚖ Laws'], ['video', '🎬 Video']] as const).map(([k, label]) => (
+        <button key={k} type="button" onClick={() => setMediaTab(k)} className={`rounded-xl px-2 py-2 text-sm font-bold ${mediaTab === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
+      ))}
+    </div>) : null
+  if (hasMedia && mediaTab === 'video') return <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>{mediaBar}<div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div></div>
+
   return (
     <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>
       {!embed && canManage && <a href="/laws/groups" className="mb-2 block rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-800">Question groups: build opening, closing and other question sets from the laws →</a>}
@@ -418,6 +430,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
         ]
         return (
           <div className="space-y-4">
+            {embed && mediaBar}
             {embed && canManage && area && <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>
               {all.some(l => l.status === 'draft') && <button type="button" onClick={() => { const ds = all.filter(l => l.status === 'draft'); if (confirm(`Approve all ${ds.length} draft laws here? Their tasks go into the checklist.`)) void (async () => { for (const l of ds) await approve({ id: l.id }) })() }} className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-bold text-white">Approve all drafts ({all.filter(l => l.status === 'draft').length})</button>}
@@ -432,7 +445,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
               </div>
             )}
             {embed && <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[12px] leading-snug text-red-900"><b>Penalty points add up.</b> Warnings at {WARN_AT.join(' and ')} points; {tiersText()}. A clean week removes {FADE_POINTS} points.</p>}
-            {embed ? <div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div> : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
+            {embed ? null : <p className="text-[12px] text-gray-500">The same laws, arranged by type and by when they are done. Change a law here and it changes everywhere, including its task in Waiting for me.</p>}
             {embed && all.length === 0 && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No laws here yet.{canManage ? ' Use + Add law to write the first one.' : ''}</p>}
             {groups.filter(([, list]) => list.length).map(([title, list, banner]) => (
               <div key={title || banner}>
@@ -592,7 +605,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
             {canManage && area.key !== UNCATEGORISED && <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>}
           </div>
           {!embed && <div className="flex items-center gap-2"><span className="text-3xl">{area.icon}</span><div><p className="text-lg font-bold text-[#14213D]">{area.label}</p><p className="text-xs text-gray-500">{area.blurb}</p></div></div>}
-          {areaMedia}
+          {mediaBar}
           {sig?.signer && (() => { const todo = unsignedIn(area); return todo.length > 0 ? <button type="button" onClick={() => void signLaws(todo.map(l => l.id))} className="w-full rounded-xl bg-green-600 py-2.5 text-sm font-bold text-white">✍ I have read all {todo.length} laws here and will follow them. Sign all</button> : null })()}
           {AREA_VIDEO[area.key] && (() => {
             const av = AREA_VIDEO[area.key]
