@@ -366,13 +366,19 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
   </>) : null
 
   const hasMedia = !!area && !!(area.guide || (area.training && hasTraining(area.training)))
+  // On the phone the laws open in a sheet over the page, so say which page's laws these are.
+  const embedTitle = embed && area ? (
+    <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#14213D] px-3 py-2 text-white">
+      <span className="text-2xl">{area.icon}</span>
+      <div className="min-w-0"><p className="truncate text-[17px] font-extrabold leading-tight">{area.label}</p><p className="truncate text-[12px] font-semibold text-white/70">Laws for this page{embed.subs.length ? ` · ${embed.subs.join(', ')}` : ''}</p></div>
+    </div>) : null
   const mediaBar = hasMedia ? (
     <div className="mb-2 grid grid-cols-2 gap-1">
       {([['laws', '⚖ Laws'], ['video', '🎬 Video']] as const).map(([k, label]) => (
         <button key={k} type="button" onClick={() => setMediaTab(k)} className={`rounded-xl px-2 py-2 text-sm font-bold ${mediaTab === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
       ))}
     </div>) : null
-  if (hasMedia && mediaTab === 'video') return <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>{mediaBar}<div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div></div>
+  if (hasMedia && mediaTab === 'video') return <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>{embedTitle}{mediaBar}<div className="max-w-2xl sm:[&_video]:max-h-[300px] sm:[&_video]:w-auto sm:[&_video]:mx-auto">{areaMedia}</div></div>
 
   return (
     <div className={`mx-auto px-3 pb-24 pt-3 ${embed ? 'max-w-none' : 'max-w-3xl'}`}>
@@ -430,6 +436,7 @@ export default function LawsClient({ canManage, initial }: { canManage: boolean;
         ]
         return (
           <div className="space-y-4">
+            {embed && embedTitle}
             {embed && mediaBar}
             {embed && canManage && area && <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setDraft(blankFor(area))} className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-bold text-white">+ Add law</button>
