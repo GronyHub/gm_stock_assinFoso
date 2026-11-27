@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 // a "Confirm bank" form that opens right under the day, and a week line above each week. Loaded a moment after the log so the log opens at the same speed;
 // a person who may not see the figures (the APIs say no) gets nothing extra.
 export type DayFig = { cash: number; bills: number; expenses: number; loss: number; profit: number } | null
-export type Bank = { running: number | null; net: number; total: number | null; parts: { bank: number; momo: number; physical: number } | null; deficit: number | null; verify: { ok: boolean; expected: number; diff: number } | null }
+export type Bank = { running: number | null; net: number; gIn: number; debtors: number; gOut: number; total: number | null; parts: { bank: number; momo: number; physical: number } | null; deficit: number | null; verify: { ok: boolean; expected: number; diff: number } | null }
 export type Day = { pl: DayFig; bank: Bank | null }
 export type Week = { start: string; net: number; endBalance: number | null; endDate: string; confirmed: { date: string; total: number; deficit: number | null } | null }
 type Data = { days: Map<string, Day>; weeks: Map<string, Week>; newestBankDay: string | null }
@@ -27,7 +27,7 @@ async function loadAll(): Promise<void> {
   ])
   const days = new Map<string, Day>(), weeks = new Map<string, Week>()
   for (const d of (pl?.daily ?? []) as { date: string; cashCounted: number; bills: number; expenses: number; dailyLoss: number; profit: number }[]) days.set(String(d.date).slice(0, 10), { pl: { cash: d.cashCounted, bills: d.bills, expenses: d.expenses, loss: d.dailyLoss, profit: d.profit }, bank: null })
-  type R = { entry_date: string; running_cash_at_bank: unknown; daily_net: unknown; cab_total: unknown; cab_bank: unknown; cab_momo: unknown; cab_physical: unknown; deficit: unknown }
+  type R = { entry_date: string; running_cash_at_bank: unknown; daily_net: unknown; grony_personal_cash_in: unknown; debtors_cash_in: unknown; grony_personal_expenses: unknown; cab_total: unknown; cab_bank: unknown; cab_momo: unknown; cab_physical: unknown; deficit: unknown }
   const rows = (Array.isArray(cab) ? cab : []) as R[]
   const asc = [...rows].sort((a, b) => String(a.entry_date).localeCompare(String(b.entry_date)))
   // each confirmation is checked against the one before it plus the net movement since then
@@ -45,7 +45,7 @@ async function loadAll(): Promise<void> {
   for (const r of rows) {
     const k = String(r.entry_date).slice(0, 10), cur = days.get(k) ?? { pl: null, bank: null }
     const confirmed = !(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null
-    days.set(k, { ...cur, bank: { running: num(r.running_cash_at_bank), net: Number(r.daily_net) || 0, total: confirmed ? Number(r.cab_total) : null, parts: confirmed ? { bank: Number(r.cab_bank ?? 0), momo: Number(r.cab_momo ?? 0), physical: Number(r.cab_physical ?? 0) } : null, deficit: confirmed ? num(r.deficit) : null, verify: verify.get(k) ?? null } })
+    days.set(k, { ...cur, bank: { running: num(r.running_cash_at_bank), net: Number(r.daily_net) || 0, gIn: Number(r.grony_personal_cash_in) || 0, debtors: Number(r.debtors_cash_in) || 0, gOut: Number(r.grony_personal_expenses) || 0, total: confirmed ? Number(r.cab_total) : null, parts: confirmed ? { bank: Number(r.cab_bank ?? 0), momo: Number(r.cab_momo ?? 0), physical: Number(r.cab_physical ?? 0) } : null, deficit: confirmed ? num(r.deficit) : null, verify: verify.get(k) ?? null } })
     const ws = weekStartOf(k), w = weeks.get(ws) ?? { start: ws, net: 0, endBalance: null, endDate: '', confirmed: null }
     w.net += Number(r.daily_net) || 0
     if (k > w.endDate) { w.endDate = k; w.endBalance = num(r.running_cash_at_bank) }
@@ -128,6 +128,9 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
     <div id={`day-money-${date}`} className={className}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0 text-[12px] font-bold leading-snug text-gray-700">
         {pl && <><span title="Cash counted on the day's walk-in receipt">Cash in {c(pl.cash)}</span><span>Bills {pl.bills > 0 ? c(pl.bills) : '—'}</span><span>Expenses {pl.expenses > 0 ? c(pl.expenses) : '—'}</span>{pl.loss > 0 && <span className="text-red-600">Loss {c(pl.loss)}</span>}<span className={pl.profit >= 0 ? 'text-green-700' : 'text-red-600'}>P/L {pl.profit < 0 ? '-' : ''}{c(Math.abs(pl.profit))}</span></>}
+        {bank && bank.gIn > 0 && <span className="text-emerald-700" title="Grony's own cash paid in to the shop">Grony in {c(bank.gIn)}</span>}
+        {bank && bank.debtors > 0 && <span className="text-emerald-700" title="Debtors' repayments received">Debtors in {c(bank.debtors)}</span>}
+        {bank && bank.gOut > 0 && <span className="text-orange-600" title="Cash taken out for Grony">Grony out {c(bank.gOut)}</span>}
         {bank && bank.running != null && <span className="text-indigo-800">Bank {c(bank.running)}</span>}
         {bank && bank.total != null
           ? <button type="button" onClick={() => setOpen(o => (o ? null : 'view'))} className={`rounded px-1 underline decoration-dotted ${off ? 'text-red-600' : 'text-green-700'}`}>✓ confirmed {c(bank.total)}{off ? ` (${(bank.deficit as number) > 0 ? '+' : '-'}${c(Math.abs(bank.deficit as number))})` : ''}</button>

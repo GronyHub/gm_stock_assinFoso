@@ -1,9 +1,9 @@
 'use client'
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { fmtTime } from '@/lib/fmtDate'
 import { formatGapMins } from '@/lib/fmtGap'
 import DayCashCell from '../_components/DayCashCell'
-import { DayMoney, WeekHeader, weekStartOf } from '../_components/DayMoney'
+import { DayMoney, WeekHeader, weekStartOf, useDayMoney } from '../_components/DayMoney'
 import LogDayPhotos from '../_components/LogDayPhotos'
 import MoneyText from '@/components/MoneyText'
 import type { Tap } from './hubShared'
@@ -26,9 +26,21 @@ function Fact({ label, children, tone = '' }: { label: string; children: React.R
 export default function HubLogCards({ h }: { h: HubCtx }) {
   const { logDays, logBarsOnly, liveDayBounds, liveCostPriceByItemId, liveAllItems, renderClickableItemName, setTapCustomerSheet, rcptSelect, rcptSel, setRcptSel,
     setLiveEditingTapId, setLiveEditingTapTime, openEmbed, undoTap, setLiveEditingFullTapId, setLiveEditingCurrentDate, openEditGridItem, jobMoneyOn, setLiveTaps, setLogRecs } = h
+  // Bank filter (owner and Joe, once there are bank figures): all days, only the days whose bank is confirmed, or only those still to confirm.
+  const { days: money, newestBankDay } = useDayMoney()
+  const [bankFilter, setBankFilter] = useState<'all' | 'confirmed' | 'unconfirmed'>('all')
+  const shownDays = bankFilter === 'all' ? logDays : logDays.filter(([d]) => { const b = money.get(d)?.bank; return !!b && (bankFilter === 'confirmed' ? b.total != null : b.total == null) })
   return (
     <div className="sm:hidden">
-      {logDays.map(([date, logDay], idx) => {
+      {newestBankDay && (
+        <div className="flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-1.5 text-[12px] font-bold">
+          <span className="text-gray-500">Bank</span>
+          {([['all', 'All days'], ['confirmed', 'Confirmed'], ['unconfirmed', 'To confirm']] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setBankFilter(k)} className={`rounded-full px-3 py-1 ${bankFilter === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
+          ))}
+        </div>)}
+      {bankFilter !== 'all' && shownDays.length === 0 && <p className="p-3 text-[13px] text-gray-500">No days match. Days with no bank figures yet are not listed under this filter.</p>}
+      {shownDays.map(([date, logDay], idx) => {
         const dateTaps = (logDay.taps || []).filter((t): t is Tap => t != null)
         const recTotal = logDay.lines.reduce((s, l) => s + Number(l.item_total ?? 0), 0)
         const recProfit = logDay.lines.reduce((s, l) => {
@@ -48,7 +60,7 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
         const okForReceipt = dateTaps.filter(t => !t.undone && !t.invoice_id)
         return (
           <Fragment key={date}>
-          {(idx === 0 || weekStartOf(date) !== weekStartOf(logDays[idx - 1][0])) && <WeekHeader date={date} />}
+          {(idx === 0 || weekStartOf(date) !== weekStartOf(shownDays[idx - 1][0])) && <WeekHeader date={date} />}
           <section id={`log-day-${date}`} aria-label={date}>
             <header className="sticky top-0 z-10 border-y border-green-200 bg-green-50 px-3 py-2">
               <div className="flex items-center justify-between gap-2">
