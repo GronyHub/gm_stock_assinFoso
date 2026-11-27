@@ -19,7 +19,7 @@ export async function GET() {
     const [cashDaily, expenseDaily, billDaily, lossEvents] = await Promise.all([
       sql`
         SELECT receipt_date::date::text AS date, COALESCE(SUM(cash_counted), 0) AS total
-        FROM sales_receipts WHERE receipt_date IS NOT NULL GROUP BY 1
+        FROM sales_receipts WHERE receipt_date IS NOT NULL AND customer_name IS DISTINCT FROM 'Grony Multimedia as Customer' GROUP BY 1
       `,
       sql`
         SELECT expense_date::date::text AS date, COALESCE(SUM(amount), 0) AS total

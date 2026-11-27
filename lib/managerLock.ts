@@ -9,6 +9,7 @@ import { ensurePenalties } from '@/lib/penalties'
 // answered. Until then every page sends him to "Before you continue" (/start-of-day), where both are done. The owner can excuse a day. Only days from LOCK_FROM count, so
 // nothing is demanded of days that were worked before the rule existed.
 export const LOCK_FROM = '2026-11-13'
+// The day's Cash Counted lives on the walk-in (WIC) receipt, the one the Sales Log header edits. The GMC receipt (this customer name) is the shop's own use and has no cash.
 const GMC = 'Grony Multimedia as Customer'
 
 // cash: Cash Counted not entered yet. shortage: it was entered but is LESS than the day's sales total (negative work not written), so the Sales Log has to be put right (or the cash recounted).
@@ -31,7 +32,7 @@ export async function previousWorkingDay(today = dayKey()): Promise<string | nul
 // Cash Counted still missing for the previous working day (not excused), or null. Used to make it compulsory before the manager clocks in.
 // The oldest day in the last 7 that still has no Cash Counted (owner, 14 Nov 2026: the manager must enter any missing day), else the previous working day.
 async function dayToCount(today: string): Promise<string | null> {
-  const [m] = await sql`SELECT receipt_date::date::text AS d FROM sales_receipts WHERE customer_name = ${GMC} AND cash_counted IS NULL AND receipt_date::date < ${today}::date AND receipt_date::date >= (${today}::date - 7) AND EXISTS (SELECT 1 FROM staff_times st WHERE st.work_date = receipt_date::date AND st.actual_in IS NOT NULL AND st.staff_name <> '__shop_open__') ORDER BY receipt_date, id LIMIT 1`.catch(() => [])
+  const [m] = await sql`SELECT receipt_date::date::text AS d FROM sales_receipts WHERE customer_name IS DISTINCT FROM ${GMC} AND cash_counted IS NULL AND receipt_date::date < ${today}::date AND receipt_date::date >= (${today}::date - 7) AND EXISTS (SELECT 1 FROM staff_times st WHERE st.work_date = receipt_date::date AND st.actual_in IS NOT NULL AND st.staff_name <> '__shop_open__') ORDER BY receipt_date, id LIMIT 1`.catch(() => [])
   return m?.d ? String(m.d) : await previousWorkingDay(today)
 }
 export async function missingCashCounted(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
@@ -40,14 +41,14 @@ export async function missingCashCounted(today = dayKey()): Promise<{ day: strin
   await ensurePenalties()
   const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
   if (ex) return null
-  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
+  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name IS DISTINCT FROM ${GMC} ORDER BY id LIMIT 1`
   return rc && rc.cash_counted == null ? { day, receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0) } : null
 }
 
 // Today's receipt, when Cash Counted is still missing on it (for the manager's clock-out).
 export async function missingCashToday(today = dayKey()): Promise<{ day: string; receiptId: number; salesTotal: number } | null> {
   await ensurePenalties()
-  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${today}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
+  const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${today}::date AND customer_name IS DISTINCT FROM ${GMC} ORDER BY id LIMIT 1`
   return rc && rc.cash_counted == null ? { day: today, receiptId: Number(rc.id), salesTotal: Number(rc.total ?? 0) } : null
 }
 // Today's Cash Counted may be skipped by the manager only up to and including this day (owner, 14 Nov 2026); from the next day it is compulsory.
@@ -78,7 +79,7 @@ async function computeLock(today: string): Promise<LockState> {
     if (!day) return { ...OPEN, locked: approvals > 0, approvals }
     const [ex] = await sql`SELECT 1 FROM penalty_claims WHERE key = ${'lock-excused:' + day}`
     if (ex) return { ...OPEN, locked: approvals > 0, approvals }
-    const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1`
+    const [rc] = await sql`SELECT id, total, cash_counted FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name IS DISTINCT FROM ${GMC} ORDER BY id LIMIT 1`
     const total = Number(rc?.total ?? 0)
     const cash = rc && rc.cash_counted == null ? { receiptId: Number(rc.id), salesTotal: total, counted: null } : null
     const shortage = rc && rc.cash_counted != null && Number(rc.cash_counted) < total - 0.005 ? { receiptId: Number(rc.id), salesTotal: total, counted: Number(rc.cash_counted), short: Math.round((total - Number(rc.cash_counted)) * 100) / 100 } : null

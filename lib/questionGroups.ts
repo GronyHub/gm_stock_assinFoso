@@ -99,7 +99,7 @@ export const CASH_KEY = 'cash_counted'
 const CASH_TEXT = 'Cash counted today (₵)'   // optional: skipped when the manager does not know it yet
 const GMC = 'Grony Multimedia as Customer'
 export async function saveCashCounted(day: string, amount: number): Promise<boolean> {
-  const r = await sql`UPDATE sales_receipts SET cash_counted = ${amount} WHERE id = (SELECT id FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name = ${GMC} ORDER BY id LIMIT 1) RETURNING id`
+  const r = await sql`UPDATE sales_receipts SET cash_counted = ${amount} WHERE id = (SELECT id FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name IS DISTINCT FROM ${GMC} ORDER BY id LIMIT 1) RETURNING id`
   if (r.length) (await import('@/lib/itemsCache')).clearItemsCache()
   return r.length > 0
 }
