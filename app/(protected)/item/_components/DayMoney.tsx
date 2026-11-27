@@ -93,16 +93,16 @@ export function ConfirmBankMenuItem({ onPick }: { onPick: () => void }) {
 }
 
 type LossRow = { item_id: number; name: string; expected: number; counted: number; loss_qty: number; loss_amt: number; reason: string | null; by: string | null; at: string | null; source: string | null }
-let lossStore: Record<string, LossRow[]> | null = null
+const lossStore = new Map<string, LossRow[]>()   // days already fetched
 const timeOf = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '') }
 const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1)
 // The items behind a day's Loss figure (the same loss records the P&L adds up): expected against counted and the ₵ value; who counted, when and the source sit on a quieter second line.
 function LossDetail({ date }: { date: string }) {
-  const [rows, setRows] = useState<LossRow[] | null>(lossStore ? lossStore[date] ?? [] : null)
+  const [rows, setRows] = useState<LossRow[] | null>(lossStore.get(date) ?? null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
-    if (lossStore) return
-    fetch('/api/losses/by-day').then(r => (r.ok ? r.json() : Promise.reject())).then(d => { lossStore = d ?? {}; setRows(lossStore![date] ?? []) }).catch(() => setFailed(true))
+    if (lossStore.has(date)) return
+    fetch(`/api/losses/by-day?date=${date}`).then(r => (r.ok ? r.json() : Promise.reject())).then(d => { const list = (d?.rows ?? []) as LossRow[]; lossStore.set(date, list); setRows(list) }).catch(() => setFailed(true))
   }, [date])
   if (failed) return <p className="mt-1.5 text-[13px] text-red-600">Could not load the losses. Try again in a moment.</p>
   if (rows === null) return <p className="mt-1.5 text-[13px] text-gray-500">Loading the losses…</p>
