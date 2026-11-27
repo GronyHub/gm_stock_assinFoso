@@ -27,6 +27,12 @@ export async function GET(req: NextRequest) {
       for (const k of Object.keys(days)) days[k].sort((a, b) => b.loss_amt - a.loss_amt)
       return days
     })
+    // ?item=ID: every loss of one item, newest first (the item sheet's loss history)
+    const itemId = Number(req.nextUrl.searchParams.get('item'))
+    if (itemId > 0) {
+      const rows = Object.entries(out).flatMap(([d, list]) => list.filter(r => r.item_id === itemId).map(r => ({ date: d, ...r }))).sort((x, y) => y.date.localeCompare(x.date))
+      return success({ item: itemId, rows })
+    }
     const date = req.nextUrl.searchParams.get('date')
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) return success({ date, rows: out[date] ?? [] })
     return success(out)

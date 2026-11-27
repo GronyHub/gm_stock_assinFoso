@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemEditForm } from '../_components/ItemEditForm'
 import { ItemDetailErrorBoundary } from '../_components/ItemDetailErrorBoundary'
+import ItemLossHistory from '../_components/ItemLossHistory'
 import ItemPicture from '../_components/ItemPicture'
 import ItemBarcodes from '../_components/ItemBarcodes'
 import { ItemDetailPanel, AliasPicker, MatchPicker, MergeItemPicker, LossTab, formatPrice, type Item, type Tap } from './hubShared'
@@ -21,7 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function HubGridItemEditor({ h }: { h: HubCtx }) {
   const [tab, setTab] = useState<Tab>('overview')
   const [showAliases, setShowAliases] = useState(false)
-  const { items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
+  const { liveCountStatus, openEditGridItem, isOwnerOrJoe: seesLoss, items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
   // A different item opens on Overview, or on Photo when it was opened from a tile's photo strip.
   useEffect(() => { setTab(liveGridEditStartTab); setLiveGridEditStartTab('overview'); setShowAliases(false) }, [liveEditingGridItemId])
   return (<>{liveEditingGridItemId != null && (() => {
@@ -150,6 +151,13 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               </>
                             )}
                             {liveGridEditCountError && <p className="mt-1 text-sm text-red-600">{liveGridEditCountError}</p>}
+                            {(() => {
+                              // The next item that is due for a count (the most overdue first), so counting runs in a sequence without going back to a list.
+                              const todo = [...liveCountStatus.entries()].filter(([id]) => id !== editItem.id).sort((a, b) => (b[1].level === 'overdue' ? 1 : 0) - (a[1].level === 'overdue' ? 1 : 0) || (b[1].days_overdue ?? 0) - (a[1].days_overdue ?? 0))
+                              if (todo.length === 0) return <p className="mt-2 text-[13px] font-semibold text-green-700">Nothing else is due for a count.</p>
+                              const [nid, st] = todo[0], nm = liveAllItems.find(i => i.id === nid)?.name ?? 'next item'
+                              return <button type="button" onClick={() => { setLiveGridEditStartTab('stock'); openEditGridItem(nid) }} className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg bg-blue-50 px-3 py-2 text-left text-[13px] font-bold text-blue-800"><span className="min-w-0 truncate">Next to count: {nm}</span><span className="shrink-0 text-[12px] font-semibold text-blue-600">{st.label} · {todo.length} left →</span></button>
+                            })()}
                           </div>
 
                           <div ref={liveGridEditSaleTapRef} className="border-b border-gray-200 px-3 py-3">
@@ -200,6 +208,8 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               </button>
                             </div>
                           </div>
+
+                          {seesLoss && <ItemLossHistory itemId={editItem.id} />}
 
                           <div className="bg-gray-50">
                             <h3 className="border-b border-gray-200 px-3 py-2 text-sm font-bold text-gray-900">History</h3>
