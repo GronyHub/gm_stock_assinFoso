@@ -75,6 +75,7 @@ export async function dutiesForDate(date: string): Promise<Duty[]> {
 
 // ---- Personal items that have no date of their own and wait until dealt with: tasks a manager assigned, questions, penalty points to acknowledge, clock matters, decisions, drafts, pending jobs.
 const PERSONAL: Record<string, { title: string; icon: string; type: string; detail: string }> = {
+  cashdiff: { title: 'Cash counted: two different figures', icon: '💵', type: 'Decision', detail: 'The Sales Log and the closing answer disagree. Choose the right one.' },
   mytasks: { title: 'Tasks assigned', icon: '📌', type: 'Assigned task', detail: 'Tasks a manager gave them.' },
   queries: { title: 'Questions waiting for an answer', icon: '❓', type: 'Question', detail: 'A supervisor asked about a day they were at work.' },
   ack: { title: 'Penalty points to acknowledge', icon: '⚖', type: 'Violation', detail: 'Acknowledge each one, or dispute it with a note.' },
@@ -133,6 +134,11 @@ export async function personalDuties(): Promise<Duty[]> {
     const tJoe = tk.filter(x => !['joe', 'grony'].includes(String(x.who))).reduce((a, x) => a + num(x.n), 0), tGrony = tk.filter(x => String(x.who) === 'joe').reduce((a, x) => a + num(x.n), 0)
     if (forJoe + tJoe > 0) out.push(mk('confirm', 'joe', forJoe + tJoe, false))
     if (forGrony + tGrony > 0) out.push(mk('confirm', 'grony', forGrony + tGrony, false))
+  } catch { /* leave out */ }
+  try {
+    // Two different Cash Counted figures for a day (the Sales Log's and the closing answer): the manager and the owner choose the right one.
+    const cc = await (await import('./cashCount')).cashConflicts()
+    if (cc.length) for (const d of ['joe', 'grony']) out.push(mk('cashdiff', d, cc.length, false, `${cc.length} day${cc.length === 1 ? '' : 's'} with two different Cash Counted figures. Choose the right one for each.`))
   } catch { /* leave out */ }
   try {
     // Flag laws: while anything is open on a flag, a tile on the manager's Today with the number open.

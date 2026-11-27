@@ -45,6 +45,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
                 (cash_counted - total) AS wnw, COALESCE(attachments, '[]'::jsonb) AS attachments
     `
     if (!row) return notFound()
+    // The Cash Counted is one figure: when it is edited here, the manager's closing answer for that day takes the same figure, so the two cannot differ.
+    if (cash_counted != null && row.customer_name !== 'Grony Multimedia as Customer') {
+      await sql`UPDATE question_group_answers SET answer = ${String(row.cash_counted)}, at = now() WHERE day = ${String(row.receipt_date).slice(0, 10)} AND item_id IN (SELECT id FROM question_group_items WHERE key = 'cash_counted')`.catch(() => {})
+    }
     return success(row)
   } catch (e) {
     return handleError('sales receipt PUT', e)

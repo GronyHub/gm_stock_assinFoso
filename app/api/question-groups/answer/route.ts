@@ -10,7 +10,8 @@ import { lockStateForManager } from '@/lib/managerLock'
 import { isOwnerLevel } from '@/lib/roles'
 import { isManagerName } from '@/lib/signers'
 import { notifyManagement, notifyInput } from '@/lib/checklistAlerts'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { CashConflict } from '@/lib/cashCount'
 
 // POST { tile_id, answers: [{ item_id, answer, detail? }] } -- answers for today. When every required question has an answer the tile is recorded as done (once); answers can be changed afterwards.
 export async function POST(req: NextRequest) {
@@ -33,7 +34,10 @@ export async function POST(req: NextRequest) {
     const actor = getActorName(session)
     let complete = false
     const ansIn = Array.isArray(b.answers) ? b.answers as AnswerIn[] : []
-    try { complete = (await saveAnswers(g, day, actor, ansIn)).complete } catch (e) { return badRequest(e instanceof Error ? e.message : 'Could not save.') }
+    try { complete = (await saveAnswers(g, day, actor, ansIn)).complete } catch (e) {
+      if (e instanceof CashConflict) return NextResponse.json({ error: e.message, cash_conflict: { day: e.day, existing: e.existing, entered: e.entered } }, { status: 409 })
+      return badRequest(e instanceof Error ? e.message : 'Could not save.')
+    }
     // Every answer a person gives is told to the owner and Joe, with the answers themselves.
     if (ansIn.length) {
       const lines = ansIn.map(a => { const it = g.items.find(i => i.id === Number(a.item_id)); const d = String(a.detail ?? '').trim()

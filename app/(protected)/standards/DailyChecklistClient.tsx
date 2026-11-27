@@ -74,6 +74,7 @@ export default function DailyChecklistClient({ canManage, embedded = false, extr
     if (k === 'approve' || k === 'extra-time') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'approve' }))
     if (k === 'tick') { const mine = d.state !== 'done' || d.title.includes('sent back'); return mine ? () => setTickAsk({ d, busy: false, err: '' }) : undefined }
     if (k === 'confirm') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'confirm' }))
+    if (k === 'cashdiff') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cash' }))
     if (k === 'flag') return () => window.postMessage({ type: 'open-flag', key: d.key.split(':')[3] }, window.location.origin)
     if (k === 'clock-prev' || k === 'clock-auto' || k === 'queries') return () => window.dispatchEvent(new CustomEvent('wft-focus', { detail: 'cards' }))
     if ((k === 'mytasks' || k === 'ack') && d.owner) return () => { const m = { type: 'open-personal', name: d.owner, tab: k === 'mytasks' ? 'tasks' : 'violations' }; if (window.parent !== window || (window as unknown as { __gmHub?: boolean }).__gmHub) (window.parent !== window ? window.parent : window).postMessage(m, window.location.origin); else window.location.href = `/item?me=${m.tab}` }

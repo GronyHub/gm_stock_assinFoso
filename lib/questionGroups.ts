@@ -98,10 +98,12 @@ export async function answersFor(groupId: number, day: string) {
 export const CASH_KEY = 'cash_counted'
 const CASH_TEXT = 'Cash counted today (₵)'   // optional: skipped when the manager does not know it yet
 const GMC = 'Grony Multimedia as Customer'
+// Fills the day's Cash Counted only when it is empty; a different figure already there throws a CashConflict (the manager is shown both and chooses).
 export async function saveCashCounted(day: string, amount: number): Promise<boolean> {
-  const r = await sql`UPDATE sales_receipts SET cash_counted = ${amount} WHERE id = (SELECT id FROM sales_receipts WHERE receipt_date::date = ${day}::date AND customer_name IS DISTINCT FROM ${GMC} ORDER BY id LIMIT 1) RETURNING id`
-  if (r.length) (await import('@/lib/itemsCache')).clearItemsCache()
-  return r.length > 0
+  const cc = await import('@/lib/cashCount'), w = await cc.walkIn(day)
+  if (!w) return false
+  if (w.cc != null) { if (Math.abs(w.cc - amount) > 0.005) throw new cc.CashConflict(day, w.cc, amount); return true }
+  return cc.saveIfEmpty(w.id, amount)
 }
 async function addCashQuestionOnce() {
   const c = await sql`INSERT INTO law_migrations (key) VALUES ('question-groups-cash-counted-2026-11-14') ON CONFLICT DO NOTHING RETURNING key`

@@ -14,10 +14,14 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [why, setWhy] = useState('')
+  const [cashHave, setCashHave] = useState<number | null>(null)   // the Cash Counted already on the day's receipt
+  const [clash, setClash] = useState<{ day: string; existing: number; entered: number } | null>(null)
   useEffect(() => {
     fetch(`/api/question-groups/tile/${tileId}?day=${day}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
       setG(d?.group ?? null); setPresent(d?.present ?? [])
       const m: Record<number, Ans> = {}; for (const x of d?.answers ?? []) m[x.item_id] = { answer: x.answer, detail: x.detail ?? '' }
+      // The day's Cash Counted is entered once: when the receipt already has it, the question shows it.
+      if (typeof d?.cash_existing === 'number') { setCashHave(d.cash_existing); const ci = (d?.group?.items ?? []).find((i: GroupItem) => i.key === 'cash_counted'); if (ci && !m[ci.id]?.answer) m[ci.id] = { answer: String(d.cash_existing), detail: '' } }
       setA(m)
     }).catch(() => setG(null))
   }, [tileId, day])
@@ -30,9 +34,21 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
     const r = await fetch('/api/question-groups/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tile_id: tileId, day, answers: g!.items.filter(i => a[i.id]?.answer).map(i => ({ item_id: i.id, answer: a[i.id].answer, detail: a[i.id].detail })) }) })
     const d = await r.json().catch(() => ({}))
     setBusy(false)
+    if (r.status === 409 && d.cash_conflict) { setClash(d.cash_conflict); setErr(''); return }
     if (!r.ok) { setErr(d.error ?? 'Could not save.'); return }
     onSaved(d.complete ? `Done: ${g!.name}` : 'Answers saved. Some questions are still open.')
     if (d.complete) onClose()
+  }
+  // Two different Cash Counted figures: the manager chooses; the receipt and the answer both take the choice, then the answers are saved again.
+  async function choose(value: number) {
+    if (!clash) return
+    setBusy(true); setErr('')
+    const rr = await fetch('/api/cash-counted/resolve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ day: clash.day, value }) })
+    const j = await rr.json().catch(() => ({}))
+    if (!rr.ok) { setBusy(false); setErr(j.error ?? 'Could not save.'); return }
+    const ci = g!.items.find(i => i.key === 'cash_counted'); if (ci) set(ci.id, { answer: String(value) })
+    setCashHave(value); setClash(null); setBusy(false)
+    setErr('Chosen. Press Save to finish the answers.')
   }
   async function notDone() {
     if (why.trim().length < 4) { setErr('Write why it could not be done, then press Not done.'); return }
@@ -59,6 +75,7 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
         </>)}
         {i.kind === 'text' && <input value={v?.answer ?? ''} disabled={!editable} onChange={e => set(i.id, { answer: e.target.value })} className="w-full rounded-lg border border-gray-300 p-2 text-sm" />}
         {i.kind === 'number' && <input type="number" inputMode="decimal" value={v?.answer ?? ''} disabled={!editable} onChange={e => set(i.id, { answer: e.target.value })} className="w-full rounded-lg border border-gray-300 p-2 text-sm" />}
+        {i.key === 'cash_counted' && cashHave != null && <p className="text-[12px] font-semibold text-blue-800">Already entered for this day: ₵{cashHave}. It is shown here so the two cannot differ. If you type another figure you will be asked which one is right.</p>}
         {i.kind === 'persons' && (() => {
           const sel = (v?.answer ?? '').split(',').filter(s => s && s !== 'none')
           const toggle = (n: string) => { const next = sel.includes(n) ? sel.filter(x => x !== n) : [...sel, n]; set(i.id, { answer: next.length ? next.join(',') : 'none' }) }
@@ -76,6 +93,14 @@ export default function GroupForm({ tileId, day, editable, canEdit, onSaved, onC
     <div className="space-y-2">
       <p className="text-[12px] font-bold uppercase text-gray-500">{done} of {g.items.length} answered</p>
       {g.items.map((i, n) => row(i, n + 1))}
+      {clash && (
+        <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+          <p className="text-sm font-bold text-gray-900">Two different Cash Counted figures for {clash.day}. Which one is right?</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" disabled={busy} onClick={() => void choose(clash.existing)} className="min-h-[52px] rounded-xl bg-blue-600 px-2 text-sm font-bold text-white disabled:opacity-40">₵{clash.existing}<span className="block text-[11px] font-semibold text-blue-100">already entered</span></button>
+            <button type="button" disabled={busy} onClick={() => void choose(clash.entered)} className="min-h-[52px] rounded-xl bg-gray-700 px-2 text-sm font-bold text-white disabled:opacity-40">₵{clash.entered}<span className="block text-[11px] font-semibold text-gray-200">what you typed</span></button>
+          </div>
+        </div>)}
       {err && <p className="text-sm text-red-600">{err}</p>}
       {editable && <button type="button" disabled={busy} onClick={() => void save()} className="w-full rounded-xl bg-green-600 py-3 text-base font-bold text-white disabled:opacity-40">Save answers</button>}
       {editable && done === 0 && (<div className="space-y-1.5 pt-1">

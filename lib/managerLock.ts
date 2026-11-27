@@ -55,9 +55,9 @@ export async function missingCashToday(today = dayKey()): Promise<{ day: string;
 export const CASH_SKIP_LAST_DAY = '2026-11-14'
 
 // Saves Cash Counted on a day's sales receipt, the same as the Sales Log (PUT /api/sales/[id]).
+// Only when it is still empty: a figure already on the receipt is never written over (see lib/cashCount.ts).
 export async function saveCashCounted(receiptId: number, counted: number) {
-  await sql`UPDATE sales_receipts SET cash_counted = ${counted} WHERE id = ${receiptId}`
-  ;(await import('@/lib/itemsCache')).clearItemsCache()
+  await (await import('@/lib/cashCount')).saveIfEmpty(receiptId, counted)
   cache = null
 }
 

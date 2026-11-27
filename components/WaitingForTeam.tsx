@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import PersonSummary from '@/components/PersonSummary'
 import ConfirmTasks from '@/components/ConfirmTasks'
+import CashChoices from '@/components/CashChoices'
 import type { Duty } from '@/lib/duties'
 import { addDays, CHECKLIST_START } from '@/lib/dailyChecksShared'
 import DailyChecklistClient, { TileSheet } from '@/app/(protected)/standards/DailyChecklistClient'
@@ -43,7 +44,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   // Everyone, the owner and Joe too, opens this page on their own name: what they have to do is what they see first. The owner and Joe can pick Everyone or one person from the list.
   const whoTouched = useRef(false)
   useEffect(() => { if (self && !whoTouched.current) setWho(self) }, [self])
-  const [cardsOpen, setCardsOpen] = useState<null | 'approve' | 'cards' | 'confirm'>(null)   // the clock notices, decisions and approvals open in a sheet, not as cards above the tiles
+  const [cardsOpen, setCardsOpen] = useState<null | 'approve' | 'cards' | 'confirm' | 'cash'>(null)   // the clock notices, decisions and approvals open in a sheet, not as cards above the tiles
   const [lateList, setLateList] = useState<Duty[]>([])
   const [refresh, setRefresh] = useState(0)
   // For the owner and Joe: how many tasks anyone has overdue right now, shown beside the list (they start on their own name).
@@ -58,7 +59,7 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
   useEffect(() => {
     const f = (e: Event) => {
       const what = String((e as CustomEvent).detail ?? '')
-      whoTouched.current = true; setWho(self); setSel(today); setCardsOpen(what === 'approve' ? 'approve' : what === 'confirm' ? 'confirm' : 'cards')
+      whoTouched.current = true; setWho(self); setSel(today); setCardsOpen(what === 'approve' ? 'approve' : what === 'confirm' ? 'confirm' : what === 'cash' ? 'cash' : 'cards')
     }
     window.addEventListener('wft-focus', f); return () => window.removeEventListener('wft-focus', f)
   }, [canManage, self, today])
@@ -161,8 +162,8 @@ export default function WaitingForTeam({ canManage, below, noPeople }: { canMana
       {cardsOpen && sel === today && (
         <div className="fixed inset-0 z-[70] flex items-end bg-black/40" onClick={() => setCardsOpen(null)}>
           <div role="dialog" aria-label="To decide or answer" className="mx-auto max-h-[88vh] w-full max-w-md space-y-2 overflow-y-auto rounded-t-3xl bg-white p-4 pb-8" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between"><p className="text-base font-bold text-gray-900">{cardsOpen === 'approve' ? 'To approve' : cardsOpen === 'confirm' ? 'To confirm' : 'To answer'}</p><button type="button" onClick={() => setCardsOpen(null)} aria-label="Close" className="text-xl text-gray-500">✕</button></div>
-            {cardsOpen === 'confirm' ? <ConfirmTasks onChange={() => setRefresh(n => n + 1)} /> : <><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className="grid grid-cols-1 gap-2"><ClockApprovals density={density} /></div>}</>}
+            <div className="flex items-center justify-between"><p className="text-base font-bold text-gray-900">{cardsOpen === 'approve' ? 'To approve' : cardsOpen === 'confirm' ? 'To confirm' : cardsOpen === 'cash' ? 'Cash counted: choose' : 'To answer'}</p><button type="button" onClick={() => setCardsOpen(null)} aria-label="Close" className="text-xl text-gray-500">✕</button></div>
+            {cardsOpen === 'cash' ? <CashChoices onChange={() => setRefresh(n => n + 1)} /> : cardsOpen === 'confirm' ? <ConfirmTasks onChange={() => setRefresh(n => n + 1)} /> : <><ClockNotices onChange={() => setRefresh(n => n + 1)} /><PenaltyDecisions onChange={() => setRefresh(n => n + 1)} />{canManage && <div className="grid grid-cols-1 gap-2"><ClockApprovals density={density} /></div>}</>}
           </div>
         </div>)}
       <div className="mt-1">

@@ -13,6 +13,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ tileId: str
     const day = /^\d{4}-\d{2}-\d{2}$/.test(req.nextUrl.searchParams.get('day') ?? '') ? req.nextUrl.searchParams.get('day')! : dayKey()
     const g = await groupForTile(Number(tileId))
     if (!g) return success({ group: null })
-    return success({ group: g, answers: await answersFor(g.id, day), present: (await getClockState(day)).everIn })
+    const hasCash = g.items.some(i => i.key === 'cash_counted')
+    const w = hasCash ? await (await import('@/lib/cashCount')).walkIn(day).catch(() => null) : null
+    return success({ group: g, answers: await answersFor(g.id, day), present: (await getClockState(day)).everIn, cash_existing: w?.cc ?? null })
   } catch (e) { return handleError('question group tile', e) }
 }
