@@ -45,7 +45,7 @@ export const FLAGS: FlagDef[] = [
   { key: 'needs_review', label: 'Items needing review', page: 'live', list: 'extra', law: 'Every item marked as needing review is reviewed and cleared.', breaks: 'An item needing review is left open' },
   { key: 'empty_row', label: 'Empty rows', page: 'live', list: 'extra', law: 'No item has a day with nothing in it (no count, sales, GMC or bills). The empty day is removed.', breaks: 'An empty day is left on an item' },
   { key: 'net_gain', label: 'Net gains', page: 'live', list: 'extra', law: 'No item is left with a net gain. A gain means a bill or GMC take was never recorded, or a count was wrong, and it is corrected.', breaks: 'A net gain is left open' },
-  { key: 'net_loss', label: 'Net losses', page: 'loss', list: 'extra', law: 'Every item with a net loss is looked into and its cause found.', breaks: 'A net loss is left uninvestigated' },
+  { key: 'net_loss', label: 'Net losses', page: 'live', list: 'extra', law: 'Every item with a net loss is looked into and its cause found.', breaks: 'A net loss is left uninvestigated' },
   { key: 'exp_similar', label: 'Expenses: similar account names', page: 'expenses', list: 'extra', law: 'No two expense accounts are almost the same name. They are merged into one.', breaks: 'Similar expense account names are left open' },
   { key: 'exp_bundled', label: 'Expenses: bundled purchases', page: 'expenses', list: 'extra', law: 'Each purchase has its own expense line. Several purchases are not lumped into one.', breaks: 'A bundled expense is left open' },
   { key: 'exp_no_vendor', label: 'Expenses with no vendor', page: 'expenses', list: 'extra', law: 'Every expense has its vendor recorded.', breaks: 'An expense is left with no vendor' },

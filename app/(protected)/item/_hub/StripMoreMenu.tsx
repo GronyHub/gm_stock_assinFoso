@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 // The phone's Cash top row: the tabs staff do not have to visit (the ones a law pushes onto Waiting) wait in this "More" dropdown. Each entry opens the page of the same
 // name by pressing that tab's (hidden) button in the row. An entry whose tab is not there right now (for example Net Loss with nothing in it) is left out.
 const ITEMS: [string, string][] = [
-  ['🔢', 'Counts'], ['👥', 'Customers'], ['🏭', 'Vendors'], ['⏱️', 'Activity times'], ['📉', 'Loss by Date'], ['📊', 'Loss by Items'], ['•', 'Net Loss'], ['•', 'Cost ≥ Selling Price'], ['🚩', 'Flags'],
+  ['🔢', 'Counts'], ['👥', 'Customers'], ['🏭', 'Vendors'], ['⏱️', 'Activity times'], ['•', 'Cost ≥ Selling Price'], ['🚩', 'Flags'],
 ]
 export const MORE_LABELS = ITEMS.map(i => i[1])
 

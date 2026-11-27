@@ -152,14 +152,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={fl(lossByDateFlagsCount)}
                 noNewTab onClick={() => setLossesOpen(o => !o)} />}
               {(lossesOpen || flat) && (<>
-                <SidePaneButton icon={flat ? '📉' : '•'} label="Loss by Date" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                  active={paneActive(lossView === 'pl' && plSubView === 'loss_by_date')} onClick={() => goLossSubView('loss_by_date')} />
-                <SidePaneButton icon={flat ? '📊' : '•'} label="Loss by Items" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                  active={paneActive(lossView === 'pl' && plSubView === 'loss_by_items')} onClick={() => goLossSubView('loss_by_items')} />
-                {liveNetLossCount > 0 && (
-                  <SidePaneButton icon="•" label="Net Loss" badge={fl(liveNetLossCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                    active={paneActive(lossView === 'pl' && plSubView === 'net_loss')} onClick={() => goLossSubView('net_loss')} />
-                )}
+                {/* Loss by Date, Loss by Items and Net Loss are gone: a day's losses open under that day in the Sales Log, an item's losses are in its Stock tab, the biggest are in the Sales Log's Analytics, and Net Loss is a filter in the Live flag list. */}
                 {liveAcpGteSpCount > 0 && (
                   <SidePaneButton icon="•" label="Cost ≥ Selling Price" badge={fl(liveAcpGteSpCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                     active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
