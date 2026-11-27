@@ -5265,7 +5265,6 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
         </div>
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-white px-2 py-1.5">
           <CountWeek />
-          <button type="button" onClick={() => pickLossView('counts')} className="ml-auto rounded-lg bg-gray-100 px-3 py-1.5 text-[12px] font-bold text-gray-700">All count records</button>
         </div>
         <div className="divide-y divide-gray-100">
           {scored.map(({ item, status, severity, isNeg }, i) => {
