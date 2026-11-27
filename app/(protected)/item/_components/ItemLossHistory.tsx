@@ -7,7 +7,7 @@ const dayLabel = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en
 const timeOf = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '') }
 const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1)
 
-// The item's loss history for the owner and Joe: how much was lost in total, how many times, the latest, and every loss with its reason, who counted, when and the source.
+// The item's loss history (everyone sees it): how much was lost in total, how many times, the latest, and every loss with its reason, who counted, when and the source.
 // It is the "losses only" view of the ledger below it (which lists every day).
 export default function ItemLossHistory({ itemId }: { itemId: number }) {
   const [rows, setRows] = useState<Row[] | null>(null)
@@ -16,7 +16,7 @@ export default function ItemLossHistory({ itemId }: { itemId: number }) {
     setRows(null)
     fetch(`/api/losses/by-day?item=${itemId}`).then(r => (r.ok ? r.json() : null)).then(d => setRows(d?.rows ?? null)).catch(() => setRows(null))
   }, [itemId])
-  if (rows === null) return null   // not for staff (the API says no), or not loaded
+  if (rows === null) return null   // not loaded
   if (rows.length === 0) return <div className="border-b border-gray-200 px-3 py-2 text-[13px] text-gray-500">No losses on record for this item.</div>
   const total = rows.reduce((s, r) => s + r.loss_amt, 0), qty = rows.reduce((s, r) => s + r.loss_qty, 0)
   return (

@@ -36,7 +36,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
     return () => window.removeEventListener('live-pictures', onView)
   }, [])
   // Long-press (half a second, finger not moving) starts a selection; once something is selected, a tap on a tile selects or unselects it.
-  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab, isOwnerOrJoe: seesMoney } = h
+  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab } = h
   const selecting = liveSelectedIds.length > 0
   const pressTimer = useRef<number | null>(null)
   const pressFrom = useRef({ x: 0, y: 0 })
@@ -238,11 +238,11 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                         </span>
                                       </p>
                                     )}
-                                    {/* One status line, only when there is something to act on: a count that is due or overdue (with the days), then, for the owner and Joe, the item's net loss.
+                                    {/* One status line, only when there is something to act on: a count that is due or overdue (with the days), then the item's net loss (everyone sees it).
                                         A tap opens the item's Stock tab, where the count is entered and the loss history sits. */}
                                     {(() => {
                                       const lg = liveLossByItemId.get(item.id)
-                                      const netLoss = seesMoney && lg && lg.lgAmt > 0.005 ? lg : null
+                                      const netLoss = lg && lg.lgAmt > 0.005 ? lg : null
                                       if (!due && !netLoss) return null
                                       const open = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
                                       return (

@@ -5,11 +5,12 @@ import HubLogFlags from './HubLogFlags'
 import dynamic from 'next/dynamic'
 // Loaded only when the Analytics view opens (it brings the chart library with it), so the Sales Log itself opens as fast as before.
 const MoneySummary = dynamic(() => import('../_components/MoneySummary'), { ssr: false })
+const BiggestLosses = dynamic(() => import('../_components/BiggestLosses'), { ssr: false })
 
 export default function HubLogAnalytics({ h }: { h: HubCtx }) {
-  const { liveTaps, liveTapsStatus, logWrapRef, liveLogShowAnalytics, liveTapsAll, logPeriod, logFlag, loadAllLiveTaps, logFlagDates, logDays } = h
+  const { goItemsMode, setLiveGridEditStartTab, openEditGridItem, liveTaps, liveTapsStatus, logWrapRef, liveLogShowAnalytics, liveTapsAll, logPeriod, logFlag, loadAllLiveTaps, logFlagDates, logDays } = h
   return (<>{liveLogShowAnalytics ? (
-                <div className="px-3 pt-3 flex-1 overflow-auto pb-24"><MoneySummary /><SalesDaysSection /><LiveSaleAnalyticsSection /></div>
+                <div className="px-3 pt-3 flex-1 overflow-auto pb-24"><MoneySummary /><BiggestLosses onPick={id => { goItemsMode('sale'); setLiveGridEditStartTab('stock'); setTimeout(() => void openEditGridItem(id), 300) }} /><SalesDaysSection /><LiveSaleAnalyticsSection /></div>
               ) : (
               <div className="flex-1 overflow-auto pb-24 sm:pb-0" ref={logWrapRef}>
                 {logFlagDates && (

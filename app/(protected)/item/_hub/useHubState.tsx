@@ -4643,6 +4643,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     { value: 'sale:service', key: 'service', label: 'Service Violations', n: liveServiceViolationCount },
     { value: 'sale:unknownQty', key: 'unknownQty', label: 'Unknown Quantity', n: liveUnknownQtyCount },
     { value: 'sale:gmcOverage', key: 'gmcOverage', label: 'GMC Pack Overage', n: liveGmcOverageCount },
+    { value: 'sale:netLoss', key: 'netLoss', label: 'Net Loss', n: liveNetLossCount },
     { value: 'sale:netGain', key: 'netGain', label: 'Net Gain', n: liveNetGainCount },
     { value: 'sale:needsReview', key: 'needsReview', label: 'Needs Review', n: liveNeedsReviewCount },
     { value: 'sale:lowConfidenceAlias', key: 'lowConfidenceAlias', label: 'Alias Needs Check', n: liveLowConfidenceAliasCount },
