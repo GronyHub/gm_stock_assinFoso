@@ -3,6 +3,7 @@ import { Fragment } from 'react'
 import { fmtTime } from '@/lib/fmtDate'
 import { formatGapMins } from '@/lib/fmtGap'
 import DayCashCell from '../_components/DayCashCell'
+import { DayMoneyLine, useDayMoney } from '../_components/DayMoney'
 import LogDayPhotos from '../_components/LogDayPhotos'
 import MoneyText from '@/components/MoneyText'
 import type { Tap } from './hubShared'
@@ -25,6 +26,7 @@ function Fact({ label, children, tone = '' }: { label: string; children: React.R
 export default function HubLogCards({ h }: { h: HubCtx }) {
   const { logDays, logBarsOnly, liveDayBounds, liveCostPriceByItemId, liveAllItems, renderClickableItemName, setTapCustomerSheet, rcptSelect, rcptSel, setRcptSel,
     setLiveEditingTapId, setLiveEditingTapTime, openEmbed, undoTap, setLiveEditingFullTapId, setLiveEditingCurrentDate, openEditGridItem, jobMoneyOn, setLiveTaps, setLogRecs } = h
+  const dayMoney = useDayMoney()
   return (
     <div className="sm:hidden">
       {logDays.map(([date, logDay]) => {
@@ -71,6 +73,7 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
                   {logDay.receipts.length > 0 && <LogDayPhotos receipts={logDay.receipts} />}
                 </span>
               </div>
+              <DayMoneyLine f={dayMoney.get(date)} className="mt-1" />
             </header>
 
             {!logBarsOnly && (
