@@ -28,18 +28,19 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
     setLiveEditingTapId, setLiveEditingTapTime, openEmbed, undoTap, setLiveEditingFullTapId, setLiveEditingCurrentDate, openEditGridItem, jobMoneyOn, setLiveTaps, setLogRecs } = h
   // Bank filter (owner and Joe, once there are bank figures): all days, only the days whose bank is confirmed, or only those still to confirm.
   const { days: money, newestBankDay } = useDayMoney()
-  const [bankFilter, setBankFilter] = useState<'all' | 'confirmed' | 'unconfirmed'>('all')
-  const shownDays = bankFilter === 'all' ? logDays : logDays.filter(([d]) => { const b = money.get(d)?.bank; return !!b && (bankFilter === 'confirmed' ? b.total != null : b.total == null) })
+  const [bankFilter, setBankFilter] = useState<'all' | 'confirmed' | 'unconfirmed' | 'loss'>('all')
+  const anyLoss = [...money.values()].some(m => (m.pl?.loss ?? 0) > 0)
+  const shownDays = bankFilter === 'all' ? logDays : bankFilter === 'loss' ? logDays.filter(([d]) => (money.get(d)?.pl?.loss ?? 0) > 0) : logDays.filter(([d]) => { const b = money.get(d)?.bank; return !!b && (bankFilter === 'confirmed' ? b.total != null : b.total == null) })
   return (
     <div className="sm:hidden">
-      {newestBankDay && (
+      {(newestBankDay || anyLoss) && (
         <div className="flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-1.5 text-[12px] font-bold">
-          <span className="text-gray-500">Bank</span>
-          {([['all', 'All days'], ['confirmed', 'Confirmed'], ['unconfirmed', 'To confirm']] as const).map(([k, label]) => (
+          <span className="text-gray-500">Show</span>
+          {([['all', 'All days'], ...(newestBankDay ? [['confirmed', 'Bank confirmed'], ['unconfirmed', 'To confirm']] as const : []), ...(anyLoss ? [['loss', 'With loss']] as const : [])] as readonly (readonly ['all' | 'confirmed' | 'unconfirmed' | 'loss', string])[]).map(([k, label]) => (
             <button key={k} type="button" onClick={() => setBankFilter(k)} className={`rounded-full px-3 py-1 ${bankFilter === k ? 'bg-[#14213D] text-white' : 'bg-gray-100 text-gray-700'}`}>{label}</button>
           ))}
         </div>)}
-      {bankFilter !== 'all' && shownDays.length === 0 && <p className="p-3 text-[13px] text-gray-500">No days match. Days with no bank figures yet are not listed under this filter.</p>}
+      {bankFilter !== 'all' && shownDays.length === 0 && <p className="p-3 text-[13px] text-gray-500">No days match. Days with no figures yet are not listed under this filter.</p>}
       {shownDays.map(([date, logDay], idx) => {
         const dateTaps = (logDay.taps || []).filter((t): t is Tap => t != null)
         const recTotal = logDay.lines.reduce((s, l) => s + Number(l.item_total ?? 0), 0)

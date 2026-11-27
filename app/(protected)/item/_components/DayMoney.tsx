@@ -92,6 +92,34 @@ export function ConfirmBankMenuItem({ onPick }: { onPick: () => void }) {
   return <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={() => { onPick(); openBankConfirm() }}>Confirm bank</button>
 }
 
+type LossRow = { item_id: number; name: string; expected: number; counted: number; loss_qty: number; loss_amt: number; reason: string | null; by: string | null; at: string | null; source: string | null }
+let lossStore: Record<string, LossRow[]> | null = null
+const timeOf = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '') }
+const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1)
+// The items behind a day's Loss figure (the same loss records the P&L adds up): expected against counted and the ₵ value; who counted, when and the source sit on a quieter second line.
+function LossDetail({ date }: { date: string }) {
+  const [rows, setRows] = useState<LossRow[] | null>(lossStore ? lossStore[date] ?? [] : null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (lossStore) return
+    fetch('/api/losses/by-day').then(r => (r.ok ? r.json() : Promise.reject())).then(d => { lossStore = d ?? {}; setRows(lossStore![date] ?? []) }).catch(() => setFailed(true))
+  }, [date])
+  if (failed) return <p className="mt-1.5 text-[13px] text-red-600">Could not load the losses. Try again in a moment.</p>
+  if (rows === null) return <p className="mt-1.5 text-[13px] text-gray-500">Loading the losses…</p>
+  if (rows.length === 0) return <p className="mt-1.5 text-[13px] text-gray-500">No loss records are listed for this day.</p>
+  return (
+    <div className="mt-1.5 divide-y divide-red-100 overflow-hidden rounded-xl border border-red-200 bg-white">
+      {rows.map(r => (
+        <div key={r.item_id} className="px-2.5 py-1.5">
+          <div className="flex items-baseline justify-between gap-2"><p className="min-w-0 text-[13px] font-bold text-gray-900">{r.name}</p><p className="shrink-0 text-[13px] font-extrabold text-red-600">{c(r.loss_amt)}</p></div>
+          <p className="text-[12px] text-gray-700">Expected {r.expected} · counted {r.counted} · <b className="text-red-600">short {r.loss_qty}</b></p>
+          {r.reason && <p className="text-[12px] italic text-gray-600">{r.reason}</p>}
+          {(r.by || r.at || r.source) && <p className="text-[11px] text-gray-400">{[r.by ? cap(r.by) : '', timeOf(r.at), r.source ?? ''].filter(Boolean).join(' · ')}</p>}
+        </div>))}
+    </div>
+  )
+}
+
 const inp = 'w-full rounded-lg border border-gray-300 bg-white p-2 text-[16px] text-gray-900'
 function ConfirmForm({ date, bank, onDone }: { date: string; bank: Bank; onDone: () => void }) {
   const [b, setB] = useState(bank.parts ? String(bank.parts.bank) : ''), [m, setM] = useState(bank.parts ? String(bank.parts.momo) : ''), [p, setP] = useState(bank.parts ? String(bank.parts.physical) : '')
@@ -128,7 +156,7 @@ function ConfirmForm({ date, bank, onDone }: { date: string; bank: Bank; onDone:
 // The line under a day's header: the day's money, the bank balance and the confirmation (a tap on "confirmed" shows the breakdown, with Edit; "Confirm bank" opens the form right here).
 export function DayMoney({ date, className = '' }: { date: string; className?: string }) {
   const { days } = useDayMoney()
-  const [open, setOpen] = useState<'form' | 'view' | null>(null)
+  const [open, setOpen] = useState<'form' | 'view' | 'loss' | null>(null)
   const f = days.get(date)
   useEffect(() => {
     const h = (e: Event) => { if ((e as CustomEvent).detail?.date === date) { setOpen('form'); setTimeout(() => document.getElementById(`day-money-${date}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60) } }
@@ -141,7 +169,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
   return (
     <div id={`day-money-${date}`} className={className}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-0 text-[12px] font-bold leading-snug text-gray-700">
-        {pl && <><span title="Cash counted on the day's walk-in receipt">Cash in {c(pl.cash)}</span><span>Bills {pl.bills > 0 ? c(pl.bills) : '—'}</span><span>Expenses {pl.expenses > 0 ? c(pl.expenses) : '—'}</span>{pl.loss > 0 && <span className="text-red-600">Loss {c(pl.loss)}</span>}<span className={pl.profit >= 0 ? 'text-green-700' : 'text-red-600'}>P/L {pl.profit < 0 ? '-' : ''}{c(Math.abs(pl.profit))}</span></>}
+        {pl && <><span title="Cash counted on the day's walk-in receipt">Cash in {c(pl.cash)}</span><span>Bills {pl.bills > 0 ? c(pl.bills) : '—'}</span><span>Expenses {pl.expenses > 0 ? c(pl.expenses) : '—'}</span>{pl.loss > 0 && <button type="button" onClick={() => setOpen(o => (o === 'loss' ? null : 'loss'))} className="rounded px-1 text-red-600 underline decoration-dotted" title="Show the items behind this loss">Loss {c(pl.loss)}</button>}<span className={pl.profit >= 0 ? 'text-green-700' : 'text-red-600'}>P/L {pl.profit < 0 ? '-' : ''}{c(Math.abs(pl.profit))}</span></>}
         {bank && bank.gIn > 0 && <span className="text-emerald-700" title="Grony's own cash paid in to the shop">Grony in {c(bank.gIn)}</span>}
         {bank && bank.debtors > 0 && <span className="text-emerald-700" title="Debtors' repayments received">Debtors in {c(bank.debtors)}</span>}
         {bank && bank.gOut > 0 && <span className="text-orange-600" title="Cash taken out for Grony">Grony out {c(bank.gOut)}</span>}
@@ -158,6 +186,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
             : <p className="text-gray-500">{bank.prevGap != null ? `Not checked: the previous confirmation was ${bank.prevGap} days earlier, too long ago for the movement to be trusted. Confirm every week or two.` : 'The first confirmation: later ones are checked against it.'}</p>}
           <button type="button" onClick={() => setOpen('form')} className="rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-800">Edit</button>
         </div>)}
+      {open === 'loss' && <LossDetail date={date} />}
       {open === 'form' && bank && <ConfirmForm date={date} bank={bank} onDone={() => setOpen(null)} />}
     </div>
   )
