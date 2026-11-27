@@ -765,7 +765,7 @@ export function useHubState() {
   const [liveLabelByKey, setLiveLabelByKey] = useState<Record<string, string>>({})
   const [justTappedItemIds, setJustTappedItemIds] = useState<Set<number>>(new Set())
   // Which tab the item sheet opens on (a tap on a tile's photo strip opens it on Photo).
-  const [liveGridEditStartTab, setLiveGridEditStartTab] = useState<'overview' | 'photo'>('overview')
+  const [liveGridEditStartTab, setLiveGridEditStartTab] = useState<'overview' | 'stock' | 'photo'>('overview')
   // Items picked on the Live tiles by long-press (see HubCatalogueGrid / HubSelectionBar): sold together or made into a job.
   const [liveSelectedIds, setLiveSelectedIds] = useState<number[]>([])
   // The sale just recorded from a tile: shown with an Undo for a short time (see HubPhoneTabs).

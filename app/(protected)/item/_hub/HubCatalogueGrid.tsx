@@ -36,7 +36,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
     return () => window.removeEventListener('live-pictures', onView)
   }, [])
   // Long-press (half a second, finger not moving) starts a selection; once something is selected, a tap on a tile selects or unselects it.
-  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab } = h
+  const { liveSelectedIds, toggleLiveSelect, liveSaleType: saleTypeForSelect, setLiveGridEditStartTab, isOwnerOrJoe: seesMoney } = h
   const selecting = liveSelectedIds.length > 0
   const pressTimer = useRef<number | null>(null)
   const pressFrom = useRef({ x: 0, y: 0 })
@@ -238,6 +238,19 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                         </span>
                                       </p>
                                     )}
+                                    {/* One status line, only when there is something to act on: a count that is due or overdue (with the days), then, for the owner and Joe, the item's net loss.
+                                        A tap opens the item's Stock tab, where the count is entered and the loss history sits. */}
+                                    {(() => {
+                                      const lg = liveLossByItemId.get(item.id)
+                                      const netLoss = seesMoney && lg && lg.lgAmt > 0.005 ? lg : null
+                                      if (!due && !netLoss) return null
+                                      const open = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
+                                      return (
+                                        <div className="mt-0.5 flex flex-wrap items-center gap-1" onPointerDown={e => e.stopPropagation()}>
+                                          {due && <button type="button" onClick={open} className={`rounded px-1 py-px text-[11px] font-extrabold leading-tight text-white ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>{overdue ? 'Count overdue' : 'Count due'} {due.label === 'Today' || due.label === 'Due' ? '' : due.label}</button>}
+                                          {netLoss && <button type="button" onClick={open} className="rounded bg-red-50 px-1 py-px text-[11px] font-bold leading-tight text-red-700">Net loss ₵{Math.round(netLoss.lgAmt).toLocaleString('en-GH')}{netLoss.lossCount > 1 ? ` · ${netLoss.lossCount}×` : ''}</button>}
+                                        </div>)
+                                    })()}
                                     {/* Tap straight into the card: no plain-text price any
                                         more, the Price box below is the only place it shows
                                         up (pre-filled, so most sales never need to touch it).
