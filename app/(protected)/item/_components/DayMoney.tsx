@@ -5,10 +5,13 @@ import { useEffect, useState } from 'react'
 // a "Confirm bank" form that opens right under the day, and a week line above each week. Loaded a moment after the log so the log opens at the same speed;
 // a person who may not see the figures (the APIs say no) gets nothing extra.
 export type DayFig = { cash: number; bills: number; expenses: number; loss: number; profit: number } | null
-export type Bank = { running: number | null; net: number; gIn: number; debtors: number; gOut: number; total: number | null; parts: { bank: number; momo: number; physical: number } | null; deficit: number | null; verify: { ok: boolean; expected: number; diff: number } | null }
+export type Bank = { since: { date: string; total: number } | null; prevGap: number | null; running: number | null; net: number; gIn: number; debtors: number; gOut: number; total: number | null; parts: { bank: number; momo: number; physical: number } | null; deficit: number | null; verify: { ok: boolean; expected: number; diff: number } | null }
 export type Day = { pl: DayFig; bank: Bank | null }
-export type Week = { start: string; net: number; endBalance: number | null; endDate: string; confirmed: { date: string; total: number; deficit: number | null } | null }
+export type Week = { start: string; net: number; endBalance: number | null; lastKnown: { date: string; total: number } | null; endDate: string; confirmed: { date: string; total: number; deficit: number | null } | null }
 type Data = { days: Map<string, Day>; weeks: Map<string, Week>; newestBankDay: string | null }
+// An estimate (and a check against the previous confirmation) is only trusted for this many days after a confirmation: the cash side misses money the bank gets other ways.
+export const TRUST_DAYS = 14
+const gapDays = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000)
 const EMPTY: Data = { days: new Map(), weeks: new Map(), newestBankDay: null }
 
 const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
@@ -33,26 +36,32 @@ async function loadAll(): Promise<void> {
   // each confirmation is checked against the one before it plus the net movement since then
   // The bank estimate for a day is the last confirmed total plus the net movement since it (nothing before the first confirmation). The all-time running balance has no opening
   // balance and misses money that left the shop, so it is about ₵317,000 above the real bank; it is not shown.
-  let prevTotal: number | null = null, netSince = 0
+  let prevTotal: number | null = null, prevDate: string | null = null, netSince = 0
   const verify = new Map<string, { ok: boolean; expected: number; diff: number }>()
-  const est = new Map<string, number | null>()
+  const est = new Map<string, number | null>(), since = new Map<string, { date: string; total: number } | null>(), prevGap = new Map<string, number | null>()
   for (const r of asc) {
     const k = String(r.entry_date).slice(0, 10)
     netSince = parseFloat((netSince + (Number(r.daily_net) || 0)).toFixed(4))
     if (!(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null) {
       const total = Number(r.cab_total)
-      if (prevTotal != null) { const expected = parseFloat((prevTotal + netSince).toFixed(2)), diff = parseFloat((total - expected).toFixed(2)); verify.set(k, { ok: Math.abs(diff) < 0.01, expected, diff }) }
-      prevTotal = total; netSince = 0
-      est.set(k, total)
-    } else est.set(k, prevTotal == null ? null : parseFloat((prevTotal + netSince).toFixed(2)))
+      const gap = prevDate ? gapDays(prevDate, k) : null
+      prevGap.set(k, gap)
+      if (prevTotal != null && gap != null && gap <= TRUST_DAYS) { const expected = parseFloat((prevTotal + netSince).toFixed(2)), diff = parseFloat((total - expected).toFixed(2)); verify.set(k, { ok: Math.abs(diff) < 0.01, expected, diff }) }
+      prevTotal = total; prevDate = k; netSince = 0
+      est.set(k, total); since.set(k, null)
+    } else {
+      const fresh = prevTotal != null && prevDate != null && gapDays(prevDate, k) <= TRUST_DAYS
+      est.set(k, fresh ? parseFloat(((prevTotal as number) + netSince).toFixed(2)) : null)
+      since.set(k, prevTotal != null && prevDate != null && !fresh ? { date: prevDate, total: prevTotal } : null)
+    }
   }
   for (const r of rows) {
     const k = String(r.entry_date).slice(0, 10), cur = days.get(k) ?? { pl: null, bank: null }
     const confirmed = !(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null
-    days.set(k, { ...cur, bank: { running: est.get(k) ?? null, net: Number(r.daily_net) || 0, gIn: Number(r.grony_personal_cash_in) || 0, debtors: Number(r.debtors_cash_in) || 0, gOut: Number(r.grony_personal_expenses) || 0, total: confirmed ? Number(r.cab_total) : null, parts: confirmed ? { bank: Number(r.cab_bank ?? 0), momo: Number(r.cab_momo ?? 0), physical: Number(r.cab_physical ?? 0) } : null, deficit: confirmed ? (verify.get(k)?.diff ?? null) : null, verify: verify.get(k) ?? null } })
-    const ws = weekStartOf(k), w = weeks.get(ws) ?? { start: ws, net: 0, endBalance: null, endDate: '', confirmed: null }
+    days.set(k, { ...cur, bank: { since: since.get(k) ?? null, prevGap: prevGap.get(k) ?? null, running: est.get(k) ?? null, net: Number(r.daily_net) || 0, gIn: Number(r.grony_personal_cash_in) || 0, debtors: Number(r.debtors_cash_in) || 0, gOut: Number(r.grony_personal_expenses) || 0, total: confirmed ? Number(r.cab_total) : null, parts: confirmed ? { bank: Number(r.cab_bank ?? 0), momo: Number(r.cab_momo ?? 0), physical: Number(r.cab_physical ?? 0) } : null, deficit: confirmed ? (verify.get(k)?.diff ?? null) : null, verify: verify.get(k) ?? null } })
+    const ws = weekStartOf(k), w = weeks.get(ws) ?? { start: ws, net: 0, endBalance: null, lastKnown: null, endDate: '', confirmed: null }
     w.net += Number(r.daily_net) || 0
-    if (k > w.endDate) { w.endDate = k; w.endBalance = est.get(k) ?? null }
+    if (k > w.endDate) { w.endDate = k; w.endBalance = est.get(k) ?? null; w.lastKnown = since.get(k) ?? null }
     if (confirmed && !w.confirmed) w.confirmed = { date: k, total: Number(r.cab_total), deficit: verify.get(k)?.diff ?? null }
     weeks.set(ws, w)
   }
@@ -137,6 +146,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
         {bank && bank.debtors > 0 && <span className="text-emerald-700" title="Debtors' repayments received">Debtors in {c(bank.debtors)}</span>}
         {bank && bank.gOut > 0 && <span className="text-orange-600" title="Cash taken out for Grony">Grony out {c(bank.gOut)}</span>}
         {bank && bank.running != null && <span className="text-indigo-800" title="Last confirmed bank plus the movement since">Bank est. {c(bank.running)}</span>}
+        {bank && bank.running == null && bank.since && <span className="text-gray-500">Bank not confirmed since {shortDate(bank.since.date)}</span>}
         {bank && bank.total != null
           ? <button type="button" onClick={() => setOpen(o => (o ? null : 'view'))} className={`rounded px-1 underline decoration-dotted ${off ? 'text-red-600' : 'text-green-700'}`}>✓ confirmed {c(bank.total)}{off ? ` (${(bank.deficit as number) > 0 ? '+' : '-'}${c(Math.abs(bank.deficit as number))})` : ''}</button>
           : bank ? <button type="button" onClick={() => setOpen(o => (o ? null : 'form'))} className="rounded bg-green-100 px-1.5 py-0.5 text-green-800">Confirm bank</button> : null}
@@ -144,7 +154,8 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
       {open === 'view' && bank?.parts && (
         <div className="mt-1.5 space-y-1 rounded-xl border border-gray-200 bg-white p-2.5 text-[13px] text-gray-800">
           <p><b>Bank</b> {c2(bank.parts.bank)} · <b>MoMo</b> {c2(bank.parts.momo)} · <b>Physical</b> {c2(bank.parts.physical)} · <b>Total</b> {c2(bank.total ?? 0)}</p>
-          {bank.verify ? <p className={bank.verify.ok ? 'text-green-700' : 'text-red-600'}>{bank.verify.ok ? '✓ Matches the previous confirmation plus the movement since.' : `Previous confirmation plus the movement since gives ${c2(bank.verify.expected)}; this is ${bank.verify.diff > 0 ? '+' : '-'}${c2(Math.abs(bank.verify.diff))} different (money paid in or out that is not recorded).`}</p> : <p className="text-gray-500">The first confirmation: later ones are checked against it.</p>}
+          {bank.verify ? <p className={bank.verify.ok ? 'text-green-700' : 'text-red-600'}>{bank.verify.ok ? '✓ Matches the previous confirmation plus the movement since.' : `Previous confirmation plus the movement since gives ${c2(bank.verify.expected)}; this is ${bank.verify.diff > 0 ? '+' : '-'}${c2(Math.abs(bank.verify.diff))} different (money paid in or out that is not recorded).`}</p>
+            : <p className="text-gray-500">{bank.prevGap != null ? `Not checked: the previous confirmation was ${bank.prevGap} days earlier, too long ago for the movement to be trusted. Confirm every week or two.` : 'The first confirmation: later ones are checked against it.'}</p>}
           <button type="button" onClick={() => setOpen('form')} className="rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-800">Edit</button>
         </div>)}
       {open === 'form' && bank && <ConfirmForm date={date} bank={bank} onDone={() => setOpen(null)} />}
@@ -160,7 +171,7 @@ export function WeekHeader({ date }: { date: string }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-y border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[12px] font-bold text-indigo-900">
       <span>Week {shortDate(w.start)} to {shortDate(addDays(w.start, 6))}</span>
       <span>Net {w.net < 0 ? '-' : ''}{c(Math.abs(w.net))}</span>
-      {w.endBalance != null && <span>Balance {c(w.endBalance)}</span>}
+      {w.endBalance != null ? <span>Balance {c(w.endBalance)}</span> : w.lastKnown ? <span className="text-gray-600">Last confirmed {c(w.lastKnown.total)} ({shortDate(w.lastKnown.date)})</span> : null}
       {w.confirmed
         ? <span className="text-green-700">✓ confirmed {c(w.confirmed.total)}{w.confirmed.deficit != null && Math.abs(w.confirmed.deficit) >= 1 ? ` (${w.confirmed.deficit > 0 ? '+' : '-'}${c(Math.abs(w.confirmed.deficit))})` : ''}</span>
         : w.endDate ? <button type="button" onClick={() => openBankConfirm(w.endDate)} className="rounded bg-green-100 px-1.5 py-0.5 text-green-800">Not confirmed · Confirm week</button> : null}

@@ -31,12 +31,15 @@ export default function MoneySummary() {
   // The estimate: the last confirmed total plus the net movement since it (the all-time running balance has no opening balance and is about ₵317,000 too high).
   const lastIdx = cab ? cab.findIndex(r => !(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null) : -1
   const estimate = cab && lastIdx >= 0 ? Number(cab[lastIdx].cab_total) + cab.slice(0, lastIdx).reduce((a, r) => a + (Number(r.daily_net) || 0), 0) : null
+  const lastDate = lastIdx >= 0 && cab ? String(cab[lastIdx].entry_date).slice(0, 10) : null
+  const daysAgo = lastDate ? Math.round((Date.now() - new Date(`${lastDate}T00:00:00`).getTime()) / 86400000) : null
+  const fresh = daysAgo != null && daysAgo <= 14   // older than 14 days: no estimate (the cash side misses money the bank gets other ways)
   const t = pl?.totals
   return (
     <div className="mb-3 space-y-2">
       {cab && cab.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">
-          <Card label="Bank estimate" value={estimate != null ? fc(estimate) : '—'} sub={latest ? `last confirmed + movement to ${fmtDate(String(latest.entry_date).slice(0, 10))}` : undefined} tone="blue" />
+          <Card label={fresh ? 'Bank estimate' : 'Bank, last confirmed'} value={fresh && estimate != null ? fc(estimate) : lastIdx >= 0 && cab ? fc(Number(cab[lastIdx].cab_total)) : '—'} sub={fresh ? `last confirmed + movement to ${latest ? fmtDate(String(latest.entry_date).slice(0, 10)) : ''}` : daysAgo != null ? `${daysAgo} days ago. No estimate until you confirm again` : undefined} tone={fresh ? 'blue' : 'orange'} />
           <Card label="Last confirmed" value={lastConfirmed ? fc(Number(lastConfirmed.cab_total)) : '—'} sub={lastConfirmed ? fmtDate(String(lastConfirmed.entry_date).slice(0, 10)) : 'None yet'} tone="green" />
           <Card label="Unconfirmed weeks" value={unconfirmed == null ? '…' : String(unconfirmed)} tone={unconfirmed && unconfirmed > 0 ? 'red' : 'green'} />
         </div>
