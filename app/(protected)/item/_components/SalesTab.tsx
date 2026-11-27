@@ -651,9 +651,9 @@ function SalesTab({
           className="text-[12px] font-semibold px-1.5 py-0.5 rounded bg-purple-600 text-white transition">
           ← Back
         </button>
-        <span className="text-[12px] font-semibold text-purple-700">Sales History</span>
+        <span className="text-[12px] font-semibold text-purple-700">Sales and counts history</span>
       </div>
-      <HistoryPanel keywords={['sale', 'receipt']} onEntryClick={log => {
+      <HistoryPanel keywords={['sale', 'receipt', 'counted stock', 'stock count', 'count loss', 'count gain']} onEntryClick={log => {
         // "added sale receipt": "SR-001 · ₵300 on date"  →  receipt_number = first token
         // "deleted sale receipt": "SR-001 · ₵300"         →  same
         const match = log.details?.match(/^([^\s·]+)/)

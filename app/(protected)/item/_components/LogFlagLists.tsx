@@ -14,7 +14,7 @@ export default function LogFlagLists({ view, flags, onFixedMissing, onClose, onP
   onClose: () => void
   onPickDate: (date: string) => void
 }) {
-  const title = view === 'missing_days' ? 'Missing days' : view === 'dup_receipt' ? 'Duplicate receipts' : 'Sales history'
+  const title = view === 'missing_days' ? 'Missing days' : view === 'dup_receipt' ? 'Duplicate receipts' : 'Sales and counts history'
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-2 py-1">
@@ -23,7 +23,7 @@ export default function LogFlagLists({ view, flags, onFixedMissing, onClose, onP
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto py-2">
         {view === 'history' ? (
-          <HistoryPanel keywords={['sale', 'receipt']} onEntryClick={() => {}} />
+          <HistoryPanel keywords={['sale', 'receipt', 'counted stock', 'stock count', 'count loss', 'count gain']} onEntryClick={() => {}} />
         ) : !flags ? (
           <p className="px-2 text-[12px] text-gray-400">Loading…</p>
         ) : view === 'missing_days' ? (
