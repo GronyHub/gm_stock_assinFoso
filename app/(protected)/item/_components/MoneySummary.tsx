@@ -12,7 +12,7 @@ const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-
 const TONE = { blue: 'bg-blue-50 text-blue-700', orange: 'bg-orange-50 text-orange-600', red: 'bg-red-50 text-red-600', green: 'bg-green-50 text-green-600' } as const
 const Card = ({ tone, ...p }: { label: string; value: string; sub?: string; tone: keyof typeof TONE }) => <BaseStatCard {...p} cls={TONE[tone]} />
 
-type CabRow = { entry_date: string; running_cash_at_bank: string | number | null; cab_total: string | number | null; cab_bank: unknown; cab_momo: unknown; cab_physical: unknown }
+type CabRow = { entry_date: string; daily_net?: string | number | null; running_cash_at_bank: string | number | null; cab_total: string | number | null; cab_bank: unknown; cab_momo: unknown; cab_physical: unknown }
 type Pl = { totals: { cashCounted: number; expenses: number; bills: number; dailyLoss: number; profit: number }; monthly: { month: string; cashCounted: number; expenses: number; bills: number; dailyLoss: number; profit: number }[] }
 
 export default function MoneySummary() {
@@ -28,12 +28,15 @@ export default function MoneySummary() {
   const latest = cab?.[0]
   // a day counts as confirmed only when figures were entered for it (the stored total is 0 for a day nobody confirmed)
   const lastConfirmed = cab?.find(r => !(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null)
+  // The estimate: the last confirmed total plus the net movement since it (the all-time running balance has no opening balance and is about ₵317,000 too high).
+  const lastIdx = cab ? cab.findIndex(r => !(r.cab_bank == null && r.cab_momo == null && r.cab_physical == null) && r.cab_total != null) : -1
+  const estimate = cab && lastIdx >= 0 ? Number(cab[lastIdx].cab_total) + cab.slice(0, lastIdx).reduce((a, r) => a + (Number(r.daily_net) || 0), 0) : null
   const t = pl?.totals
   return (
     <div className="mb-3 space-y-2">
       {cab && cab.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">
-          <Card label="Bank running balance" value={latest?.running_cash_at_bank != null ? fc(Number(latest.running_cash_at_bank)) : '—'} sub={latest ? fmtDate(String(latest.entry_date).slice(0, 10)) : undefined} tone="blue" />
+          <Card label="Bank estimate" value={estimate != null ? fc(estimate) : '—'} sub={latest ? `last confirmed + movement to ${fmtDate(String(latest.entry_date).slice(0, 10))}` : undefined} tone="blue" />
           <Card label="Last confirmed" value={lastConfirmed ? fc(Number(lastConfirmed.cab_total)) : '—'} sub={lastConfirmed ? fmtDate(String(lastConfirmed.entry_date).slice(0, 10)) : 'None yet'} tone="green" />
           <Card label="Unconfirmed weeks" value={unconfirmed == null ? '…' : String(unconfirmed)} tone={unconfirmed && unconfirmed > 0 ? 'red' : 'green'} />
         </div>
