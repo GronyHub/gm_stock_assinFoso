@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { fmtTime } from '@/lib/fmtDate'
 import { formatGapMins } from '@/lib/fmtGap'
 import DayCashCell from '../_components/DayCashCell'
-import { DayMoneyLine, useDayMoney } from '../_components/DayMoney'
+import { DayMoney, WeekHeader, weekStartOf } from '../_components/DayMoney'
 import LogDayPhotos from '../_components/LogDayPhotos'
 import MoneyText from '@/components/MoneyText'
 import type { Tap } from './hubShared'
@@ -26,10 +26,9 @@ function Fact({ label, children, tone = '' }: { label: string; children: React.R
 export default function HubLogCards({ h }: { h: HubCtx }) {
   const { logDays, logBarsOnly, liveDayBounds, liveCostPriceByItemId, liveAllItems, renderClickableItemName, setTapCustomerSheet, rcptSelect, rcptSel, setRcptSel,
     setLiveEditingTapId, setLiveEditingTapTime, openEmbed, undoTap, setLiveEditingFullTapId, setLiveEditingCurrentDate, openEditGridItem, jobMoneyOn, setLiveTaps, setLogRecs } = h
-  const dayMoney = useDayMoney()
   return (
     <div className="sm:hidden">
-      {logDays.map(([date, logDay]) => {
+      {logDays.map(([date, logDay], idx) => {
         const dateTaps = (logDay.taps || []).filter((t): t is Tap => t != null)
         const recTotal = logDay.lines.reduce((s, l) => s + Number(l.item_total ?? 0), 0)
         const recProfit = logDay.lines.reduce((s, l) => {
@@ -48,7 +47,9 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
         const wicTotal = rtRaw !== null && rtRaw !== undefined && rtRaw !== '' ? Number(rtRaw) : wic.filter(t => !t.undone).reduce((s, t) => s + Number(t.price) * t.quantity, 0)
         const okForReceipt = dateTaps.filter(t => !t.undone && !t.invoice_id)
         return (
-          <section key={date} id={`log-day-${date}`} aria-label={date}>
+          <Fragment key={date}>
+          {(idx === 0 || weekStartOf(date) !== weekStartOf(logDays[idx - 1][0])) && <WeekHeader date={date} />}
+          <section id={`log-day-${date}`} aria-label={date}>
             <header className="sticky top-0 z-10 border-y border-green-200 bg-green-50 px-3 py-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-[14px] font-semibold text-green-800">
@@ -73,7 +74,7 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
                   {logDay.receipts.length > 0 && <LogDayPhotos receipts={logDay.receipts} />}
                 </span>
               </div>
-              <DayMoneyLine f={dayMoney.get(date)} className="mt-1" />
+              <DayMoney date={date} className="mt-1" />
             </header>
 
             {!logBarsOnly && (
@@ -168,6 +169,7 @@ export default function HubLogCards({ h }: { h: HubCtx }) {
               </ul>
             )}
           </section>
+          </Fragment>
         )
       })}
     </div>

@@ -1,5 +1,5 @@
 'use client'
-import { DayMoneyLine, useDayMoney } from './DayMoney'
+import { DayMoney, useDayMoney } from './DayMoney'
 import { Fragment, useState, useEffect, useMemo, memo } from 'react'
 import { fmtShortUtc as fmtShort } from '@/lib/fmtDate'
 import { fmtDate } from '@/lib/fmtDate'
@@ -260,7 +260,7 @@ function SalesTab({
   // Retries a few times and only replaces the lists with real arrays. A failed
   // or timed-out request used to be treated as "no receipts" -- the tab showed
   // an empty list until a manual reload happened to succeed.
-  const dayFigs = useDayMoney()
+  const { days: dayFigs } = useDayMoney()
   const [loadError, setLoadError] = useState(false)
   async function loadReceipts(retries = 0): Promise<void> {
     for (let i = 0; i <= retries; i++) {
@@ -956,7 +956,7 @@ function SalesTab({
                 return <td key={c.key} className={isDayHead ? 'px-1.5 py-0.5' : 'px-1 py-0'} />
               })}
             </tr>
-            {isDayHead && !q && (() => { const f = dayFigs.get(String(r.receipt_date).slice(0, 10)); return f && (f.pl || f.bank) ? <tr><td colSpan={30} className="border-b border-blue-100 bg-blue-50 px-1.5 py-0.5"><DayMoneyLine f={f} /></td></tr> : null })()}
+            {isDayHead && !q && (() => { const f = dayFigs.get(String(r.receipt_date).slice(0, 10)); return f && (f.pl || f.bank) ? <tr><td colSpan={30} className="border-b border-blue-100 bg-blue-50 px-1.5 py-0.5"><DayMoney date={String(r.receipt_date).slice(0, 10)} /></td></tr> : null })()}
             {editingRow}
             {editingId !== r.id && (!effectiveBarsOnly || expandedIds.has(r.id)) && rows.map(line => (
               <tr key={line ? line.id : `${r.id}-empty`}

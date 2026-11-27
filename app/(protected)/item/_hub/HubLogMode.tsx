@@ -1,4 +1,5 @@
 'use client'
+import { ConfirmBankMenuItem } from '../_components/DayMoney'
 import { isOwnerLevel } from '@/lib/roles'
 import PageToolbar from '@/lib/pageToolbar'
 import PageGuide, { LawsSheet } from '@/components/PageGuide'
@@ -57,6 +58,7 @@ export default function HubLogMode({ h }: { h: HubCtx }) {
                         <button type="button" className="block w-full px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setMiDate(new Date(Date.now() - 86400000).toISOString().slice(0, 10)); setMiOn(true) }}>Sale for a past day</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLiveNewEntryOpen(true) }}>New log entry</button>
                         <button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setRcptSelect(v => !v); setRcptSel(new Set()) }}>{rcptSelect ? 'Cancel receipt' : 'Receipt from sales…'}</button>
+                        <ConfirmBankMenuItem onPick={() => document.querySelectorAll('details[open]').forEach(d => d.removeAttribute('open'))} />
                         {areaForGuide('log') && <><button type="button" className="block w-full border-t border-gray-100 px-4 py-3 text-left hover:bg-gray-50" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setLawsOpen(true) }}>📜 Laws for this page</button>{lawsOpen && <LawsSheet areaKey={areaForGuide('log')!.key} label={areaForGuide('log')!.label} onClose={() => setLawsOpen(false)} />}</>}
                       </div>
                     </details>
