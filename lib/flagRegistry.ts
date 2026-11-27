@@ -6,7 +6,7 @@ export type FlagDef = {
   law: string                                        // the draft law, in plain words
   breaks: string                                     // the violation line
 }
-export const FLAG_PAGES: Record<string, string> = { live: 'Live', log: 'Sales Log', bills: 'Bills', cab: 'CAB', loss: 'Losses', team: 'Staff times', adverts: 'Adverts and audio', expenses: 'Expenses', customers: 'Customers', vendors: 'Vendors' }
+export const FLAG_PAGES: Record<string, string> = { live: 'Live', log: 'Sales Log', bills: 'Bills', loss: 'Losses', team: 'Staff times', adverts: 'Adverts and audio', expenses: 'Expenses', customers: 'Customers', vendors: 'Vendors' }
 export const FLAGS: FlagDef[] = [
   { key: 'neg_soh', label: 'Negative stock', page: 'live', list: 'items:neg', law: 'No item has negative stock. Any item below zero is counted and its cause found and fixed.', breaks: 'Negative stock is left open' },
   { key: 'no_sp', label: 'No selling price', page: 'live', list: 'items:no_sp', law: 'Every item has a selling price above zero.', breaks: 'An item is left with no selling price' },
@@ -30,7 +30,7 @@ export const FLAGS: FlagDef[] = [
   { key: 'bill_no_attachment', label: 'Bills with no attachment', page: 'bills', list: 'flags:billNoAttachment', law: 'Every bill has its receipt attached.', breaks: 'A bill is left with no receipt attached' },
   { key: 'bill_no_expense', label: 'Bills with no expense', page: 'bills', list: 'flags:billNoExpense', law: 'Every bill has its expense recorded.', breaks: 'A bill is left with no expense' },
   { key: 'vcp_jump', label: 'Cost price jumps', page: 'bills', list: 'flags:vcpJumps', law: 'A cost price that jumps by 20% or more from the previous bill is checked and corrected.', breaks: 'A cost price jump is left unchecked' },
-  { key: 'unchecked_cab', label: 'Cash at bank not checked', page: 'cab', list: 'flags:uncheckedCab', law: 'Cash at bank is checked and confirmed every week.', breaks: 'Cash at bank is left unchecked' },
+  { key: 'unchecked_cab', label: 'Cash at bank not checked', page: 'log', list: 'flags:uncheckedCab', law: 'Cash at bank is checked and confirmed every week.', breaks: 'Cash at bank is left unchecked' },
   { key: 'no_staff_times', label: 'Missing staff times', page: 'team', list: 'flags:noStaffTimes', law: 'Every day a staff member worked has their times recorded.', breaks: 'A day is left with missing staff times' },
   { key: 'open_clocks', label: 'Days with no clock-out', page: 'team', list: 'flags:openClocks', law: 'Every day someone clocked in has their clock-out recorded.', breaks: 'A day with no clock-out is left open' },
   { key: 'missing_closing_reports', label: 'Missing closing reports', page: 'team', list: 'flags:missingClosingReports', law: 'Every working day has its closing report.', breaks: 'A working day has no closing report' },

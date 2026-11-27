@@ -75,7 +75,7 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
                 taskBadge={taskCountFor(cashItemTaskScope('items'))}
                 onClick={() => { if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }} />
               <SidePaneButton icon="📈" label="Sales Log" mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(modeActive('log'))} badge={fl(salesFlagsCount)} onClick={() => goItemsMode('log')} />
+                active={paneActive(modeActive('log'))} badge={fl(salesFlagsCount + cabFlagsCount)} onClick={() => goItemsMode('log')} />
             </div>
             )}
             {show('cashGroup') && (
@@ -141,14 +141,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <SidePaneButton icon="💸" label="Expenses" mode={cashDisplayMode} divider
                 active={paneActive(modeActive('expenses'))} badge={fl(expensesFlagsCount)} onClick={() => goItemsMode('expenses')} />
               </>)}
-              {show('pl') && (
-                <SidePaneButton icon="💰" label="P&L" mode={cashDisplayMode} divider
-                  active={paneActive(lossView === 'pl' && plSubView === 'pl')} onClick={() => pickPL()} />
-              )}
-              {show('pl') && (
-                <SidePaneButton icon="🏦" label="CAB" mode={cashDisplayMode} divider
-                  active={paneActive(lossView === 'cab')} badge={fl(cabFlagsCount)} onClick={() => pickLossView('cab')} />
-              )}
             </div>
             )}
             {show('cashGroup') && (

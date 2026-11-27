@@ -1,4 +1,5 @@
 'use client'
+import { openBankConfirm } from '../_components/DayMoney'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import CountWeek from '@/components/CountWeek'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -1645,8 +1646,8 @@ export function useHubState() {
       { label: 'Customers', action: () => jumpToCustomersTab() },
       { label: 'Purchase Orders', action: () => pickLossView('purchaseOrders') },
       ...(canSeePL ? [
-        { label: 'P&L', action: () => pickPL() },
-        { label: 'CAB', action: () => pickLossView('cab') },
+        { label: 'P&L (in the Sales Log)', action: () => goItemsMode('log') },
+        { label: 'CAB (in the Sales Log)', action: () => { goItemsMode('log'); setTimeout(() => openBankConfirm(), 600) } },
       ] : []),
       { label: 'Expense Orders', action: () => pickLossView('expenseOrders') },
       { label: 'Properties at Shop', action: () => { pickLossView('properties'); setPropertiesInitialTab('available') } },
@@ -4671,7 +4672,7 @@ async function recordCountFromModal(lossExtra?: LossExtra, gainExtra?: GainExtra
     if (key.startsWith('exp_')) { goItemsMode('expenses'); return }
     if (key === 'cust_missing') { jumpToCustomersTab(); return }
     if (key === 'vend_missing') { pickLossView('vendors'); return }
-    if (key === 'unchecked_cab') { pickLossView('cab'); return }
+    if (key === 'unchecked_cab') { goItemsMode('log'); setTimeout(() => openBankConfirm(), 600); return }
     if (['no_staff_times', 'open_clocks', 'missing_closing_reports'].includes(key)) { pickLossView('teamTimes'); return }
     if (key === 'no_advert') { pickLossView('audio_status' as LossView); return }
   }
