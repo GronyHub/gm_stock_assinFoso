@@ -4,6 +4,7 @@ import { isOwnerLevel } from '@/lib/roles'
 import { ItemEditForm } from '../_components/ItemEditForm'
 import { ItemDetailErrorBoundary } from '../_components/ItemDetailErrorBoundary'
 import ItemLossHistory from '../_components/ItemLossHistory'
+import ItemCountRecords from '../_components/ItemCountRecords'
 import ItemPicture from '../_components/ItemPicture'
 import ItemBarcodes from '../_components/ItemBarcodes'
 import { ItemDetailPanel, AliasPicker, MatchPicker, MergeItemPicker, LossTab, formatPrice, type Item, type Tap } from './hubShared'
@@ -22,7 +23,7 @@ const TABS: { key: Tab; label: string }[] = [
 export default function HubGridItemEditor({ h }: { h: HubCtx }) {
   const [tab, setTab] = useState<Tab>('overview')
   const [showAliases, setShowAliases] = useState(false)
-  const { liveCountStatus, openEditGridItem, items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
+  const { liveCountStatus, openEditGridItem, isOwnerOrJoe: seesMoney, items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
   // A different item opens on Overview, or on Photo when it was opened from a tile's photo strip.
   useEffect(() => { setTab(liveGridEditStartTab); setLiveGridEditStartTab('overview'); setShowAliases(false) }, [liveEditingGridItemId])
   return (<>{liveEditingGridItemId != null && (() => {
@@ -210,6 +211,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                           </div>
 
                           <ItemLossHistory itemId={editItem.id} />
+                          <ItemCountRecords itemId={editItem.id} canEdit={!!seesMoney} canDelete={isOwnerLevel(session?.user as never)} />
 
                           <div className="bg-gray-50">
                             <h3 className="border-b border-gray-200 px-3 py-2 text-sm font-bold text-gray-900">History</h3>

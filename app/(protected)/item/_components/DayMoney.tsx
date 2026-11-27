@@ -8,11 +8,11 @@ export type DayFig = { cash: number; bills: number; expenses: number; loss: numb
 export type Bank = { since: { date: string; total: number } | null; prevGap: number | null; running: number | null; net: number; gIn: number; debtors: number; gOut: number; total: number | null; parts: { bank: number; momo: number; physical: number } | null; deficit: number | null; verify: { ok: boolean; expected: number; diff: number } | null }
 export type Day = { pl: DayFig; bank: Bank | null }
 export type Week = { start: string; net: number; endBalance: number | null; lastKnown: { date: string; total: number } | null; endDate: string; confirmed: { date: string; total: number; deficit: number | null } | null }
-type Data = { days: Map<string, Day>; weeks: Map<string, Week>; newestBankDay: string | null }
+type Data = { days: Map<string, Day>; weeks: Map<string, Week>; newestBankDay: string | null; counts: Record<string, number> }
 // An estimate (and a check against the previous confirmation) is only trusted for this many days after a confirmation: the cash side misses money the bank gets other ways.
 export const TRUST_DAYS = 14
 const gapDays = (a: string, b: string) => Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000)
-const EMPTY: Data = { days: new Map(), weeks: new Map(), newestBankDay: null }
+const EMPTY: Data = { days: new Map(), weeks: new Map(), newestBankDay: null, counts: {} }
 
 const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
 const addDays = (d: string, n: number) => new Date(new Date(`${d}T00:00:00Z`).getTime() + n * 86400000).toISOString().slice(0, 10)
@@ -24,9 +24,10 @@ const shortDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('e
 let store: { at: number; data: Data } | null = null
 const listeners = new Set<(d: Data) => void>()
 async function loadAll(): Promise<void> {
-  const [pl, cab] = await Promise.all([
+  const [pl, cab, countDays] = await Promise.all([
     fetch('/api/analysis/profit-loss').then(r => (r.ok ? r.json() : null)).catch(() => null),
     fetch('/api/cash-at-bank').then(r => (r.ok ? r.json() : null)).catch(() => null),
+    fetch('/api/stock/count-records?days=1').then(r => (r.ok ? r.json() : null)).catch(() => null),
   ])
   const days = new Map<string, Day>(), weeks = new Map<string, Week>()
   for (const d of (pl?.daily ?? []) as { date: string; cashCounted: number; bills: number; expenses: number; dailyLoss: number; profit: number }[]) days.set(String(d.date).slice(0, 10), { pl: { cash: d.cashCounted, bills: d.bills, expenses: d.expenses, loss: d.dailyLoss, profit: d.profit }, bank: null })
@@ -65,7 +66,7 @@ async function loadAll(): Promise<void> {
     if (confirmed && !w.confirmed) w.confirmed = { date: k, total: Number(r.cab_total), deficit: verify.get(k)?.diff ?? null }
     weeks.set(ws, w)
   }
-  const data: Data = { days, weeks, newestBankDay: rows[0] ? String(rows[0].entry_date).slice(0, 10) : null }
+  const data: Data = { days, weeks, newestBankDay: rows[0] ? String(rows[0].entry_date).slice(0, 10) : null, counts: (countDays && typeof countDays === 'object' ? countDays : {}) as Record<string, number> }
   store = { at: Date.now(), data }
   listeners.forEach(l => l(data))
 }
@@ -120,6 +121,32 @@ function LossDetail({ date }: { date: string }) {
   )
 }
 
+type CountRow = { id: number; item_id: number | null; item_name: string; qty: number; notes: string | null; by: string | null; source: string | null; at: string | null; expected: number | null; loss_qty: number | null; kind: 'loss' | 'gain' | null }
+const countStore = new Map<string, CountRow[]>()
+// One day's counts: who counted what and how it compared with what was expected.
+function DayCounts({ date }: { date: string }) {
+  const [rows, setRows] = useState<CountRow[] | null>(countStore.get(date) ?? null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (countStore.has(date)) return
+    fetch(`/api/stock/count-records?date=${date}`).then(r => (r.ok ? r.json() : Promise.reject())).then(d => { const l = (d?.rows ?? []) as CountRow[]; countStore.set(date, l); setRows(l) }).catch(() => setFailed(true))
+  }, [date])
+  if (failed) return <p className="mt-1.5 text-[13px] text-red-600">Could not load the counts. Try again in a moment.</p>
+  if (rows === null) return <p className="mt-1.5 text-[13px] text-gray-500">Loading the counts…</p>
+  if (rows.length === 0) return <p className="mt-1.5 text-[13px] text-gray-500">No counts on this day.</p>
+  return (
+    <div className="mt-1.5 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+      {rows.map(r => (
+        <div key={r.id} className={`px-2.5 py-1.5 ${r.kind === 'loss' ? 'bg-red-50' : r.kind === 'gain' ? 'bg-green-50' : ''}`}>
+          <div className="flex items-baseline justify-between gap-2"><p className="min-w-0 text-[13px] font-bold text-gray-900">{r.item_name}</p><p className="shrink-0 text-[13px] font-bold text-gray-900">counted {r.qty}</p></div>
+          <p className="text-[12px] text-gray-700">{r.expected != null ? <>Expected {r.expected} · </> : null}{r.kind === 'loss' ? <b className="text-red-600">short {r.loss_qty}</b> : r.kind === 'gain' ? <b className="text-green-700">gain {r.loss_qty}</b> : <span className="text-gray-500">{r.expected != null ? 'matches' : 'first count'}</span>}</p>
+          {r.notes && <p className="text-[12px] italic text-gray-600">{r.notes}</p>}
+          {(r.by || r.at || r.source) && <p className="text-[11px] text-gray-400">{[r.by ? cap(r.by) : '', timeOf(r.at), r.source ?? ''].filter(Boolean).join(' · ')}</p>}
+        </div>))}
+    </div>
+  )
+}
+
 const inp = 'w-full rounded-lg border border-gray-300 bg-white p-2 text-[16px] text-gray-900'
 function ConfirmForm({ date, bank, onDone }: { date: string; bank: Bank; onDone: () => void }) {
   const [b, setB] = useState(bank.parts ? String(bank.parts.bank) : ''), [m, setM] = useState(bank.parts ? String(bank.parts.momo) : ''), [p, setP] = useState(bank.parts ? String(bank.parts.physical) : '')
@@ -155,8 +182,9 @@ function ConfirmForm({ date, bank, onDone }: { date: string; bank: Bank; onDone:
 
 // The line under a day's header: the day's money, the bank balance and the confirmation (a tap on "confirmed" shows the breakdown, with Edit; "Confirm bank" opens the form right here).
 export function DayMoney({ date, className = '' }: { date: string; className?: string }) {
-  const { days } = useDayMoney()
-  const [open, setOpen] = useState<'form' | 'view' | 'loss' | null>(null)
+  const { days, counts } = useDayMoney()
+  const nCounts = counts[date] ?? 0
+  const [open, setOpen] = useState<'form' | 'view' | 'loss' | 'counts' | null>(null)
   const f = days.get(date)
   useEffect(() => {
     const h = (e: Event) => { if ((e as CustomEvent).detail?.date === date) { setOpen('form'); setTimeout(() => document.getElementById(`day-money-${date}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60) } }
@@ -164,7 +192,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
   }, [date])
   const pl = f?.pl && (f.pl.cash || f.pl.bills || f.pl.expenses || f.pl.loss) ? f.pl : null
   const bank = f?.bank ?? null
-  if (!pl && !bank) return null
+  if (!pl && !bank && !nCounts) return null
   const off = bank?.deficit != null && Math.abs(bank.deficit) >= 1
   return (
     <div id={`day-money-${date}`} className={className}>
@@ -173,6 +201,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
         {bank && bank.gIn > 0 && <span className="text-emerald-700" title="Grony's own cash paid in to the shop">Grony in {c(bank.gIn)}</span>}
         {bank && bank.debtors > 0 && <span className="text-emerald-700" title="Debtors' repayments received">Debtors in {c(bank.debtors)}</span>}
         {bank && bank.gOut > 0 && <span className="text-orange-600" title="Cash taken out for Grony">Grony out {c(bank.gOut)}</span>}
+        {nCounts > 0 && <button type="button" onClick={() => setOpen(o => (o === 'counts' ? null : 'counts'))} className="rounded px-1 text-sky-800 underline decoration-dotted" title="Who counted what on this day">Counts {nCounts}</button>}
         {bank && bank.running != null && <span className="text-indigo-800" title="Last confirmed bank plus the movement since">Bank est. {c(bank.running)}</span>}
         {bank && bank.running == null && bank.since && <span className="text-gray-500">Bank not confirmed since {shortDate(bank.since.date)}</span>}
         {bank && bank.total != null
@@ -187,6 +216,7 @@ export function DayMoney({ date, className = '' }: { date: string; className?: s
           <button type="button" onClick={() => setOpen('form')} className="rounded-lg bg-gray-100 px-3 py-1.5 text-[13px] font-bold text-gray-800">Edit</button>
         </div>)}
       {open === 'loss' && <LossDetail date={date} />}
+      {open === 'counts' && <DayCounts date={date} />}
       {open === 'form' && bank && <ConfirmForm date={date} bank={bank} onDone={() => setOpen(null)} />}
     </div>
   )

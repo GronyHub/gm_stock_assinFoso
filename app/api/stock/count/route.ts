@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       console.error('Database insert/update error:', dbError)
       return serverError('Failed to save count', String(dbError))
     }
-  invalidateCache(`losses:${itemId}`)
+  invalidateCache(`losses:${itemId}`); invalidateCache('count-records'); invalidateCache('losses:by-day')
   return success({
     ok: true,
     ...(pairing && !pairing.blocking ? { pack_count_suggested: pairing.packs } : {}),

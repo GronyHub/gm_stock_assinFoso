@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       RETURNING item_id, count_date::text AS counted_at
     `
     if (!updated) return notFound()
-    invalidateCache(`losses:${updated.item_id}`)
+    invalidateCache(`losses:${updated.item_id}`); invalidateCache('count-records'); invalidateCache('losses:by-day')
     return success({ counted_at: updated.counted_at })
   }
 
@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   `
   await logActivity(actor, 'edited stock count', `${rows[0].item_name} · qty ${quantity_counted} on ${rows[0].count_date}`)
   if (lossNote) await logActivity(actor, 'reported count loss', `${rows[0].item_name} · ${rows[0].count_date} — ${lossNote}`)
-  if (before?.item_id) invalidateCache(`losses:${before.item_id}`)
+  if (before?.item_id) invalidateCache(`losses:${before.item_id}`); invalidateCache('count-records'); invalidateCache('losses:by-day')
   return success(rows[0])
 }
 
@@ -128,6 +128,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await sql`DELETE FROM stock_counts WHERE id = ${countId}`
 
   await logActivity(actor, 'deleted stock count', `${row.item_name} · qty ${Number(row.quantity_counted)} on ${row.count_date}`)
-  invalidateCache(`losses:${row.item_id}`)
+  invalidateCache(`losses:${row.item_id}`); invalidateCache('count-records'); invalidateCache('losses:by-day')
   return success({ ok: true })
 }
