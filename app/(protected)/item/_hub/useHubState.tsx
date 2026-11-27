@@ -891,7 +891,8 @@ export function useHubState() {
   const wantMine = useRef<string | null>(null)
   // Opens my own page on a tab; before the signed-in name is known it waits (see the [username] effect below).
   const openMine = (tab: string) => { setEmbedUrl(null); setShop(null); if (usernameRef.current) setPersonal({ name: usernameRef.current, tab }); else wantMine.current = tab }
-  const openEmbed = (path: string) => { setPersonal(null); const mine = MINE_PATHS[path.split('?')[0]]; if (mine) { openMine(mine); return } if (path.split('?')[0] === '/laws' && !/[?&](embed|tile|law)=/.test(path)) { setEmbedUrl(null); setShop(null); setLiveMode('manage'); return } const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
+  // The hub itself is never opened inside the hub (it showed a second set of bottom tabs): a link to /item goes to that place in this hub.
+  const openEmbed = (path: string) => { setPersonal(null); if (path.split('?')[0] === '/item') { setEmbedUrl(null); setShop(null); if (/[?&]view=counts\b/.test(path)) countsGoRef.current(); return } const mine = MINE_PATHS[path.split('?')[0]]; if (mine) { openMine(mine); return } if (path.split('?')[0] === '/laws' && !/[?&](embed|tile|law)=/.test(path)) { setEmbedUrl(null); setShop(null); setLiveMode('manage'); return } const r = shopRoute(path); if (r) { setEmbedUrl(null); setShop(r) } else { setShop(null); setEmbedUrl(path) } }
   // Home and Waiting for team are one page now ('todo'): the day's cards on top, the waiting list below.
   const openShop = (tab: ShopTab = 'todo') => { setEmbedUrl(null); setPersonal(null); setShop({ tab: tab === 'dashboard' ? 'todo' : tab }) }
   const openPersonal = (name: string, tab = 'waiting') => { setEmbedUrl(null); setShop(null); setPersonal({ name, tab }) }
