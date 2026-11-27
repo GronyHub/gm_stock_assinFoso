@@ -1,10 +1,14 @@
 'use client'
+import { useEffect, useState } from 'react'
 import type { HubCtx } from './useHubState'
 
 // Phone only (hidden from 640px wide): five places used most, along the bottom where a thumb reaches them.
 // More opens the full grouped menu (Work, Records, Money, Reports, Admin) as an overlay (see HubMainRow).
 export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: { h: HubCtx; moreOpen: boolean; onToggleMore: () => void; onNavigate: () => void }) {
   const { lossView, pickLossView, pickSaleFilter, openShop, shop, goItemsMode, jumpToCustomersTab, modeActive, paneActive, lastSaleUndo, setLastSaleUndo, undoTap, isOwnerOrJoe, canSeeManage, canSeeTeam, canSeeCash } = h
+  // The hub is never shown inside the hub (a "Back to app" link in a page that was opened in a frame loads it there, with a second set of tabs): it asks the outer one to close the frame.
+  const [framed, setFramed] = useState(false)
+  useEffect(() => { if (window.parent !== window) { setFramed(true); window.parent.postMessage({ type: 'close-embed' }, window.location.origin) } }, [])
   const manage = !!isOwnerOrJoe && !!(canSeeManage || canSeeTeam)
   const liveActive = !moreOpen && !!paneActive(modeActive('sale'))
   const goLive = () => { h.setShop(null); if (lossView !== 'items') pickLossView('items'); pickSaleFilter('noViolations') }
@@ -17,6 +21,7 @@ export default function HubPhoneTabs({ h, moreOpen, onToggleMore, onNavigate }: 
     ...(manage ? [{ key: 'manage', icon: '🛠', label: 'Manage', active: !moreOpen && !!shop && !['dashboard', 'todo', 'home', 'analytics', 'record'].includes(shop.tab), go: () => openShop('manage') }] : []),
     ...(canSeeCash ? [{ key: 'analytics', icon: '📊', label: 'Analytics', active: !moreOpen && !!shop && shop.tab === 'analytics', go: () => openShop('analytics') }] : []),
   ]
+  if (framed) return null
   return (<>
     {lastSaleUndo && (
       <div className="fixed inset-x-2 bottom-20 z-40 flex items-center justify-between gap-2 rounded-xl bg-gray-900 px-3 py-2 text-sm font-semibold text-white shadow-lg sm:bottom-4 sm:left-auto sm:right-4 sm:w-72 print:hidden">
