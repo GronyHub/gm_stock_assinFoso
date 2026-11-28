@@ -22,7 +22,7 @@ export default function ItemLossHistory({ itemId }: { itemId: number }) {
   return (
     <div className="border-b border-gray-200 bg-white">
       <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left">
-        <span className="text-sm font-bold text-gray-900">Losses <span className="font-semibold text-red-600">{c(total)}</span> <span className="font-normal text-gray-500">· {rows.length} time{rows.length === 1 ? '' : 's'} · {qty} short · latest {dayLabel(rows[0].date)}</span></span>
+        <span className="text-sm font-bold text-gray-900">Losses <span className="text-[11px] font-semibold text-gray-400">before gains</span> <span className="font-semibold text-red-600">{c(total)}</span> <span className="font-normal text-gray-500">· {rows.length} time{rows.length === 1 ? '' : 's'} · {qty} short · latest {dayLabel(rows[0].date)}</span></span>
         <span className="text-gray-400">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
