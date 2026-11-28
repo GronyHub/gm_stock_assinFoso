@@ -11,21 +11,20 @@ import type { HubCtx } from './useHubState'
 
 // The item sheet: full screen on a phone, a pop-up from 640px wide. Four tabs so nothing is one long scroll:
 // Overview (the facts), Stock (count, backdate a sale, history), Links (aliases, services used, merge, barcodes), Photo.
-type Tab = 'overview' | 'stock' | 'links' | 'photo'
+type Tab = 'details' | 'count' | 'ledger'
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'stock', label: 'Stock' },
-  { key: 'links', label: 'Links' },
-  { key: 'photo', label: 'Photo' },
+  { key: 'details', label: 'Details' },
+  { key: 'count', label: 'Count' },
+  { key: 'ledger', label: 'Ledger' },
 ]
 
 export default function HubGridItemEditor({ h }: { h: HubCtx }) {
-  const [tab, setTab] = useState<Tab>('overview')
+  const [tab, setTab] = useState<Tab>('details')
   const [showBackdate, setShowBackdate] = useState(false)   // backdating a sale is rare: folded until asked for
   const [showAliases, setShowAliases] = useState(false)
   const { liveCountStatus, openEditGridItem, isOwnerOrJoe: seesMoney, items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
   // A different item opens on Overview, or on Photo when it was opened from a tile's photo strip.
-  useEffect(() => { setTab(liveGridEditStartTab); setLiveGridEditStartTab('overview'); setShowAliases(false) }, [liveEditingGridItemId])
+  useEffect(() => { setTab(liveGridEditStartTab === 'stock' ? 'ledger' : liveGridEditStartTab === 'count' ? 'count' : 'details'); setLiveGridEditStartTab('overview'); setShowAliases(false) }, [liveEditingGridItemId])
   return (<>{liveEditingGridItemId != null && (() => {
             const editItem = liveAllItems.find(i => i.id === liveEditingGridItemId)
             const ownerLevel = isOwnerLevel(session?.user as any)
@@ -72,7 +71,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                   </div>
                   <div className="overflow-y-auto" role="tabpanel">
                     {/* ── Overview: the facts ── */}
-                    {tab === 'overview' && (
+                    {tab === 'details' && (
                       <div className="border-b border-gray-200">
                         {liveGridEditLoading ? (
                           <p className="py-4 text-center text-sm text-gray-500">Loading…</p>
@@ -106,11 +105,12 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                     )}
 
                     {/* ── Stock: count now, backdate a sale, history ── */}
-                    {tab === 'stock' && ready && editItem && (() => {
+                    {(tab === 'count' || tab === 'ledger') && ready && editItem && (() => {
                       const overdueItem = liveOverdueItems.find(i => i.item_id === editItem.id)
                       const currentCount = overdueItem ? Math.ceil(Number(overdueItem.calculated_soh)) : null
                       return (
                         <div>
+                          {tab === 'count' && (<>
                           <div className="border-b border-gray-200 px-3 py-3">
                             {overdueItem ? (
                               <>
@@ -157,7 +157,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                               const todo = [...liveCountStatus.entries()].filter(([id]) => id !== editItem.id).sort((a, b) => (b[1].level === 'overdue' ? 1 : 0) - (a[1].level === 'overdue' ? 1 : 0) || (b[1].days_overdue ?? 0) - (a[1].days_overdue ?? 0))
                               if (todo.length === 0) return <p className="mt-2 text-[13px] font-semibold text-green-700">Nothing else is due for a count.</p>
                               const [nid, st] = todo[0], nm = liveAllItems.find(i => i.id === nid)?.name ?? 'next item'
-                              return <button type="button" onClick={() => { setLiveGridEditStartTab('stock'); openEditGridItem(nid) }} className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg bg-blue-50 px-3 py-2 text-left text-[13px] font-bold text-blue-800"><span className="min-w-0 truncate">Next to count: {nm}</span><span className="shrink-0 text-[12px] font-semibold text-blue-600">{st.label} · {todo.length} left →</span></button>
+                              return <button type="button" onClick={() => { setLiveGridEditStartTab('count'); openEditGridItem(nid) }} className="mt-2 flex w-full items-center justify-between gap-2 rounded-lg bg-blue-50 px-3 py-2 text-left text-[13px] font-bold text-blue-800"><span className="min-w-0 truncate">Next to count: {nm}</span><span className="shrink-0 text-[12px] font-semibold text-blue-600">{st.label} · {todo.length} left →</span></button>
                             })()}
                           </div>
 
@@ -213,21 +213,23 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                           </div>
 
                           <ItemCountRecords itemId={editItem.id} canEdit={!!seesMoney} canDelete={isOwnerLevel(session?.user as never)} />
+                          </>)}
 
+                          {tab === 'ledger' && (
                           <div className="bg-gray-50">
-                            <h3 className="border-b border-gray-200 px-3 py-2 text-sm font-bold text-gray-900">History</h3>
                             {/* Wraps the WHOLE panel, not just LossTab's own inner boundary: a crash anywhere in
                                 ItemDetailPanel's body was blanking this entire page instead of just this section. */}
                             <ItemDetailErrorBoundary>
                               <ItemDetailPanel itemId={editItem.id} onItemGone={() => setLiveEditingGridItemId(null)} showRelationsEditor={false} hidePicture hideBarcodes />
                             </ItemDetailErrorBoundary>
                           </div>
+                          )}
                         </div>
                       )
                     })()}
 
                     {/* ── Links: aliases, services used (goods used), merge, delete, barcodes ── */}
-                    {tab === 'links' && ready && editItem && (
+                    {tab === 'details' && ready && editItem && (
                       <div>
                         <div className="border-b border-gray-200 bg-gray-50 px-3 py-3">
                           {!liveGridEditRelationsOpen ? (
@@ -343,12 +345,12 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                     )}
 
                     {/* ── Photo ── */}
-                    {tab === 'photo' && ready && editItem && (
+                    {tab === 'details' && ready && editItem && (
                       <ItemPicture itemId={editItem.id} name={editItem.name} group={(editItem as { cf_group?: string | null }).cf_group ?? null} />
                     )}
 
                     {/* Loading / missing for the tabs that need the item */}
-                    {tab !== 'overview' && !ready && (
+                    {tab !== 'details' && !ready && (
                       <p className="py-6 text-center text-sm text-gray-500">{liveGridEditLoading ? 'Loading…' : 'Item not found'}</p>
                     )}
                     <div className="h-[max(1.5rem,env(safe-area-inset-bottom))]" />

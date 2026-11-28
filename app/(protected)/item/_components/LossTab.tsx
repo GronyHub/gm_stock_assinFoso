@@ -7,6 +7,7 @@ import {
   numVal, computeRows, buildPackCycles, buildPackChainRows, packSideCedis, realizedCycleCedis,
   type PackCycle, type PackChainRow,
 } from '@/lib/packChain'
+import { useFitTable } from '@/lib/useFitTable'
 import { COL_BY_KEY, type ColKey, type SortCol } from './lossTabColumns'
 import { ColResizeHandle } from './columnPrefs'
 import { ItemEditForm, EMPTY_ITEM_EDIT_FORM } from './ItemEditForm'
@@ -347,6 +348,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // existing as an export to cross-reference by hand.
   const [prezohoNotes, setPrezohoNotes] = useState<{ id: number; cell_date: string; raw_text: string; total: string | null; cp: string | null; category: string; reviewed: boolean }[]>([])
   const [prezohoNotesMarking, setPrezohoNotesMarking] = useState(false)
+  const [rowFilter, setRowFilter] = useState<string>('all')   // ledger filter chip
   const [notesOpen, setNotesOpen] = useState(false)   // the pre-Zoho notes stay folded until asked for
   useEffect(() => {
     fetch(`/api/prezoho-notes?itemId=${item.item_id}`).then(r => r.json())
@@ -562,7 +564,26 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   const sp = parseFloat(item.sp ?? '0') || 0
   const totalLoss = computed ? parseFloat(computed.reduce((s, r) => s + (r.loss ?? 0), 0).toFixed(4)) : 0
   const totalCost = parseFloat((totalLoss * sp).toFixed(2))
-  const displayedRows = maxRows && computed ? computed.slice(0, maxRows) : computed
+  // ── Ledger filters: each chip keeps only the rows that match, with the count on the chip. ──
+  const hasNoteIn = (hi: string, lo: string | null) => prezohoNotes.some(n => { const d = String(n.cell_date).slice(0, 10); return d <= hi && (lo == null || d > lo) })
+  const FILTERS: { key: string; label: string; test: (r: NonNullable<typeof computed>[number], i: number) => boolean }[] = [
+    { key: 'loss', label: 'Losses', test: r => r.loss !== null && r.loss > 0.001 },
+    { key: 'gain', label: 'Gains', test: r => r.loss !== null && r.loss < -0.001 },
+    { key: 'vcp', label: 'VCP jump', test: r => vcpJumps.has(r.date) },
+    { key: 'below', label: 'Sold below cost', test: r => !!r.sold_below_cost },
+    { key: 'count', label: 'Counts', test: r => r.qty_counted !== null },
+    { key: 'bill', label: 'Bills', test: r => numVal(r.bills_qty) > 0 },
+    { key: 'wic', label: 'Sales (WIC)', test: r => numVal(r.wic_qty) > 0 },
+    { key: 'gmc', label: 'GMC', test: r => numVal(r.gmc_qty) > 0 },
+    { key: 'cnv', label: 'Converted in', test: r => numVal(r.converted_in_qty) > 0 },
+    { key: 'trade', label: 'Trade-off', test: r => !!tradeOffRecords?.some(t => t.count_date === r.date) },
+    { key: 'note', label: 'Notes', test: (r, i) => hasNoteIn(r.date, computed![i + 1]?.date ?? null) },
+  ]
+  const activeFilter = FILTERS.find(f => f.key === rowFilter)
+  const filteredRows = computed ? (activeFilter ? computed.filter((r, _x) => activeFilter.test(r, computed.indexOf(r))) : computed) : computed
+  const displayedRows = maxRows && filteredRows ? filteredRows.slice(0, maxRows) : filteredRows
+  const nextOlderDate = (date: string) => { const i = computed ? computed.findIndex(r => r.date === date) : -1; return i >= 0 ? computed![i + 1]?.date ?? null : null }
+  const { wrapRef: ledgerWrapRef, tableRef: ledgerTableRef } = useFitTable([displayedRows, rowFilter, prezohoNotes.length])
   const hasMoreRows = maxRows && computed ? computed.length > maxRows : false
   const lgCls = `px-4 py-2.5 text-right ${totalLoss > 0 ? 'text-red-500' : totalLoss < 0 ? 'text-green-600' : 'text-gray-400'}`
 
@@ -749,6 +770,32 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         </div>
       )}
 
+      {dayRows && computed && computed.length > 0 && (!showPackChainTable || singleServiceChain) && (() => {
+        const chips = showPackChainTable ? FILTERS.filter(f => f.key === 'loss' || f.key === 'gain') : FILTERS
+        const countOf = (f: typeof FILTERS[number]) => computed.filter((r, i) => f.test(r, i)).length
+        return (
+          <div className="border-b border-gray-200 bg-white px-2 py-1.5">
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Filter ledger rows">
+              <button type="button" onClick={() => setRowFilter('all')}
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${rowFilter === 'all' ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>
+                All {computed.length}
+              </button>
+              {chips.map(f => {
+                const n = countOf(f)
+                if (n === 0 && rowFilter !== f.key) return null
+                return (
+                  <button key={f.key} type="button" onClick={() => setRowFilter(rowFilter === f.key ? 'all' : f.key)}
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${rowFilter === f.key ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>
+                    {f.label} {n}
+                  </button>
+                )
+              })}
+            </div>
+            {activeFilter && displayedRows && displayedRows.length === 0 && <p className="py-2 text-center text-[12px] text-gray-400">No rows match this filter.</p>}
+          </div>
+        )
+      })()}
+
       {/* detail table -- the Available/Used narrative format is only for items
           where 2+ services share stock (e.g. 4x6 singles); every other item
           keeps the original DATE/₵/L-G/WIC/GMC/SP/BL/CNV/EXP layout. */}
@@ -767,8 +814,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             onDateClick={onDateClick}
             packChainBreakdownNames={packChainBreakdownNames}
             showPrices={showPrices ?? false}
-            lossOnly={lossOnly ?? false}
-            gainOnly={gainOnly ?? false}
+            lossOnly={(lossOnly ?? false) || rowFilter === 'loss'}
+            gainOnly={(gainOnly ?? false) || rowFilter === 'gain'}
           />
         ) : (
           <>
@@ -1019,8 +1066,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         <p className="text-sm text-gray-400 text-center py-6">No activity.</p>
       ) : showBreakdown ? (
         <div>
-          <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-          <table className="w-full border-collapse text-[12px] tabular-nums">
+          <div ref={ledgerWrapRef} className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
+          <table ref={ledgerTableRef} className="w-full border-collapse text-[12px] tabular-nums">
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-[12px] font-bold uppercase tracking-tighter border-b border-gray-200">
               <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
@@ -1191,7 +1238,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
-                {noteLines(row.date, displayedRows![ri + 1]?.date ?? null)}
+                {noteLines(row.date, nextOlderDate(row.date))}
                 </Fragment>
               )
             })}
@@ -1215,8 +1262,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
         </div>
       ) : (
         <div>
-          <div className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
-          <table className="w-full border-collapse text-[12px] tabular-nums">
+          <div ref={ledgerWrapRef} className={`overflow-x-auto rounded-b-lg ${maxRows ? 'overflow-y-auto max-h-96' : ''}`}>
+          <table ref={ledgerTableRef} className="w-full border-collapse text-[12px] tabular-nums">
             <thead>
               <tr className="bg-gray-50 text-gray-500 text-[12px] font-bold uppercase tracking-tighter border-b border-gray-200">
                 <th className="pl-1 pr-1 py-0 text-left whitespace-nowrap sticky left-0 z-10 bg-gray-50 border-r border-gray-200">Date</th>
@@ -1347,7 +1394,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
-                {noteLines(row.date, displayedRows![ri + 1]?.date ?? null)}
+                {noteLines(row.date, nextOlderDate(row.date))}
                 </Fragment>
               )
             })}
