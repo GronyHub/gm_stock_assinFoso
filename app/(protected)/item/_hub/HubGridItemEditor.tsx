@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { isOwnerLevel } from '@/lib/roles'
 import { ItemEditForm } from '../_components/ItemEditForm'
 import { ItemDetailErrorBoundary } from '../_components/ItemDetailErrorBoundary'
-import ItemLossHistory from '../_components/ItemLossHistory'
 import ItemCountRecords from '../_components/ItemCountRecords'
 import ItemPicture from '../_components/ItemPicture'
 import ItemBarcodes from '../_components/ItemBarcodes'
@@ -210,7 +209,6 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                             </div>
                           </div>
 
-                          <ItemLossHistory itemId={editItem.id} />
                           <ItemCountRecords itemId={editItem.id} canEdit={!!seesMoney} canDelete={isOwnerLevel(session?.user as never)} />
 
                           <div className="bg-gray-50">

@@ -11,10 +11,14 @@ const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1)
 // A correction that creates a loss asks for the reason. Nothing is shown until a count is tapped.
 export default function ItemCountRecords({ itemId, canEdit, canDelete }: { itemId: number; canEdit: boolean; canDelete: boolean }) {
   const [rows, setRows] = useState<Row[] | null>(null)
+  const [reasons, setReasons] = useState<Record<string, string>>({})   // the loss reason by day (from the loss records)
   const [focus, setFocus] = useState<number | null>(null)
   const [edit, setEdit] = useState<{ id: number; qty: string; notes: string; reason: string; needReason: boolean } | null>(null)
   const [busy, setBusy] = useState(false), [err, setErr] = useState('')
-  const load = () => fetch(`/api/stock/count-records?item=${itemId}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => setRows(d?.rows ?? null)).catch(() => setRows(null))
+  const load = () => {
+    void fetch(`/api/losses/by-day?item=${itemId}`).then(r => (r.ok ? r.json() : null)).then(d => { const m: Record<string, string> = {}; for (const x of (d?.rows ?? []) as { date: string; reason: string | null }[]) if (x.reason) m[x.date] = x.reason; setReasons(m) }).catch(() => {})
+    return fetch(`/api/stock/count-records?item=${itemId}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => setRows(d?.rows ?? null)).catch(() => setRows(null))
+  }
   useEffect(() => { setRows(null); setFocus(null); setEdit(null); void load() }, [itemId])  // eslint-disable-line react-hooks/exhaustive-deps
   // A tap on a count figure in the ledger below opens this list.
   useEffect(() => {
@@ -47,7 +51,8 @@ export default function ItemCountRecords({ itemId, canEdit, canDelete }: { itemI
         {err && <p className="py-1 text-[13px] text-red-600">{err}</p>}
         <p className="text-[13px] font-bold text-gray-900">counted {r.qty}</p>
         <p className="text-[12px] text-gray-700">{r.expected != null ? <>Expected {r.expected} · </> : null}{r.kind === 'loss' ? <b className="text-red-600">short {r.loss_qty}</b> : r.kind === 'gain' ? <b className="text-green-700">gain {r.loss_qty}</b> : <span className="text-gray-500">{r.expected != null ? 'matches' : 'first count'}</span>}</p>
-        {r.notes && <p className="text-[12px] italic text-gray-600">{r.notes}</p>}
+        {reasons[r.date] && <p className="text-[12px] text-red-800"><b>Reason:</b> {reasons[r.date]}</p>}
+        {r.notes && r.notes !== reasons[r.date] && <p className="text-[12px] italic text-gray-600">{r.notes}</p>}
         {(r.by || r.at || r.source) && <p className="text-[11px] text-gray-400">{[r.by ? cap(r.by) : '', timeOf(r.at), r.source ?? ''].filter(Boolean).join(' · ')}</p>}
         {edit?.id === r.id ? (
           <div className="mt-1 space-y-1.5 rounded-lg border border-gray-200 bg-white p-2">
