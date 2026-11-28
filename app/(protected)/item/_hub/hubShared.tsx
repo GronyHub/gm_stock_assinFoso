@@ -315,7 +315,7 @@ export const CASH_ITEMS: { key: LossView; label: string; icon: string; group?: s
   // The full Counts page -- see LossView's own 'counts' comment. Kept as
   // its own row (not folded under Items) since it's a distinct destination
   // now, not just a mode inside the Sale/Log/Sales/Bills switcher.
-  { key: 'counts',   label: 'Counts',   icon: '🔢' },
+  { key: 'counts',   label: 'To count', icon: '🔢' },
   // Owner-level only (filtered in useHubState): the minutes each Grony Cash activity counts for in everyone's worked time.
   { key: 'activityDurations', label: 'Activity times', icon: '⏱️' },
 ]

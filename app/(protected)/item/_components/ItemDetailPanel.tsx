@@ -330,8 +330,12 @@ export default function ItemDetailPanel({ itemId, collapsed, onExpand, onItemGon
             window.open(`/item?tab=loss&view=sales&mode=bills&jumpBillId=${billId}`, '_blank')}
           onReceiptClick={(receiptId) =>
             window.open(`/item?tab=loss&view=sales&mode=sales&jumpReceiptId=${receiptId}`, '_blank')}
-          onCountClick={(countId) =>
-            window.open(`/item?tab=loss&view=counts&jumpCountId=${countId}`, '_blank')}
+          onCountClick={(countId) => {
+            // Open the item's own Counts section when this sheet has one; otherwise the old records page.
+            const d = { countId, handled: false }
+            window.dispatchEvent(new CustomEvent('open-item-counts', { detail: d }))
+            if (!d.handled) window.open(`/item?tab=loss&view=counts&jumpCountId=${countId}`, '_blank')
+          }}
           maxRows={maxRows} />
       </ItemDetailErrorBoundary>
     </div>

@@ -148,16 +148,6 @@ export default function HubSidePane({ h }: { h: HubCtx }) {
               <p className="px-2 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/60">Reports</p>
               {show('flags') && <SidePaneButton icon="🚩" label="Flags" mode={cashDisplayMode} divider badge={liveSaleFlagTotal + salesFlagsCount + billsFlagsCount + cabFlagsCount + lossByDateFlagsCount + staffTimesFlagsCount + dressFlagsCount + expensesFlagsCount + customersFlagsCount + vendorsFlagsCount || undefined}
                 active={paneActive(lossView === 'flags')} onClick={() => pickLossView('flags')} />}
-              {!flat && <SidePaneButton icon="📉" label={lossesOpen ? 'Losses ▾' : 'Losses ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                active={paneActive(lossView === 'pl' && plSubView !== 'pl')} badge={fl(lossByDateFlagsCount)}
-                noNewTab onClick={() => setLossesOpen(o => !o)} />}
-              {(lossesOpen || flat) && (<>
-                {/* Loss by Date, Loss by Items and Net Loss are gone: a day's losses open under that day in the Sales Log, an item's losses are in its Stock tab, the biggest are in the Sales Log's Analytics, and Net Loss is a filter in the Live flag list. */}
-                {liveAcpGteSpCount > 0 && (
-                  <SidePaneButton icon="•" label="Cost ≥ Selling Price" badge={fl(liveAcpGteSpCount)} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
-                    active={paneActive(lossView === 'pl' && plSubView === 'cost_gte_sp')} onClick={() => goLossSubView('cost_gte_sp')} />
-                )}
-              </>)}
               {isDesktop && <SidePaneButton icon="📊" label={analyticsOpen ? 'Analytics ▾' : 'Analytics ▸'} mode={cashDisplayMode} divider shared={isOwnerOrJoe}
                 active={paneActive(itemsPageMode === 'sale' && ['leastSalesServices', 'leastSalesGoods', 'leastSalesGroups', 'leastPurchased'].includes(liveSaleViolationFilter))}
                 noNewTab onClick={() => setAnalyticsOpen(o => !o)} />}

@@ -243,11 +243,13 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                     {(() => {
                                       const lg = liveLossByItemId.get(item.id)
                                       const netLoss = lg && lg.lgAmt > 0.005 ? lg : null
-                                      if (!due && !netLoss) return null
+                                      const acp = flags.some(f => f.label.includes('ACP > SP'))
+                                      if (!due && !netLoss && !acp) return null
                                       const open = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
                                       return (
                                         <div className="mt-0.5 flex flex-wrap items-center gap-1" onPointerDown={e => e.stopPropagation()}>
                                           {due && <button type="button" onClick={open} className={`rounded px-1 py-px text-[11px] font-extrabold leading-tight text-white ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>{overdue ? 'Count overdue' : 'Count due'} {due.label === 'Today' || due.label === 'Due' ? '' : due.label}</button>}
+                                          {acp && <button type="button" onClick={open} className="rounded bg-orange-50 px-1 py-px text-[11px] font-bold leading-tight text-orange-700">Cost ≥ price</button>}
                                           {netLoss && <button type="button" onClick={open} className="rounded bg-red-50 px-1 py-px text-[11px] font-bold leading-tight text-red-700">Net loss ₵{Math.round(netLoss.lgAmt).toLocaleString('en-GH')}{netLoss.lossCount > 1 ? ` · ${netLoss.lossCount}×` : ''}</button>}
                                         </div>)
                                     })()}

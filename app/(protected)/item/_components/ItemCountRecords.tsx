@@ -15,6 +15,11 @@ export default function ItemCountRecords({ itemId, canEdit, canDelete }: { itemI
   const [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const load = () => fetch(`/api/stock/count-records?item=${itemId}`, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(d => setRows(d?.rows ?? null)).catch(() => setRows(null))
   useEffect(() => { setRows(null); setOpen(false); setEdit(null); void load() }, [itemId])  // eslint-disable-line react-hooks/exhaustive-deps
+  // A tap on a count figure in the ledger below opens this list.
+  useEffect(() => {
+    const h = (e: Event) => { const d = (e as CustomEvent).detail as { handled: boolean }; if (rows === null || rows.length === 0) return; d.handled = true; setOpen(true); setTimeout(() => document.getElementById(`item-counts-${itemId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80) }
+    window.addEventListener('open-item-counts', h); return () => window.removeEventListener('open-item-counts', h)
+  }, [itemId, rows])
   if (rows === null) return null
   if (rows.length === 0) return <div className="border-b border-gray-200 px-3 py-2 text-[13px] text-gray-500">No counts on record for this item.</div>
   const last = rows[0]
@@ -34,7 +39,7 @@ export default function ItemCountRecords({ itemId, canEdit, canDelete }: { itemI
     if (res.ok) await load(); else setErr((await res.json().catch(() => null))?.error ?? 'Could not delete the count.')
   }
   return (
-    <div className="border-b border-gray-200 bg-white">
+    <div id={`item-counts-${itemId}`} className="border-b border-gray-200 bg-white">
       <button type="button" onClick={() => setOpen(o => !o)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left">
         <span className="text-sm font-bold text-gray-900">Counts <span className="font-normal text-gray-500">· {rows.length} · last {dayLabel(last.date)}{last.by ? ` by ${cap(last.by)}` : ''}</span></span>
         <span className="text-gray-400">{open ? '▾' : '▸'}</span>

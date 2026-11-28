@@ -142,7 +142,7 @@ html.framed .no-frame { display: none !important; }
 /* Menu page (phones): leave out what is already on the bottom bar, the top bar or a tile on the Waiting page. */
 .menu-page nav button[aria-label="Waiting for team"], .menu-page nav button[aria-label="Pending jobs"], .menu-page nav button[aria-label="Shop"],
 .menu-page nav button[aria-label="Live"], .menu-page nav button[aria-label="Sales Log"], .menu-page nav button[aria-label="Search"],
-.menu-page nav button[aria-label="Counts"], .menu-page nav button[aria-label="Flags"] { display: none; }
+.menu-page nav button[aria-label="To count"], .menu-page nav button[aria-label="Flags"] { display: none; }
 
 /* Menu page (phones): everything that is in the New sale strip is left out here. What stays is what the strip does not carry. */
 .menu-page nav button:not([aria-label="Settings"]):not([aria-label="UK Settings"]):not([aria-label="Sign out"]) { display: none; }
@@ -153,7 +153,7 @@ html.framed .no-frame { display: none !important; }
 @media (max-width: 639px) {
   .cash-strip nav button[aria-label="Pending jobs"] { display: none; }
   /* The tabs staff do not have to visit (a law pushes them onto Waiting) wait in the More dropdown. */
-  .cash-strip nav button[aria-label="Counts"], .cash-strip nav button[aria-label="Customers"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Activity times"],
+  .cash-strip nav button[aria-label="To count"], .cash-strip nav button[aria-label="Customers"], .cash-strip nav button[aria-label="Vendors"], .cash-strip nav button[aria-label="Activity times"],
   .cash-strip nav button[aria-label="Loss by Date"], .cash-strip nav button[aria-label="Loss by Items"], .cash-strip nav button[aria-label="Net Loss"], .cash-strip nav button[aria-label="Cost ≥ Selling Price"],
   .cash-strip nav button[aria-label="Flags"] { display: none; }
   /* Search, then More, are the last tabs in the row. */
