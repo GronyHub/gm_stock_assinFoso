@@ -89,6 +89,18 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     const cardBgCls = due
                       ? (overdue ? 'bg-white border-gray-300 border-l-4 border-l-red-500 hover:bg-gray-50' : 'bg-white border-gray-300 border-l-4 border-l-amber-400 hover:bg-gray-50')
                       : (flags.length > 0 ? 'bg-white border-gray-300 border-l-4 border-l-orange-400 hover:bg-gray-50' : 'bg-white border-gray-300 hover:bg-gray-50')
+                    // The status sits on the same line as the price and stock (no extra row, so the card is no taller): a count that is due or overdue with its days, the item's net loss,
+                    // and a cost at or above the price. Small coloured text, cut at the card's edge, never wrapped. A tap opens the item's Stock tab (the count entry and the loss history).
+                    const lgRow = liveLossByItemId.get(item.id)
+                    const netLossRow = lgRow && lgRow.lgAmt > 0.005 ? lgRow : null
+                    const acpFlag = flags.some(f => f.label.includes('ACP > SP'))
+                    const openStock = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
+                    const statusInline = (due || netLossRow || acpFlag) ? (
+                      <span className="ml-1.5 inline-flex min-w-0 items-baseline gap-1.5 overflow-hidden whitespace-nowrap" onPointerDown={e => e.stopPropagation()}>
+                        {due && <button type="button" onClick={openStock} className={`font-extrabold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>{due.label === 'Today' || due.label === 'Due' ? (overdue ? 'count!' : 'count') : `${due.label}${overdue ? ' late' : ''}`}</button>}
+                        {netLossRow && <button type="button" onClick={openStock} className="font-bold text-red-600">▼₵{Math.round(netLossRow.lgAmt).toLocaleString('en-GH')}</button>}
+                        {acpFlag && <button type="button" onClick={openStock} className="font-bold text-orange-600" title="Cost at or above the selling price">⚠cost</button>}
+                      </span>) : null
                     const selected = liveSelectedIds.includes(item.id)
                     return (
                       <Fragment key={item.id}>
@@ -220,10 +232,11 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                 {liveSaleViolationFilter === 'noViolations' ? (
                                   <>
                                     {item.product_type !== 'service' && (
-                                      <p className="text-[12px] text-gray-600 leading-tight">
+                                      <p className="text-[12px] text-gray-600 leading-tight flex items-baseline gap-x-1 whitespace-nowrap overflow-hidden">
                                         <span className="text-green-600 font-semibold">ACP ₵{formatACP(item.acp_price ?? item.cost_price)}</span>
                                         <span className="text-gray-400"> · </span>
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
+                                        {statusInline}
                                       </p>
                                     )}
                                     {/* A service has no stock of its own -- what staff
@@ -232,27 +245,13 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                         from the same liveGmcTargetStock map the GMC-target
                                         badge/gate logic already keeps current. */}
                                     {item.product_type === 'service' && item.converts_to_item_id != null && (
-                                      <p className="text-[12px] text-gray-600 leading-tight">
+                                      <p className="text-[12px] text-gray-600 leading-tight flex items-baseline gap-x-1 whitespace-nowrap overflow-hidden">
                                         <span className="text-slate-600 font-semibold">
                                           {item.converts_to_name ?? 'material'} left = {Math.ceil(liveGmcTargetStock.get(item.converts_to_item_id) ?? 0)}
                                         </span>
+                                        {statusInline}
                                       </p>
                                     )}
-                                    {/* One status line, only when there is something to act on: a count that is due or overdue (with the days), then the item's net loss (everyone sees it).
-                                        A tap opens the item's Stock tab, where the count is entered and the loss history sits. */}
-                                    {(() => {
-                                      const lg = liveLossByItemId.get(item.id)
-                                      const netLoss = lg && lg.lgAmt > 0.005 ? lg : null
-                                      const acp = flags.some(f => f.label.includes('ACP > SP'))
-                                      if (!due && !netLoss && !acp) return null
-                                      const open = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
-                                      return (
-                                        <div className="mt-0.5 flex flex-wrap items-center gap-1" onPointerDown={e => e.stopPropagation()}>
-                                          {due && <button type="button" onClick={open} className={`rounded px-1 py-px text-[11px] font-extrabold leading-tight text-white ${overdue ? 'bg-red-600' : 'bg-amber-500'}`}>{overdue ? 'Count overdue' : 'Count due'} {due.label === 'Today' || due.label === 'Due' ? '' : due.label}</button>}
-                                          {acp && <button type="button" onClick={open} className="rounded bg-orange-50 px-1 py-px text-[11px] font-bold leading-tight text-orange-700">Cost ≥ price</button>}
-                                          {netLoss && <button type="button" onClick={open} className="rounded bg-red-50 px-1 py-px text-[11px] font-bold leading-tight text-red-700">Net loss ₵{Math.round(netLoss.lgAmt).toLocaleString('en-GH')}{netLoss.lossCount > 1 ? ` · ${netLoss.lossCount}×` : ''}</button>}
-                                        </div>)
-                                    })()}
                                     {/* Tap straight into the card: no plain-text price any
                                         more, the Price box below is the only place it shows
                                         up (pre-filled, so most sales never need to touch it).
