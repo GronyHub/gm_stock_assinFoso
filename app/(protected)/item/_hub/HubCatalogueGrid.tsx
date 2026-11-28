@@ -96,10 +96,10 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                     const acpFlag = flags.some(f => f.label.includes('ACP > SP'))
                     const openStock = (e: React.MouseEvent) => { e.stopPropagation(); setLiveGridEditStartTab('stock'); openEditGridItem(item.id) }
                     const statusInline = (due || netLossRow || acpFlag) ? (
-                      <span className="ml-1.5 inline-flex min-w-0 items-baseline gap-1.5 overflow-hidden whitespace-nowrap" onPointerDown={e => e.stopPropagation()}>
-                        {due && <button type="button" onClick={openStock} className={`font-extrabold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>{due.label === 'Today' || due.label === 'Due' ? (overdue ? 'count!' : 'count') : `${due.label}${overdue ? ' late' : ''}`}</button>}
-                        {netLossRow && <button type="button" onClick={openStock} className="font-bold text-red-600">▼₵{Math.round(netLossRow.lgAmt).toLocaleString('en-GH')}</button>}
-                        {acpFlag && <button type="button" onClick={openStock} className="font-bold text-orange-600" title="Cost at or above the selling price">⚠cost</button>}
+                      <span className="ml-1 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap leading-none" onPointerDown={e => e.stopPropagation()}>
+                        {due && <button type="button" onClick={openStock} className={`p-0 leading-none font-extrabold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>⏱{due.label === 'Today' || due.label === 'Due' ? (overdue ? 'now' : 'today') : due.label}</button>}
+                        {netLossRow && <button type="button" onClick={openStock} className="p-0 leading-none font-bold text-red-600">▼₵{Math.round(netLossRow.lgAmt).toLocaleString('en-GH')}</button>}
+                        {acpFlag && <button type="button" onClick={openStock} className="p-0 leading-none font-bold text-orange-600" title="Cost at or above the selling price">⚠cost</button>}
                       </span>) : null
                     const selected = liveSelectedIds.includes(item.id)
                     return (
@@ -232,7 +232,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                 {liveSaleViolationFilter === 'noViolations' ? (
                                   <>
                                     {item.product_type !== 'service' && (
-                                      <p className="text-[12px] text-gray-600 leading-tight flex items-baseline gap-x-1 whitespace-nowrap overflow-hidden">
+                                      <p className="text-[12px] text-gray-600 leading-tight flex items-center gap-x-1 whitespace-nowrap overflow-hidden">
                                         <span className="text-green-600 font-semibold">ACP ₵{formatACP(item.acp_price ?? item.cost_price)}</span>
                                         <span className="text-gray-400"> · </span>
                                         <span className="text-slate-600 font-semibold">{Math.ceil(Number(item.soh))} pc</span>
@@ -245,7 +245,7 @@ export default function HubCatalogueGrid({ h }: { h: HubCtx }) {
                                         from the same liveGmcTargetStock map the GMC-target
                                         badge/gate logic already keeps current. */}
                                     {item.product_type === 'service' && item.converts_to_item_id != null && (
-                                      <p className="text-[12px] text-gray-600 leading-tight flex items-baseline gap-x-1 whitespace-nowrap overflow-hidden">
+                                      <p className="text-[12px] text-gray-600 leading-tight flex items-center gap-x-1 whitespace-nowrap overflow-hidden">
                                         <span className="text-slate-600 font-semibold">
                                           {item.converts_to_name ?? 'material'} left = {Math.ceil(liveGmcTargetStock.get(item.converts_to_item_id) ?? 0)}
                                         </span>
