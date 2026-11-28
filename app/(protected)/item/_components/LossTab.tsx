@@ -290,6 +290,22 @@ export function MergeItemPicker({ itemId, itemName, typeLabel, mergePool, onMerg
 // externally. Exported so ItemDetailPanel.tsx can also render it standalone
 // on the Item 360 page, with its own equivalents of the pools/records this
 // file builds from its own full-list fetch.
+// One pre-Zoho ledger note, written under its date in the ledger: the category as a coloured tag, the text (two lines, "more" for the rest), and Reopen on a note already reviewed.
+const NOTE_RISK = new Set(['restock', 'bought_generic', 'sale_mentioned', 'other/unclear'])   // the kinds that could be a missing bill or sale
+function PrezohoNoteLine({ n, onToggle }: { n: { id: number; cell_date: string; raw_text: string | null; category: string; reviewed: boolean }; onToggle: (reviewed: boolean) => void }) {
+  const [more, setMore] = useState(false)
+  const text = (n.raw_text ?? '').trim() || '(blank)'
+  return (
+    <div className={`text-[12px] leading-snug ${n.reviewed ? 'opacity-60' : ''}`}>
+      <span className="font-semibold text-gray-700">📝 {fmtDate(n.cell_date)}</span>
+      <span className={`ml-1 rounded px-1 text-[11px] font-bold ${NOTE_RISK.has(n.category) ? 'bg-amber-200 text-amber-900' : 'bg-teal-100 text-teal-800'}`}>{n.category}</span>
+      <span className={`ml-1 whitespace-pre-wrap break-words text-gray-800 ${more ? '' : 'line-clamp-2'}`}>{text}</span>
+      {(text.length > 90 || text.includes('\n')) && <button type="button" onClick={() => setMore(m => !m)} className="ml-1 font-semibold text-teal-700">{more ? 'less' : 'more'}</button>}
+      {n.reviewed && <button type="button" onClick={() => onToggle(false)} className="ml-1 font-semibold text-gray-500 underline">reopen</button>}
+    </div>
+  )
+}
+
 export function ItemDetail({ item, groups, allItems, currentAliases, currentMatches, candidatePool, mergePool, isOwnerLevelUser, onSaved, onRelationsSaved, onMerged, onDateClick, onBillClick, onReceiptClick, onCountClick, showPrices, lossOnly, gainOnly, maxRows, tradeOffRecords }: {
   item: SummaryRow; groups: string[]; allItems: { item_id: number; item_name: string }[]
   currentAliases: AliasRecord[]; currentMatches: MatchRecord[]
@@ -338,6 +354,16 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       .catch(() => {})
   }, [item.item_id])
   const unreviewedPrezohoNotes = prezohoNotes.filter(n => !n.reviewed)
+  async function setNoteReviewed(id: number, reviewed: boolean) {
+    const res = await fetch('/api/prezoho-notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, reviewed }) })
+    if (res.ok) setPrezohoNotes(prev => prev.map(n => n.id === id ? { ...n, reviewed } : n))
+  }
+  // The pre-Zoho notes are written in the ledger itself, under their date (or in date order where the item has no row that day), so a note about a purchase sits beside the empty bill column.
+  const noteLines = (hi: string | null, lo: string | null) => {
+    const list = prezohoNotes.filter(n => (hi == null || String(n.cell_date).slice(0, 10) <= hi) && (lo == null || String(n.cell_date).slice(0, 10) > lo))
+    if (list.length === 0) return null
+    return <tr><td colSpan={40} className="p-0"><div className="sticky left-0 w-[92vw] max-w-[44rem] space-y-0.5 border-y border-teal-100 bg-teal-50/70 px-2 py-1">{list.map(n => <PrezohoNoteLine key={n.id} n={n} onToggle={r => void setNoteReviewed(n.id, r)} />)}</div></td></tr>
+  }
   async function markPrezohoNotesReviewed() {
     setPrezohoNotesMarking(true)
     const res = await fetch('/api/prezoho-notes', {
@@ -677,13 +703,13 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       {unreviewedPrezohoNotes.length > 0 && (
         <div className="px-3 py-2 border-b border-gray-200 bg-teal-50 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <button type="button" onClick={() => setNotesOpen(o => !o)} className="min-w-0 flex-1 text-left text-[12px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} <span className="font-semibold text-teal-600">{notesOpen ? '▾ hide' : '▸ show'}</span></button>
+            <button type="button" onClick={() => { if (showPackChainTable) setNotesOpen(o => !o) }} className="min-w-0 flex-1 text-left text-[12px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} <span className="font-semibold text-teal-600">{showPackChainTable ? (notesOpen ? '▾ hide' : '▸ show') : '· written in the ledger below, under their dates'}</span></button>
             <button onClick={markPrezohoNotesReviewed} disabled={prezohoNotesMarking}
               className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50">
               {prezohoNotesMarking ? '…' : '✓ Mark Reviewed'}
             </button>
           </div>
-          {notesOpen && <div className="max-h-48 overflow-y-auto space-y-1">
+          {notesOpen && showPackChainTable && <div className="max-h-48 overflow-y-auto space-y-1">
             {unreviewedPrezohoNotes.map(n => (
               <div key={n.id} className="text-[12px] text-gray-600 border-b border-teal-100 pb-1">
                 <span className="font-semibold text-gray-700">{fmtDate(n.cell_date)}</span>
@@ -1020,11 +1046,13 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-[12px]">
-            {displayedRows!.map((row) => {
+            {displayedRows!.map((row, ri) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
               return (
-                <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
+                <Fragment key={row.date}>
+                {ri === 0 && noteLines(null, row.date)}
+                <tr title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
                   className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
@@ -1163,6 +1191,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
+                {noteLines(row.date, displayedRows![ri + 1]?.date ?? null)}
+                </Fragment>
               )
             })}
           </tbody>
@@ -1206,11 +1236,13 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-[12px]">
-            {displayedRows!.map((row) => {
+            {displayedRows!.map((row, ri) => {
               const lossVal = row.loss !== null ? row.loss * sp : null
               const matchingTradeOffs = tradeOffRecords?.filter(r => r.count_date === row.date) ?? []
               return (
-                <tr key={row.date} title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
+                <Fragment key={row.date}>
+                {ri === 0 && noteLines(null, row.date)}
+                <tr title={row.sold_below_cost ? 'Sold at or under cost price this day' : undefined}
                   className={`group transition-colors ${row.sold_below_cost ? 'bg-purple-100 hover:bg-purple-200/70' : row.loss !== null && row.loss > 0.001 ? 'bg-red-50 hover:bg-red-100/70' : 'hover:bg-gray-50'}`}>
                   {/* Sticky cells need an explicit opaque background, not
                       bg-inherit -- a plain row has no background class of
@@ -1315,6 +1347,8 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                     <span className="block truncate max-w-[180px]" title={row.aliases ?? ''}>{row.aliases ?? <span className="text-gray-300">—</span>}</span>
                   </td>
                 </tr>
+                {noteLines(row.date, displayedRows![ri + 1]?.date ?? null)}
+                </Fragment>
               )
             })}
           </tbody>

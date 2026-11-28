@@ -36,10 +36,20 @@ export async function POST(req: NextRequest) {
   const { session, error } = await requireAuth()
   if (error) return error
 
-  const { itemId } = await req.json() as { itemId: number }
-  if (!itemId) return badRequest('Missing itemId')
-
+  const body = await req.json() as { itemId?: number; id?: number; reviewed?: boolean }
   const actor = getActorName(session)
+  // One note: mark it reviewed, or reopen it ({ id, reviewed: false }) -- nothing is ever deleted.
+  if (body.id) {
+    try {
+      const rows = body.reviewed === false
+        ? await sql`UPDATE prezoho_text_cells SET reviewed = false, reviewed_by = NULL, reviewed_at = NULL WHERE id = ${body.id} RETURNING id, item_id`
+        : await sql`UPDATE prezoho_text_cells SET reviewed = true, reviewed_by = ${actor}, reviewed_at = NOW() WHERE id = ${body.id} RETURNING id, item_id`
+      if (rows.length > 0) await logActivity(actor, body.reviewed === false ? 'reopened a pre-Zoho ledger note' : 'reviewed a pre-Zoho ledger note', `Item #${rows[0].item_id}`)
+      return success({ ok: true, count: rows.length })
+    } catch (e) { return handleError('prezoho-notes', e) }
+  }
+  const itemId = body.itemId
+  if (!itemId) return badRequest('Missing itemId')
   try {
     const rows = await sql`
       UPDATE prezoho_text_cells
