@@ -331,6 +331,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
   // existing as an export to cross-reference by hand.
   const [prezohoNotes, setPrezohoNotes] = useState<{ id: number; cell_date: string; raw_text: string; total: string | null; cp: string | null; category: string; reviewed: boolean }[]>([])
   const [prezohoNotesMarking, setPrezohoNotesMarking] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)   // the pre-Zoho notes stay folded until asked for
   useEffect(() => {
     fetch(`/api/prezoho-notes?itemId=${item.item_id}`).then(r => r.json())
       .then(d => setPrezohoNotes(Array.isArray(d) ? d : []))
@@ -676,13 +677,13 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
       {unreviewedPrezohoNotes.length > 0 && (
         <div className="px-3 py-2 border-b border-gray-200 bg-teal-50 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[12px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} on this item -- already checked, none need backfilling, just worth a look.</p>
+            <button type="button" onClick={() => setNotesOpen(o => !o)} className="min-w-0 flex-1 text-left text-[12px] font-bold text-teal-800">📝 {unreviewedPrezohoNotes.length} pre-Zoho ledger note{unreviewedPrezohoNotes.length !== 1 ? 's' : ''} <span className="font-semibold text-teal-600">{notesOpen ? '▾ hide' : '▸ show'}</span></button>
             <button onClick={markPrezohoNotesReviewed} disabled={prezohoNotesMarking}
               className="shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white transition disabled:opacity-50">
               {prezohoNotesMarking ? '…' : '✓ Mark Reviewed'}
             </button>
           </div>
-          <div className="max-h-32 overflow-y-auto space-y-1">
+          {notesOpen && <div className="max-h-48 overflow-y-auto space-y-1">
             {unreviewedPrezohoNotes.map(n => (
               <div key={n.id} className="text-[12px] text-gray-600 border-b border-teal-100 pb-1">
                 <span className="font-semibold text-gray-700">{fmtDate(n.cell_date)}</span>
@@ -690,7 +691,7 @@ export function ItemDetail({ item, groups, allItems, currentAliases, currentMatc
                 <span className="ml-1 whitespace-pre-wrap break-words">{n.raw_text || '(blank)'}</span>
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       )}
 

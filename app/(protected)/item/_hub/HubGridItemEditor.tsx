@@ -21,6 +21,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 export default function HubGridItemEditor({ h }: { h: HubCtx }) {
   const [tab, setTab] = useState<Tab>('overview')
+  const [showBackdate, setShowBackdate] = useState(false)   // backdating a sale is rare: folded until asked for
   const [showAliases, setShowAliases] = useState(false)
   const { liveCountStatus, openEditGridItem, isOwnerOrJoe: seesMoney, items, groups, session, liveAllItems, liveEditingGridItemId, setLiveEditingGridItemId, liveGridEditSaleTapRef, liveGridEditQtyInputRef, liveGridEditLoading, liveGridEditError, liveGridEditAliases, setLiveGridEditAliases, liveGridEditMatches, setLiveGridEditMatches, liveGridEditRelationsOpen, setLiveGridEditRelationsOpen, liveGridEditConfirmDelete, setLiveGridEditConfirmDelete, liveGridEditDeleting, liveGridEditDeleteError, setLiveGridEditDeleteError, liveGridEditCountQty, setLiveGridEditCountQty, liveGridEditCountError, liveGridEditCountSaving, liveQty, setLiveQty, livePrice, setLivePrice, liveSaving, liveTapStatus, liveTapTime, setLiveTapTime, setLiveTapTimeTouched, liveEditForm, setLiveEditForm, liveEditCurrentCountInterval, liveEditCurrentSoh, liveEditSaving, showToast, liveOverdueItems, liveGmcItemIds, recordTap, liveEditGroups, liveEditAllItemsList, deleteGridEditItem, recordCountFromModal, saveConversionTargetOnly, saveGridEditItem, liveGridEditStartTab, setLiveGridEditStartTab } = h
   // A different item opens on Overview, or on Photo when it was opened from a tile's photo strip.
@@ -161,8 +162,9 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                           </div>
 
                           <div ref={liveGridEditSaleTapRef} className="border-b border-gray-200 px-3 py-3">
-                            <p className="mb-1 text-sm font-semibold text-gray-700">Backdate a sale</p>
-                            <p className="mb-2 text-[13px] text-gray-500">Only if it wasn&apos;t tapped on the item card.</p>
+                            <button type="button" onClick={() => setShowBackdate(o => !o)} className="flex w-full items-center justify-between text-left"><span className="text-sm font-semibold text-gray-700">Backdate a sale <span className="font-normal text-gray-400">· only if it wasn&apos;t tapped on the item card</span></span><span className="text-gray-400">{showBackdate ? '▾' : '▸'}</span></button>
+                            {showBackdate && (<>
+                            <div className="mb-2" />
                             {liveTapStatus.length > 0 && (
                               <div className="mb-2 max-h-24 overflow-y-auto rounded border border-gray-200 bg-gray-50 p-1.5 font-mono text-[12px] text-gray-600">
                                 {liveTapStatus.map((msg, i) => (<div key={i}>{msg}</div>))}
@@ -207,6 +209,7 @@ export default function HubGridItemEditor({ h }: { h: HubCtx }) {
                                 {liveSaving ? '…' : 'Tap'}
                               </button>
                             </div>
+                            </>)}
                           </div>
 
                           <ItemCountRecords itemId={editItem.id} canEdit={!!seesMoney} canDelete={isOwnerLevel(session?.user as never)} />
